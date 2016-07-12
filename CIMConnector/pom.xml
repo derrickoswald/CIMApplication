@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ch.ninecode.cim</groupId>
+        <artifactId>CIMApplication</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+	<artifactId>CIMConnector</artifactId>
+	<packaging>rar</packaging>
+
+	<name>CIM Resource Adapter (RAR)</name>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<!-- plugins versions -->
+		<version.plugin.compiler>3.2</version.plugin.compiler>
+		<version.plugin.jar>3.0.0</version.plugin.jar>
+		<version.plugin.rar>2.4</version.plugin.rar>
+
+        <version.dependency.spark>1.6.0</version.dependency.spark>
+        <version.dependency.cimscala>1.6.0-SNAPSHOT</version.dependency.cimscala>
+
+		<!-- test dependencies versions -->
+		<version.dependency.junit>4.12</version.dependency.junit>
+		<version.dependency.tomee>7.0.0</version.dependency.tomee>
+		<version.dependency.shrinkwrap>2.2.2</version.dependency.shrinkwrap>
+	</properties>
+
+	<build>
+		<defaultGoal>install</defaultGoal>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${version.plugin.compiler}</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>${version.plugin.jar}</version>
+				<configuration>
+					<classifier>lib</classifier>
+					<archive>
+						<addMavenDescriptor>false</addMavenDescriptor>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+                        <phase>prepare-package</phase>
+						<id>jar-package</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-rar-plugin</artifactId>
+				<version>${version.plugin.rar}</version>
+				<configuration>
+					<finalName>${project.build.finalName}</finalName>
+					<rarSourceDirectory>${basedir}/target/classes</rarSourceDirectory>
+                    <includeJar>true</includeJar>
+                    <rarResources>
+                        <rarResource>
+                            <targetPath></targetPath>
+                            <include>*.jar</include>
+                            <directory>${basedir}/target/</directory>
+                        </rarResource>
+                    </rarResources>
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+
+		<dependency>
+			<groupId>javax</groupId>
+			<artifactId>javaee-api</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMScala</artifactId>
+            <version>${version.dependency.cimscala}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.10</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.10</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-yarn_2.10</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive-thriftserver_2.10</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-graphx_2.10</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>compile</scope>
+        </dependency>
+
+		<!-- Test Dependencies -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${version.dependency.junit}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.tomee</groupId>
+			<artifactId>arquillian-tomee-embedded</artifactId>
+			<version>${version.dependency.tomee}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jboss.shrinkwrap.resolver</groupId>
+			<artifactId>shrinkwrap-resolver-impl-maven</artifactId>
+			<version>${version.dependency.shrinkwrap}</version>
+			<scope>test</scope>
+		</dependency>
+
+	</dependencies>
+
+</project>

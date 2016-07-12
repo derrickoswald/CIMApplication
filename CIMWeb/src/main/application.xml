@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application
+    xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/application_7.xsd"
+	version="7">
+    <!-- NOTE: This is only used to generate a fake .ear file for the unit tests. -->
+	<description>Sample application to access CIM files via Apache Spark</description>
+	<display-name>CIMWeb</display-name>
+	<module>
+		<web>
+			<web-uri>CIMWeb.war</web-uri>
+			<context-root>/cimweb</context-root>
+		</web>
+	</module>
+	<module>
+		<connector>CIMConnector.rar</connector>
+	</module>
+</application>
