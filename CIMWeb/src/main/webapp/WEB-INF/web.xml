@@ -7,6 +7,7 @@
   version="2.5">
 
     <display-name>Sample application to access CIMConnector</display-name>
+    <description>End-to-end demonstration program for reading and computing with CIM files in Spark.</description>
 
     <!-- resource-ref>
       <res-ref-name>CIMConnectorRA</res-ref-name>

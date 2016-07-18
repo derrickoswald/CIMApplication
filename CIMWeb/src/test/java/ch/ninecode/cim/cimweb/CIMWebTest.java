@@ -36,21 +36,25 @@ public class CIMWebTest
     @Deployment
     public static EnterpriseArchive createDeployment ()
     {
-        final WebArchive war = ShrinkWrap.create (WebArchive.class, "CIMWeb.war");
-        war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"));
-        war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")); // getClass().getPackage()
-        war.deleteClass (CIMWebTest.class);
-        war.addAsWebResource (new File (WEBAPP_SRC, "index.html"));
-        war.addManifest ();
-        System.out.println (war.toString (true));
-        war.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.war"), true);
+//        final WebArchive war = ShrinkWrap.create (WebArchive.class, "CIMWeb.war");
+//        war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"));
+//        war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")); // getClass().getPackage()
+//        war.deleteClass (CIMWebTest.class);
+//        war.addAsWebResource (new File (WEBAPP_SRC, "index.html"));
+//        war.addManifest ();
+//        System.out.println (war.toString (true));
+//        war.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.war"), true);
+//
+//        final EnterpriseArchive ear = ShrinkWrap.create (EnterpriseArchive.class, "CIMWeb.ear");
+//        ear.addAsModules (war);
+//        ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-1.0-SNAPSHOT.rar")), "CIMConnector.rar");
+//        ear.addManifest ();
+//        ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"));
+//
+//        System.out.println (ear.toString (true));
+//        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
 
-        final EnterpriseArchive ear = ShrinkWrap.create (EnterpriseArchive.class, "CIMWeb.ear");
-        ear.addAsModules (war);
-        ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-1.0-SNAPSHOT.rar")), "CIMConnector.rar");
-        ear.addManifest ();
-        ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"));
-
+        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File("../CIMEar/target/CIMApplication.ear"));
         System.out.println (ear.toString (true));
         ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
 
@@ -104,9 +108,6 @@ public class CIMWebTest
         assertNotNull (connection);
         connection.close ();
     }
-//    assertTrue ("interaction returned false", interaction.execute (spec, input, output));
-//    assertFalse ("interaction returned empty", output.isEmpty ());
-//    assertEquals ("interaction returned wrong value", "Hello World!", output.get (0).toString ());
 
     @Test
     public void testWebApp () throws Exception

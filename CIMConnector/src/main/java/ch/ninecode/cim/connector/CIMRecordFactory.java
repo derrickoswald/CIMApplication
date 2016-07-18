@@ -1,6 +1,5 @@
 package ch.ninecode.cim.connector;
 
-import javax.resource.NotSupportedException;
 import javax.resource.ResourceException;
 import javax.resource.cci.IndexedRecord;
 import javax.resource.cci.MappedRecord;
@@ -8,7 +7,6 @@ import javax.resource.cci.RecordFactory;
 
 public class CIMRecordFactory implements RecordFactory
 {
-    private static final String MAPPED_RECORD_NOT_SUPPORTED_ERROR = "Mapped record not supported";
     private static final String INVALID_RECORD_NAME = "Invalid record name";
 
     public CIMRecordFactory ()
@@ -33,8 +31,18 @@ public class CIMRecordFactory implements RecordFactory
     }
 
     @Override
-    public MappedRecord createMappedRecord (String arg0) throws ResourceException
+    public MappedRecord createMappedRecord (String name) throws ResourceException
     {
-        throw new NotSupportedException (MAPPED_RECORD_NOT_SUPPORTED_ERROR);
+        ch.ninecode.cim.connector.CIMMappedRecord ret = null;
+
+        if ((name.equals (CIMMappedRecord.INPUT)) || (name.equals (CIMMappedRecord.OUTPUT)))
+        {
+            ret = new CIMMappedRecord ();
+            ret.setRecordName (name);
+        }
+        else
+            throw new ResourceException (INVALID_RECORD_NAME);
+
+        return (ret);
     }
 }

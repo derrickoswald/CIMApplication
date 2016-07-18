@@ -74,7 +74,7 @@ public class CIMConnectionFactory implements ConnectionFactory
     @Override
     public RecordFactory getRecordFactory () throws ResourceException
     {
-        return (new ch.ninecode.cim.connector.CIMRecordFactory ());
+        return (new CIMRecordFactory ());
     }
 
 }

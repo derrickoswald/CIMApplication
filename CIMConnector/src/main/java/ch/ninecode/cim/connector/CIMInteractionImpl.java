@@ -1,6 +1,5 @@
 package ch.ninecode.cim.connector;
 
-import javax.resource.NotSupportedException;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -18,8 +17,6 @@ public class CIMInteractionImpl implements Interaction
     private static final String INVALID_FUNCTION_ERROR = "Invalid function";
     private static final String INVALID_INPUT_ERROR = "Invalid input record for function";
     private static final String INVALID_OUTPUT_ERROR = "Invalid output record for function";
-    private static final String OUTPUT_RECORD_FIELD_01 = "Hello World!";
-    private static final String EXECUTE_WITH_INPUT_RECORD_ONLY_NOT_SUPPORTED = "execute() with input record only not supported";
 
     protected CIMConnection _Connection;
     protected boolean _Valid;
@@ -73,19 +70,6 @@ public class CIMInteractionImpl implements Interaction
                 CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
                 switch (_spec.getFunctionName ())
                 {
-                    case CIMInteractionSpec.SAY_HELLO_FUNCTION:
-                        if (input.getRecordName ().equals (CIMIndexedRecord.INPUT))
-                            if (output.getRecordName ().equals (CIMIndexedRecord.OUTPUT))
-                            {
-                                ((CIMIndexedRecord) output).clear ();
-                                ((CIMIndexedRecord) output).add (OUTPUT_RECORD_FIELD_01);
-                                ret = true;
-                            }
-                            else
-                                throw new ResourceException (INVALID_OUTPUT_ERROR);
-                        else
-                            throw new ResourceException (INVALID_INPUT_ERROR);
-                        break;
                     case CIMInteractionSpec.READ_FUNCTION:
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
@@ -125,10 +109,46 @@ public class CIMInteractionImpl implements Interaction
     /**
      * @see Interaction#execute(InteractionSpec, Record)
      */
-    public Record execute (InteractionSpec ispec, Record input)
-        throws ResourceException
+    public Record execute (InteractionSpec ispec, Record input) throws ResourceException
     {
-        throw new NotSupportedException (EXECUTE_WITH_INPUT_RECORD_ONLY_NOT_SUPPORTED);
+        CIMResultSet ret;
+
+        ret = null;
+        if (_Valid)
+        {
+            if ((null == ispec) || (!ispec.getClass ().isAssignableFrom (CIMInteractionSpecImpl.class)))
+                throw new ResourceException (INVALID_FUNCTION_ERROR);
+            else
+            {
+                CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
+                switch (_spec.getFunctionName ())
+                {
+                    case CIMInteractionSpec.GET_DATAFRAME_FUNCTION:
+                        if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
+                            try
+                            {
+                                String filename = (String)((CIMMappedRecord) input).get ("filename");
+                                String query = (String)((CIMMappedRecord) input).get ("query");
+                                SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
+                                /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
+                                DataFrame count = sql.sql ("select count(*) from elements");
+                                /* long num = */ count.head ().getLong (0);
+                                DataFrame result = sql.sql (query);
+                                ret = new CIMResultSet (result.schema(), result.collect ());
+                            }
+                            catch (Exception exception)
+                            {
+                                throw new ResourceException ("problem", exception);
+                            }
+                        else
+                            throw new ResourceException (INVALID_INPUT_ERROR);
+                        break;
+                }
+            }
+
+        }
+
+        return (ret);
     }
 
     /**

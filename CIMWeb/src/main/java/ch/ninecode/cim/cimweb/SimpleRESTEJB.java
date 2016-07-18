@@ -56,33 +56,6 @@ public class SimpleRESTEJB
         {
             try
             {
-//                final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-//                spec.setFunctionName (CIMInteractionSpec.SAY_HELLO_FUNCTION);
-//                final CIMIndexedRecord input = new CIMIndexedRecord ();
-//                input.setRecordName (CIMIndexedRecord.INPUT);
-//                input.setRecordShortDescription ("the dummy input record description");
-//                final CIMIndexedRecord output = new CIMIndexedRecord ();
-//                output.setRecordName (CIMIndexedRecord.OUTPUT);
-//                output.setRecordShortDescription ("the dummy output record description");
-//                final Interaction interaction = connection.createInteraction ();
-//                try
-//                {
-//                    if (interaction.execute (spec, input, output))
-//                    {
-//                        if (!output.isEmpty ())
-//                        {
-//                            out.append (output.get (0).toString ());
-//                        }
-//                        else
-//                            out.append ("interaction returned empty");
-//                    }
-//                    else
-//                        out.append ("execute returned false");
-//                }
-//                finally
-//                {
-//                    interaction.close ();
-//                }
                 ConnectionMetaData meta = connection.getMetaData ();
                 if (null != meta)
                 {
