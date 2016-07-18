@@ -121,8 +121,9 @@ public class CIMResultSet implements Record, ResultSet
     {
         if (null == _Rows) throw new SQLException (INVALID);
         Row row = _Rows[_Index];
-        _LastNull = null == row.get (columnIndex - 1);
-        String ret = row.get (columnIndex - 1).toString ();
+        Object value = row.get (columnIndex - 1);
+        _LastNull = null == value;
+        String ret = _LastNull ? "null" : value.toString ();
         return (ret);
     }
 
@@ -131,8 +132,9 @@ public class CIMResultSet implements Record, ResultSet
     {
         if (null == _Rows) throw new SQLException (INVALID);
         Row row = _Rows[_Index];
-        _LastNull = null == row.get (columnIndex - 1);
-        boolean ret = Boolean.parseBoolean (row.get (columnIndex - 1).toString ());
+        Object value = row.get (columnIndex - 1);
+        _LastNull = null == value;
+        boolean ret = _LastNull ? false : Boolean.parseBoolean (value.toString ());
         return (ret);
     }
 

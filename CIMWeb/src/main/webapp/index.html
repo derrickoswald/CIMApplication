@@ -1,18 +1,167 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>Sample CIM Application</title>
-  </head>
-  <body>
-    <p>
-      Two rest services are deployed:
-    </p>
-    <ul>
-      <li>A simple Pojo one: <a href="http://localhost:8080/cimweb/cim/pojo">http://localhost:8080/cimweb/cim/pojo</a></li>
-      <li>An EJB one: <a href="http://localhost:8080/cimweb/cim/ejb">http://localhost:8080/cimweb/cim/ejb</a></li>
-    </ul>
-    <p>
-      Both are defined to be deployed through the ApplicationConfig class.
-    </p>
-  </body>
-</html> 
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>CIM Application</title>
+
+    <!-- Font Awesome -->
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet" >
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Material Design for Bootstrap -->
+    <link href="css/roboto.min.css" rel="stylesheet">
+    <link href="css/material-fullpalette.min.css" rel="stylesheet">
+    <link href="css/ripples.min.css" rel="stylesheet">
+
+    <!-- Mapbox -->
+    <link href="css/mapbox.css" rel="stylesheet" />
+    <link href="css/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- Template style -->
+    <link href="css/style.css" rel="stylesheet">
+
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse z-depth-2">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand waves-effect waves-light" href="#">CIM Application</a>
+            </div>
+
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a id="load_files" href="#" class="waves-effect waves-light" data-toggle="modal" data-target="#file_modal">Load Files</a></li>
+                    <li><a id="connect_server" href="#" class="waves-effect waves-light" data-toggle="modal" data-target="#server_modal">Connect</a></li>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle waves-effect waves-light" data-toggle="dropdown" role="button" aria-expanded="false">Options <span class="caret"></span></a>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a id="unhighlight" href="#">Un-Highlight</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav">
+                    <li><a id="coordinates"></a></li>
+                </ul>
+                <form id="search" class="navbar-form navbar-right waves-effect waves-light" role="search">
+                    <div class="form-group">
+                        <input id="search_text" type="text" class="form-control" placeholder="Search">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- Content -->
+    <section id="map" class="intro">
+    </section>
+
+    <!-- File Dialog Modal -->
+    <div id="file_modal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+                <div class="modal-header text-center" style="padding:35px 50px;">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h2><i class="fa fa-upload"></i> Load files</h2>
+                </div>
+                <div class="modal-body" style="padding:40px 50px;">
+                    <div class="row">
+                        <div class="form-group">
+                            <div class="col-sm-3">
+                                <div class="file-field input-field" aria-describedby="files_help">
+                                    <div type="button" class="btn btn-file">
+                                        <span>Browse</span>
+                                        <input id="file_button" type="file" name="files[]" multiple/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-9">
+                                <div class="input-group" aria-describedby="files_help" style="width: 100%;">
+                                    <div id="files_drop_zone" class="form-control drop_zone">
+                                        Drop files here...
+                                    </div>
+                                </div>
+                                <span id="files_help" class="help-block nonexpert">
+                                    Click the browse button and choose a CIM XML file,
+                                    or drag a file from your operating system file browser onto the drop zone above.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Dialog Modal -->
+    <div id="server_modal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+                <div class="modal-header text-center" style="padding:35px 50px;">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h2><i class="fa fa-connect"></i> Connect to server</h2>
+                </div>
+                <div class="modal-body" style="padding:40px 50px;">
+                    <div class="row">
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label" for="server_url">Server URL</label>
+                            <div class="col-sm-9">
+                                <input id="server_url" class="form-control" type="text" name="server_url" placeholder="http://9code.ch">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="connect" type="submit" class="btn btn-info" data-dismiss="modal">Connect</button>
+                    <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Dialog Non-modal -->
+    <div id="feature_details" class="modal" role="dialog" style="padding: 0px; display: block; width: 25%; height: 75%; top: 10%;">
+        <div id="feature_detail_contents" class="modal-body">
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+
+    <!-- JQuery -->
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+
+    <!-- Bootstrap core JavaScript -->
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+
+    <!-- Material Design for Bootstrap -->
+    <script src="js/ripples.min.js"></script>
+    <script src="js/material.min.js"></script>
+
+    <!-- Mapbox -->
+    <script type="text/javascript" src="js/mapbox.js"></script>
+    <script type="text/javascript" src="js/mapbox-gl.js"></script>
+
+    <!-- CIM Application -->
+    <script type="text/javascript" src="js/require.js" data-main="js/main.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,73 @@
+html,
+body {
+    height: 100%;
+}
+
+.intro {
+    height: 100%;
+    margin-top: -20px;
+    padding: 0;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+    -o-background-size: cover;
+}
+
+/* allow div in dropdown menus, not just a */  
+.dropdown-menu > li > div
+{
+    padding-left: 16px;
+    color: #333;
+    font-size: 16px;
+}
+
+footer.page-footer {
+    margin-top: 0;
+}
+
+.btn-file
+{
+    position: relative;
+    overflow: hidden;
+    padding-left: 22px;
+    color: white !important;
+    background-color: #2bbbad !important;
+}
+
+.btn-file:hover, .btn-file:focus
+{
+    color: white;
+}
+
+.btn-file input[type=file]
+{
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+
+.modal-footer
+{
+    padding-left: 50px !important;
+    padding-right: 50px !important;
+    padding-bottom:40px !important;
+}
+.drop_zone
+{
+    color: graytext;
+    background-color: rgb(238, 238, 238);
+    padding: 7px;
+    background-image: none;
+}
+
+

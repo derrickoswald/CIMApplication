@@ -22,6 +22,7 @@ import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.ConnectionMetaData;
 import javax.resource.cci.Interaction;
+import javax.resource.cci.MappedRecord;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMConnectionSpec;
@@ -47,6 +48,7 @@ public class SimpleRESTEJB
     //@Resource (name = "java:comp/env/eis/SparkConnectionFactory", type = ConnectionFactory.class)
     CIMConnectionFactory factory;
 
+    @SuppressWarnings ("unchecked")
     @GET
     public String ejb()
     {
@@ -70,12 +72,10 @@ public class SimpleRESTEJB
 
                 final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                 spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
-                final CIMMappedRecord input = new CIMMappedRecord ();
-                input.setRecordName (CIMMappedRecord.INPUT);
+                final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                 input.setRecordShortDescription ("the parameters for this read operation");
                 input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-                final CIMMappedRecord output = new CIMMappedRecord ();
-                output.setRecordName (CIMMappedRecord.OUTPUT);
+                final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
                 output.setRecordShortDescription ("the results of the read operation");
                 final Interaction interaction = connection.createInteraction ();
                 if (interaction.execute (spec, input, output))
