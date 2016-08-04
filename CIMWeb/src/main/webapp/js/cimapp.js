@@ -324,7 +324,8 @@ define
             {
                 init_map: init_map,
                 connect: connect,
-                select: select
+                select: select,
+                unhighlight: unhighlight
             }
         );
     }
