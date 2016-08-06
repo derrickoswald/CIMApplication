@@ -103,6 +103,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>ShortCircuit</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.10</artifactId>
             <version>${version.dependency.spark}</version>

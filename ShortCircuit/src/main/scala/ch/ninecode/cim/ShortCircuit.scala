@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 
 import ch.ninecode._
@@ -20,16 +21,18 @@ class ShortCircuit extends Serializable
 
     case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0)
 
+    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, location_x: String = "0.0", location_y: String = "0.0")
+
     def dv (v: BaseVoltage) =
     {
         (v.id, v.nominalVoltage)
     }
 
-    def stuff (sc: SparkContext, sqlContext: SQLContext): RDD[HouseConnection] =
+    def stuff (sc: SparkContext, sqlContext: SQLContext): DataFrame =
     {
         // paragraph 1
 
-        var rdd = sqlContext.read.format ("ch.ninecode.cim").load ("hdfs://sandbox:9000/data/20160803-16_NIS_CIM_Export_b4_Bruegg.rdf")
+        val rdd = sqlContext.read.format ("ch.ninecode.cim").load ("hdfs://sandbox:9000/data/20160803-16_NIS_CIM_Export_b4_Bruegg.rdf")
         rdd.count
         def get (name: String): RDD[Element] =
         {
@@ -121,7 +124,7 @@ class ShortCircuit extends Serializable
 
         // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
         val elements = get ("Elements").asInstanceOf[RDD[ch.ninecode.model.Element]]
-        var tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).leftOuterJoin (elements.keyBy (_.id)).map (station_fn)
+        val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).leftOuterJoin (elements.keyBy (_.id)).map (station_fn)
 //        tpairs.count
 //        tpairs.first
 
@@ -247,7 +250,7 @@ class ShortCircuit extends Serializable
 //        keyed.count
 //        keyed.first
 
-        var vertices = nodes.keyBy (_.id).leftOuterJoin (keyed).map (node_function).keyBy (_.name.hashCode().asInstanceOf[VertexId])
+        val vertices = nodes.keyBy (_.id).leftOuterJoin (keyed).map (node_function).keyBy (_.name.hashCode().asInstanceOf[VertexId])
 //        vertices.count
 //        vertices.first
 
@@ -396,7 +399,7 @@ class ShortCircuit extends Serializable
 //        has.count
 //        has.first
 
-        var test =  graph.vertices.filter ((v: Tuple2[VertexId, VertexData]) => { v._2.name.startsWith ("HAS") && v._2.message.r != Double.PositiveInfinity})
+        val test =  graph.vertices.filter ((v: Tuple2[VertexId, VertexData]) => { v._2.name.startsWith ("HAS") && v._2.message.r != Double.PositiveInfinity})
 //        val size = test.count
 //        if (size != 0)
 //            test.first
@@ -458,12 +461,25 @@ class ShortCircuit extends Serializable
             val ip = (1.02 + 0.98 * Math.exp (-3.0 * r_total / x_total)) * Math.sqrt (2) * ik3pol
 
             HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, ik, ik3pol, ip)
+
         }
 
-        var final_result = houses.map (calculate_short_circuit)
+        val final_result = houses.map (calculate_short_circuit)
 //        final_result.count
 //        final_result.first
 
-        return (final_result)
+        def localize (x: Tuple2 [HouseConnection, PositionPoint]) =
+        {
+            val house = x._1
+            val point = x._2
+            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, point.xPosition, point.yPosition)
+        }
+        val consumers = get ("EnergyConsumer").asInstanceOf[RDD[EnergyConsumer]]
+        val locs = consumers.map ((c: EnergyConsumer) => { (c.id, c.ConductingEquipment.Equipment.PowerSystemResource.Location) })
+        val points = get ("PositionPoint").asInstanceOf[RDD[PositionPoint]]
+        val final_final_result = locs.join (final_result.keyBy (_.mRID)).values.join (points.keyBy (_.Location)).values.map (localize)
+
+        val final_final_final_result = sqlContext.createDataFrame (final_final_result)
+        return (final_final_final_result)
     }
 }

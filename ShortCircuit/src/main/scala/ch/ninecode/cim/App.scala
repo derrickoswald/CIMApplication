@@ -31,12 +31,17 @@ object App
         val _SqlContext = new SQLContext (_Context);
 
         val sc = new ShortCircuit ()
-        val final_result = sc.stuff (_Context, _SqlContext)
-        val f_results = final_result.collect
-        println (s"""%table
-        id\tName\tik\tik3pol\tip\tTransformer\tr\tx\tr0\tx0\tfuses""")
-        for (h <- f_results)
-            println (h.mRID + "\t" + h.node + "\t" + h.ik + "\t" + h.ik3pol + "\t" + h.ip + "\t" + h.transformer.transformer.id + "\t" + h.r + "\t" + h.x + "\t" + h.r0 + "\t" + h.x0 + "\t" + h.fuses)
+        val rdd = sc.stuff (_Context, _SqlContext)
+        val results = rdd.collect
+        println (s"""
+        id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,fuses,x,y""")
+//        for (h <- results)
+//            println (h.mRID + "," + h.node + "," + h.ik + "," + h.ik3pol + "," + h.ip + "," + h.transformer + "," + h.r + "," + h.x + "," + h.r0 + "," + h.x0 + "," + h.fuses + "," + h.location_x + "," + h.location_y)
+        for (i <- 0 until results.length)
+        {
+            val h = results(i)
+            println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getString(7) + "," + h.getString(11) + "," + h.getString(12))
+        }
     }
 
 }

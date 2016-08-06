@@ -109,7 +109,7 @@ define
             var xmlhttp;
 
             xmlhttp = new XMLHttpRequest ();
-            xmlhttp.open ("GET", "http://localhost:8080/cimweb/cim/EnergyConsumer", true);
+            xmlhttp.open ("GET", "http://localhost:8080/cimweb/cim/ShortCircuitCalculation", true);
             xmlhttp.setRequestHeader ("Accept", "application/json");
             xmlhttp.onreadystatechange = function ()
             {

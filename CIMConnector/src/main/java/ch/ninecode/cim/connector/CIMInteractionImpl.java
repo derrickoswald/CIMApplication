@@ -1,5 +1,8 @@
 package ch.ninecode.cim.connector;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -7,6 +10,7 @@ import javax.resource.cci.InteractionSpec;
 import javax.resource.cci.Record;
 import javax.resource.cci.ResourceWarning;
 
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.SQLContext;
 
@@ -134,7 +138,67 @@ public class CIMInteractionImpl implements Interaction
                                 DataFrame count = sql.sql ("select count(*) from elements");
                                 /* long num = */ count.head ().getLong (0);
                                 DataFrame result = sql.sql (query);
-                                ret = new CIMResultSet (result.schema(), result.collect ());
+                                ret = new CIMResultSet (result.schema (), result.collect ());
+                            }
+                            catch (Exception exception)
+                            {
+                                throw new ResourceException ("problem", exception);
+                            }
+                        else
+                            throw new ResourceException (INVALID_INPUT_ERROR);
+                        break;
+                    case CIMInteractionSpec.EXECUTE_METHOD_FUNCTION:
+                        if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
+                            try
+                            {
+                                String filename = (String)((CIMMappedRecord) input).get ("filename");
+                                String cls = (String)((CIMMappedRecord) input).get ("class");
+                                String method = (String)((CIMMappedRecord) input).get ("method");
+                                SparkContext sc = ((CIMConnection)getConnection ())._ManagedConnection._Context;
+                                SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
+
+                                try
+                                {
+                                    Class<?> c = Class.forName (cls);
+                                    Object _obj = c.newInstance();
+
+                                    Method[] allMethods = c.getDeclaredMethods();
+                                    for (Method _method : allMethods)
+                                    {
+                                        String name = _method.getName();
+                                        if (name.equals (method))
+                                        {
+                                            try
+                                            {
+                                                /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
+                                                DataFrame count = sql.sql ("select count(*) from elements");
+                                                /* long num = */ count.head ().getLong (0);
+                                                _method.setAccessible (true);
+                                                Object o = _method.invoke (_obj, sc, sql);
+                                                DataFrame result = (DataFrame)o;
+                                                ret = new CIMResultSet (result.schema (), result.collect ());;
+                                            }
+                                            catch (InvocationTargetException ite)
+                                            {
+                                                throw new ResourceException ("problem", ite);
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                                catch (ClassNotFoundException cnfe)
+                                {
+                                    throw new ResourceException ("problem", cnfe);
+                                }
+                                catch (InstantiationException ie)
+                                {
+                                    throw new ResourceException ("problem", ie);
+                                }
+                                catch (IllegalAccessException iae)
+                                {
+                                    throw new ResourceException ("problem", iae);
+                                }
+
                             }
                             catch (Exception exception)
                             {
