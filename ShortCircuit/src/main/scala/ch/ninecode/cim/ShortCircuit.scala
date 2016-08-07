@@ -19,9 +19,9 @@ class ShortCircuit extends Serializable
     // create a basket to hold all transformer data
     case class TransformerData (transformer: ch.ninecode.model.PowerTransformer, end1: ch.ninecode.model.PowerTransformerEnd, terminal1: ch.ninecode.model.Terminal, end2: ch.ninecode.model.PowerTransformerEnd, terminal2: ch.ninecode.model.Terminal, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData)
 
-    case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0)
+    case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, valid: Boolean = false)
 
-    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, location_x: String = "0.0", location_y: String = "0.0")
+    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, valid:Boolean, location_x: String = "0.0", location_y: String = "0.0")
 
     def dv (v: BaseVoltage) =
     {
@@ -417,7 +417,7 @@ class ShortCircuit extends Serializable
                 {
                     val vertex = v.asInstanceOf[VertexData]
                     val transformer = t.asInstanceOf[TransformerData]
-                    HouseConnection (vertex.name, vertex.id, transformer, vertex.message.r, vertex.message.x, vertex.message.r0, vertex.message.x0, vertex.message.fuses, 0.0, 0.0, 0.0)
+                    HouseConnection (vertex.name, vertex.id, transformer, vertex.message.r, vertex.message.x, vertex.message.r0, vertex.message.x0, vertex.message.fuses)
                 }
                 case _ =>
                 {
@@ -460,8 +460,7 @@ class ShortCircuit extends Serializable
             // Stosskurzschlussstrom berechnen
             val ip = (1.02 + 0.98 * Math.exp (-3.0 * r_total / x_total)) * Math.sqrt (2) * ik3pol
 
-            HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, ik, ik3pol, ip)
-
+            HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, ik, ik3pol, ip, house.transformer.short_circuit.valid)
         }
 
         val final_result = houses.map (calculate_short_circuit)
@@ -472,7 +471,7 @@ class ShortCircuit extends Serializable
         {
             val house = x._1
             val point = x._2
-            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, point.xPosition, point.yPosition)
+            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.valid, point.xPosition, point.yPosition)
         }
         val consumers = get ("EnergyConsumer").asInstanceOf[RDD[EnergyConsumer]]
         val locs = consumers.map ((c: EnergyConsumer) => { (c.id, c.ConductingEquipment.Equipment.PowerSystemResource.Location) })
