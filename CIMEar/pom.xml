@@ -44,6 +44,11 @@
                             <artifactId>CIMWeb</artifactId>
                             <bundleFileName>CIMWeb.war</bundleFileName>
                         </webModule>
+                        <jarModule>
+                            <groupId>ch.ninecode.cim</groupId>
+                            <artifactId>ShortCircuit</artifactId>
+                            <bundleFileName>ShortCircuit-1.0-SNAPSHOT.jar</bundleFileName>
+                        </jarModule>
                     </modules>
                 </configuration>
             </plugin>
@@ -51,17 +56,27 @@
     </build>
   
     <dependencies>
+
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMConnector</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>rar</type>
         </dependency>
+
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMWeb</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>war</type>
         </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>ShortCircuit</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+
     </dependencies>
 </project>
