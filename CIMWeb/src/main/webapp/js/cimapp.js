@@ -93,8 +93,8 @@ define
             );
 
             // simple circle from zoom level 8 to 22
-            TheMap.addLayer (circle_layer ("circle_house_connection", ["==", "valid", false], "rgb(255, 0, 0)"));
-            TheMap.addLayer (circle_layer ("circle_house_connection", ["==", "valid", true], "rgb(0, 255, 0)"));
+            TheMap.addLayer (circle_layer ("invalid_house_connection", ["==", "trafo_valid", false], "rgb(255, 0, 0)"));
+            TheMap.addLayer (circle_layer ("valid_house_connection", ["==", "trafo_valid", true], "rgb(0, 255, 0)"));
             TheMap.addLayer (circle_layer ("circle_highlight", ["==", "mRID", ""], "rgb(255, 255, 0)"));
         }
 

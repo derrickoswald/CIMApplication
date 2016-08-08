@@ -19,9 +19,9 @@ class ShortCircuit extends Serializable
     // create a basket to hold all transformer data
     case class TransformerData (transformer: ch.ninecode.model.PowerTransformer, end1: ch.ninecode.model.PowerTransformerEnd, terminal1: ch.ninecode.model.Terminal, end2: ch.ninecode.model.PowerTransformerEnd, terminal2: ch.ninecode.model.Terminal, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData)
 
-    case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, valid: Boolean = false)
+    case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], valid: Boolean, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0)
 
-    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, valid:Boolean, location_x: String = "0.0", location_y: String = "0.0")
+    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, wires_valid:Boolean, transformer_valid: Boolean, location_x: String = "0.0", location_y: String = "0.0")
 
     def dv (v: BaseVoltage) =
     {
@@ -187,7 +187,10 @@ class ShortCircuit extends Serializable
                 {
                     val i1 = iterator.head.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)]
                     val i2 = iterator.last.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)] // ToDo: three (or more) terminal transformer
-                    TransformerData (transformer, i1._2, i1._1, i2._2, i2._1, substation, short_circuit.asInstanceOf[ShortCircuitData])
+                    if (voltages.getOrElse (i1._2.TransformerEnd.BaseVoltage, 0.0) > voltages.getOrElse (i2._2.TransformerEnd.BaseVoltage, 0.0))
+                        TransformerData (transformer, i1._2, i1._1, i2._2, i2._1, substation, short_circuit.asInstanceOf[ShortCircuitData])
+                    else
+                        TransformerData (transformer, i2._2, i2._1, i1._2, i1._1, substation, short_circuit.asInstanceOf[ShortCircuitData])
                 }
                 case _ =>
                 {
@@ -206,7 +209,7 @@ class ShortCircuit extends Serializable
 
         // define the message class
         // this is used in the VertexData class to avoid realocating another object that stores the same information as the message
-        case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String] = List()) extends Serializable
+        case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[String], valid: Boolean) extends Serializable
 
         // get the list of nodes
         val nodes = get ("ConnectivityNode").asInstanceOf[RDD[ch.ninecode.model.ConnectivityNode]]
@@ -219,7 +222,7 @@ class ShortCircuit extends Serializable
         //ns_transformers.first
 
         // define the data attached to each vertex
-        case class VertexData (val id: String, name: String, val container: String, val start: TransformerData, var message: Message)
+        case class VertexData (val id: String, name: String, val container: String, val start: TransformerData, var message: Message, var valid: Boolean)
 
         // (k, (v, Some(w))) or (k, (v, None))
         def node_function (x: Tuple2[String, Any]) =
@@ -230,13 +233,13 @@ class ShortCircuit extends Serializable
                 case (key: String, (a: Any, None)) =>
                 {
                     val n = a.asInstanceOf[ConnectivityNode]
-                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity))
+                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
                 }
                 case (key: String, (a: Any, Some (b: Any) )) =>
                 {
                     val n = a.asInstanceOf[ConnectivityNode]
                     val t = b.asInstanceOf[TransformerData]
-                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, Message (t.transformer.id, 0.0, 0.0, 0.0, 0.0))
+                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, Message (t.transformer.id, 0.0, 0.0, 0.0, 0.0, List(), true), true)
                 }
                 case _ =>
                 {
@@ -261,7 +264,7 @@ class ShortCircuit extends Serializable
         // paragraph 7
 
         // define the augmented edge class
-        case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, container: String, length: Double, voltage: String, typ: String, normalOpen: Boolean, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double)
+        case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, container: String, length: Double, voltage: String, typ: String, normalOpen: Boolean, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
 
         val cim_edges = get ("Edges").asInstanceOf[RDD[ch.ninecode.cim.Edge]]
 //        cim_edges.count
@@ -283,11 +286,15 @@ class ShortCircuit extends Serializable
             {
                 case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ch.ninecode.model.ACLineSegment))) =>
                 {
-                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0)
+                    // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
+                    if (0.0 != wire.r)
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0, true)
+                    else
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
                 }
                 case (key: String, (e: ch.ninecode.cim.Edge, None)) =>
                 {
-                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0)
+                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
                 }
                 case _ =>
                 {
@@ -313,7 +320,7 @@ class ShortCircuit extends Serializable
         // paragraph 8
 
         // construct the initial graph from the augmented elements (vertices) and edges
-        val default = VertexData ("", "", "", null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity))
+        val default = VertexData ("", "", "", null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List (), false), false)
         val initial = Graph.apply[VertexData, EdgePlus] (vertices, edges, default)
 //        initial.vertices.count
 //        initial.edges.count
@@ -329,10 +336,10 @@ class ShortCircuit extends Serializable
             if (null == message) // initial message
             {
                 if (null != v.start) // is this node a low voltage transformer terminal
-                    ret = VertexData (v.id, v.name, v.container, v.start, Message (v.start.transformer.id, 0.0, 0.0, 0.0, 0.0))
+                    ret = VertexData (v.id, v.name, v.container, v.start, Message (v.start.transformer.id, 0.0, 0.0, 0.0, 0.0, List (), true), v.valid)
             }
             else // subsequent messages
-                ret = VertexData (v.id, v.name, v.container, v.start, message)
+                ret = VertexData (v.id, v.name, v.container, v.start, message, v.valid)
 
             return (ret)
         }
@@ -354,7 +361,7 @@ class ShortCircuit extends Serializable
                     var fuses = triplet.srcAttr.message.fuses
                     if (triplet.attr.id_equ.startsWith ("SIG"))
                         fuses = triplet.attr.id_equ :: fuses
-                    val m = Message (triplet.srcAttr.message.transformer, r, x, r0, x0, fuses)
+                    val m = Message (triplet.srcAttr.message.transformer, r, x, r0, x0, fuses, triplet.srcAttr.message.valid && triplet.srcAttr.valid)
                     ret = Iterator ((triplet.dstId, m))
                 }
                 // else compute the impedences to the upstream vertex
@@ -367,7 +374,7 @@ class ShortCircuit extends Serializable
                     var fuses = triplet.dstAttr.message.fuses
                     if (triplet.attr.id_equ.startsWith ("SIG"))
                         fuses = triplet.attr.id_equ :: fuses
-                    val m = Message (triplet.dstAttr.message.transformer, r, x, r0, x0, fuses)
+                    val m = Message (triplet.dstAttr.message.transformer, r, x, r0, x0, fuses, triplet.dstAttr.message.valid && triplet.dstAttr.valid)
                     ret = Iterator ((triplet.srcId, m))
                 }
             }
@@ -417,7 +424,7 @@ class ShortCircuit extends Serializable
                 {
                     val vertex = v.asInstanceOf[VertexData]
                     val transformer = t.asInstanceOf[TransformerData]
-                    HouseConnection (vertex.name, vertex.id, transformer, vertex.message.r, vertex.message.x, vertex.message.r0, vertex.message.x0, vertex.message.fuses)
+                    HouseConnection (vertex.name, vertex.id, transformer, vertex.message.r, vertex.message.x, vertex.message.r0, vertex.message.x0, vertex.message.fuses, vertex.message.valid)
                 }
                 case _ =>
                 {
@@ -460,7 +467,7 @@ class ShortCircuit extends Serializable
             // Stosskurzschlussstrom berechnen
             val ip = (1.02 + 0.98 * Math.exp (-3.0 * r_total / x_total)) * Math.sqrt (2) * ik3pol
 
-            HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, ik, ik3pol, ip, house.transformer.short_circuit.valid)
+            HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, house.valid, ik, ik3pol, ip)
         }
 
         val final_result = houses.map (calculate_short_circuit)
@@ -471,7 +478,7 @@ class ShortCircuit extends Serializable
         {
             val house = x._1
             val point = x._2
-            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.valid, point.xPosition, point.yPosition)
+            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.valid, house.transformer.short_circuit.valid, point.xPosition, point.yPosition)
         }
         val consumers = get ("EnergyConsumer").asInstanceOf[RDD[EnergyConsumer]]
         val locs = consumers.map ((c: EnergyConsumer) => { (c.id, c.ConductingEquipment.Equipment.PowerSystemResource.Location) })

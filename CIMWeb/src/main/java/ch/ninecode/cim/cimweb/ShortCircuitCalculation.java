@@ -97,7 +97,7 @@ public class ShortCircuitCalculation
                                 while (resultset.next ())
                                 {
                                     out.append ("\n{ \"type\": \"Feature\",\n" +
-                                        "\"geometry\": {\"type\": \"Point\", \"coordinates\": [" + resultset.getString (13) + ", " + resultset.getString (14) + "]},\n" +
+                                        "\"geometry\": {\"type\": \"Point\", \"coordinates\": [" + resultset.getString (14) + ", " + resultset.getString (15) + "]},\n" +
                                         "\"properties\": {" +
                                         "\"mRID\": \"" + resultset.getString (1) + "\", " +
                                         "\"node\": \"" + resultset.getString (2) + "\", " +
@@ -110,7 +110,8 @@ public class ShortCircuitCalculation
                                         "\"ik\": \"" + resultset.getDouble (9) + "\", " +
                                         "\"ik3pol\": \"" + resultset.getDouble (10) + "\", " +
                                         "\"ip\": \"" + resultset.getDouble (11) + "\", " +
-                                        "\"valid\": " + resultset.getBoolean (12) +
+                                        "\"wires_valid\": " + resultset.getBoolean (12) + ", " +
+                                        "\"trafo_valid\": " + resultset.getBoolean (13) +
                                             "}\n" +
                                         "},");
                                 }
