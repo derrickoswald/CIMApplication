@@ -92,9 +92,19 @@ define
                 }
             );
 
+
+
+
+
             // simple circle from zoom level 8 to 22
-            TheMap.addLayer (circle_layer ("invalid_house_connection", ["==", "trafo_valid", false], "rgb(255, 0, 0)"));
-            TheMap.addLayer (circle_layer ("valid_house_connection", ["==", "trafo_valid", true], "rgb(0, 255, 0)"));
+            TheMap.addLayer (circle_layer ("fbad_invalid_house_connection", ["all", ["==", "trafo_valid", false],["==", "wires_valid", false],["==", "fuse_valid", false]], "rgb(255, 0, 255)"));
+            TheMap.addLayer (circle_layer ("fbad_semivalid_house_connection", ["all", ["==", "trafo_valid", false],["==", "wires_valid", true],["==", "fuse_valid", false]], "rgb(255, 165, 255)"));
+            TheMap.addLayer (circle_layer ("fbad_pseudovalid_house_connection", ["all", ["==", "trafo_valid", true],["==", "wires_valid", false],["==", "fuse_valid", false]], "rgb(128, 128, 255)"));
+            TheMap.addLayer (circle_layer ("fbad_valid_house_connection", ["all", ["==", "trafo_valid", true],["==", "wires_valid", true],["==", "fuse_valid", false]], "rgb(0, 255, 255)"));
+            TheMap.addLayer (circle_layer ("fok_invalid_house_connection", ["all", ["==", "trafo_valid", false],["==", "wires_valid", false],["==", "fuse_valid", true]], "rgb(255, 0, 0)"));
+            TheMap.addLayer (circle_layer ("fok_semivalid_house_connection", ["all", ["==", "trafo_valid", false],["==", "wires_valid", true],["==", "fuse_valid", true]], "rgb(255, 165, 0)"));
+            TheMap.addLayer (circle_layer ("fok_pseudovalid_house_connection", ["all", ["==", "trafo_valid", true],["==", "wires_valid", false],["==", "fuse_valid", true]], "rgb(128, 128, 0)"));
+            TheMap.addLayer (circle_layer ("fok_valid_house_connection", ["all", ["==", "trafo_valid", true],["==", "wires_valid", true],["==", "fuse_valid", true]], "rgb(0, 255, 0)"));
             TheMap.addLayer (circle_layer ("circle_highlight", ["==", "mRID", ""], "rgb(255, 255, 0)"));
         }
 
