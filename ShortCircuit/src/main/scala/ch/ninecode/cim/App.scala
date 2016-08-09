@@ -12,7 +12,6 @@ import ch.ninecode.model._
 
 object App
 {
-
     def main (args: Array[String])
     {
         // create the configuration
@@ -34,14 +33,11 @@ object App
         val rdd = sc.stuff (_Context, _SqlContext)
         val results = rdd.collect
         println (s"""
-        id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,fuses,x,y""")
-//        for (h <- results)
-//            println (h.mRID + "," + h.node + "," + h.ik + "," + h.ik3pol + "," + h.ip + "," + h.transformer + "," + h.r + "," + h.x + "," + h.r0 + "," + h.x0 + "," + h.fuses + "," + h.location_x + "," + h.location_y)
+        id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,fuses,wires_valid,trafo_valid,fuse_valid,x,y""")
         for (i <- 0 until results.length)
         {
             val h = results(i)
-            println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getString(7) + "," + h.getString(11) + "," + h.getString(12))
+            println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getString(7) + "," + h.getBoolean(11) + "," + h.getBoolean(12) + "," + h.getBoolean(13) + "," + h.getString(14) + "," + h.getString(15))
         }
     }
-
 }

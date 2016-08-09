@@ -120,10 +120,16 @@ define
          */
         function connect (event)
         {
+            var file;
+            var url;
             var xmlhttp;
 
+            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation"
+            file = document.getElementById ("cim_file").value;
+            if ("" != file)
+                url = url + "?filename=" + encodeURIComponent (file);
             xmlhttp = new XMLHttpRequest ();
-            xmlhttp.open ("GET", "http://localhost:8080/cimweb/cim/ShortCircuitCalculation", true);
+            xmlhttp.open ("GET", url, true);
             xmlhttp.setRequestHeader ("Accept", "application/json");
             xmlhttp.onreadystatechange = function ()
             {
