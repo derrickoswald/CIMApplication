@@ -124,10 +124,12 @@ define
             var url;
             var xmlhttp;
 
-            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation"
+            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation/"
             file = document.getElementById ("cim_file").value;
             if ("" != file)
-                url = url + "?filename=" + encodeURIComponent (file);
+                url = url + encodeURIComponent (file);
+            else
+                url = url + encodeURIComponent ("20160803-16_NIS_CIM_Export_b4_Bruegg")
             xmlhttp = new XMLHttpRequest ();
             xmlhttp.open ("GET", url, true);
             xmlhttp.setRequestHeader ("Accept", "application/json");

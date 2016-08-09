@@ -5,6 +5,7 @@ import javax.ejb.Stateless;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
@@ -38,7 +39,7 @@ import ch.ninecode.cim.connector.CIMResultSet;
 )
 
 @Stateless
-@Path("/ShortCircuitCalculation")
+@Path("/ShortCircuitCalculation/{file}")
 public class ShortCircuitCalculation
 {
     @Resource (lookup="openejb:Resource/CIMConnector.rar")
@@ -66,10 +67,7 @@ public class ShortCircuitCalculation
     @SuppressWarnings ("unchecked")
     @GET
     @Produces ({"text/plain", "application/json"})
-    public String GetShortCircuitData
-    (
-        @DefaultValue ("hdfs://sandbox:9000/data/20160803-16_NIS_CIM_Export_b4_Bruegg.rdf") @QueryParam ("filename") String filename
-    )
+    public String GetShortCircuitData (@PathParam("file") String filename)
     {
         StringBuffer out = new StringBuffer ();
         if (null != factory)
@@ -82,11 +80,12 @@ public class ShortCircuitCalculation
                 {
                     try
                     {
+                        String full_file = "hdfs://sandbox:9000/data/" + filename + ".rdf";
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                         spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
-                        input.put ("filename", filename);
+                        input.put ("filename", full_file);
                         input.put ("class", "ch.ninecode.cim.ShortCircuit");
                         input.put ("method", "stuff");
                         final Interaction interaction = connection.createInteraction ();
