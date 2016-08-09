@@ -66,9 +66,21 @@ public class ShortCircuitCalculation
 
     @SuppressWarnings ("unchecked")
     @GET
+    @Path("{p:/?}{item:((.*)?)}")
     @Produces ({"text/plain", "application/json"})
-    public String GetShortCircuitData (@PathParam("file") String filename)
+    public String GetShortCircuitData (@PathParam("file") String filename, @PathParam("item") String item)
     {
+        int count = 0;
+        if (null != item && !item.equals (""))
+        {
+            try
+            {
+                count = Integer.parseInt (item);
+            }
+            catch (NumberFormatException nfe)
+            {
+            }
+        }
         StringBuffer out = new StringBuffer ();
         if (null != factory)
         {
@@ -119,6 +131,12 @@ public class ShortCircuitCalculation
                                         "\"fuse_valid\": " + resultset.getBoolean (14) +
                                             "}\n" +
                                         "},");
+                                    if (0 != count)
+                                    {
+                                        count--;
+                                        if (count <= 0)
+                                            break;
+                                    }
                                 }
                                 out.deleteCharAt (out.length () - 1); // get rid of trailing comma
                                 out.append ("\n] }\n");
