@@ -514,7 +514,7 @@ class ShortCircuit extends Serializable
             // apply rules for fuses
             var fuse_valid = false
             if (2 <= house.fuses.length)
-                fuse_valid = house.fuses.head._2 / house.fuses.tail.head._2 < 1.6
+                fuse_valid = house.fuses.tail.head._2 / house.fuses.head._2 > 1.6
             else if (1 <= house.fuses.length)
                 fuse_valid = ik > current_max (house.fuses.head._2)
 

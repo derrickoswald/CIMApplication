@@ -27,6 +27,11 @@ define
         var TheToken = "pk.eyJ1IjoiZGVycmlja29zd2FsZCIsImEiOiJjaWV6b2szd3MwMHFidDRtNDZoejMyc3hsIn0.wnEkePEuhYiNcXDLACSxVw";
 
         /**
+         * The GeoJSON contents after load.
+         */
+        var JSON_Data = null;
+
+        /**
          * The last selected feature.
          */
         var CURRENT_FEATURE = null;
@@ -82,6 +87,8 @@ define
          */
         function make_map (points)
         {
+            JSON_Data = points;
+
             TheMap.addSource
             (
                 "the points",
@@ -91,10 +98,6 @@ define
                     maxzoom: 22
                 }
             );
-
-
-
-
 
             // simple circle from zoom level 8 to 22
             TheMap.addLayer (circle_layer ("fbad_invalid_house_connection", ["all", ["==", "trafo_valid", false],["==", "wires_valid", false],["==", "fuse_valid", false]], "rgb(255, 0, 255)"));
