@@ -86,4 +86,30 @@ public class CIMConnectionRequestInfo implements ConnectionRequestInfo
         _Jars = jars;
     }
 
+    public String toString ()
+    {
+        StringBuilder sb = new StringBuilder ();
+
+        sb.append ("[@");
+        sb.append (getMaster ());
+        sb.append (": ");
+        for (String key: getProperties ().keySet ())
+        {
+            sb.append (key);
+            sb.append ("=");
+            sb.append (getProperties ().get (key));
+        }
+        if (0 != getJars ().size ())
+        {
+            sb.append (" (");
+            for (String jar: getJars ())
+            {
+                sb.append (jar);
+            }
+            sb.append (")");
+        }
+        sb.append ("]");
+
+        return (sb.toString ());
+    }
 }

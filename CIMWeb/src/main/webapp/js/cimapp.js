@@ -80,6 +80,18 @@ define
         }
 
         /**
+         * Make a select option list of the transformers.
+         * @param transformers The list transformers as an array of strings.
+         */
+        function make_list (transformers)
+        {
+            var select = document.getElementById ("transformer");
+            var options = ""
+            transformers.forEach (function (s) { options += "<option value='" + s + "'>" + s + "</option>\n" } );
+            select.innerHTML = options;
+        }
+
+        /**
          * Generate a map.
          * @param {Object} points - the points GeoJSON
          * @function make_map
@@ -121,15 +133,19 @@ define
         function connect (event)
         {
             var file;
+            var transformer;
             var url;
             var xmlhttp;
 
-            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation/"
             file = document.getElementById ("cim_file").value;
+            transformer = document.getElementById ("transformer").value;
+            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation/"
             if ("" != file)
                 url = url + encodeURIComponent (file);
             else
                 url = url + encodeURIComponent ("20160803-16_NIS_CIM_Export_b4_Bruegg")
+            if ("" != transformer)
+                url = url + "/" + transformer;
             xmlhttp = new XMLHttpRequest ();
             xmlhttp.open ("GET", url, true);
             xmlhttp.setRequestHeader ("Accept", "application/json");
@@ -143,7 +159,10 @@ define
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
                         resp = JSON.parse (xmlhttp.responseText);
-                        make_map (resp);
+                        if (Array.isArray (resp))
+                            make_list (resp);
+                        else
+                            make_map (resp);
                     }
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);

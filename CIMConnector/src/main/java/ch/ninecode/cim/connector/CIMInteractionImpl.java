@@ -2,6 +2,7 @@ package ch.ninecode.cim.connector;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -154,7 +155,7 @@ public class CIMInteractionImpl implements Interaction
                                 String filename = (String)((CIMMappedRecord) input).get ("filename");
                                 String cls = (String)((CIMMappedRecord) input).get ("class");
                                 String method = (String)((CIMMappedRecord) input).get ("method");
-                                SparkContext sc = ((CIMConnection)getConnection ())._ManagedConnection._Context;
+                                SparkContext sc = ((CIMConnection)getConnection ())._ManagedConnection._SparkContext;
                                 SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
 
                                 try
@@ -170,9 +171,13 @@ public class CIMInteractionImpl implements Interaction
                                         {
                                             try
                                             {
-                                                /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
-                                                DataFrame count = sql.sql ("select count(*) from elements");
-                                                /* long num = */ count.head ().getLong (0);
+                                                String[] tables = sql.tableNames ();
+                                                if (!Arrays.asList (tables).contains ("elements"))
+                                                {
+                                                    /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
+                                                    DataFrame count = sql.sql ("select count(*) from elements");
+                                                    /* long num = */ count.head ().getLong (0);
+                                                }
                                                 _method.setAccessible (true);
                                                 Object o = _method.invoke (_obj, sc, sql);
                                                 DataFrame result = (DataFrame)o;

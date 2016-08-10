@@ -70,17 +70,7 @@ public class ShortCircuitCalculation
     @Produces ({"text/plain", "application/json"})
     public String GetShortCircuitData (@PathParam("file") String filename, @PathParam("item") String item)
     {
-        int count = 0;
-        if (null != item && !item.equals (""))
-        {
-            try
-            {
-                count = Integer.parseInt (item);
-            }
-            catch (NumberFormatException nfe)
-            {
-            }
-        }
+        String transformer = (null != item && !item.equals ("")) ? item : null;
         StringBuffer out = new StringBuffer ();
         if (null != factory)
         {
@@ -99,7 +89,10 @@ public class ShortCircuitCalculation
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
                         input.put ("class", "ch.ninecode.cim.ShortCircuit");
-                        input.put ("method", "stuff");
+                        if (null == transformer)
+                            input.put ("method", "preparation");
+                        else
+                            input.put ("method", "stuff");
                         final Interaction interaction = connection.createInteraction ();
                         final Record output = interaction.execute (spec, input);
                         if ((null == output) || !output.getClass ().isAssignableFrom (CIMResultSet.class))
@@ -109,37 +102,43 @@ public class ShortCircuitCalculation
                             CIMResultSet resultset = (CIMResultSet)output;
                             try
                             {
-                                out.append ("{ \"type\": \"FeatureCollection\",\n\"features\": [\n");
-                                while (resultset.next ())
+                                if (null != transformer)
                                 {
-                                    out.append ("\n{ \"type\": \"Feature\",\n" +
-                                        "\"geometry\": {\"type\": \"Point\", \"coordinates\": [" + resultset.getString (15) + ", " + resultset.getString (16) + "]},\n" +
-                                        "\"properties\": {" +
-                                        "\"mRID\": \"" + resultset.getString (1) + "\", " +
-                                        "\"node\": \"" + resultset.getString (2) + "\", " +
-                                        "\"transformer\": \"" + resultset.getString (3) + "\", " +
-                                        "\"r\": \"" + resultset.getDouble (4) + "\", " +
-                                        "\"x\": \"" + resultset.getDouble (5) + "\", " +
-                                        "\"r0\": \"" + resultset.getDouble (6) + "\", " +
-                                        "\"x0\": \"" + resultset.getDouble (7) + "\", " +
-                                        "\"fuses\": \"" + resultset.getString (8) + "\", " +
-                                        "\"ik\": \"" + resultset.getDouble (9) + "\", " +
-                                        "\"ik3pol\": \"" + resultset.getDouble (10) + "\", " +
-                                        "\"ip\": \"" + resultset.getDouble (11) + "\", " +
-                                        "\"wires_valid\": " + resultset.getBoolean (12) + ", " +
-                                        "\"trafo_valid\": " + resultset.getBoolean (13) + ", " +
-                                        "\"fuse_valid\": " + resultset.getBoolean (14) +
-                                            "}\n" +
-                                        "},");
-                                    if (0 != count)
+                                    out.append ("{ \"type\": \"FeatureCollection\",\n\"features\": [\n");
+                                    while (resultset.next ())
                                     {
-                                        count--;
-                                        if (count <= 0)
-                                            break;
+                                        out.append ("\n{ \"type\": \"Feature\",\n" +
+                                            "\"geometry\": {\"type\": \"Point\", \"coordinates\": [" + resultset.getString (15) + ", " + resultset.getString (16) + "]},\n" +
+                                            "\"properties\": {" +
+                                            "\"mRID\": \"" + resultset.getString (1) + "\", " +
+                                            "\"node\": \"" + resultset.getString (2) + "\", " +
+                                            "\"transformer\": \"" + resultset.getString (3) + "\", " +
+                                            "\"r\": \"" + resultset.getDouble (4) + "\", " +
+                                            "\"x\": \"" + resultset.getDouble (5) + "\", " +
+                                            "\"r0\": \"" + resultset.getDouble (6) + "\", " +
+                                            "\"x0\": \"" + resultset.getDouble (7) + "\", " +
+                                            "\"fuses\": \"" + resultset.getString (8) + "\", " +
+                                            "\"ik\": \"" + resultset.getDouble (9) + "\", " +
+                                            "\"ik3pol\": \"" + resultset.getDouble (10) + "\", " +
+                                            "\"ip\": \"" + resultset.getDouble (11) + "\", " +
+                                            "\"wires_valid\": " + resultset.getBoolean (12) + ", " +
+                                            "\"trafo_valid\": " + resultset.getBoolean (13) + ", " +
+                                            "\"fuse_valid\": " + resultset.getBoolean (14) +
+                                                "}\n" +
+                                            "},");
                                     }
+                                    out.deleteCharAt (out.length () - 1); // get rid of trailing comma
+                                    out.append ("\n] }\n");
                                 }
-                                out.deleteCharAt (out.length () - 1); // get rid of trailing comma
-                                out.append ("\n] }\n");
+                                else
+                                {
+                                    out.append ("[\n");
+                                    while (resultset.next ())
+                                        out.append ("\"" + resultset.getString (1) + "\",\n");
+                                    out.deleteCharAt (out.length () - 1); // get rid of trailing newline
+                                    out.deleteCharAt (out.length () - 1); // get rid of trailing comma
+                                    out.append ("\n]\n");
+                                }
                                 resultset.close ();
                             }
                             catch (SQLException sqlexception)

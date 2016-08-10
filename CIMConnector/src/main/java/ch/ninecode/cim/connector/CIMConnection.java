@@ -14,7 +14,6 @@ public class CIMConnection implements Connection
 
     private static final String CLOSED_ERROR = "Connection closed";
     private static final String TRANSACTIONS_NOT_SUPPORTED = "Local transactions not supported";
-    private static final String RESULT_SETS_NOT_SUPPORTED = "Result sets not supported";
 
     protected boolean _Valid;
     protected CIMManagedConnection _ManagedConnection;
@@ -70,7 +69,7 @@ public class CIMConnection implements Connection
      */
     public ResultSetInfo getResultSetInfo () throws ResourceException
     {
-        throw new NotSupportedException (RESULT_SETS_NOT_SUPPORTED);
+        return (new CIMResultSetInfo ());
     }
 
     /**
@@ -78,7 +77,6 @@ public class CIMConnection implements Connection
      */
     public void close () throws ResourceException
     {
-        if (_Valid)
-            _ManagedConnection.close ();
+        invalidate ();
     }
 }

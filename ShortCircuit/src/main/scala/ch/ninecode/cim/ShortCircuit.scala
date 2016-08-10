@@ -16,8 +16,21 @@ class ShortCircuit extends Serializable
 
     case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
+    // define the augmented edge class
+    case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, container: String, length: Double, voltage: String, typ: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
+
+    // define the message class
+    // this is used in the VertexData class to avoid realocating another object that stores the same information as the message
+    case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], valid: Boolean) extends Serializable
+
+    // define the data attached to each vertex
+    case class VertexData (val id: String, name: String, val container: String, val start: TransformerData, var message: Message, var valid: Boolean)
+
     // create a basket to hold all transformer data
     case class TransformerData (transformer: ch.ninecode.model.PowerTransformer, end1: ch.ninecode.model.PowerTransformerEnd, terminal1: ch.ninecode.model.Terminal, end2: ch.ninecode.model.PowerTransformerEnd, terminal2: ch.ninecode.model.Terminal, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData)
+
+    // class to return the transformer id values
+    case class Transformer (id: String)
 
     case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], wires_valid: Boolean, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, fuse_valid: Boolean = false)
 
@@ -28,13 +41,9 @@ class ShortCircuit extends Serializable
         (v.id, v.nominalVoltage)
     }
 
-    def stuff (sc: SparkContext, sqlContext: SQLContext): DataFrame =
+    def preparation (sc: SparkContext, sqlContext: SQLContext): DataFrame  =
     {
         // paragraph 1
-
-        //val rdd = sqlContext.read.format ("ch.ninecode.cim").load ("hdfs://sandbox:9000/data/20160803-16_NIS_CIM_Export_b4_Bruegg.rdf")
-        //val rdd = sqlContext.read.format ("ch.ninecode.cim").load ("hdfs://sandbox:9000/data/20160804-09_NIS_CIM_Export_b4_Guemligen.rdf")
-        //rdd.count
 
         def get (name: String): RDD[Element] =
         {
@@ -47,6 +56,7 @@ class ShortCircuit extends Serializable
             }
             return (null)
         }
+
         // gather the set of voltages
         // usage: voltages.getOrElse ("BaseVoltage_400", 0.0)  yields 0.4 as a Double
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
@@ -209,10 +219,6 @@ class ShortCircuit extends Serializable
 
         // convert CIM nodes into Graphx vertices as RDD of (key, value) pairs
 
-        // define the message class
-        // this is used in the VertexData class to avoid realocating another object that stores the same information as the message
-        case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], valid: Boolean) extends Serializable
-
         // get the list of nodes
         val nodes = get ("ConnectivityNode").asInstanceOf[RDD[ch.ninecode.model.ConnectivityNode]]
         //nodes.count
@@ -222,9 +228,6 @@ class ShortCircuit extends Serializable
         val ns_transformers = transformer_and_transformer_terminals.filter ((t: TransformerData) => { 0.4 == voltages.getOrElse (t.end2.TransformerEnd.BaseVoltage, 0.0) })
         //ns_transformers.count
         //ns_transformers.first
-
-        // define the data attached to each vertex
-        case class VertexData (val id: String, name: String, val container: String, val start: TransformerData, var message: Message, var valid: Boolean)
 
         // (k, (v, Some(w))) or (k, (v, None))
         def node_function (x: Tuple2[String, Any]) =
@@ -264,9 +267,6 @@ class ShortCircuit extends Serializable
 //        starting_set.first
 
         // paragraph 7
-
-        // define the augmented edge class
-        case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, container: String, length: Double, voltage: String, typ: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
 
         val cim_edges = get ("Edges").asInstanceOf[RDD[ch.ninecode.cim.Edge]]
 //        cim_edges.count
@@ -313,14 +313,51 @@ class ShortCircuit extends Serializable
         val edges = eplus.map (
             (ep: EdgePlus) =>
             {
-                org.apache.spark.graphx.Edge (ep.id_seq_1.hashCode(), ep.id_seq_2.hashCode(), ep)
+                org.apache.spark.graphx.Edge (ep.id_seq_1.hashCode().asInstanceOf[VertexId], ep.id_seq_2.hashCode().asInstanceOf[VertexId], ep)
             }
         )
 //        edges.count
 //        edges.first
 
+        // persist RDD so later execution can get at it
+        ns_transformers.setName ("graph_transformers")
+        ns_transformers.cache ()
+        edges.setName ("graph_edges")
+        edges.cache ()
+        vertices.setName ("graph_vertices")
+        vertices.cache ()
+
+        def tx_fn (t: TransformerData) =
+        {
+            Transformer (t.transformer.id)
+        }
+        val tx = ns_transformers.map (tx_fn)
+
+        return (sqlContext.createDataFrame (tx))
+    }
+
+    def stuff (sc: SparkContext, sqlContext: SQLContext): DataFrame =
+    {
+        def get (name: String): RDD[Element] =
+        {
+            val rdds = sc.getPersistentRDDs
+            for (key <- rdds.keys)
+            {
+                val rdd = rdds (key)
+                if (rdd.name == name)
+                    return (rdd.asInstanceOf[RDD[Element]])
+            }
+            return (null)
+        }
+
+        // gather the set of voltages
+        // usage: voltages.getOrElse ("BaseVoltage_400", 0.0)  yields 0.4 as a Double
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
+
         // paragraph 8
 
+        val vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
+        val edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
         // construct the initial graph from the augmented elements (vertices) and edges
         val default = VertexData ("", "", "", null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List (), false), false)
         val initial = Graph.apply[VertexData, EdgePlus] (vertices, edges, default)
@@ -440,6 +477,7 @@ class ShortCircuit extends Serializable
                 }
             }
         }
+        val ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
         val houses = test.values.keyBy (_.message.transformer).join (ns_transformers.keyBy (_.transformer.id)).map (house_transformer_fn)
 //        houses.count
 //        houses.first

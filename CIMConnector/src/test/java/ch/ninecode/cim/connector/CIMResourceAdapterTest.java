@@ -127,7 +127,7 @@ public class CIMResourceAdapterTest
     @Test
     public void testRead () throws Exception
     {
-        long ELEMENTS = new Long (351979l);
+        long ELEMENTS = new Long (351980l);
         final Properties properties = new Properties ();
         properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
         properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");

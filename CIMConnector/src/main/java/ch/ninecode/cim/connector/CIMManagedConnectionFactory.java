@@ -59,13 +59,18 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     public ManagedConnection createManagedConnection (Subject subject, ConnectionRequestInfo info) throws ResourceException
     {
         final CIMConnectionRequestInfo _info;
+        final CIMManagedConnection connection;
 
         if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
             _info = new CIMConnectionRequestInfo ();
         else
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
-        return (new CIMManagedConnection (subject, _info));
+        connection = new CIMManagedConnection (subject, _info);
+        connection.setLogWriter (getLogWriter ());
+        connection.connect (subject, _info);
+
+        return (connection);
     }
 
     @Override

@@ -32,7 +32,7 @@ public class CIMConnectionMetaData implements ConnectionMetaData
      */
     public String getEISProductVersion () throws ResourceException
     {
-        return (_ManagedConnection._Context.version ());
+        return (_ManagedConnection._SparkContext.version ());
     }
 
     /**
@@ -40,7 +40,7 @@ public class CIMConnectionMetaData implements ConnectionMetaData
      */
     public String getUserName () throws ResourceException
     {
-        return (_ManagedConnection._Context.sparkUser ());
+        return (_ManagedConnection._SparkContext.sparkUser ());
     }
 
 }

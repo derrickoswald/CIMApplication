@@ -36,9 +36,9 @@ public class CIMManagedConnection implements ManagedConnection
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
     protected CIMConnection _Connection;
-    protected Vector<ConnectionEventListener> _Listeners = new Vector<> ();
-    protected PrintWriter _Out;
-    protected SparkContext _Context;
+    protected Vector<ConnectionEventListener> _Listeners;
+    protected PrintWriter _PrintWriter;
+    protected SparkContext _SparkContext;
     protected SQLContext _SqlContext;
 
     /**
@@ -47,6 +47,8 @@ public class CIMManagedConnection implements ManagedConnection
     public CIMManagedConnection (Subject subject, ConnectionRequestInfo info)
     {
         super ();
+        _Listeners = new Vector<> ();
+        _PrintWriter = null;
         _Subject = subject;
         if ((null != info) && (info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
             _RequestInfo = (CIMConnectionRequestInfo)info;
@@ -54,8 +56,9 @@ public class CIMManagedConnection implements ManagedConnection
 
     public void close ()
     {
-        _Context.stop ();
-        _Context = null;
+        if (null != _SparkContext)
+            _SparkContext.stop ();
+        _SparkContext = null;
         _SqlContext = null;
         Enumeration<ConnectionEventListener> list = _Listeners.elements ();
         ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
@@ -64,18 +67,19 @@ public class CIMManagedConnection implements ManagedConnection
             list.nextElement ().connectionClosed (event);
     }
 
-    /**
-     * @see ManagedConnection#getConnection(Subject, ConnectionRequestInfo)
-     */
-    public Object getConnection (Subject subject, ConnectionRequestInfo info)
+    public void connect (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
     {
+        PrintWriter logger;
         CIMConnectionRequestInfo _info;
 
+        logger = getLogWriter ();
         if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
             _info = new CIMConnectionRequestInfo ();
         else
             _info = (CIMConnectionRequestInfo)info;
+        if (null != logger)
+            logger.println ("CIMConnectionRequestInfo = " + info.toString ());
 
         // create the configuration
         SparkConf configuration = new SparkConf (false);
@@ -88,6 +92,9 @@ public class CIMManagedConnection implements ManagedConnection
             configuration.set (key, _info.getProperties ().get (key));
         String[] jars = new String[_info.getJars ().size ()];
         configuration.setJars (_info.getJars ().toArray (jars));
+        if (null != logger)
+            logger.println ("SparkConf = " + configuration.toDebugString ());
+        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
         // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
         // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
@@ -96,10 +103,21 @@ public class CIMManagedConnection implements ManagedConnection
 //      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark-1.6.0-bin-hadoop2.6/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
 
         // make a Spark context and SQL context
-        _Context = new SparkContext (configuration);
-        _Context.setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        _SqlContext = new SQLContext (_Context);
+        _SparkContext = SparkContext.getOrCreate (configuration);
+        _SparkContext.setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        if (null != logger)
+            logger.println ("SparkContext = " + _SparkContext.toString ());
+        _SqlContext = SQLContext.getOrCreate (_SparkContext);
+        if (null != logger)
+            logger.println ("SQLContext = " + _SqlContext.toString ());
+    }
 
+    /**
+     * @see ManagedConnection#getConnection(Subject, ConnectionRequestInfo)
+     */
+    public Object getConnection (Subject subject, ConnectionRequestInfo info)
+        throws ResourceException
+    {
         _Connection = new CIMConnection (this);
         return (_Connection);
     }
@@ -109,6 +127,7 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void destroy () throws ResourceException
     {
+        close ();
         _Connection.invalidate ();
         _Connection = null;
         _Listeners = null;
@@ -127,7 +146,7 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void associateConnection (Object connection) throws ResourceException
     {
-        if ((null == connection) || (!connection.getClass ().isAssignableFrom (CIMConnection.class)))
+        if ((null == connection) || (connection.getClass ().isAssignableFrom (CIMConnection.class)))
             _Connection = (CIMConnection)connection;
         else
             throw new ResourceException ("object of class " + connection.getClass ().toGenericString () + " cannot be associated as a connection object");
@@ -178,7 +197,7 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void setLogWriter (PrintWriter out) throws ResourceException
     {
-        _Out = out;
+        _PrintWriter = out;
     }
 
     /**
@@ -186,6 +205,6 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public PrintWriter getLogWriter () throws ResourceException
     {
-        return (_Out);
+        return (_PrintWriter);
     }
 }
