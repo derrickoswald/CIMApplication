@@ -101,6 +101,20 @@ define
         {
             JSON_Data = points;
 
+            if (TheMap.getSource ("the points"))
+            {
+                TheMap.removeLayer ("fbad_invalid_house_connection");
+                TheMap.removeLayer ("fbad_semivalid_house_connection");
+                TheMap.removeLayer ("fbad_pseudovalid_house_connection");
+                TheMap.removeLayer ("fbad_valid_house_connection");
+                TheMap.removeLayer ("fok_invalid_house_connection");
+                TheMap.removeLayer ("fok_semivalid_house_connection");
+                TheMap.removeLayer ("fok_pseudovalid_house_connection");
+                TheMap.removeLayer ("fok_valid_house_connection");
+                TheMap.removeLayer ("circle_highlight");
+                TheMap.removeSource ("the points");
+            }
+
             TheMap.addSource
             (
                 "the points",
