@@ -88,7 +88,7 @@ define
             var select = document.getElementById ("transformer");
             var options = ""
             transformers.forEach (function (s) { options += "<option value='" + s + "'>" + s + "</option>\n" } );
-            select.innerHTML = options;
+            select.innerHTML = options + "<option value='all'>All</option>";
         }
 
         /**
