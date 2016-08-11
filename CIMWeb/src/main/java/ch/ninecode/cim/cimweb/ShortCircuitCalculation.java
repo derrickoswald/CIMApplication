@@ -93,6 +93,8 @@ public class ShortCircuitCalculation
                             input.put ("method", "preparation");
                         else
                             input.put ("method", "stuff");
+                        if (null != transformer)
+                            input.put ("transformer", transformer);
                         final Interaction interaction = connection.createInteraction ();
                         final Record output = interaction.execute (spec, input);
                         if ((null == output) || !output.getClass ().isAssignableFrom (CIMResultSet.class))

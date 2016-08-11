@@ -1,6 +1,6 @@
 package ch.ninecode.cim
 
-import org.apache.spark.SparkConf;
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
@@ -41,7 +41,7 @@ class ShortCircuit extends Serializable
         (v.id, v.nominalVoltage)
     }
 
-    def preparation (sc: SparkContext, sqlContext: SQLContext): DataFrame  =
+    def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame  =
     {
         // paragraph 1
 
@@ -336,8 +336,18 @@ class ShortCircuit extends Serializable
         return (sqlContext.createDataFrame (tx))
     }
 
-    def stuff (sc: SparkContext, sqlContext: SQLContext): DataFrame =
+    def stuff (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame =
     {
+        val arguments = args.split (",").map (
+            (s) =>
+                {
+                    val pair = s.split ("=")
+                    if (2 == pair.length)
+                        (pair(0), pair(1))
+                    else
+                        (pair(0), "")
+                }
+        ).toMap
         def get (name: String): RDD[Element] =
         {
             val rdds = sc.getPersistentRDDs
@@ -358,9 +368,36 @@ class ShortCircuit extends Serializable
 
         val vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
         val edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
+
+
+        // filter out all but the specified transformer
+        def filter_transformer (x: RDD[(VertexId, VertexData)], t: String): RDD[(VertexId, VertexData)] =
+        {
+            def filter (v: Tuple2[VertexId, VertexData]): Tuple2[VertexId, VertexData] =
+            {
+                var ret: Tuple2[VertexId, VertexData] = v
+                if (null != v._2.start)
+                    if (v._2.start.transformer.id == t)
+                        ret = v
+                    else
+                        ret = (v._1, VertexData (v._2.id, v._2.name, v._2.container, null, v._2.message, v._2.valid))
+
+                return (ret)
+            }
+
+            return (x.map (filter))
+        }
+
+        val tran = arguments.getOrElse ("transformer", "")
+        var some_vertices: RDD[(VertexId, VertexData)] = null
+        if (tran != "")
+            some_vertices = filter_transformer (vertices, tran)
+        else
+            some_vertices = vertices
+
         // construct the initial graph from the augmented elements (vertices) and edges
         val default = VertexData ("", "", "", null, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List (), false), false)
-        val initial = Graph.apply[VertexData, EdgePlus] (vertices, edges, default)
+        val initial = Graph.apply[VertexData, EdgePlus] (some_vertices, edges, default)
 //        initial.vertices.count
 //        initial.edges.count
 

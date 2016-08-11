@@ -3,6 +3,7 @@ package ch.ninecode.cim.connector;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -152,12 +153,26 @@ public class CIMInteractionImpl implements Interaction
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             try
                             {
-                                String filename = (String)((CIMMappedRecord) input).get ("filename");
-                                String cls = (String)((CIMMappedRecord) input).get ("class");
-                                String method = (String)((CIMMappedRecord) input).get ("method");
-                                SparkContext sc = ((CIMConnection)getConnection ())._ManagedConnection._SparkContext;
-                                SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
-
+                                CIMMappedRecord record = (CIMMappedRecord)input;
+                                CIMConnection connection = (CIMConnection)getConnection ();
+                                String filename = record.get ("filename").toString ();
+                                String cls = record.get ("class").toString ();
+                                String method = record.get ("method").toString ();
+                                SparkContext sc = connection._ManagedConnection._SparkContext;
+                                SQLContext sql = connection._ManagedConnection._SqlContext;
+//                                ToDo: don't know the mapping from Java world to Scala world
+//                                HashMap<String,String> map = new HashMap<String,String> ();
+//                                for (Object key: record.keySet ())
+//                                    if ((key != "filename") && (key != "class") && (key != "method"))
+//                                        map.put (key.toString (), (String)record.get (key));
+                                String args = "";
+                                for (Object key: record.keySet ())
+                                    if ((key != "filename") && (key != "class") && (key != "method"))
+                                        args +=
+                                            ((0 == args.length ()) ? "" : ",")
+                                            + key.toString ()
+                                            + "="
+                                            + record.get (key).toString ();
                                 try
                                 {
                                     Class<?> c = Class.forName (cls);
@@ -179,7 +194,7 @@ public class CIMInteractionImpl implements Interaction
                                                     /* long num = */ count.head ().getLong (0);
                                                 }
                                                 _method.setAccessible (true);
-                                                Object o = _method.invoke (_obj, sc, sql);
+                                                Object o = _method.invoke (_obj, sc, sql, args);
                                                 DataFrame result = (DataFrame)o;
                                                 ret = new CIMResultSet (result.schema (), result.collect ());;
                                             }
