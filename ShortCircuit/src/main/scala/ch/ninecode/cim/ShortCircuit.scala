@@ -17,7 +17,7 @@ class ShortCircuit extends Serializable
     case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
     // define the augmented edge class
-    case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, container: String, length: Double, voltage: String, typ: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
+    case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
 
     // define the message class
     // this is used in the VertexData class to avoid realocating another object that stores the same information as the message
@@ -27,7 +27,7 @@ class ShortCircuit extends Serializable
     case class VertexData (val id: String, val name: String, val container: String, val start: TransformerData, val stop: Boolean, var message: Message, var valid: Boolean)
 
     // create a basket to hold all transformer data
-    case class TransformerData (transformer: ch.ninecode.model.PowerTransformer, end1: ch.ninecode.model.PowerTransformerEnd, terminal1: ch.ninecode.model.Terminal, end2: ch.ninecode.model.PowerTransformerEnd, terminal2: ch.ninecode.model.Terminal, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData)
+    case class TransformerData (transformer: PowerTransformer, end1: PowerTransformerEnd, terminal1: Terminal, end2: PowerTransformerEnd, terminal2: Terminal, substation: Substation, short_circuit: ShortCircuitData)
 
     // class to return the transformer id values
     case class Transformer (id: String)
@@ -316,13 +316,13 @@ class ShortCircuit extends Serializable
                 {
                     // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
                     if (0.0 != wire.r)
-                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0, true)
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0, true)
                     else
-                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
                 }
                 case (key: String, (e: ch.ninecode.cim.Edge, None)) =>
                 {
-                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.container, e.length, e.voltage, e.typ, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
+                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
                 }
                 case _ =>
                 {
@@ -461,7 +461,7 @@ class ShortCircuit extends Serializable
                         val r0 = triplet.srcAttr.message.r0 + triplet.attr.length * triplet.attr.r0 / 1000.0
                         val x0 = triplet.srcAttr.message.x0 + triplet.attr.length * triplet.attr.x0 / 1000.0
                         var fuses = triplet.srcAttr.message.fuses
-                        if (triplet.attr.id_equ.startsWith ("SIG"))
+                        if (triplet.attr.clazz.endsWith ("Fuse"))
                             fuses = (triplet.attr.id_equ, triplet.attr.ratedCurrent) :: fuses
                         val m = Message (triplet.srcAttr.message.transformer, r, x, r0, x0, fuses, triplet.srcAttr.message.valid && triplet.srcAttr.valid)
                         ret = Iterator ((triplet.dstId, m))
@@ -481,7 +481,7 @@ class ShortCircuit extends Serializable
                         val r0 = triplet.dstAttr.message.r0 + triplet.attr.length * triplet.attr.r0 / 1000.0
                         val x0 = triplet.dstAttr.message.x0 + triplet.attr.length * triplet.attr.x0 / 1000.0
                         var fuses = triplet.dstAttr.message.fuses
-                        if (triplet.attr.id_equ.startsWith ("SIG"))
+                        if (triplet.attr.clazz.endsWith ("Fuse"))
                             fuses = (triplet.attr.id_equ, triplet.attr.ratedCurrent) :: fuses
                         val m = Message (triplet.dstAttr.message.transformer, r, x, r0, x0, fuses, triplet.dstAttr.message.valid && triplet.dstAttr.valid)
                         ret = Iterator ((triplet.srcId, m))
@@ -552,6 +552,7 @@ class ShortCircuit extends Serializable
         // Rated current, Breaking capacity [A]
         val breaking_capacity: Array[(Double, Double)] =
             Array (
+                (0, 0),
                 (6, 17),
                 (10, 28),
                 (13, 60),
@@ -584,7 +585,11 @@ class ShortCircuit extends Serializable
             )
         def current_max (amps: Double): Double =
         {
-            breaking_capacity.filter (_._1 < amps).last._2
+            val less = breaking_capacity.filter (_._1 < amps)
+            if (1 <= less.length)
+                less.last._2
+            else
+                amps * 1e6
         }
 
         def calculate_short_circuit (house: HouseConnection): HouseConnection =

@@ -30,7 +30,7 @@ object App
         _Context.setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val _SqlContext = new SQLContext (_Context);
 
-        val filename = "hdfs://sandbox:9000/data/" + "20160803-16_NIS_CIM_Export_b4_Bruegg" + ".rdf";
+        val filename = "hdfs://sandbox:9000/data/" + "20160817-12_NIS_CIM_Export_b4_Brügg" + ".rdf";
 
         _SqlContext.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
         val count = _SqlContext.sql ("select count(*) from elements");
@@ -38,7 +38,7 @@ object App
 
         val sc = new ShortCircuit ()
         sc.preparation (_Context, _SqlContext, "")
-        val rdd = sc.stuff (_Context, _SqlContext, "transformer=TRA5401")
+        val rdd = sc.stuff (_Context, _SqlContext, "transformer=all") // TRA5401
         val results = rdd.collect
         println (s"""
         id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,fuses,wires_valid,trafo_valid,fuse_valid,x,y""")
