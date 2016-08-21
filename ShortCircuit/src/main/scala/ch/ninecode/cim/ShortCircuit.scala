@@ -85,8 +85,8 @@ class ShortCircuit extends Serializable
         // splits to map (header/value pairs)
         val short_circuit_power = data.map (splits => header.zip (splits).toMap)
 
-        short_circuit_power.count
-        short_circuit_power.first
+//        short_circuit_power.count
+//        short_circuit_power.first
 
         // keep only the relevant information
         val short_circuit = short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
@@ -284,7 +284,7 @@ class ShortCircuit extends Serializable
 
         val v2 = v1.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (high_voltage_function)
 
-        val vertices = v2.keyBy (_.name.hashCode().asInstanceOf[VertexId])
+        val vertices = v2.keyBy (_.id.hashCode().asInstanceOf[VertexId])
 //        vertices.count
 //        vertices.first
 
@@ -641,8 +641,10 @@ class ShortCircuit extends Serializable
             val point = x._2
             Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.wires_valid, house.transformer.short_circuit.valid, house.fuse_valid, point.xPosition, point.yPosition)
         }
-        val consumers = get ("EnergyConsumer").asInstanceOf[RDD[EnergyConsumer]]
-        val locs = consumers.map ((c: EnergyConsumer) => { (c.id, c.ConductingEquipment.Equipment.PowerSystemResource.Location) })
+//        val consumers = get ("EnergyConsumer").asInstanceOf[RDD[EnergyConsumer]]
+//        val locs = consumers.map ((c: EnergyConsumer) => { (c.id, c.ConductingEquipment.Equipment.PowerSystemResource.Location) })
+        val consumers = get ("Fuse").asInstanceOf[RDD[Fuse]]
+        val locs = consumers.map ((f: Fuse) => { (f.id, f.Switch.ConductingEquipment.Equipment.PowerSystemResource.Location) })
         val points = get ("PositionPoint").asInstanceOf[RDD[PositionPoint]]
         val final_final_result = locs.join (final_result.keyBy (_.mRID)).values.join (points.keyBy (_.Location)).values.map (localize)
 
