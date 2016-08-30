@@ -11,6 +11,24 @@ import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
+// define case classes that need to be pattern matched
+// due to a flaw in Scala pattern matching with classes defined within another class
+// we have to define these classes external to the main class,
+// otherwise we have to pattern match on Any and then cast it asInstanceOf[whatever]
+
+// create a holder for pre-computed transformer power availabaility
+case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
+
+// create a basket to hold all transformer data
+case class TransformerData (transformer: PowerTransformer, end1: PowerTransformerEnd, terminal1: Terminal, v1: Double, end2: PowerTransformerEnd, terminal2: Terminal, v2: Double, substation: Substation, short_circuit: ShortCircuitData)
+
+// define the message class
+// this is used in the VertexData class to avoid reallocating another object that stores the same information as the message
+case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], valid: Boolean) extends Serializable
+
+// define the data attached to each vertex
+case class VertexData (val id: String, val name: String, val container: String, val start: TransformerData, val stop: Boolean, var message: Message, var valid: Boolean)
+
 class ShortCircuit extends Serializable
 {
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
@@ -24,23 +42,11 @@ class ShortCircuit extends Serializable
     // be done from the high voltage network "slack bus" connections
     var csv: String = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
 
-    case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
-
     // define the augmented edge class
     case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
 
-    // define the message class
-    // this is used in the VertexData class to avoid realocating another object that stores the same information as the message
-    case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], valid: Boolean) extends Serializable
-
-    // define the data attached to each vertex
-    case class VertexData (val id: String, val name: String, val container: String, val start: TransformerData, val stop: Boolean, var message: Message, var valid: Boolean)
-
-    // create a basket to hold all transformer data
-    case class TransformerData (transformer: PowerTransformer, end1: PowerTransformerEnd, terminal1: Terminal, end2: PowerTransformerEnd, terminal2: Terminal, substation: Substation, short_circuit: ShortCircuitData)
-
     // class to return the transformer id values
-    case class Transformer (id: String)
+    case class TransformerName (id: String)
 
     case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], wires_valid: Boolean, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, fuse_valid: Boolean = false)
 
@@ -53,12 +59,8 @@ class ShortCircuit extends Serializable
 
     def read_csv (context: SparkContext): RDD[ShortCircuitData] =
     {
-        // paragraph 2
-
         // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
         val spreadsheet = context.textFile (csv)
-//        spreadsheet.count
-//        spreadsheet.first
 
         // create a function to trim off the double quotes
         def trimplus (s: String): String =
@@ -176,10 +178,9 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Scala pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
-                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: Any))) =>
+                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: ShortCircuitData))) =>
                 {
-                    (a, b, c.asInstanceOf[ShortCircuitData])
+                    (a, b, c)
                 }
                 case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), None)) =>
                 {
@@ -221,15 +222,16 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Zeppelin pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
-                case (key: String, (iterator: Iterable[Any], (transformer: ch.ninecode.model.PowerTransformer, substation: ch.ninecode.model.Substation, short_circuit: Any))) =>
+                case (key: String, (iterator: Iterable[Any], (transformer: ch.ninecode.model.PowerTransformer, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData))) =>
                 {
                     val i1 = iterator.head.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)]
                     val i2 = iterator.last.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)] // ToDo: three (or more) terminal transformer
-                    if (voltages.getOrElse (i1._2.TransformerEnd.BaseVoltage, 0.0) > voltages.getOrElse (i2._2.TransformerEnd.BaseVoltage, 0.0))
-                        TransformerData (transformer, i1._2, i1._1, i2._2, i2._1, substation, short_circuit.asInstanceOf[ShortCircuitData])
+                    val v_a = voltages.getOrElse (i1._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
+                    val v_b = voltages.getOrElse (i2._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
+                    if (v_a > v_b)
+                        TransformerData (transformer, i1._2, i1._1, v_a, i2._2, i2._1, v_b, substation, short_circuit)
                     else
-                        TransformerData (transformer, i2._2, i2._1, i1._2, i1._1, substation, short_circuit.asInstanceOf[ShortCircuitData])
+                        TransformerData (transformer, i2._2, i2._1, v_b, i1._2, i1._1, v_a, substation, short_circuit)
                 }
                 case _ =>
                 {
@@ -261,17 +263,13 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Zeppelin pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
-                case (key: String, (a: Any, None)) =>
+                case (key: String, (n: ConnectivityNode, Some (t: TransformerData) )) =>
                 {
-                    val n = a.asInstanceOf[ConnectivityNode]
-                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
-                }
-                case (key: String, (a: Any, Some (b: Any) )) =>
-                {
-                    val n = a.asInstanceOf[ConnectivityNode]
-                    val t = b.asInstanceOf[TransformerData]
                     VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
+                }
+                case (key: String, (n: ConnectivityNode, None)) =>
+                {
+                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
                 }
                 case _ =>
                 {
@@ -287,15 +285,12 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Zeppelin pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
-                case (key: String, (a: Any, None)) =>
+                case (key: String, (v: VertexData, None)) =>
                 {
-                    a.asInstanceOf[VertexData]
+                    v
                 }
-                case (key: String, (a: Any, Some (b: Any) )) =>
+                case (key: String, (v: VertexData, Some (t: TransformerData) )) =>
                 {
-                    val v = a.asInstanceOf[VertexData]
-                    val t = b.asInstanceOf[TransformerData]
                     // check for middle voltage, end2 is 400V
                     if (voltages.getOrElse (t.end1.TransformerEnd.BaseVoltage, 0.0) > voltages.getOrElse (t.end2.TransformerEnd.BaseVoltage, 0.0))
                         VertexData (v.id, v.name, v.container, v.start, true, v.message, v.valid)
@@ -382,7 +377,7 @@ class ShortCircuit extends Serializable
 
         def tx_fn (t: TransformerData) =
         {
-            Transformer (t.transformer.id)
+            TransformerName (t.transformer.id)
         }
         val tx = ns_transformers.map (tx_fn)
 
@@ -413,19 +408,15 @@ class ShortCircuit extends Serializable
             return (null)
         }
 
-        // gather the set of voltages
-        // usage: voltages.getOrElse ("BaseVoltage_400", 0.0)  yields 0.4 as a Double
-        val voltages = get ("BaseVoltage").asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
-
-        // paragraph 8
-
         var vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
         var edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
+        var ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
         if (null == vertices)
         {
             preparation (sc, sqlContext, args);
             vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
             edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
+            ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
         }
 
         // get the specified transformer
@@ -557,12 +548,9 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Zeppelin pattern matching with user defined types we have to use Any and then cast it
-                case (key: String, (v: Any, t: Any)) =>
+                case (key: String, (v: VertexData, t: TransformerData)) =>
                 {
-                    val vertex = v.asInstanceOf[VertexData]
-                    val transformer = t.asInstanceOf[TransformerData]
-                    HouseConnection (vertex.name, vertex.id, transformer, vertex.message.r, vertex.message.x, vertex.message.r0, vertex.message.x0, vertex.message.fuses, vertex.message.valid)
+                    HouseConnection (v.name, v.id, t, v.message.r, v.message.x, v.message.r0, v.message.x0, v.message.fuses, v.message.valid)
                 }
                 case _ =>
                 {
@@ -570,7 +558,6 @@ class ShortCircuit extends Serializable
                 }
             }
         }
-        val ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
         val houses = test.values.keyBy (_.message.transformer).join (ns_transformers.keyBy (_.transformer.id)).map (house_transformer_fn)
 //        houses.count
 //        houses.first
@@ -624,8 +611,8 @@ class ShortCircuit extends Serializable
         {
             val c = 0.90
             val cmin = 0.90
-            val v1 = voltages.getOrElse (house.transformer.end1.TransformerEnd.BaseVoltage, 0.0) * 1000.0
-            val v2 = voltages.getOrElse (house.transformer.end2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
+            val v1 = house.transformer.v1
+            val v2 = house.transformer.v2
             val sk = house.transformer.short_circuit.Sk * 1e+6
             val turns_ratio = v2 / v1
             val zqt = c * v1 * v1 / sk * (turns_ratio * turns_ratio)
