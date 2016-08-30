@@ -71,6 +71,7 @@ public class ShortCircuitCalculation
     public String GetShortCircuitData (@PathParam("file") String filename, @PathParam("item") String item)
     {
         String transformer = (null != item && !item.equals ("")) ? item : null;
+        String spreadsheet = "KS_Leistungen"; // ToDo: load up preset values for transformer parameters
         StringBuffer out = new StringBuffer ();
         if (null != factory)
         {
@@ -88,6 +89,7 @@ public class ShortCircuitCalculation
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
+                        input.put ("csv", "hdfs://sandbox:9000/data/" + spreadsheet + ".csv");
                         input.put ("class", "ch.ninecode.cim.ShortCircuit");
                         if (null == transformer)
                             input.put ("method", "preparation");

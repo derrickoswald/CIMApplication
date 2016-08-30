@@ -13,6 +13,16 @@ import ch.ninecode.model._
 
 class ShortCircuit extends Serializable
 {
+    // name of file containing short circuit Ikw and Sk values for medium voltage transformers
+    // e.g.
+    //
+    // "","Fehlerort","Un","Ikw...RST.","Sk..RST.","Beschreibung..SAP.Nr..","Abgang","NIS.ID","NIS.Name"
+    // "1","Scheidbach Turbach",16,-37.34,89.733,20444,"SAA Lauenen","STA2040","Scheidbach"
+    // "2","Bachegg",16,-36.22,83.805,20468,"SAA Lauenen","STA9390","Bachegg"
+    //
+    // this should only be needed until the medium voltage network is fully described and  calculations can
+    // be done from the high voltage network "slack bus" connections
+    var csv: String = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
 
     case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
@@ -41,9 +51,48 @@ class ShortCircuit extends Serializable
         (v.id, v.nominalVoltage)
     }
 
+    def read_csv (context: SparkContext): RDD[ShortCircuitData] =
+    {
+        // paragraph 2
+
+        // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
+        val spreadsheet = context.textFile (csv)
+//        spreadsheet.count
+//        spreadsheet.first
+
+        // create a function to trim off the double quotes
+        def trimplus (s: String): String =
+        {
+            var ret = s.trim
+            if (ret.startsWith ("\"") && ret.endsWith ("\""))
+                ret = ret.substring (1, ret.length - 1)
+            return (ret)
+        }
+        // split / clean data
+        val headerAndRows = spreadsheet.map (line => line.split(",").map (trimplus (_)))
+        // get header
+        val header = headerAndRows.first
+        // filter out header (just check if the first val matches the first header name)
+        val data = headerAndRows.filter (_(0) != header (0))
+        // splits to map (header/value pairs)
+        val short_circuit_power = data.map (splits => header.zip (splits).toMap)
+
+        // keep only the relevant information
+        short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
+    }
+
     def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame  =
     {
-        // paragraph 1
+        val arguments = args.split (",").map (
+            (s) =>
+                {
+                    val pair = s.split ("=")
+                    if (2 == pair.length)
+                        (pair(0), pair(1))
+                    else
+                        (pair(0), "")
+                }
+        ).toMap
 
         def get (name: String): RDD[Element] =
         {
@@ -57,41 +106,15 @@ class ShortCircuit extends Serializable
             return (null)
         }
 
+        // paragraph 1
+
         // gather the set of voltages
         // usage: voltages.getOrElse ("BaseVoltage_400", 0.0)  yields 0.4 as a Double
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
 
-        // paragraph 2
+        // get the name of the csv file
+        csv = arguments.getOrElse ("csv", csv)
 
-        // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
-        val csv = sc.textFile ("hdfs://sandbox:9000/data/KS_Leistungen.csv")
-//        csv.count
-//        csv.first
-
-        // create a function to trim off the double quotes
-        def trimplus (s: String): String =
-        {
-            var ret = s.trim
-            if (ret.startsWith ("\"") && ret.endsWith ("\""))
-                ret = ret.substring (1, ret.length - 1)
-            return (ret)
-        }
-        // split / clean data
-        val headerAndRows = csv.map (line => line.split(",").map (trimplus (_)))
-        // get header
-        val header = headerAndRows.first
-        // filter out header (eh. just check if the first val matches the first header name)
-        val data = headerAndRows.filter (_(0) != header (0))
-        // splits to map (header/value pairs)
-        val short_circuit_power = data.map (splits => header.zip (splits).toMap)
-
-//        short_circuit_power.count
-//        short_circuit_power.first
-
-        // keep only the relevant information
-        val short_circuit = short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
-//        short_circuit.count
-//        short_circuit.first
 
         // paragraph 3
 
@@ -115,15 +138,15 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, Some (station: ch.ninecode.model.Substation))) =>
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, station: ch.ninecode.model.Substation)) =>
                 {
                     (station.id, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, Some (bay: ch.ninecode.model.Bay))) =>
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, bay: ch.ninecode.model.Bay)) =>
                 {
                     (bay.Substation, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, Some (level: ch.ninecode.model.VoltageLevel))) =>
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, level: ch.ninecode.model.VoltageLevel)) =>
                 {
                     (level.Substation, t)
                 }
@@ -136,9 +159,13 @@ class ShortCircuit extends Serializable
 
         // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
         val elements = get ("Elements").asInstanceOf[RDD[ch.ninecode.model.Element]]
-        val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).leftOuterJoin (elements.keyBy (_.id)).map (station_fn)
+        val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
 //        tpairs.count
 //        tpairs.first
+
+        val short_circuit = read_csv (sc)
+//        short_circuit.count
+//        short_circuit.first
 
         // only keep the pairs where the transformer is in a substation we have
         val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
@@ -149,7 +176,7 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                // due to a flaw in Zeppelin pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
+                // due to a flaw in Scala pattern matching with user defined types we have to use Any and then cast it asInstanceOf[ShortCircuitData]
                 case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: Any))) =>
                 {
                     (a, b, c.asInstanceOf[ShortCircuitData])
@@ -447,19 +474,20 @@ class ShortCircuit extends Serializable
             // check for normalOpen switch
             if (!triplet.attr.normalOpen)
             {
+                val km = triplet.attr.length / 1000.0
                 // compute the impedences to the downstream vertex
                 if ((Double.PositiveInfinity != triplet.srcAttr.message.r)
                     && (   (Double.PositiveInfinity == triplet.dstAttr.message.r) // dst has not yet recieved a message
                         || (0.0 == triplet.dstAttr.message.r) // not sure if this ever occurs
-                        || (triplet.srcAttr.message.r + triplet.attr.length * triplet.attr.r / 1000.0 < triplet.dstAttr.message.r))) // handle mesh netweork
+                        || (triplet.srcAttr.message.r + km * triplet.attr.r < triplet.dstAttr.message.r))) // handle mesh netweork
                 {
                     // check for high voltage terminal
                     if (!triplet.dstAttr.stop)
                     {
-                        val r = triplet.srcAttr.message.r + triplet.attr.length * triplet.attr.r / 1000.0
-                        val x = triplet.srcAttr.message.x + triplet.attr.length * triplet.attr.x / 1000.0
-                        val r0 = triplet.srcAttr.message.r0 + triplet.attr.length * triplet.attr.r0 / 1000.0
-                        val x0 = triplet.srcAttr.message.x0 + triplet.attr.length * triplet.attr.x0 / 1000.0
+                        val r = triplet.srcAttr.message.r + km * triplet.attr.r
+                        val x = triplet.srcAttr.message.x + km * triplet.attr.x
+                        val r0 = triplet.srcAttr.message.r0 + km * triplet.attr.r0
+                        val x0 = triplet.srcAttr.message.x0 + km * triplet.attr.x0
                         var fuses = triplet.srcAttr.message.fuses
                         if (triplet.attr.clazz.endsWith ("Fuse"))
                             fuses = (triplet.attr.id_equ, triplet.attr.ratedCurrent) :: fuses
@@ -471,15 +499,15 @@ class ShortCircuit extends Serializable
                 else if ((Double.PositiveInfinity != triplet.dstAttr.message.r)
                     && (   (Double.PositiveInfinity == triplet.srcAttr.message.r)
                         || (0.0 == triplet.srcAttr.message.r)
-                        || (triplet.dstAttr.message.r + triplet.attr.length * triplet.attr.r / 1000.0 < triplet.srcAttr.message.r)))
+                        || (triplet.dstAttr.message.r + km * triplet.attr.r < triplet.srcAttr.message.r)))
                 {
                     // check for high voltage terminal
                     if (!triplet.srcAttr.stop)
                     {
-                        val r = triplet.dstAttr.message.r + triplet.attr.length * triplet.attr.r / 1000.0
-                        val x = triplet.dstAttr.message.x + triplet.attr.length * triplet.attr.x / 1000.0
-                        val r0 = triplet.dstAttr.message.r0 + triplet.attr.length * triplet.attr.r0 / 1000.0
-                        val x0 = triplet.dstAttr.message.x0 + triplet.attr.length * triplet.attr.x0 / 1000.0
+                        val r = triplet.dstAttr.message.r + km * triplet.attr.r
+                        val x = triplet.dstAttr.message.x + km * triplet.attr.x
+                        val r0 = triplet.dstAttr.message.r0 + km * triplet.attr.r0
+                        val x0 = triplet.dstAttr.message.x0 + km * triplet.attr.x0
                         var fuses = triplet.dstAttr.message.fuses
                         if (triplet.attr.clazz.endsWith ("Fuse"))
                             fuses = (triplet.attr.id_equ, triplet.attr.ratedCurrent) :: fuses

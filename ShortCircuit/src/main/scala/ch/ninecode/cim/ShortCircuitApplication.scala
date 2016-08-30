@@ -39,14 +39,13 @@ object ShortCircuitApplication
 
         val start = System.nanoTime ()
 
-        _SqlContext.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')")
-        val count = _SqlContext.sql ("select count(*) from elements")
-        val elements = count.head ().getLong (0)
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").load (filename)
+        val count = elements.count
 
         val read = System.nanoTime ()
 
         val sc = new ShortCircuit ()
-        sc.preparation (_Context, _SqlContext, "")
+        sc.preparation (_Context, _SqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
 
         val prep = System.nanoTime ()
 
@@ -66,11 +65,12 @@ object ShortCircuitApplication
             println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getBoolean(11) + "," + h.getBoolean(12) + "," + h.getBoolean(13) + "," + h.getString(14) + "," + h.getString(15) + "," + h.getString(7))
         }
 
-        println ("" + elements + " elements")
+        println ("" + count + " elements")
         println ("read : " + (read - start) / 1e9 + " seconds")
         println ("prep : " + (prep - read) / 1e9 + " seconds")
         println ("graph: " + (graph - prep) / 1e9 + " seconds")
         println ("fetch: " + (fetch - graph) / 1e9 + " seconds")
         println ("print: " + (System.nanoTime () - fetch) / 1e9 + " seconds")
+        println ();
     }
 }
