@@ -244,136 +244,14 @@ class ShortCircuit extends Serializable
 //        transformer_and_transformer_terminals.count
 //        transformer_and_transformer_terminals.first
 
-        // paragraph 6
-
-        // convert CIM nodes into Graphx vertices as RDD of (key, value) pairs
-
-        // get the list of nodes
-        val nodes = get ("ConnectivityNode").asInstanceOf[RDD[ch.ninecode.model.ConnectivityNode]]
-        //nodes.count
-        //nodes.first
-
         // get the low voltage (niederspannung) transformers
-        val ns_transformers = transformer_and_transformer_terminals.filter ((t: TransformerData) => { 0.4 == voltages.getOrElse (t.end2.TransformerEnd.BaseVoltage, 0.0) })
+        val ns_transformers = transformer_and_transformer_terminals.filter ((t: TransformerData) => { 400.0 == t.v2 })
         //ns_transformers.count
         //ns_transformers.first
-
-        // (k, (v, Some(w))) or (k, (v, None))
-        def node_function (x: Tuple2[String, Any]) =
-        {
-            x match
-            {
-                case (key: String, (n: ConnectivityNode, Some (t: TransformerData) )) =>
-                {
-                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
-                }
-                case (key: String, (n: ConnectivityNode, None)) =>
-                {
-                    VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true)
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
-        }
-
-        // get starting nodes identified by non-null transformer data
-        val v1 = nodes.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (node_function)
-
-        def high_voltage_function (x: Tuple2[String, Any]) =
-        {
-            x match
-            {
-                case (key: String, (v: VertexData, None)) =>
-                {
-                    v
-                }
-                case (key: String, (v: VertexData, Some (t: TransformerData) )) =>
-                {
-                    // check for middle voltage, end2 is 400V
-                    if (voltages.getOrElse (t.end1.TransformerEnd.BaseVoltage, 0.0) > voltages.getOrElse (t.end2.TransformerEnd.BaseVoltage, 0.0))
-                        VertexData (v.id, v.name, v.container, v.start, true, v.message, v.valid)
-                    else
-                        v
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
-        }
-
-        val v2 = v1.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (high_voltage_function)
-
-        val vertices = v2.keyBy (_.id.hashCode().asInstanceOf[VertexId])
-//        vertices.count
-//        vertices.first
-
-//        val starting_set = vertices.filter (_._2.start != null)
-//        starting_set.count
-//        starting_set.first
-
-        // paragraph 7
-
-        val cim_edges = get ("Edges").asInstanceOf[RDD[ch.ninecode.cim.Edge]]
-//        cim_edges.count
-//        cim_edges.first
-
-        // keep only non-self connected and non-singly connected edges
-        val someedges =  cim_edges.filter ((e: ch.ninecode.cim.Edge) => { (e.id_seq_1 != e.id_seq_2) && e.id_seq_1 != null && e.id_seq_2 != null && e.id_seq_1 != "" && e.id_seq_2 != "" })
-//        someedges.count
-//        someedges.first
-
-        // get the wires
-        val segments = get ("ACLineSegment").asInstanceOf[RDD[ch.ninecode.model.ACLineSegment]]
-//        segments.count
-//        segments.first
-
-        def fn (x: Tuple2[String, Any]) =
-        {
-            x match
-            {
-                case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ch.ninecode.model.ACLineSegment))) =>
-                {
-                    // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
-                    if (0.0 != wire.r)
-                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0, true)
-                    else
-                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
-                }
-                case (key: String, (e: ch.ninecode.cim.Edge, None)) =>
-                {
-                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
-        }
-
-        val eplus = someedges.keyBy(_.id_equ).leftOuterJoin (segments.keyBy (_.id)).map (fn)
-//        eplus.count
-//        eplus.first
-
-        // convert CIM edges into GraphX edges
-        val edges = eplus.map (
-            (ep: EdgePlus) =>
-            {
-                org.apache.spark.graphx.Edge (ep.id_seq_1.hashCode().asInstanceOf[VertexId], ep.id_seq_2.hashCode().asInstanceOf[VertexId], ep)
-            }
-        )
-//        edges.count
-//        edges.first
 
         // persist RDD so later execution can get at it
         ns_transformers.setName ("graph_transformers")
         ns_transformers.cache ()
-        edges.setName ("graph_edges")
-        edges.cache ()
-        vertices.setName ("graph_vertices")
-        vertices.cache ()
 
         def tx_fn (t: TransformerData) =
         {
@@ -408,16 +286,97 @@ class ShortCircuit extends Serializable
             return (null)
         }
 
-        var vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
-        var edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
         var ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
-        if (null == vertices)
+        if (null == ns_transformers)
         {
             preparation (sc, sqlContext, args);
-            vertices = get ("graph_vertices").asInstanceOf[RDD[Tuple2[VertexId, VertexData]]]
-            edges = get ("graph_edges").asInstanceOf[RDD[org.apache.spark.graphx.Edge[EdgePlus]]]
             ns_transformers = get ("graph_transformers").asInstanceOf[RDD[TransformerData]]
         }
+
+        // convert CIM nodes into Graphx vertices as RDD of (key, value) pairs
+
+        // get the list of nodes
+        val nodes = get ("ConnectivityNode").asInstanceOf[RDD[ch.ninecode.model.ConnectivityNode]]
+        //nodes.count
+        //nodes.first
+
+        // (k, (v, Some(w))) or (k, (v, None))
+        def node_function (x: Tuple2[String, Any]) =
+        {
+            x match
+            {
+                case (key: String, (n: ConnectivityNode, Some (t: TransformerData) )) =>
+                {
+                    (key.hashCode().asInstanceOf[VertexId], VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, t.v1 > 400.0, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true))
+                }
+                case (key: String, (n: ConnectivityNode, None)) =>
+                {
+                    (key.hashCode().asInstanceOf[VertexId], VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, null, false, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true))
+                }
+                case _ =>
+                {
+                    throw new Exception ("this should never happen -- default case")
+                }
+            }
+        }
+
+        // get starting nodes identified by non-null transformer data
+        val vertices = nodes.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (node_function)
+        vertices.setName ("graph_vertices")
+        vertices.cache ()
+//        vertices.count
+//        vertices.first
+
+//        val starting_set = vertices.filter (_._2.start != null)
+//        starting_set.count
+//        starting_set.first
+
+        // paragraph 7
+
+        val cim_edges = get ("Edges").asInstanceOf[RDD[ch.ninecode.cim.Edge]]
+//        cim_edges.count
+//        cim_edges.first
+
+        // keep only non-self connected and non-singly connected edges
+        val someedges =  cim_edges.filter ((e: ch.ninecode.cim.Edge) => { (e.id_seq_1 != e.id_seq_2) && e.id_seq_1 != null && e.id_seq_2 != null && e.id_seq_1 != "" && e.id_seq_2 != "" })
+//        someedges.count
+//        someedges.first
+
+        // get the wires
+        val segments = get ("ACLineSegment").asInstanceOf[RDD[ch.ninecode.model.ACLineSegment]]
+//        segments.count
+//        segments.first
+
+        def fn (x: Tuple2[String, Any]) =
+        {
+            val ep = x match
+            {
+                case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ch.ninecode.model.ACLineSegment))) =>
+                {
+                    // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
+                    if (0.0 != wire.r)
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, wire.r, wire.x, wire.r0, wire.x0, true)
+                    else
+                        EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
+                }
+                case (key: String, (e: ch.ninecode.cim.Edge, None)) =>
+                {
+                    EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
+                }
+                case _ =>
+                {
+                    throw new Exception ("this should never happen -- default case")
+                }
+            }
+            org.apache.spark.graphx.Edge (ep.id_seq_1.hashCode().asInstanceOf[VertexId], ep.id_seq_2.hashCode().asInstanceOf[VertexId], ep)
+        }
+
+        // convert CIM edges into GraphX edges
+        val edges = someedges.keyBy(_.id_equ).leftOuterJoin (segments.keyBy (_.id)).map (fn)
+        edges.setName ("graph_edges")
+        edges.cache ()
+//        edges.count
+//        edges.first
 
         // get the specified transformer
         val tran = arguments.getOrElse ("transformer", "")
