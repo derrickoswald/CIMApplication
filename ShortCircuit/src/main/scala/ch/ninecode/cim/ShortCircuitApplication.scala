@@ -6,6 +6,7 @@ import org.apache.spark.graphx._
 import org.apache.spark.rdd._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode._
 import ch.ninecode.cim._
@@ -29,6 +30,10 @@ object ShortCircuitApplication
         configuration.setJars (Array ("/home/derrick/code/CIMScala/target/CIMScala-1.6.0-SNAPSHOT.jar"
             , "/home/derrick/code/CIMApplication/ShortCircuit/target/ShortCircuit-1.0-SNAPSHOT.jar"
             ))
+        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown], classOf[Edge]))
+        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
+        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
+        configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
 
         // make a Spark context and SQL context
         val _Context = new SparkContext (configuration)
@@ -39,17 +44,18 @@ object ShortCircuitApplication
 
         val start = System.nanoTime ()
 
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").load (filename)
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename)
         val count = elements.count
 
         val read = System.nanoTime ()
 
-        val sc = new ShortCircuit ()
-        sc.preparation (_Context, _SqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
+        val shortcircuit = new ShortCircuit ()
+        shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        shortcircuit.preparation (_Context, _SqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
 
         val prep = System.nanoTime ()
 
-        val rdd = sc.stuff (_Context, _SqlContext, "transformer=all") // TRA5401
+        val rdd = shortcircuit.stuff (_Context, _SqlContext, "transformer=all") // TRA5401
 
         val graph = System.nanoTime ()
 

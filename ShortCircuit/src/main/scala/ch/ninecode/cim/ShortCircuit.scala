@@ -6,6 +6,7 @@ import org.apache.spark.graphx._
 import org.apache.spark.rdd._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode._
 import ch.ninecode.cim._
@@ -31,6 +32,8 @@ case class VertexData (val id: String, val name: String, val container: String, 
 
 class ShortCircuit extends Serializable
 {
+    var _StorageLevel = StorageLevel.MEMORY_ONLY
+
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
     //
@@ -229,7 +232,7 @@ class ShortCircuit extends Serializable
 
         // persist RDD so later execution can get at it
         ns_transformers.setName ("graph_transformers")
-        ns_transformers.cache ()
+        ns_transformers.persist (_StorageLevel)
 
         def tx_fn (t: TransformerData) =
         {
@@ -269,8 +272,7 @@ class ShortCircuit extends Serializable
         // get starting nodes identified by non-null transformer data
         val vertices = nodes.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (node_function)
         vertices.setName ("graph_vertices")
-        vertices.cache ()
-
+        vertices.persist (_StorageLevel)
     }
 
     def get_edges (context: SparkContext): RDD[org.apache.spark.graphx.Edge[EdgePlus]] =
@@ -316,8 +318,7 @@ class ShortCircuit extends Serializable
         // convert CIM edges into GraphX edges
         val edges = someedges.keyBy(_.id_equ).leftOuterJoin (segments.keyBy (_.id)).map (fn)
         edges.setName ("graph_edges")
-        edges.cache ()
-
+        edges.persist (_StorageLevel)
     }
 
     def stuff (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame =
@@ -445,7 +446,14 @@ class ShortCircuit extends Serializable
         val graph = initial.pregel (null.asInstanceOf[Message], 50 /* Int.MaxValue */, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
 
         // get the leaf nodes with their data
-        val has =  graph.vertices.filter ((v: Tuple2[VertexId, VertexData]) => { v._2.name.startsWith ("HAS") && v._2.message.r != Double.PositiveInfinity})
+        val has = graph.vertices.filter (
+            (v: Tuple2[VertexId, VertexData]) =>
+            {
+                v._2.name.startsWith ("HAS") && v._2.message.r != Double.PositiveInfinity
+            }
+        ).values
+        has.setName ("house_connections")
+        has.persist (_StorageLevel)
 
         // link them to the supplying transformer
         def house_transformer_fn (x: Tuple2[String, Any]) =
@@ -462,7 +470,7 @@ class ShortCircuit extends Serializable
                 }
             }
         }
-        val houses = has.values.keyBy (_.message.transformer).join (ns_transformers.keyBy (_.transformer.id)).map (house_transformer_fn)
+        val houses = has.keyBy (_.message.transformer).join (ns_transformers.keyBy (_.transformer.id)).map (house_transformer_fn)
 
         // Rated current, Breaking capacity [A]
         val breaking_capacity: Array[(Double, Double)] =
