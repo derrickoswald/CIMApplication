@@ -29,3 +29,6 @@ release.properties
 glslogs/
 *.log
 /bin/
+.cache-main
+.cache-tests
+

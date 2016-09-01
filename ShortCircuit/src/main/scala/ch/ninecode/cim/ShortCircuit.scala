@@ -389,7 +389,7 @@ class ShortCircuit extends Serializable
                 // compute the impedences to the downstream vertex
                 if ((Double.PositiveInfinity != triplet.srcAttr.message.r)
                     && (   (Double.PositiveInfinity == triplet.dstAttr.message.r) // dst has not yet recieved a message
-                        || (triplet.srcAttr.message.r + km * triplet.attr.r < triplet.dstAttr.message.r))) // handle mesh netweork
+                        || (triplet.srcAttr.message.r + km * triplet.attr.r < triplet.dstAttr.message.r))) // handle mesh network, note r may be 0.0 if it's a source bus
                 {
                     // check for high voltage terminal
                     if (!triplet.dstAttr.stop)
