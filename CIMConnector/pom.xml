@@ -25,7 +25,7 @@
 		<version.plugin.rar>2.4</version.plugin.rar>
 
         <version.dependency.spark>1.6.0</version.dependency.spark>
-        <version.dependency.cimscala>1.6.0-SNAPSHOT</version.dependency.cimscala>
+        <version.dependency.cimscala>2.10-1.6.0-1.6.0</version.dependency.cimscala>
 
 		<!-- test dependencies versions -->
 		<version.dependency.junit>4.12</version.dependency.junit>

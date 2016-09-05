@@ -66,7 +66,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         else
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
-        connection = new CIMManagedConnection (subject, _info);
+        connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter ());
         connection.setLogWriter (getLogWriter ());
         connection.connect (subject, _info);
 
@@ -122,8 +122,13 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     {
         if (null == _ResourceAdapter)
         {
-            _ResourceAdapter = (CIMResourceAdapter)adapter;
-            firePropertyChange ("ResourceAdapter", null, _ResourceAdapter);
+            if (adapter.getClass ().isAssignableFrom (CIMResourceAdapter.class))
+            {
+                _ResourceAdapter = (CIMResourceAdapter)adapter;
+                firePropertyChange ("ResourceAdapter", null, _ResourceAdapter);
+            }
+            else
+                throw new ResourceException ("the ResourceAdapter is not a CIMResourceAdapter");
         }
         else
             throw new ResourceException ("the ResourceAdapter association must not change during the lifetime of a ManagedConnectionFactory JavaBean");

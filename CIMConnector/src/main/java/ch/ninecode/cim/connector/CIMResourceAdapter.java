@@ -52,6 +52,7 @@ import javax.transaction.xa.XAResource;
 public class CIMResourceAdapter implements ResourceAdapter
 {
     protected String _YarnConfigurationPath = "/home/derrick/spark-1.6.0-bin-hadoop2.6/conf";
+    protected String _CIMScalaJarPath = "/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar";
 
     @Override
     public void endpointActivation (MessageEndpointFactory arg0, ActivationSpec arg1) throws ResourceException
@@ -124,4 +125,24 @@ public class CIMResourceAdapter implements ResourceAdapter
     {
         return (_YarnConfigurationPath);
     }
+
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Path to CIMScala jar file.",
+        defaultValue = "/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
+    public void setCIMScalaJarPath (String path)
+    {
+        _CIMScalaJarPath = path;
+    }
+
+    public String getCIMScalaJarPath ()
+    {
+        return (_CIMScalaJarPath);
+    }
+
 }

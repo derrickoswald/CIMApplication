@@ -39,6 +39,7 @@ public class CIMManagedConnection implements ManagedConnection
 {
     private static final String TRANSACTIONS_NOT_SUPPORTED_ERROR = "Transactions not supported";
 
+    protected CIMResourceAdapter _Adapter;
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
     protected CIMConnection _Connection;
@@ -50,14 +51,12 @@ public class CIMManagedConnection implements ManagedConnection
     /**
      * Constructor for CIMManagedConnection
      */
-    public CIMManagedConnection (Subject subject, ConnectionRequestInfo info)
+    public CIMManagedConnection (CIMResourceAdapter adapter)
     {
         super ();
+        _Adapter = adapter;
         _Listeners = new Vector<> ();
         _PrintWriter = null;
-        _Subject = subject;
-        if ((null != info) && (info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
-            _RequestInfo = (CIMConnectionRequestInfo)info;
     }
 
     public void close ()
@@ -80,6 +79,7 @@ public class CIMManagedConnection implements ManagedConnection
         CIMConnectionRequestInfo _info;
 
         logger = getLogWriter ();
+        _Subject = subject;
         if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
             _info = new CIMConnectionRequestInfo ();
         else
@@ -96,11 +96,22 @@ public class CIMManagedConnection implements ManagedConnection
             configuration.setMaster ("local[*]"); // run Spark locally with as many worker threads as logical cores on the machine
         for (String key : _info.getProperties ().keySet ())
             configuration.set (key, _info.getProperties ().get (key));
-        String[] jars = new String[_info.getJars ().size ()];
-        configuration.setJars (_info.getJars ().toArray (jars));
+        String[] jars = new String[_info.getJars ().size () + 1];
+        jars = _info.getJars ().toArray (jars);
+        jars[jars.length - 1] = _Adapter.getCIMScalaJarPath ();
+        configuration.setJars (jars);
+        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
         if (null != logger)
             logger.println ("SparkConf = " + configuration.toDebugString ());
-        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
+//        try
+//        {
+//            System.out.println ("SparkConf = " + configuration.toDebugString ());
+//            System.getProperties ().store (System.out, "current propeties");
+//        }
+//        catch (java.io.IOException e)
+//        {
+//            System.out.println ("couldn't write properties");
+//        }
 
         // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
         // here are some options I tried for Yarn access master set to "yarn-client" that didn't work

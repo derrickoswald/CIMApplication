@@ -27,7 +27,7 @@ object ShortCircuitApplication
         configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
-        configuration.setJars (Array ("/home/derrick/code/CIMScala/target/CIMScala-1.6.0-SNAPSHOT.jar"
+        configuration.setJars (Array ("/home/derrick/code/CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"
             , "/home/derrick/code/CIMApplication/ShortCircuit/target/ShortCircuit-1.0-SNAPSHOT.jar"
             ))
         // register low level classes
