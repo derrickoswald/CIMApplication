@@ -129,7 +129,7 @@ public class CIMResourceAdapter implements ResourceAdapter
     @ConfigProperty
     (
         type = String.class,
-        description = "Path to CIMScala jar file.",
+        description = "Path to CIMScala jar file. Should be the deployed location of the CIMScala jar file that is included in CIMConnector.rar.",
         defaultValue = "/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar",
         ignore = false,
         supportsDynamicUpdates = false,

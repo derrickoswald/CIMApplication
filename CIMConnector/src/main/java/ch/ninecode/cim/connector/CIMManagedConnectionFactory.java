@@ -31,13 +31,19 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     protected transient PropertyChangeSupport _PropertyChangeSupport;
     protected PrintWriter _PrintWriter;
     protected CIMResourceAdapter _ResourceAdapter;
-    protected String _ConnectionURL;
+//    protected String ServerName; // Name of the server for the EIS instance.
+//    protected int PortNumber; // Port number for establishing a connection to an EIS instance.
+//    protected String UserName; // Name of the user establishing a connection to an EIS instance.
+//    protected String Password; // Password for the user establishing a connection.
+    protected String _ConnectionURL; // URL for the EIS instance to which it connects.
 
     public CIMManagedConnectionFactory ()
     {
         super ();
+        _PropertyChangeSupport = null;
         _PrintWriter = null;
         _ResourceAdapter = null;
+        _ConnectionURL = null;
     }
 
     @Override
@@ -50,6 +56,31 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     public Object createConnectionFactory (ConnectionManager manager) throws ResourceException
     {
         return (new CIMConnectionFactory (this, manager));
+    }
+
+    @Override
+    public int hashCode ()
+    {
+        int ret;
+
+//      The equals and hashCode method implementation should be based on a complete set of
+//      configuration properties that make a ManagedConnectionFactory instance unique and specific to an EIS instance.
+        ret = (null == _ConnectionURL) ? 846348742 : _ConnectionURL.hashCode ();
+
+        return (ret);
+    }
+
+    @Override
+    public boolean equals (Object object)
+    {
+        boolean ret = false;
+        if (object instanceof CIMManagedConnectionFactory)
+        {
+            CIMManagedConnectionFactory that = (CIMManagedConnectionFactory)object;
+            ret = _ConnectionURL.equals (that._ConnectionURL);
+        }
+
+        return (ret);
     }
 
     /**
@@ -91,6 +122,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             if (((null == connection._RequestInfo) && (null == info)) || ((null != connection._RequestInfo) && connection._RequestInfo.equals (info)))
                 if (((null == connection._Subject) && (null == subject)) || ((null != connection._Subject) && connection._Subject.equals (subject)))
                 {
+                    System.out.println ("subject matched");
                     ret = connection;
                     break;
                 }
@@ -121,7 +153,6 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     public void setResourceAdapter (ResourceAdapter adapter) throws ResourceException
     {
         if (null == _ResourceAdapter)
-        {
             if (adapter.getClass ().isAssignableFrom (CIMResourceAdapter.class))
             {
                 _ResourceAdapter = (CIMResourceAdapter)adapter;
@@ -129,7 +160,6 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             }
             else
                 throw new ResourceException ("the ResourceAdapter is not a CIMResourceAdapter");
-        }
         else
             throw new ResourceException ("the ResourceAdapter association must not change during the lifetime of a ManagedConnectionFactory JavaBean");
     }
@@ -217,7 +247,6 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      */
     protected PropertyChangeSupport getPropertyChangeSupport ()
     {
-
         if (_PropertyChangeSupport == null)
             _PropertyChangeSupport = new PropertyChangeSupport (this);
         return (_PropertyChangeSupport);

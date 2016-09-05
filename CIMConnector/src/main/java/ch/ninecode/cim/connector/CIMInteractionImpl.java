@@ -85,9 +85,11 @@ public class CIMInteractionImpl implements Interaction
                                 {
                                     String filename = (String)((CIMMappedRecord) input).get ("filename");
                                     SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
-                                    /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
-                                    DataFrame count = sql.sql ("select count(*) from elements");
-                                    long num = count.head ().getLong (0);
+                                    long start = System.nanoTime ();
+                                    DataFrame element = sql.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
+                                    long num = element.count ();
+                                    long finish = System.nanoTime ();
+                                    System.out.println ("CIMReader read " + num + " elements in " + ((finish - start) / 1e9) + " seconds");
                                     ((CIMMappedRecord) output).put ("count", new Long (num));
                                     ret = true;
                                 }
@@ -136,9 +138,11 @@ public class CIMInteractionImpl implements Interaction
                                 String filename = (String)((CIMMappedRecord) input).get ("filename");
                                 String query = (String)((CIMMappedRecord) input).get ("query");
                                 SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
-                                /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
-                                DataFrame count = sql.sql ("select count(*) from elements");
-                                /* long num = */ count.head ().getLong (0);
+                                long start = System.nanoTime ();
+                                DataFrame element = sql.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
+                                long num = element.count ();
+                                long finish = System.nanoTime ();
+                                System.out.println ("CIMReader read " + num + " elements in " + ((finish - start) / 1e9) + " seconds");
                                 DataFrame result = sql.sql (query);
                                 ret = new CIMResultSet (result.schema (), result.collect ());
                             }
@@ -186,13 +190,11 @@ public class CIMInteractionImpl implements Interaction
                                         {
                                             try
                                             {
-                                                String[] tables = sql.tableNames ();
-                                                if (!Arrays.asList (tables).contains ("elements"))
-                                                {
-                                                    /* DataFrame dataframe = */ sql.sql ("create temporary table elements using ch.ninecode.cim options (path '" + filename + "')");
-                                                    DataFrame count = sql.sql ("select count(*) from elements");
-                                                    /* long num = */ count.head ().getLong (0);
-                                                }
+                                                long start = System.nanoTime ();
+                                                DataFrame element = sql.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
+                                                long num = element.count ();
+                                                long finish = System.nanoTime ();
+                                                System.out.println ("CIMReader read " + num + " elements in " + ((finish - start) / 1e9) + " seconds");
                                                 _method.setAccessible (true);
                                                 Object o = _method.invoke (_obj, sc, sql, args);
                                                 DataFrame result = (DataFrame)o;

@@ -12,11 +12,16 @@
 	<resourceadapter-version>0.1</resourceadapter-version>
 	<resourceadapter id="CIMResourceAdapter">
 		<resourceadapter-class>ch.ninecode.cim.connector.CIMResourceAdapter</resourceadapter-class>
-		<config-property>
-			<config-property-name>YarnConfigurationPath</config-property-name>
-			<config-property-type>java.lang.String</config-property-type>
-			<config-property-value>/home/derrick/spark-1.6.0-bin-hadoop2.6/conf</config-property-value>
-		</config-property>
+        <config-property>
+            <config-property-name>YarnConfigurationPath</config-property-name>
+            <config-property-type>java.lang.String</config-property-type>
+            <config-property-value>/home/derrick/spark-1.6.0-bin-hadoop2.6/conf</config-property-value>
+        </config-property>
+        <config-property>
+            <config-property-name>CIMScalaJarPath</config-property-name>
+            <config-property-type>java.lang.String</config-property-type>
+            <config-property-value>/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar</config-property-value>
+        </config-property>
 		<outbound-resourceadapter>
 			<connection-definition>
 				<managedconnectionfactory-class>ch.ninecode.cim.connector.CIMManagedConnectionFactory</managedconnectionfactory-class>

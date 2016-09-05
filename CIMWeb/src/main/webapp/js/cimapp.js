@@ -157,7 +157,7 @@ define
             if ("" != file)
                 url = url + encodeURIComponent (file);
             else
-                url = url + encodeURIComponent ("20160803-16_NIS_CIM_Export_b4_Bruegg")
+                url = url + encodeURIComponent ("NIS_CIM_Export_sias_current_20160816_V8_Bruegg")
             if ("" != transformer)
                 url = url + "/" + transformer;
             xmlhttp = new XMLHttpRequest ();

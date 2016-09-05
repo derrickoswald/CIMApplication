@@ -686,7 +686,8 @@ public class CIMManagedConnection implements ManagedConnection
     public void destroy () throws ResourceException
     {
         close ();
-        _Connection.invalidate ();
+        if (null != _Connection)
+            _Connection.invalidate ();
         _Connection = null;
         _Listeners = null;
     }
@@ -696,7 +697,7 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void cleanup () throws ResourceException
     {
-        _Connection.invalidate ();
+        // no client state, right?
     }
 
     /**
