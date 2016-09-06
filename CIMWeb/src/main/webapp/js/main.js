@@ -12,6 +12,7 @@ requirejs
 
         // initialize button
         document.getElementById ("connect").onclick = cimapp.connect;
+        document.getElementById ("export").onclick = cimapp.gridlab;
         document.getElementById ("unhighlight").onclick = cimapp.unhighlight;
 
         cimapp.init_map ();

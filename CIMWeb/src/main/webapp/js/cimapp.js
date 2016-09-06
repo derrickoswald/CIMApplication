@@ -139,7 +139,7 @@ define
 
         /**
          * @summary Fetch some data.
-         * @description Invokde the server-side function to get some data.
+         * @description Invoke the server-side function to get some data.
          * @param {object} event - optional, the click event
          * @function connect
          * @memberOf module:cimapp
@@ -153,7 +153,7 @@ define
 
             file = document.getElementById ("cim_file").value;
             transformer = document.getElementById ("transformer").value;
-            url = "http://localhost:8080/cimweb/cim/ShortCircuitCalculation/"
+            url = window.location.origin + window.location.pathname + "cim/ShortCircuitCalculation/"
             if ("" != file)
                 url = url + encodeURIComponent (file);
             else
@@ -177,6 +177,50 @@ define
                             make_list (resp);
                         else
                             make_map (resp);
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            xmlhttp.send ();
+        }
+
+        /**
+         * @summary Export a GridLAB-D file.
+         * @description Invoke the server-side function to export some data.
+         * @param {object} event - optional, the click event
+         * @function gridlab
+         * @memberOf module:cimapp
+         */
+        function gridlab (event)
+        {
+            var file;
+            var transformer;
+            var url;
+            var xmlhttp;
+
+            file = document.getElementById ("cim_file2").value;
+            transformer = document.getElementById ("trafokreise").value;
+            url = window.location.origin + window.location.pathname + "cim/GridLabExport/"
+            if ("" != file)
+                url = url + encodeURIComponent (file);
+            else
+                url = url + encodeURIComponent ("NIS_CIM_Export_sias_current_20160816_V8_Bruegg")
+            if ("" != transformer)
+                url = url + "/" + transformer;
+            xmlhttp = new XMLHttpRequest ();
+            xmlhttp.open ("GET", url, true);
+            xmlhttp.setRequestHeader ("Accept", "application/json");
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+                var msg;
+                var reason;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        alert (JSON.stringify (resp, null, 4));
                     }
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
@@ -379,6 +423,7 @@ define
             {
                 init_map: init_map,
                 connect: connect,
+                gridlab: gridlab,
                 select: select,
                 unhighlight: unhighlight
             }

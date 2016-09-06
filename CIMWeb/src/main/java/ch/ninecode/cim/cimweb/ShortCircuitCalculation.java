@@ -2,12 +2,10 @@ package ch.ninecode.cim.cimweb;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -58,7 +56,7 @@ public class ShortCircuitCalculation
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
-        ret.getJars ().add ("/home/derrick/code/CIMApplication/ShortCircuit/target/ShortCircuit-1.0-SNAPSHOT.jar");
+        ret.getJars ().add ("/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/lib/ShortCircuit-1.0-SNAPSHOT.jar");
 
         return (ret);
     }

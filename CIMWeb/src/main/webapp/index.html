@@ -29,24 +29,25 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse z-depth-2">
+    <nav class="navbar navbar-inverse">
         <div class="container">
             <div class="navbar-header">
-                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
                     <span class="sr-only">Toggle navigation</span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand waves-effect waves-light" href="#">CIM Application</a>
+                <a class="navbar-brand" href="#">CIM Application</a>
             </div>
 
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    <li><a id="load_files" href="#" class="waves-effect waves-light" data-toggle="modal" data-target="#file_modal">Load Files</a></li>
-                    <li><a id="connect_server" href="#" class="waves-effect waves-light" data-toggle="modal" data-target="#server_modal">Connect</a></li>
+                    <li><a href="#" data-toggle="modal" data-target="#file_modal">Load Files</a></li>
+                    <li><a href="#" data-toggle="modal" data-target="#server_modal">Connect</a></li>
+                    <li><a href="#" data-toggle="modal" data-target="#export_modal">Export</a></li>
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle waves-effect waves-light" data-toggle="dropdown" role="button" aria-expanded="false">Options <span class="caret"></span></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Options <span class="caret"></span></a>
                         <ul class="dropdown-menu" role="menu">
                             <li><a id="unhighlight" href="#">Un-Highlight</a></li>
                         </ul>
@@ -82,7 +83,7 @@
                     <div class="row">
                         <div class="form-group">
                             <div class="col-sm-3">
-                                <div class="file-field input-field" aria-describedby="files_help">
+                                <div aria-describedby="files_help">
                                     <div type="button" class="btn btn-file">
                                         <span>Browse</span>
                                         <input id="file_button" type="file" name="files[]" multiple/>
@@ -117,7 +118,7 @@
             <div class="modal-content">
                 <div class="modal-header text-center" style="padding:35px 50px;">
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h2><i class="fa fa-connect"></i> Connect to server</h2>
+                    <h2><i class="fa fa-exchange"></i> Connect to server</h2>
                 </div>
                 <div class="modal-body" style="padding:40px 50px;">
                     <div class="row">
@@ -134,13 +135,53 @@
                                     <option value='' selected></option>
                                     <option value='all'>All</option>
                                 </select>
-                                <!-- input id="transformer" class="form-control" type="text" name="transformer" placeholder="TRA123456" -->
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button id="connect" type="submit" class="btn btn-info" data-dismiss="modal">Connect</button>
+                    <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Dialog Modal -->
+    <div id="export_modal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+                <div class="modal-header text-center" style="padding:35px 50px;">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h2><i class="fa fa-download"></i> Export GridLAB-D file</h2>
+                </div>
+                <div class="modal-body" style="padding:40px 50px;">
+                    <div class="row">
+                        <form class="form-horizontal">
+                            <fieldset>
+                                <legend>Parameters</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label" for="cim_file2">CIM file</label>
+                                    <div class="col-sm-9">
+                                        <input id="cim_file2" class="form-control" type="text" name="cim_file2" placeholder="NIS_CIM_Export_sias_current_20160816_V8_Bruegg">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label" for="transformer">Transformer</label>
+                                    <div class="col-sm-9">
+                                        <select id="trafokreise" class="form-control" name="trafokreise">
+                                            <option value='' selected></option>
+                                            <option value='all'>All</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="export" type="submit" class="btn btn-info" data-dismiss="modal">Export</button>
                     <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
