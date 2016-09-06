@@ -209,7 +209,7 @@ define
                 url = url + "/" + transformer;
             xmlhttp = new XMLHttpRequest ();
             xmlhttp.open ("GET", url, true);
-            xmlhttp.setRequestHeader ("Accept", "application/json");
+            xmlhttp.setRequestHeader ("Accept", "text/plain");
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
@@ -219,8 +219,7 @@ define
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        alert (JSON.stringify (resp, null, 4));
+                        alert (xmlhttp.responseText);
                     }
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
