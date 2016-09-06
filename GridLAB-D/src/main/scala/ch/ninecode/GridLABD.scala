@@ -8,6 +8,10 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.TimeZone
+
 import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
@@ -38,6 +42,24 @@ class GridLABD extends Serializable
                         (pair(0), "")
                 }
         ).toMap
+
+        val USE_UTC = false
+
+        val format =
+            if (USE_UTC)
+            {
+                // for dates in UTC
+                val f = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                f.setTimeZone (TimeZone.getTimeZone ("UTC"))
+                f
+            }
+            else
+                // for dates in the local time zone
+                new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ssZ")
+        val start = Calendar.getInstance ()
+        val finish = start.clone ().asInstanceOf[Calendar]
+        finish.add (Calendar.HOUR, 3)
+
         val result =
             "        module tape;\n" +
             "        module powerflow\n" +
@@ -51,9 +73,9 @@ class GridLABD extends Serializable
             "\n" +
             "        clock\n" +
             "        {\n" +
-            "            timezone GMT0+1;\n" +
-            "            starttime '2013-12-10 12:00:00';\n" +
-            "            stoptime '2013-12-10 15:00:00';\n" +
+            "            timezone " + (if (USE_UTC) "GMT" else "GMT0+2") + ";\n" +
+            "            starttime '" + format.format (start.getTime ()) + "';\n" +
+            "            stoptime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n" +
             "\n" +
             "        class player\n" +
@@ -65,7 +87,7 @@ class GridLABD extends Serializable
             "        {\n" +
             "            filename voltdump.csv;\n" +
             "            mode polar;\n" +
-            "            runtime '2014-08-19 13:00:00';\n" +
+            "            runtime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n" +
             "\n" +
             "        object line_configuration\n" +

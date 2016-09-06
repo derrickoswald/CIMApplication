@@ -154,20 +154,19 @@ public class CIMInteractionImpl implements Interaction
                                             String name = _method.getName();
                                             if (name.equals (method))
                                             {
-//                                                try
-//                                                {
-//                                                    readFile (sql, filename);
+                                                try
+                                                {
+                                                    readFile (sql, filename);
                                                     _method.setAccessible (true);
                                                     Object o = _method.invoke (_obj, sc, sql, args);
                                                     String result = (String)o;
                                                     ((CIMMappedRecord) output).put ("result", result);
                                                     ret = true;
-
-//                                                }
-//                                                catch (InvocationTargetException ite)
-//                                                {
-//                                                    throw new ResourceException ("problem", ite);
-//                                                }
+                                                }
+                                                catch (InvocationTargetException ite)
+                                                {
+                                                    throw new ResourceException ("problem", ite);
+                                                }
                                                 break;
                                             }
                                         }
