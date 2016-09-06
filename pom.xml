@@ -76,6 +76,7 @@
         <module>CIMWeb</module>
         <module>CIMEar</module>
         <module>ShortCircuit</module>
+        <module>GridLAB-D</module>
     </modules>
 
     <dependencyManagement>
