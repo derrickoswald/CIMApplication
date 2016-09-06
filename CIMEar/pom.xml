@@ -45,9 +45,14 @@
                             <bundleFileName>CIMWeb.war</bundleFileName>
                         </webModule>
                         <jarModule>
-                            <groupId>ch.ninecode.cim</groupId>
+                            <groupId>ch.ninecode</groupId>
                             <artifactId>ShortCircuit</artifactId>
                             <bundleFileName>ShortCircuit-1.0-SNAPSHOT.jar</bundleFileName>
+                        </jarModule>
+                        <jarModule>
+                            <groupId>ch.ninecode</groupId>
+                            <artifactId>GridLAB-D</artifactId>
+                            <bundleFileName>GridLAB-D-1.0-SNAPSHOT.jar</bundleFileName>
                         </jarModule>
                     </modules>
                 </configuration>
@@ -72,8 +77,15 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.cim</groupId>
+            <groupId>ch.ninecode</groupId>
             <artifactId>ShortCircuit</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode</groupId>
+            <artifactId>GridLAB-D</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>jar</type>
         </dependency>

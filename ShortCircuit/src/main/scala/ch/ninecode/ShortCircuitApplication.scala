@@ -1,20 +1,14 @@
-package ch.ninecode.cim
+package ch.ninecode
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
-
 import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
-
-class ShortCircuitApplication
-{
-}
 
 object ShortCircuitApplication
 {
@@ -35,7 +29,7 @@ object ShortCircuitApplication
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
         // register short circuit classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
         // register short circuit inner classes

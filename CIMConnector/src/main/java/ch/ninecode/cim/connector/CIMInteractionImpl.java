@@ -121,6 +121,81 @@ public class CIMInteractionImpl implements Interaction
                         else
                             throw new ResourceException (INVALID_INPUT_ERROR);
                         break;
+                    case CIMInteractionSpec.GET_STRING_FUNCTION:
+                        if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
+                            if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
+                            {
+                                ((CIMMappedRecord) output).clear ();
+                                try
+                                {
+                                    CIMMappedRecord record = (CIMMappedRecord)input;
+                                    CIMConnection connection = (CIMConnection)getConnection ();
+                                    String filename = record.get ("filename").toString ();
+                                    String cls = record.get ("class").toString ();
+                                    String method = record.get ("method").toString ();
+                                    SparkContext sc = connection._ManagedConnection._SparkContext;
+                                    SQLContext sql = connection._ManagedConnection._SqlContext;
+                                    String args = "";
+                                    for (Object key: record.keySet ())
+                                        if ((key != "filename") && (key != "class") && (key != "method"))
+                                            args +=
+                                                ((0 == args.length ()) ? "" : ",")
+                                                + key.toString ()
+                                                + "="
+                                                + record.get (key).toString ();
+                                    try
+                                    {
+                                        Class<?> c = Class.forName (cls);
+                                        Object _obj = c.newInstance();
+
+                                        Method[] allMethods = c.getDeclaredMethods();
+                                        for (Method _method : allMethods)
+                                        {
+                                            String name = _method.getName();
+                                            if (name.equals (method))
+                                            {
+//                                                try
+//                                                {
+//                                                    readFile (sql, filename);
+                                                    _method.setAccessible (true);
+                                                    Object o = _method.invoke (_obj, sc, sql, args);
+                                                    String result = (String)o;
+                                                    ((CIMMappedRecord) output).put ("result", result);
+                                                    ret = true;
+
+//                                                }
+//                                                catch (InvocationTargetException ite)
+//                                                {
+//                                                    throw new ResourceException ("problem", ite);
+//                                                }
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    catch (ClassNotFoundException cnfe)
+                                    {
+                                        throw new ResourceException ("problem", cnfe);
+                                    }
+                                    catch (InstantiationException ie)
+                                    {
+                                        throw new ResourceException ("problem", ie);
+                                    }
+                                    catch (IllegalAccessException iae)
+                                    {
+                                        throw new ResourceException ("problem", iae);
+                                    }
+
+                                }
+                                catch (Exception exception)
+                                {
+                                    throw new ResourceException ("problem", exception);
+                                }
+                            }
+                            else
+                                throw new ResourceException (INVALID_OUTPUT_ERROR);
+                        else
+                            throw new ResourceException (INVALID_INPUT_ERROR);
+                        break;
                     default:
                         throw new ResourceException (INVALID_FUNCTION_ERROR);
                 }
@@ -153,8 +228,9 @@ public class CIMInteractionImpl implements Interaction
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             try
                             {
-                                String filename = (String)((CIMMappedRecord) input).get ("filename");
-                                String query = (String)((CIMMappedRecord) input).get ("query");
+                                CIMMappedRecord record = (CIMMappedRecord)input;
+                                String filename = record.get ("filename").toString ();
+                                String query = record.get ("query").toString ();
                                 SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
                                 readFile (sql, filename);
                                 DataFrame result = sql.sql (query);

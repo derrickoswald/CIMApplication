@@ -8,6 +8,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
     <artifactId>ShortCircuit</artifactId>
+    <groupId>ch.ninecode</groupId>
     <name>ShortCircuit</name>
     <description>Compute short circuit values using Spark and Scala</description>
     <inceptionYear>2016</inceptionYear>

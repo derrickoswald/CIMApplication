@@ -1,5 +1,7 @@
 package ch.ninecode.cim.connector;
 
+import org.apache.spark.SparkContext;
+import org.apache.spark.sql.SQLContext;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -87,102 +89,139 @@ public class CIMResourceAdapterTest
         return (ret);
     }
 
-    @Test
-    public void testResourceAdapter () throws Exception
-    {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext initialContext = new InitialContext (properties);
-        final ConnectionFactory connectionFactory = (ConnectionFactory) initialContext.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
-        assertNotNull ("connectionFactory", connectionFactory);
-        final Connection connection = connectionFactory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
-        connection.close ();
-        final ResourceAdapter resourceAdapter = (ResourceAdapter) initialContext.lookup ("java:openejb/Resource/CIMResourceAdapter"); // from id of resourceadapter element in ra.xml
-        assertNotNull ("resourceAdapter", resourceAdapter);
-        assertNotNull ("YarnConfigurationPath", ((CIMResourceAdapter) resourceAdapter).getYarnConfigurationPath ());
-    }
+//    @Test
+//    public void testResourceAdapter () throws Exception
+//    {
+//        final Properties properties = new Properties ();
+//        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
+//        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
+//        final InitialContext context = new InitialContext (properties);
+//        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
+//        assertNotNull ("connectionFactory", factory);
+//        final Connection connection = factory.getConnection (remoteConfig ());
+//        assertNotNull ("connection", connection);
+//        connection.close ();
+//        final ResourceAdapter resourceAdapter = (ResourceAdapter) context.lookup ("java:openejb/Resource/CIMResourceAdapter"); // from id of resourceadapter element in ra.xml
+//        assertNotNull ("resourceAdapter", resourceAdapter);
+//        assertNotNull ("YarnConfigurationPath", ((CIMResourceAdapter) resourceAdapter).getYarnConfigurationPath ());
+//    }
+//
+//    @Test
+//    public void testMetadata () throws Exception
+//    {
+//        final Properties properties = new Properties ();
+//        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
+//        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
+//        final InitialContext context = new InitialContext (properties);
+//        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
+//        assertNotNull ("connectionFactory", factory);
+//        final Connection connection = factory.getConnection (remoteConfig ());
+//        assertNotNull ("connection", connection);
+//        ConnectionMetaData meta = connection.getMetaData ();
+//        assertNotNull ("meta data", meta);
+//        assertEquals ("Spark", meta.getEISProductName ());
+//        assertNotNull ("product version", meta.getEISProductVersion ()); // assertEquals ("1.6.0", meta.getEISProductVersion ());
+//        assertNotNull ("user name", meta.getUserName ()); // assertEquals ("derrick", meta.getUserName ());
+//        connection.close ();
+//    }
+//
+//    @SuppressWarnings ("unchecked")
+//    @Test
+//    public void testRead () throws Exception
+//    {
+//        long ELEMENTS = new Long (366353l);
+//        final Properties properties = new Properties ();
+//        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
+//        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
+//        final InitialContext context = new InitialContext (properties);
+//        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
+//        assertNotNull ("connectionFactory", factory);
+//        final Connection connection = factory.getConnection (remoteConfig ());
+//        assertNotNull ("connection", connection);
+//        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
+//        spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
+//        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+//        input.setRecordShortDescription ("record containing the file name with key filename");
+//        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+//        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
+//        output.setRecordShortDescription ("record that will return key count");
+//        final Interaction interaction = connection.createInteraction ();
+//        assertTrue ("interaction returned false", interaction.execute (spec, input, output));
+//        assertFalse ("interaction returned empty", output.isEmpty ());
+//        assertEquals ("interaction returned wrong value", ELEMENTS, output.get ("count"));
+//        interaction.close ();
+//        connection.close ();
+//    }
+//
+//    @SuppressWarnings ("unchecked")
+//    @Test
+//    public void testReadEnergyConsumer () throws Exception
+//    {
+//        final Properties properties = new Properties ();
+//        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
+//        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
+//        final InitialContext context = new InitialContext (properties);
+//        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
+//        assertNotNull ("connectionFactory", factory);
+//        final Connection connection = factory.getConnection (remoteConfig ());
+//        assertNotNull ("connection", connection);
+//        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
+//        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
+//        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+//        input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
+//        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+//        input.put ("query", "select s.sup.sup.sup.sup.mRID mRID, s.sup.sup.sup.sup.aliasName aliasName, s.sup.sup.sup.sup.name name, s.sup.sup.sup.sup.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.sup.sup.sup.Location = p.Location and p.sequenceNumber = 0");
+//        final Interaction interaction = connection.createInteraction ();
+//        final Record output = interaction.execute (spec, input);
+//        assertNotNull ("output", output);
+//        if ((!output.getClass ().isAssignableFrom (CIMResultSet.class)))
+//            throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
+//        else
+//        {
+//            CIMResultSet resultset = (CIMResultSet)output;
+//            assertTrue ("resultset is empty", resultset.next ());
+//            assertNotNull ("mRID", resultset.getString (1));
+//            assertTrue ("zero x coordinate", 0.0 != resultset.getDouble (5));
+//            assertTrue ("zero y coordinate", 0.0 != resultset.getDouble (6));
+//            resultset.close ();
+//        }
+//        interaction.close ();
+//        connection.close ();
+//    }
 
-    @Test
-    public void testMetadata () throws Exception
+    public String dummy (SparkContext sc, SQLContext sqlContext, String args)
     {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext initialContext = new InitialContext (properties);
-        final ConnectionFactory connectionFactory = (ConnectionFactory) initialContext.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", connectionFactory);
-        final Connection connection = connectionFactory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
-        ConnectionMetaData meta = connection.getMetaData ();
-        assertNotNull ("meta data", meta);
-        assertEquals ("Spark", meta.getEISProductName ());
-        assertNotNull ("product version", meta.getEISProductVersion ()); // assertEquals ("1.6.0", meta.getEISProductVersion ());
-        assertNotNull ("user name", meta.getUserName ()); // assertEquals ("derrick", meta.getUserName ());
-        connection.close ();
+        return ("OK");
     }
 
     @SuppressWarnings ("unchecked")
     @Test
-    public void testRead () throws Exception
+    public void testGetString () throws Exception
     {
-        long ELEMENTS = new Long (351980l);
         final Properties properties = new Properties ();
         properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
         properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext initialContext = new InitialContext (properties);
-        final ConnectionFactory connectionFactory = (ConnectionFactory) initialContext.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", connectionFactory);
-        final Connection connection = connectionFactory.getConnection (remoteConfig ());
+        final InitialContext context = new InitialContext (properties);
+        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
+        assertNotNull ("connectionFactory", factory);
+        final Connection connection = factory.getConnection (remoteConfig ());
         assertNotNull ("connection", connection);
         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
-        final MappedRecord input = connectionFactory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-        input.setRecordShortDescription ("record containing the file name with key filename");
+        spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
+        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+        input.setRecordShortDescription ("record containing the file name and class and method to run");
         input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        final MappedRecord output = connectionFactory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
-        output.setRecordShortDescription ("record that will return key count");
-        final Interaction interaction = connection.createInteraction ();
-        assertTrue ("interaction returned false", interaction.execute (spec, input, output));
-        assertFalse ("interaction returned empty", output.isEmpty ());
-        assertEquals ("interaction returned wrong value", ELEMENTS, output.get ("count"));
-        interaction.close ();
-        connection.close ();
-    }
+        input.put ("class", "ch.ninecode.cim.connector.CIMResourceAdapterTest");
+        input.put ("method", "dummy");
+        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
+        output.setRecordShortDescription ("the results of the read operation");
 
-    @SuppressWarnings ("unchecked")
-    @Test
-    public void testReadEnergyConsumer () throws Exception
-    {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext initialContext = new InitialContext (properties);
-        final ConnectionFactory connectionFactory = (ConnectionFactory) initialContext.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", connectionFactory);
-        final Connection connection = connectionFactory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
-        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
-        final MappedRecord input = connectionFactory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-        input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
-        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        input.put ("query", "select s.sup.sup.sup.sup.mRID mRID, s.sup.sup.sup.sup.aliasName aliasName, s.sup.sup.sup.sup.name name, s.sup.sup.sup.sup.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.sup.sup.sup.Location = p.Location and p.sequenceNumber = 0");
         final Interaction interaction = connection.createInteraction ();
-        final Record output = interaction.execute (spec, input);
-        assertNotNull ("output", output);
-        if ((!output.getClass ().isAssignableFrom (CIMResultSet.class)))
-            throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
-        else
-        {
-            CIMResultSet resultset = (CIMResultSet)output;
-            assertTrue ("resultset is empty", resultset.next ());
-            assertNotNull ("mRID", resultset.getString (1));
-            assertTrue ("zero x coordinate", 0.0 != resultset.getDouble (5));
-            assertTrue ("zero y coordinate", 0.0 != resultset.getDouble (6));
-            resultset.close ();
-        }
+        assertTrue (interaction.execute (spec, input, output));
+        assertNotNull ("result", output.get ("result"));
+        assertTrue ("result is empty", "" != output.get ("result"));
+        String out = (output.get ("result")).toString ();
+        assertTrue ("result is incorrect", out.equals ("OK"));
         interaction.close ();
         connection.close ();
     }

@@ -8,6 +8,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
     <artifactId>GridLAB-D</artifactId>
+    <groupId>ch.ninecode</groupId>
     <name>GridLAB-D</name>
     <description>Export GridLAB-D file using Spark and Scala</description>
     <inceptionYear>2016</inceptionYear>

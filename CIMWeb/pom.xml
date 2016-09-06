@@ -76,8 +76,15 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.cim</groupId>
+            <groupId>ch.ninecode</groupId>
             <artifactId>ShortCircuit</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode</groupId>
+            <artifactId>GridLAB-D</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>

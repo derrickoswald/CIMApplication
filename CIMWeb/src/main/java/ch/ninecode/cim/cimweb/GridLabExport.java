@@ -1,5 +1,9 @@
 package ch.ninecode.cim.cimweb;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.sql.SQLException;
+
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
 import javax.ws.rs.GET;
@@ -10,10 +14,19 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.resource.ConnectionFactoryDefinition;
+import javax.resource.ResourceException;
+import javax.resource.cci.Connection;
+import javax.resource.cci.Interaction;
+import javax.resource.cci.MappedRecord;
+import javax.resource.cci.Record;
 import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMConnectionSpec;
+import ch.ninecode.cim.connector.CIMInteractionSpec;
+import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
+import ch.ninecode.cim.connector.CIMMappedRecord;
+import ch.ninecode.cim.connector.CIMResultSet;
 
 @ConnectionFactoryDefinition
 (
@@ -50,112 +63,89 @@ public class GridLabExport
         return (ret);
     }
 
+    @SuppressWarnings ("unchecked")
     @GET
     @Path("{p:/?}{item:((.*)?)}")
     public Response GetGridLABExport (@PathParam("file") String filename, @PathParam("item") String item)
     {
         String transformer = (null != item && !item.equals ("")) ? item : null;
         StringBuffer out = new StringBuffer ();
-        String test =
-"        module tape;\n" +
-"        module powerflow\n" +
-"        {\n" +
-"            solver_method NR;\n" +
-"            default_maximum_voltage_error 10e-6;\n" +
-"            NR_iteration_limit 5000;\n" +
-"            NR_superLU_procs 16;\n" +
-"            nominal_frequency 50;\n" +
-"        };\n" +
-"\n" +
-"        clock\n" +
-"        {\n" +
-"            timezone GMT0+1;\n" +
-"            starttime '2013-12-10 12:00:00';\n" +
-"            stoptime '2013-12-10 15:00:00';\n" +
-"        };\n" +
-"\n" +
-"        class player\n" +
-"        {\n" +
-"            complex value;\n" +
-"        };\n" +
-"\n" +
-"        object voltdump\n" +
-"        {\n" +
-"            filename voltdump.csv;\n" +
-"            mode polar;\n" +
-"            runtime '2014-08-19 13:00:00';\n" +
-"        };\n" +
-"\n" +
-"        object line_configuration\n" +
-"        {\n" +
-"            name \"line_3x25Cu/25\";\n" +
-"            z11 0.727+0.08j Ohm/km;\n" +
-"            z12 0.0+0.0j Ohm/km;\n" +
-"            z13 0.0+0.0j Ohm/km;\n" +
-"            z21 0.0+0.0j Ohm/km;\n" +
-"            z22 0.727+0.08j Ohm/km;\n" +
-"            z23 0.0+0.0j Ohm/km;\n" +
-"            z31 0.0+0.0j Ohm/km;\n" +
-"            z32 0.0+0.0j Ohm/km;\n" +
-"            z33 0.727+0.08j Ohm/km;\n" +
-"        };\n" +
-"\n" +
-"        object line_configuration\n" +
-"        {\n" +
-"            name \"line_3x95Cu/95\";\n" +
-"            z11 0.193+0.07j Ohm/km;\n" +
-"            z12 0.0+0.0j Ohm/km;\n" +
-"            z13 0.0+0.0j Ohm/km;\n" +
-"            z21 0.0+0.0j Ohm/km;\n" +
-"            z22 0.193+0.07j Ohm/km;\n" +
-"            z23 0.0+0.0j Ohm/km;\n" +
-"            z31 0.0+0.0j Ohm/km;\n" +
-"            z32 0.0+0.0j Ohm/km;\n" +
-"            z33 0.193+0.07j Ohm/km;\n" +
-"        };\n" +
-"\n" +
-"        object transformer_configuration\n" +
-"        {\n" +
-"            name transformer;\n" +
-"            connect_type WYE_WYE;\n" +
-"            install_type PADMOUNT;\n" +
-"            power_rating 500;\n" +
-"            primary_voltage 4800;\n" +
-"            secondary_voltage 400;\n" +
-"            resistance 0.011;\n" +
-"            reactance 0.02;\n" +
-"        };\n" +
-"\n" +
-"        object node\n" +
-"        {\n" +
-"            name \"HAS42130\";\n" +
-"            phases \"ABCN\";\n" +
-"            bustype PQ;\n" +
-"            nominal_voltage 400V;\n" +
-"        }\n" +
-"\n" +
-"        object meter\n" +
-"        {\n" +
-"            name \"HAS42130_0\";\n" +
-"            phases \"ABCN\";\n" +
-"            bustype PQ;\n" +
-"            nominal_voltage 400V;\n" +
-"        };\n" +
-"\n" +
-"        object underground_line\n" +
-"        {\n" +
-"            name \"HAS42130_0_stub\";\n" +
-"            phases \"ABCN\";\n" +
-"            from \"HAS42130\";\n" +
-"            to \"HAS42130_0\";\n" +
-"            length 25m;\n" +
-"            configuration \"line_3x25Cu/25\";\n" +
-"        };";
-
-        out.append (test);
-
+        if (null != factory)
+        {
+            Connection connection;
+            try
+            {
+                connection = factory.getConnection (remoteConfig ());
+                if (null != connection)
+                {
+                    try
+                    {
+                        String full_file = "hdfs://sandbox:9000/data/" + filename + ".rdf";
+                        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
+                        spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
+                        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+                        input.setRecordShortDescription ("record containing the file name and class and method to run");
+                        input.put ("filename", full_file);
+                        input.put ("class", "ch.ninecode.GridLABD");
+                        if (null == transformer)
+                            input.put ("method", "preparation");
+                        else
+                            input.put ("method", "stuff");
+                        if (null != transformer)
+                            input.put ("transformer", transformer);
+                        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
+                        output.setRecordShortDescription ("the results of the read operation");
+                        final Interaction interaction = connection.createInteraction ();
+                        if (interaction.execute (spec, input, output))
+                        {
+                            String result = output.get ("result").toString ();
+                            out.append (result);
+                        }
+                        interaction.close ();
+                        connection.close ();
+                    }
+                    catch (ResourceException resourceexception)
+                    {
+                        out.append ("ResourceException on interaction");
+                        out.append ("\n");
+                        StringWriter string = new StringWriter ();
+                        PrintWriter writer = new PrintWriter (string);
+                        resourceexception.printStackTrace (writer);
+                        out.append (string.toString ());
+                        writer.close ();
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            connection.close ();
+                        }
+                        catch (ResourceException resourceexception)
+                        {
+                            out.append ("ResourceException on close");
+                            out.append ("\n");
+                            StringWriter string = new StringWriter ();
+                            PrintWriter writer = new PrintWriter (string);
+                            resourceexception.printStackTrace (writer);
+                            out.append (string.toString ());
+                            writer.close ();
+                        }
+                    }
+                }
+            }
+            catch (ResourceException exception)
+            {
+                out.append ("ResourceException");
+                out.append ("\n");
+                StringWriter string = new StringWriter ();
+                PrintWriter writer = new PrintWriter (string);
+                exception.printStackTrace (writer);
+                out.append (string.toString ());
+                writer.close ();
+            }
+        }
         return (Response.ok (out.toString (), MediaType.APPLICATION_OCTET_STREAM)
-            .header ("content-disposition", "attachment; filename =" + "gridlabd.data")
+            .header ("content-disposition", "attachment; filename =" + "gridlabd.glm")
             .build ());
     }
 }

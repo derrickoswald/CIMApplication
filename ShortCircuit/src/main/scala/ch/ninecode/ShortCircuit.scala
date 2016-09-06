@@ -1,4 +1,4 @@
-package ch.ninecode.cim
+package ch.ninecode
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
