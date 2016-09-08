@@ -12,6 +12,7 @@
     <name>ShortCircuit</name>
     <description>Compute short circuit values using Spark and Scala</description>
     <inceptionYear>2016</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/ShortCircuit</url>
 
     <properties>
         <encoding>UTF-8</encoding>
@@ -127,8 +128,8 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.TestSuite</suites>
+                    <filereports>ShortCircuitSuite.txt</filereports>
+                    <suites>ch.ninecode.ShortCircuitSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -142,5 +143,4 @@
         </plugins>
     </build>
 
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/ShortCircuit</url>
 </project>

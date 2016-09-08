@@ -40,7 +40,7 @@ object ShortCircuitApplication
         _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val _SqlContext = new SQLContext (_Context)
 
-        val filename = "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V7_bruegg" + ".rdf"
+        val filename = "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
 
         val start = System.nanoTime ()
 

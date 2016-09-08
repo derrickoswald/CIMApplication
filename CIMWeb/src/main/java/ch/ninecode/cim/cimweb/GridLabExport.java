@@ -2,15 +2,12 @@ package ch.ninecode.cim.cimweb;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.sql.SQLException;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.resource.ConnectionFactoryDefinition;
@@ -18,7 +15,6 @@ import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
-import javax.resource.cci.Record;
 import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
@@ -26,7 +22,6 @@ import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
-import ch.ninecode.cim.connector.CIMResultSet;
 
 @ConnectionFactoryDefinition
 (
