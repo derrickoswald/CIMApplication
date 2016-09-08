@@ -11,9 +11,6 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
 import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -23,7 +20,7 @@ import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-case class PreEdge (id_seq_1: String, id_seq_2: String, id_equ: String, equipment: ConductingEquipment) extends Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
 case class PreNode (id_seq: String, voltage: Double) extends Serializable
 
 class GridLABD extends Serializable
@@ -42,45 +39,64 @@ class GridLABD extends Serializable
         return (null)
     }
 
-    def edge_operator (arg: Tuple2[ConductingEquipment, Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator (arg: Tuple2[Element, Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
         val e = arg._1
         val it = arg._2
-        // sort terminals by sequence number
-        var terminals = it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
-        // make a pre-edge for each pair of terminals
-        ret = terminals.length match
+        // get the ConductingEquipment
+        var c = e
+        while ((null != c) && !c.getClass ().getName ().endsWith (".ConductingEquipment"))
+            c = c.sup
+        if (null != c)
         {
-            case 1 =>
-                ret :+
-                    new PreEdge (
-                        terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                        "",
-                        terminals(0).ConductingEquipment,
-                        e)
-            case 2 =>
-                ret :+
-                    new PreEdge (
-                        terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                        terminals(1).ACDCTerminal.IdentifiedObject.mRID,
-                        terminals(0).ConductingEquipment,
-                        e)
-            case _ =>
-                {
-                    var i = 0
-                    while (i < terminals.length - 1)
+            // sort terminals by sequence number
+            var terminals = it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+            // make a pre-edge for each pair of terminals
+            ret = terminals.length match
+            {
+                case 1 =>
+                    ret :+
+                        new PreEdge (
+                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                            terminals(0).ConnectivityNode,
+                            "",
+                            "",
+                            terminals(0).ConductingEquipment,
+                            c.asInstanceOf[ConductingEquipment],
+                            e)
+                case 2 =>
+                    ret :+
+                        new PreEdge (
+                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                            terminals(0).ConnectivityNode,
+                            terminals(1).ACDCTerminal.IdentifiedObject.mRID,
+                            terminals(1).ConnectivityNode,
+                            terminals(0).ConductingEquipment,
+                            c.asInstanceOf[ConductingEquipment],
+                            e)
+                case _ =>
                     {
-                        ret = ret :+ new PreEdge (
-                                terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                                terminals(i + 1).ACDCTerminal.IdentifiedObject.mRID,
-                                terminals(0).ConductingEquipment,
-                                e)
-                        i += 1
+                        var i = 0
+                        while (i < terminals.length - 1)
+                        {
+                            ret = ret :+ new PreEdge (
+                                    terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                    terminals(0).ConnectivityNode,
+                                    terminals(i + 1).ACDCTerminal.IdentifiedObject.mRID,
+                                    terminals(i + 1).ConnectivityNode,
+                                    terminals(0).ConductingEquipment,
+                                    c.asInstanceOf[ConductingEquipment],
+                                    e)
+                            i += 1
+                        }
+                        ret
                     }
-                    ret
-                }
+            }
         }
+        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
+            // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
+            // ProtectionEquipment and CurrentRelay are emitted with terminals even though they shouldn't be
 
         return (ret)
     }
@@ -91,6 +107,44 @@ class GridLABD extends Serializable
         val voltage = arg._2
         PreNode (node.id, voltage)
     }
+
+    // emit one GridLAB-D node
+    def make_node (node: PreNode): String =
+    {
+        val ret =
+            "        object node\n" +
+            "        {\n" +
+            "            name \"" + node.id_seq + "\";\n" +
+            "            phases \"ABCN\";\n" +
+            "            bustype PQ;\n" +
+            "            nominal_voltage " + node.voltage + "V;\n" +
+            "        }\n" +
+            ""
+        return (ret)
+    }
+    def make_link (edge: PreEdge): String =
+    {
+        val ret =
+            "        object link\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "\";\n" +
+            "            phases ABCN;\n" +
+            "            from \"" + edge.id_cn_1 + "\";\n" +
+            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "        }\n" +
+            ""
+        return (ret)
+    }
+
+//            "        object underground_line\n" +
+//            "        {\n" +
+//            "            name \"HAS42130_0_stub\";\n" +
+//            "            phases \"ABCN\";\n" +
+//            "            from \"HAS42130\";\n" +
+//            "            to \"HAS42130_0\";\n" +
+//            "            length 25m;\n" +
+//            "            configuration \"line_3x25Cu/25\";\n" +
+//            "        };" +
 
     def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
@@ -192,14 +246,6 @@ class GridLABD extends Serializable
             "            reactance 0.02;\n" +
             "        };\n" +
             "\n" +
-//            "        object node\n" +
-//            "        {\n" +
-//            "            name \"HAS42130\";\n" +
-//            "            phases \"ABCN\";\n" +
-//            "            bustype PQ;\n" +
-//            "            nominal_voltage 400V;\n" +
-//            "        }\n" +
-//            "\n" +
 //            "        object meter\n" +
 //            "        {\n" +
 //            "            name \"HAS42130_0\";\n" +
@@ -208,15 +254,6 @@ class GridLABD extends Serializable
 //            "            nominal_voltage 400V;\n" +
 //            "        };\n" +
 //            "\n" +
-//            "        object underground_line\n" +
-//            "        {\n" +
-//            "            name \"HAS42130_0_stub\";\n" +
-//            "            phases \"ABCN\";\n" +
-//            "            from \"HAS42130\";\n" +
-//            "            to \"HAS42130_0\";\n" +
-//            "            length 25m;\n" +
-//            "            configuration \"line_3x25Cu/25\";\n" +
-//            "        };" +
             "";
 
         val result = new StringBuilder ()
@@ -232,14 +269,8 @@ class GridLABD extends Serializable
         val edgeFileName = "/output/gridlabd_edges"
         val edgePath = new Path (edgeFileName)
 
-        if (hdfs.delete (nodePath, true))
-            result.append ("deleted " + nodeFileName + "\n")
-        else
-            result.append ("could not delete " + nodeFileName + "\n")
-        if (hdfs.delete (edgePath, true))
-            result.append ("deleted " + edgeFileName + "\n")
-        else
-            result.append ("could not delete " + edgeFileName + "\n")
+        hdfs.delete (nodePath, true)
+        hdfs.delete (edgePath, true)
 
         // for now add all nodes and edges
 
@@ -249,8 +280,8 @@ class GridLABD extends Serializable
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
-        // get the conducting equipment
-        val equipment = get ("ConductingEquipment", sc).asInstanceOf[RDD[ConductingEquipment]]
+        // get all elements
+        val equipment = get ("Elements", sc).asInstanceOf[RDD[Element]]
 
         // map the terminal 'pairs' to edges
         val edges = equipment.keyBy (_.id).join (terms).flatMapValues (edge_operator).values
@@ -260,47 +291,23 @@ class GridLABD extends Serializable
 
         def voltage_operator (arg: Tuple2[String,PreEdge]): (String, Double) =
         {
-            (arg._1, voltages.getOrElse (arg._2.equipment.BaseVoltage, 0.0))
+            (arg._1, 1000.0 * voltages.getOrElse (arg._2.equipment.BaseVoltage, 0.0))
         }
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).map (voltage_operator).union (edges.keyBy (_.id_seq_2).map (voltage_operator)).distinct
-        println ("tv " + tv.count + " elements")
 
         // get the connectivity nodes RDD
         val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
 
-        // map the connectivity nodes to nodes with voltages
+        // map the connectivity nodes to prenodes with voltages
         val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
 
-        println ("nodes " + nodes.count + " elements")
-        val n_strings = nodes.map ( node => { "node: " + node.id_seq + " " + node.voltage + "\n" });
-
-        println ("edges " + edges.count + " elements")
-        val e_strings = edges.map ( edge => { "edge: " + edge.id_equ + " " + edge.equipment.getClass ().getName () + "\n" });
+        val n_strings = nodes.map (make_node);
+        val e_strings = edges.map (make_link);
 
         n_strings.saveAsTextFile ("hdfs://sandbox:9000" + nodeFileName)
         e_strings.saveAsTextFile ("hdfs://sandbox:9000" + edgeFileName)
-
-//        {
-//            val status = hdfs.getFileStatus (nodePath)
-//            val reader = new InputStreamReader (hdfs.open (nodePath), "UTF-8")
-//            val length = status.getLen.asInstanceOf[Integer]
-//            val buffer = new Array[Char](length)
-//            val read = reader.read (buffer, 0, length)
-//            reader.close
-//            result.append (buffer)
-//        }
-//
-//        {
-//            val status = hdfs.getFileStatus (edgePath)
-//            val reader = new InputStreamReader (hdfs.open (edgePath), "UTF-8")
-//            val length = status.getLen.asInstanceOf[Integer]
-//            val buffer = new Array[Char](length)
-//            val read = reader.read (buffer, 0, length)
-//            reader.close
-//            result.append (buffer)
-//        }
 
         val nodefiles = sc.wholeTextFiles ("hdfs://sandbox:9000" + nodeFileName)
         val edgefiles = sc.wholeTextFiles ("hdfs://sandbox:9000" + edgeFileName)
