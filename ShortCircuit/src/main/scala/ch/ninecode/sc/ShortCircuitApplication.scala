@@ -1,4 +1,4 @@
-package ch.ninecode
+package ch.ninecode.sc
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
@@ -9,6 +9,7 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
+import ch.ninecode.sc.ShortCircuit;
 
 object ShortCircuitApplication
 {

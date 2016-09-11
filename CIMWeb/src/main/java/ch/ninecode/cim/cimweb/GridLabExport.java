@@ -81,7 +81,7 @@ public class GridLabExport
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
-                        input.put ("class", "ch.ninecode.GridLABD");
+                        input.put ("class", "ch.ninecode.gl.GridLABD");
                         if (null == transformer)
                             input.put ("method", "preparation");
                         else

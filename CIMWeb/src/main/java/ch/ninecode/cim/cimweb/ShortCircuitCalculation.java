@@ -87,7 +87,7 @@ public class ShortCircuitCalculation
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
                         input.put ("csv", "hdfs://sandbox:9000/data/" + spreadsheet + ".csv");
-                        input.put ("class", "ch.ninecode.ShortCircuit");
+                        input.put ("class", "ch.ninecode.sc.ShortCircuit");
                         if (null == transformer)
                             input.put ("method", "preparation");
                         else

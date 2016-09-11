@@ -1,4 +1,4 @@
-package ch.ninecode
+package ch.ninecode.gl
 
 import java.nio.file.{Paths, Files}
 import java.nio.charset.StandardCharsets

@@ -1,4 +1,4 @@
-package ch.ninecode
+package ch.ninecode.gl
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._

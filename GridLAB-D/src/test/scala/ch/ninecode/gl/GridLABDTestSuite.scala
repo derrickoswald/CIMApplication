@@ -1,4 +1,4 @@
-package ch.ninecode
+package ch.ninecode.gl
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext

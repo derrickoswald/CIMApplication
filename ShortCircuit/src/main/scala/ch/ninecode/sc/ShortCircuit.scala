@@ -1,4 +1,4 @@
-package ch.ninecode
+package ch.ninecode.sc
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
@@ -359,7 +359,7 @@ class ShortCircuit extends Serializable
             some_vertices = vertices
 
         // construct the initial graph from the augmented elements (vertices) and edges
-        val default = VertexData ("", "", "", null, true, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List (), false), false)
+        val default = VertexData ("", "", "", null, true, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List[Tuple2[String,Double]] (), false), false)
         val initial = Graph.apply[VertexData, EdgePlus] (some_vertices, edges, default)
 
         // do the Pregel algorithm
