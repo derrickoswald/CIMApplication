@@ -1,18 +1,14 @@
-<?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>GridLAB-D</artifactId>
-    <groupId>ch.ninecode</groupId>
-    <name>GridLAB-D</name>
-    <description>Export GridLAB-D file using Spark and Scala</description>
-    <inceptionYear>2016</inceptionYear>
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
+    <groupId>ch.ninecode.spatial</groupId>
+    <artifactId>Spatial</artifactId>
+    <name>Spatial</name>
+    <description>Spatial operations for CIM on Spark</description>
 
     <properties>
         <encoding>UTF-8</encoding>
@@ -128,8 +124,8 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>GridLABDSuite.txt</filereports>
-                    <suites>ch.ninecode.gl.GridLABDSuite</suites>
+                    <filereports>SpatialSuite.txt</filereports>
+                    <suites>ch.ninecode.spatial.SpatialSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -142,5 +138,6 @@
             </plugin>
         </plugins>
     </build>
-
+    
+    <inceptionYear>2016</inceptionYear>
 </project>

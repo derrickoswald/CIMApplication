@@ -32,7 +32,8 @@ public class ApplicationConfig extends Application
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,
                 ShortCircuitCalculation.class,
-                GridLabExport.class));
+                GridLabExport.class,
+                Spatial.class));
     }
 }
 
