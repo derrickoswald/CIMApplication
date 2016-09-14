@@ -84,6 +84,7 @@ public class Spatial
                         input.put ("filename", full_file);
                         input.put ("class", "ch.ninecode.spatial.SpatialOperations");
                         input.put ("method", "nearest");
+                        input.put ("jars", "/home/derrick/code/CIMApplication/Spatial/target/Spatial-1.0-SNAPSHOT.jar");
 
                         input.put ("psr", "EnergyConsumer");
                         input.put ("lon", "7.281558");

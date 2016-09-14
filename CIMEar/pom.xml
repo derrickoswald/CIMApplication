@@ -45,14 +45,19 @@
                             <bundleFileName>CIMWeb.war</bundleFileName>
                         </webModule>
                         <jarModule>
-                            <groupId>ch.ninecode</groupId>
+                            <groupId>ch.ninecode.sc</groupId>
                             <artifactId>ShortCircuit</artifactId>
                             <bundleFileName>ShortCircuit-1.0-SNAPSHOT.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
-                            <groupId>ch.ninecode</groupId>
+                            <groupId>ch.ninecode.gl</groupId>
                             <artifactId>GridLAB-D</artifactId>
                             <bundleFileName>GridLAB-D-1.0-SNAPSHOT.jar</bundleFileName>
+                        </jarModule>
+                        <jarModule>
+                            <groupId>ch.ninecode.spatial</groupId>
+                            <artifactId>Spatial</artifactId>
+                            <bundleFileName>Spatial-1.0-SNAPSHOT.jar</bundleFileName>
                         </jarModule>
                     </modules>
                 </configuration>
@@ -77,15 +82,22 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode</groupId>
+            <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode</groupId>
+            <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.spatial</groupId>
+            <artifactId>Spatial</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>jar</type>
         </dependency>

@@ -253,6 +253,11 @@ public class CIMInteractionImpl implements Interaction
                                 String method = record.get ("method").toString ();
                                 SparkContext sc = connection._ManagedConnection._SparkContext;
                                 SQLContext sql = connection._ManagedConnection._SqlContext;
+                                Object jars = record.get ("jars");
+                                if (null != jars)
+                                    for (String jar: jars.toString ().split (","))
+                                        if (!sc.jars().contains (jar))
+                                            sc.addJar (jar);
 //                                ToDo: don't know the mapping from Java world to Scala world
 //                                HashMap<String,String> map = new HashMap<String,String> ();
 //                                for (Object key: record.keySet ())

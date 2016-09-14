@@ -76,15 +76,22 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode</groupId>
+            <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode</groupId>
+            <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.spatial</groupId>
+            <artifactId>Spatial</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
