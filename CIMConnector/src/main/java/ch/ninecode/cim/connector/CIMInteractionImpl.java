@@ -11,6 +11,7 @@ import javax.resource.cci.Record;
 import javax.resource.cci.ResourceWarning;
 
 import org.apache.spark.SparkContext;
+import org.apache.spark.sql.execution.QueryExecution;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.SQLContext;
 
@@ -59,7 +60,7 @@ public class CIMInteractionImpl implements Interaction
     protected DataFrame readFile (SQLContext context, String filename) throws ResourceException
     {
         DataFrame element = context.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
-        org.apache.spark.sql.execution.QueryExecution plan = element.queryExecution ();
+        QueryExecution plan = element.queryExecution ();
         String test = plan.toString ();
 //        res9: String =
 //        == Parsed Logical Plan ==

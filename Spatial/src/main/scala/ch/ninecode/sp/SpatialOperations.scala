@@ -1,16 +1,20 @@
 package ch.ninecode.sp
 
+import java.io.UnsupportedEncodingException
+import java.net.URLDecoder
+
+import scala.reflect.runtime.universe
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx._
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
-import java.net.URLDecoder
-
-import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
@@ -66,5 +70,81 @@ class SpatialOperations extends Serializable
         }
 
         return (sqlContext.createDataFrame (located_consumers.sortBy (ordering).map (_._1).take (n))) // ToDo: takeOrdered in one step?
+    }
+}
+
+object SpatialOperations
+{
+    def jarForObject (obj: Object): String =
+    {
+        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+        try
+        {
+            ret = URLDecoder.decode (ret, "UTF-8")
+        }
+        catch
+        {
+            case e: UnsupportedEncodingException => e.printStackTrace ()
+        }
+        if (!ret.toLowerCase ().endsWith (".jar"))
+        {
+            // as an aid to debugging, make jar in tmp and pass that name
+            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
+            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
+            writer.close ()
+            ret = name
+        }
+
+        return (ret)
+    }
+
+    def main (args: Array[String])
+    {
+        val spatial = new SpatialOperations ()
+        val filename = if (args.length > 0)
+            args (0)
+        else
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+
+        // create the configuration
+        val configuration = new SparkConf (false)
+        configuration.setAppName ("ShortCircuit")
+        configuration.setMaster ("spark://sandbox:7077")
+        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
+        configuration.set ("spark.driver.memory", "1g")
+        configuration.set ("spark.executor.memory", "4g")
+        // get the necessary jar files to send to the cluster
+        val s1 = jarForObject (new DefaultSource ()) // "/home/derrick/code/CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"
+        val s2 = jarForObject (spatial) // "/home/derrick/code/CIMApplication/Spatial/target/Spatial-1.0-SNAPSHOT.jar"
+        configuration.setJars (Array (s1, s2))
+
+        // register low level classes
+        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
+        // register CIM case classes
+        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
+        // register edge related classes
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
+
+        // make a Spark context and SQL context
+        val _Context = new SparkContext (configuration)
+        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        val _SqlContext = new SQLContext (_Context)
+
+        val start = System.nanoTime ()
+
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename)
+        val count = elements.count
+
+        val read = System.nanoTime ()
+
+        spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
+
+        println ("" + count + " elements")
+        println ("read : " + (read - start) / 1e9 + " seconds")
+        println ("execute: " + (System.nanoTime () - read) / 1e9 + " seconds")
+        println ();
     }
 }
