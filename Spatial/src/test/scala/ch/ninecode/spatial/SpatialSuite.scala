@@ -2,6 +2,8 @@ package ch.ninecode.spatial
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.execution.QueryExecution
+import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
@@ -22,6 +24,7 @@ class SpatialSuite extends fixture.FunSuite
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
         // create the fixture
+        val start = System.nanoTime ()
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -40,6 +43,9 @@ class SpatialSuite extends fixture.FunSuite
         val context = new SparkContext (configuration)
         context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val sql_context = new SQLContext (context)
+
+        val end = System.nanoTime ()
+        println ("setup : " + (end - start) / 1e9 + " seconds")
         try
         {
             withFixture (test.toNoArgTest (ContextPair (context, sql_context))) // "loan" the fixture to the test
@@ -47,19 +53,28 @@ class SpatialSuite extends fixture.FunSuite
         finally context.stop () // clean up the fixture
     }
 
+    def readFile (context: SQLContext, filename: String): DataFrame =
+    {
+        val element = context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
+        val plan = element.queryExecution;
+        val test = plan.toString ();
+        if (!test.contains ("InputPaths"))
+            throw new Exception ("input file not found: " + filename);
+
+        return (element);
+    }
+
     test ("Basic")
     {
         a: ContextPair ⇒
+
+        val start = System.nanoTime ()
 
         val context: SparkContext = a._SparkContext
         val sql_context: SQLContext = a._SQLContext
 
         val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
-
-        val start = System.nanoTime ()
-
-        val elements = sql_context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename)
-        val count = elements.count
+        val elements = readFile (sql_context, filename)
 
         val read = System.nanoTime ()
 
@@ -67,13 +82,33 @@ class SpatialSuite extends fixture.FunSuite
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         val results = spatial.nearest (context, sql_context, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
         val array = results.collect ()
-        println (array (0))
 
-        println ("" + count + " elements")
+        val process1 = System.nanoTime ()
+
+        val results2 = spatial.nearest (context, sql_context, "psr=EnergyConsumer,lon=7.301368,lat=47.104892,n=5")
+        val array2 = results2.collect ()
+
+        val process2 = System.nanoTime ()
+
+        var text = array (0).toString ()
+        println (text)
+        // [[[[[[null,HAS164036],269859107:nis_el_house_service,null,HAS164036,HAS164036],null,_location_654219_565962113_269859109,PSRType_Unknown],false,false,_line_ABG23661|HAS164036|KLE457618],BaseVoltage_400,null,null,null],0,false,0.0,0.0,0.0,null,0.0,0.0,0.0,null,null,null]
+        assert (text.contains ("HAS164036"))
+
+        text = array2 (0).toString ()
+        println (text)
+        // [[[[[[null,HAS42693],209444066:nis_el_house_service,null,HAS42693,HAS42693],null,_location_655173_976061239_209444068,PSRType_Unknown],false,false,_line_ABG159742|HAS42693|KLE97274],BaseVoltage_400,null,null,null],0,false,0.0,0.0,0.0,null,0.0,0.0,0.0,null,null,null]
+        assert (text.contains ("HAS42693"))
+
         println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("print: " + (System.nanoTime () - read) / 1e9 + " seconds")
+        println ("process first location: " + (process1 - read) / 1e9 + " seconds")
+        println ("process second location: " + (process2 - process1) / 1e9 + " seconds")
         println ();
 
+        // setup : 5.444885289 seconds
+        // read : 3.575346462 seconds
+        // process first location: 22.219852666 seconds
+        // process second location: 2.911512529 seconds
     }
 
 }

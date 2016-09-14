@@ -41,14 +41,6 @@ class SpatialOperations extends Serializable
         // get how many
         val n = arguments.getOrElse ("n", "5").toInt
 
-        // add a JAR dependency for all tasks to be executed on this SparkContext in the future
-        // for the jar file this command is executing from
-        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        val path = this.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
-        val decodedPath = URLDecoder.decode (path, "UTF-8");
-        if (decodedPath.endsWith (".jar"))
-            sc.addJar (decodedPath)
-
 //        // get all objects with a location attribute
 //        val psrs = sc.getPersistentRDDs.values.filter ((x) => {"PowerSystemResource" == x.name}).head.asInstanceOf[RDD[PowerSystemResource]]
 //        // get the rdd
