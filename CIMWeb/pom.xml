@@ -90,7 +90,7 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.spatial</groupId>
+            <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>provided</scope>

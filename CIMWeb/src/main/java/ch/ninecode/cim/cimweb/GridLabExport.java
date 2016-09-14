@@ -2,6 +2,8 @@ package ch.ninecode.cim.cimweb;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
@@ -22,6 +24,7 @@ import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
+import ch.ninecode.gl.GridLABD;
 
 @ConnectionFactoryDefinition
 (
@@ -53,7 +56,6 @@ public class GridLabExport
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
-        ret.getJars ().add ("/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/lib/GridLAB-D-1.0-SNAPSHOT.jar");
 
         return (ret);
     }
@@ -81,7 +83,23 @@ public class GridLabExport
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
-                        input.put ("class", "ch.ninecode.gl.GridLABD");
+
+                        // set up the method call details for the CIMConnector
+                        GridLABD gl = new GridLABD ();
+                        input.put ("class", gl.getClass ().getName ());
+                        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+                        String path = gl.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
+                        String decodedPath;
+                        try
+                        {
+                            decodedPath = URLDecoder.decode (path, "UTF-8");
+                        }
+                        catch (UnsupportedEncodingException e)
+                        {
+                            decodedPath = path;
+                        }
+                        if (decodedPath.endsWith (".jar"))
+                            input.put ("jars", decodedPath);
                         if (null == transformer)
                             input.put ("method", "preparation");
                         else

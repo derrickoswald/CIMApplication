@@ -1,4 +1,4 @@
-package ch.ninecode.spatial
+package ch.ninecode.sp
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
@@ -78,7 +78,7 @@ class SpatialSuite extends fixture.FunSuite
 
         val read = System.nanoTime ()
 
-        val spatial = new ch.ninecode.spatial.SpatialOperations ()
+        val spatial = new ch.ninecode.sp.SpatialOperations ()
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         val results = spatial.nearest (context, sql_context, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
         val array = results.collect ()

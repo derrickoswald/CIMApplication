@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-// was this simple Application defintion:
+// was this simple Application definition:
 //     @ApplicationPath ("/cim")
 //     public class ApplicationConfig extends Application
 //     {

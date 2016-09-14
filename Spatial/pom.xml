@@ -5,10 +5,11 @@
         <artifactId>CIMApplication</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <groupId>ch.ninecode.spatial</groupId>
+    <groupId>ch.ninecode.sp</groupId>
     <artifactId>Spatial</artifactId>
     <name>Spatial</name>
     <description>Spatial operations for CIM on Spark</description>
+    <inceptionYear>2016</inceptionYear>
 
     <properties>
         <encoding>UTF-8</encoding>
@@ -125,7 +126,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>SpatialSuite.txt</filereports>
-                    <suites>ch.ninecode.spatial.SpatialSuite</suites>
+                    <suites>ch.ninecode.sp.SpatialSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -139,5 +140,4 @@
         </plugins>
     </build>
     
-    <inceptionYear>2016</inceptionYear>
 </project>

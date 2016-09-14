@@ -2,6 +2,8 @@ package ch.ninecode.cim.cimweb;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.sql.SQLException;
 
 import javax.annotation.Resource;
@@ -24,6 +26,7 @@ import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 import ch.ninecode.cim.connector.CIMResultSet;
+import ch.ninecode.sp.SpatialOperations;
 
 @ConnectionFactoryDefinition
 (
@@ -82,9 +85,24 @@ public class Spatial
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
-                        input.put ("class", "ch.ninecode.spatial.SpatialOperations");
+
+                        // set up the method call details for the CIMConnector
+                        SpatialOperations ops = new SpatialOperations ();
+                        input.put ("class", ops.getClass ().getName ());
+                        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+                        String path = ops.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
+                        String decodedPath;
+                        try
+                        {
+                            decodedPath = URLDecoder.decode (path, "UTF-8");
+                        }
+                        catch (UnsupportedEncodingException e)
+                        {
+                            decodedPath = path;
+                        }
+                        if (decodedPath.endsWith (".jar"))
+                            input.put ("jars", decodedPath);
                         input.put ("method", "nearest");
-                        input.put ("jars", "/home/derrick/code/CIMApplication/Spatial/target/Spatial-1.0-SNAPSHOT.jar");
 
                         input.put ("psr", "EnergyConsumer");
                         input.put ("lon", "7.281558");

@@ -1,4 +1,4 @@
-package ch.ninecode.spatial
+package ch.ninecode.sp
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext

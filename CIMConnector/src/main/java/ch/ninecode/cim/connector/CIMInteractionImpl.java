@@ -135,6 +135,11 @@ public class CIMInteractionImpl implements Interaction
                                     String method = record.get ("method").toString ();
                                     SparkContext sc = connection._ManagedConnection._SparkContext;
                                     SQLContext sql = connection._ManagedConnection._SqlContext;
+                                    Object jars = record.get ("jars");
+                                    if (null != jars)
+                                        for (String jar: jars.toString ().split (","))
+                                            if (!sc.jars().contains (jar))
+                                                sc.addJar (jar);
                                     String args = "";
                                     for (Object key: record.keySet ())
                                         if ((key != "filename") && (key != "class") && (key != "method"))
