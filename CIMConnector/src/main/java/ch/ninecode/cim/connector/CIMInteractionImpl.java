@@ -59,7 +59,8 @@ public class CIMInteractionImpl implements Interaction
 
     protected DataFrame readFile (SQLContext context, String filename) throws ResourceException
     {
-        DataFrame element = context.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
+        String[] files = filename.split (",");
+        DataFrame element = context.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files);
         QueryExecution plan = element.queryExecution ();
         String test = plan.toString ();
 //        res9: String =

@@ -3,7 +3,7 @@ package ch.ninecode.sp
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
@@ -55,13 +55,14 @@ class SpatialSuite extends fixture.FunSuite
 
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
-        val element = context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename);
-        val plan = element.queryExecution;
-        val test = plan.toString ();
+        val files = filename.split (",")
+        val element = context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
+        val plan = element.queryExecution
+        val test = plan.toString ()
         if (!test.contains ("InputPaths"))
-            throw new Exception ("input file not found: " + filename);
+            throw new Exception ("input file not found: " + filename)
 
-        return (element);
+        return (element)
     }
 
     test ("Basic")
@@ -103,7 +104,7 @@ class SpatialSuite extends fixture.FunSuite
         println ("read : " + (read - start) / 1e9 + " seconds")
         println ("process first location: " + (process1 - read) / 1e9 + " seconds")
         println ("process second location: " + (process2 - process1) / 1e9 + " seconds")
-        println ();
+        println ()
 
         // setup : 5.444885289 seconds
         // read : 3.575346462 seconds

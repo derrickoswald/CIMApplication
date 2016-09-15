@@ -388,8 +388,8 @@ object GridLABD
         val _SqlContext = new SQLContext (_Context)
 
         val start = System.nanoTime ()
-
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename)
+        val files = filename.split (",")
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()

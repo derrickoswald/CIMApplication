@@ -61,8 +61,8 @@ class ShortCircuitSuite extends fixture.FunSuite
         val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V7_bruegg" + ".rdf"
 
         val start = System.nanoTime ()
-
-        val elements = sql_context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (filename)
+        val files = filename.split (",")
+        val elements = sql_context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
