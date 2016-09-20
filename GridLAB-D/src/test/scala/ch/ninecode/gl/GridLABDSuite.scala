@@ -11,7 +11,7 @@ import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class GridLABDTestSuite extends fixture.FunSuite
+class GridLABDSuite extends fixture.FunSuite
 {
     case class ContextPair (_SparkContext: SparkContext, _SQLContext: SQLContext)
 

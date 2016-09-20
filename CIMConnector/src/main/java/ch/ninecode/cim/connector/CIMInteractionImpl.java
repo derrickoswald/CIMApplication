@@ -1,5 +1,6 @@
 package ch.ninecode.cim.connector;
 
+import java.util.HashMap;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -60,7 +61,11 @@ public class CIMInteractionImpl implements Interaction
     protected DataFrame readFile (SQLContext context, String filename) throws ResourceException
     {
         String[] files = filename.split (",");
-        DataFrame element = context.read ().format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files);
+        HashMap<String,String> options = new HashMap<> ();
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
+        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
+        options.put ("ch.ninecode.cim.do_join", "false");
+        DataFrame element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
         QueryExecution plan = element.queryExecution ();
         String test = plan.toString ();
 //        res9: String =

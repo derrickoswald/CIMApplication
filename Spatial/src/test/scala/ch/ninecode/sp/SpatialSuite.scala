@@ -1,5 +1,8 @@
 package ch.ninecode.sp
 
+import java.util.HashMap
+import java.util.Map
+
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.execution.QueryExecution
@@ -56,7 +59,11 @@ class SpatialSuite extends fixture.FunSuite
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
-        val element = context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
+        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
+        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
+        options.put ("ch.ninecode.cim.do_join", "false");
+        val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val plan = element.queryExecution
         val test = plan.toString ()
         if (!test.contains ("InputPaths"))

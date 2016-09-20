@@ -2,6 +2,8 @@ package ch.ninecode.sc
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
+import java.util.HashMap
+import java.util.Map
 
 import scala.Iterator
 import scala.reflect.runtime.universe
@@ -651,7 +653,11 @@ object ShortCircuit
 
         val start = System.nanoTime ()
         val files = filename.split (",")
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
+        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
+        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
+        options.put ("ch.ninecode.cim.do_join", "false");
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()

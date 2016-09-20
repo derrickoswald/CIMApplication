@@ -1,5 +1,8 @@
 package ch.ninecode.sc
 
+import java.util.HashMap
+import java.util.Map
+
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SQLContext
@@ -62,7 +65,11 @@ class ShortCircuitSuite extends fixture.FunSuite
 
         val start = System.nanoTime ()
         val files = filename.split (",")
-        val elements = sql_context.read.format ("ch.ninecode.cim").option ("StorageLevel", "MEMORY_AND_DISK_SER").load (files:_*)
+        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
+        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
+        options.put ("ch.ninecode.cim.do_join", "false");
+        val elements = sql_context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
