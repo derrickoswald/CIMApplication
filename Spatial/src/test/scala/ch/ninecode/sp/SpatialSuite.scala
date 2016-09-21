@@ -61,8 +61,8 @@ class SpatialSuite extends fixture.FunSuite
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "false");
+        options.put ("ch.ninecode.cim.make_edges", "false");
+        options.put ("ch.ninecode.cim.do_join", "true");
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val plan = element.queryExecution
         val test = plan.toString ()
@@ -81,7 +81,10 @@ class SpatialSuite extends fixture.FunSuite
         val context: SparkContext = a._SparkContext
         val sql_context: SQLContext = a._SQLContext
 
-        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+        val filename =
+        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf" +
+        "," +
+        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
         val elements = readFile (sql_context, filename)
 
         val read = System.nanoTime ()

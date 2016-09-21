@@ -79,7 +79,15 @@ public class Spatial
                 {
                     try
                     {
-                        String full_file = "hdfs://sandbox:9000/data/" + filename + ".rdf";
+                        // allow for multiple file names
+                        String[] files = filename.split (",");
+                        String full_file = "";
+                        for (int i = 0; i < files.length; i++)
+                        {
+                            if ("" != full_file)
+                                full_file += ",";
+                            full_file += "hdfs://sandbox:9000/data/" + files[i] + ".rdf";
+                        }
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                         spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
