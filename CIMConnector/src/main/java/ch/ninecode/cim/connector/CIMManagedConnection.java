@@ -1,6 +1,8 @@
 package ch.ninecode.cim.connector;
 
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.Enumeration;
 import java.util.Vector;
 
@@ -72,6 +74,43 @@ public class CIMManagedConnection implements ManagedConnection
             list.nextElement ().connectionClosed (event);
     }
 
+    /**
+     * Get the name of the CIMScala jar file.
+     * @see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+     * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
+     */
+    protected String CIMScalaJarPath ()
+        throws ResourceException
+    {
+        PrintWriter logger;
+        String ret;
+
+        logger = getLogWriter ();
+        // arbitrarily pick a class to instantiate
+        ret = (new DefaultSource ()).getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
+        try
+        {
+            ret = URLDecoder.decode (ret, "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            // good enough
+        }
+
+        if (!ret.endsWith (".jar"))
+        {
+            if (null != logger)
+                logger.println ("CIMScala jar file could not be determined");
+            ret = null;
+        }
+        else
+            if (null != logger)
+                logger.println ("CIMScala jar file: " + ret);
+                // i.e.  /opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar
+
+        return (ret);
+    }
+
     public void connect (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
     {
@@ -90,23 +129,34 @@ public class CIMManagedConnection implements ManagedConnection
         // create the configuration
         SparkConf configuration = new SparkConf (false);
         configuration.setAppName ("CIMConnector");
-        if (_info.getMaster () != "")
+        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
+
+        // set up the spark master
+        if ("" != _info.getMaster ())
             configuration.setMaster (_info.getMaster ());
         else
-            configuration.setMaster ("local[*]"); // run Spark locally with as many worker threads as logical cores on the machine
+            // run Spark locally with as many worker threads as logical cores on the machine
+            configuration.setMaster ("local[*]");
+
+        // add the other properties
         for (String key : _info.getProperties ().keySet ())
             configuration.set (key, _info.getProperties ().get (key));
-        String[] jars = new String[_info.getJars ().size () + 1];
+
+        // set up the list of jars to send with the connection request
+        String jar = CIMScalaJarPath ();
+        String[] jars = new String[_info.getJars ().size () + (null == jar ? 0 : 1)];
         jars = _info.getJars ().toArray (jars);
-        jars[jars.length - 1] = _Adapter.getCIMScalaJarPath ();
+        if (null != jar)
+            jars[jars.length - 1] = jar;
         configuration.setJars (jars);
-        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
+
         if (null != logger)
             logger.println ("SparkConf = " + configuration.toDebugString ());
+
 //        try
 //        {
 //            System.out.println ("SparkConf = " + configuration.toDebugString ());
-//            System.getProperties ().store (System.out, "current propeties");
+//            System.getProperties ().store (System.out, "current properties");
 //        }
 //        catch (java.io.IOException e)
 //        {

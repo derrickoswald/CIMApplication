@@ -1,5 +1,8 @@
 package ch.ninecode.cim.connector;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+
 import javax.naming.NamingException;
 import javax.naming.Reference;
 import javax.resource.ResourceException;
@@ -77,4 +80,60 @@ public class CIMConnectionFactory implements ConnectionFactory
         return (new CIMRecordFactory ());
     }
 
+    /**
+     * Build a connection specification with the configured settings.
+     * @return a connection specification that is probably good enough
+     */
+    public CIMConnectionSpec getDefaultConnectionSpec ()
+    {
+        CIMConnectionSpec ret;
+
+        ret = new CIMConnectionSpec ();
+
+        ret.setUserName ("derrick"); // not currently used
+        ret.setPassword ("secret"); // not currently used
+        ret.getProperties ().put ("spark.driver.memory", _ManagedConnectionFactory._ResourceAdapter.getSparkDriverMemory ());
+        ret.getProperties ().put ("spark.executor.memory", _ManagedConnectionFactory._ResourceAdapter.getSparkExecutorMemory ());
+
+        return (ret);
+    }
+
+    /**
+     * Get the name of a jar file for an object class.
+     * @see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+     * @param obj the object to get the jar file for
+     * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
+     */
+    public String JarPath (Object obj)
+    {
+        String ret;
+
+        // arbitrarily pick a class to instantiate
+        ret = obj.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
+        try
+        {
+            ret = URLDecoder.decode (ret, "UTF-8");
+        }
+        catch (UnsupportedEncodingException e)
+        {
+            // good enough
+        }
+
+        if (!ret.endsWith (".jar"))
+            ret = null;
+
+        return (ret);
+    }
+
+    public String InputPath (String filestub)
+    {
+        StringBuilder ret;
+
+        ret = new StringBuilder ();
+        ret.append (_ManagedConnectionFactory._ResourceAdapter.getInputFilePrefix ());
+        ret.append (filestub);
+        ret.append (_ManagedConnectionFactory._ResourceAdapter.getInputFileSuffix ());
+
+        return (ret.toString ());
+    }
 }

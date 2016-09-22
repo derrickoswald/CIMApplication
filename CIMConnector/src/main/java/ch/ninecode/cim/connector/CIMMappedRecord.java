@@ -22,6 +22,30 @@ public class CIMMappedRecord implements MappedRecord
         throw new CloneNotSupportedException();
     }
 
+    public String toString ()
+    {
+        StringBuilder ret = new StringBuilder ();
+        boolean more = false;
+
+        ret.append (getRecordName ());
+        ret.append (" (");
+        ret.append (getRecordShortDescription ());
+        ret.append (") ");
+        ret.append ("[");
+        for (Object obj: keySet ())
+        {
+            if (more)
+                ret.append (", ");
+            ret.append (obj.toString ());
+            ret.append (" = ");
+            ret.append (get (obj));
+            more = true;
+        }
+        ret.append ("]");
+
+        return (ret.toString ());
+    }
+
     @Override
     public String getRecordName ()
     {

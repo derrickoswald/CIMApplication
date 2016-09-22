@@ -296,10 +296,14 @@ public class CIMInteractionImpl implements Interaction
                                         {
                                             try
                                             {
+                                                System.out.println ("readFile " + filename);
                                                 readFile (sql, filename);
                                                 _method.setAccessible (true);
+                                                System.out.println (method + " (sc, sql, \"" + args + "\")");
                                                 Object o = _method.invoke (_obj, sc, sql, args);
+                                                System.out.println ("got a result");
                                                 DataFrame result = (DataFrame)o;
+                                                System.out.println ("it's a DataFrame with " + result.count () + " rows");
                                                 ret = new CIMResultSet (result.schema (), result.collect ());;
                                             }
                                             catch (InvocationTargetException ite)

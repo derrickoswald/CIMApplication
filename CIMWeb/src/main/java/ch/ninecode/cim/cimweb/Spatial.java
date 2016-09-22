@@ -5,13 +5,21 @@ import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.sql.SQLException;
+import java.util.List;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.MatrixParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.PathSegment;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import javax.resource.ConnectionFactoryDefinition;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -39,34 +47,25 @@ import ch.ninecode.sp.SpatialOperations;
 )
 
 @Stateless
-@Path("/Spatial/{file}")
+@Path("Spatial/")
 public class Spatial
 {
     @Resource (lookup="openejb:Resource/CIMConnector.rar")
     CIMConnectionFactory factory;
 
-    /**
-     * Build a connection specification used by all the tests.
-     * @return
-     */
-    CIMConnectionSpec remoteConfig ()
-    {
-        CIMConnectionSpec ret;
-
-        ret = new CIMConnectionSpec ();
-        ret.setUserName ("derrick"); // not currently used
-        ret.setPassword ("secret"); // not currently used
-        ret.getProperties ().put ("spark.driver.memory", "1g");
-        ret.getProperties ().put ("spark.executor.memory", "4g");
-
-        return (ret);
-    }
-
     @SuppressWarnings ("unchecked")
     @GET
-    @Path("{p:/?}{item:((.*)?)}")
+    @Path ("{method}")
     @Produces ({"text/plain", "application/json"})
-    public String Spatial (@PathParam("file") String filename, @PathParam("item") String item)
+    public String Operation
+    (
+        @PathParam ("method") String method, // "nearest"
+        @MatrixParam ("file") List<String> files,
+        @DefaultValue ("EnergyConsumer") @MatrixParam ("psr") String psr,
+        @DefaultValue ("7.281558") @MatrixParam ("lon") String lon,
+        @DefaultValue ("47.124142") @MatrixParam ("lat") String lat,
+        @DefaultValue ("5") @MatrixParam ("n") String n
+    )
     {
         StringBuffer out = new StringBuffer ();
         if (null != factory)
@@ -74,48 +73,42 @@ public class Spatial
             Connection connection;
             try
             {
-                connection = factory.getConnection (remoteConfig ());
+                connection = factory.getConnection (factory.getDefaultConnectionSpec ());
                 if (null != connection)
                 {
                     try
                     {
-                        // allow for multiple file names
-                        String[] files = filename.split (",");
-                        String full_file = "";
-                        for (int i = 0; i < files.length; i++)
+                        // allow for multiple file names like
+                        // localhost:8080/cimweb/cim/Spatial/nearest;file=NIS_CIM_Export_sias_current_20160816_V8_Bruegg;file=ISU_CIM_Export_20160505
+                        StringBuilder sb = new StringBuilder ();
+                        for (String file: files)
                         {
-                            if ("" != full_file)
-                                full_file += ",";
-                            full_file += "hdfs://sandbox:9000/data/" + files[i] + ".rdf";
+                            if (0 != sb.length ())
+                                sb.append (",");
+                            sb.append (factory.InputPath (file));
                         }
+
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                         spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-                        input.setRecordShortDescription ("record containing the file name and class and method to run");
-                        input.put ("filename", full_file);
+                        input.setRecordShortDescription ("record containing the file names and class and method to run");
 
                         // set up the method call details for the CIMConnector
                         SpatialOperations ops = new SpatialOperations ();
+                        input.put ("method", method);
                         input.put ("class", ops.getClass ().getName ());
-                        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-                        String path = ops.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
-                        String decodedPath;
-                        try
-                        {
-                            decodedPath = URLDecoder.decode (path, "UTF-8");
-                        }
-                        catch (UnsupportedEncodingException e)
-                        {
-                            decodedPath = path;
-                        }
-                        if (decodedPath.endsWith (".jar"))
-                            input.put ("jars", decodedPath);
-                        input.put ("method", "nearest");
+                        String jar = factory.JarPath (ops);
+                        if (null != jar)
+                            input.put ("jars", jar);
+                        ops = null;
 
-                        input.put ("psr", "EnergyConsumer");
-                        input.put ("lon", "7.281558");
-                        input.put ("lat", "47.124142");
-                        input.put ("n", "5");
+                        // set up the parameters
+                        input.put ("filename", sb.toString ());
+                        input.put ("psr", psr);
+                        input.put ("lon", lon);
+                        input.put ("lat", lat);
+                        input.put ("n", n);
+                        out.append (input.toString ());
 
                         final Interaction interaction = connection.createInteraction ();
                         final Record output = interaction.execute (spec, input);
@@ -127,12 +120,29 @@ public class Spatial
                             try
                             {
                                 out.append ("[");
+                                boolean added = false;
                                 while (resultset.next ())
                                 {
-                                    out.append (resultset.getString (1) + "\",");
+                                    out.append ("{ ");
+                                    out.append ("name: \"" + resultset.getString (1) + "\",");
+                                    out.append ("aliasName: \"" + resultset.getString (2) + "\",");
+                                    out.append ("xPosition: \"" + resultset.getString (3) + "\",");
+                                    out.append ("yPosition: \"" + resultset.getString (4) + "\",");
+                                    out.append ("PSRType: \"" + resultset.getString (5) + "\",");
+                                    out.append ("BaseVoltage: \"" + resultset.getString (6) + "\",");
+                                    out.append ("EquipmentContainer: \"" + resultset.getString (7) + "\",");
+                                    out.append ("phaseConnection: \"" + resultset.getString (8) + "\",");
+                                    out.append ("ao_name: \"" + resultset.getString (9) + "\",");
+                                    out.append ("ao_aliasName: \"" + resultset.getString (10) + "\",");
+                                    out.append ("ao_description: \"" + resultset.getString (11) + "\",");
+                                    out.append ("ao_mainAddress: \"" + resultset.getString (12) + "\",");
+                                    out.append ("ao_secondaryAddress: \"" + resultset.getString (13) + "\"");
+                                    out.append ("},\n");
+                                    added = true;
                                 }
-                                out.deleteCharAt (out.length () - 1); // get rid of trailing comma
-                                out.append ("\n] }\n");
+                                if (added)
+                                    out.deleteCharAt (out.length () - 2); // get rid of trailing comma
+                                out.append ("]\n");
                                 resultset.close ();
                             }
                             catch (SQLException sqlexception)

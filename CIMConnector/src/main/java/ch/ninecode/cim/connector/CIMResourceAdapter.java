@@ -52,7 +52,10 @@ import javax.transaction.xa.XAResource;
 public class CIMResourceAdapter implements ResourceAdapter
 {
     protected String _YarnConfigurationPath = "/home/derrick/spark-1.6.0-bin-hadoop2.6/conf";
-    protected String _CIMScalaJarPath = "/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar";
+    protected String _SparkDriverMemory = "1g";
+    protected String _SparkExecutorMemory = "4g";
+    protected String _InputFilePrefix = "hdfs://sandbox:9000/data/";
+    protected String _InputFileSuffix = ".rdf";
 
     @Override
     public void endpointActivation (MessageEndpointFactory arg0, ActivationSpec arg1) throws ResourceException
@@ -129,20 +132,77 @@ public class CIMResourceAdapter implements ResourceAdapter
     @ConfigProperty
     (
         type = String.class,
-        description = "Path to CIMScala jar file. Should be the deployed location of the CIMScala jar file that is included in CIMConnector.rar.",
-        defaultValue = "/opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar",
+        description = "Setting for spark.driver.memory value.",
+        defaultValue = "1g",
         ignore = false,
         supportsDynamicUpdates = false,
         confidential = false
     )
-    public void setCIMScalaJarPath (String path)
+    public void setSparkDriverMemory (String memory)
     {
-        _CIMScalaJarPath = path;
+        _SparkDriverMemory = memory;
     }
 
-    public String getCIMScalaJarPath ()
+    public String getSparkDriverMemory ()
     {
-        return (_CIMScalaJarPath);
+        return (_SparkDriverMemory);
+    }
+
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Setting for spark.executor.memory value.",
+        defaultValue = "4g",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
+    public void setSparkExecutorMemory (String memory)
+    {
+        _SparkExecutorMemory = memory;
+    }
+
+    public String getSparkExecutorMemory ()
+    {
+        return (_SparkExecutorMemory);
+    }
+
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Input file prefix - where machines on the cluster should look for input files.",
+        defaultValue = "hdfs://sandbox:9000/data/",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
+    public void setInputFilePrefix (String prefix)
+    {
+        _InputFilePrefix = prefix;
+    }
+
+    public String getInputFilePrefix ()
+    {
+        return (_InputFilePrefix);
+    }
+
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Input file suffix - input file type or extension.",
+        defaultValue = ".rdf",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
+    public void setInputFileSuffix (String suffix)
+    {
+        _InputFileSuffix = suffix;
+    }
+
+    public String getInputFileSuffix ()
+    {
+        return (_InputFileSuffix);
     }
 
 }

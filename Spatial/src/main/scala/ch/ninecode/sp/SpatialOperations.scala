@@ -220,8 +220,10 @@ class SpatialOperations extends Serializable
         }
 
         val closest = all.sortBy (ordering) // ToDo: takeOrdered in one step?
+        val df = sqlContext.createDataFrame (closest.take (n))
+        val schema = df.schema
 
-        return (sqlContext.createDataFrame (closest.take (n)))
+        return (df)
     }
 }
 
@@ -258,7 +260,7 @@ object SpatialOperations
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -297,7 +299,7 @@ object SpatialOperations
 
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
-
+        val s = results.schema
         val stuff = results.collect ()
 
         println ("" + count + " elements")
