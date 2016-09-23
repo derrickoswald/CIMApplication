@@ -21,7 +21,7 @@ public class ApplicationConfig extends Application
         (
             Arrays.asList
             (
-                SimpleRESTPojo.class,
+                Ping.class,
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,
                 ShortCircuitCalculation.class,

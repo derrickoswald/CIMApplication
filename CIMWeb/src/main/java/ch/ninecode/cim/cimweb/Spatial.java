@@ -79,7 +79,7 @@ public class Spatial
                     try
                     {
                         // allow for multiple file names like
-                        // localhost:8080/cimweb/cim/Spatial/nearest;file=NIS_CIM_Export_sias_current_20160816_V8_Bruegg;file=ISU_CIM_Export_20160505
+                        // localhost:8080/cimweb/cim/Spatial/nearest;file=NIS_CIM_Export_b4_Bruegg;file=ISU_CIM_Export_20160505
                         StringBuilder sb = new StringBuilder ();
                         for (String file: files)
                         {
