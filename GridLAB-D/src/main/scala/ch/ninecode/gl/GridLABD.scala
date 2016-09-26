@@ -67,37 +67,73 @@ class GridLABD extends Serializable
 
     def make_link (edge: PreEdge): String =
     {
+        def configuration (line: ACLineSegment): String =
+        {
+            val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+            return (config.replace (" ", "_"))
+        }
         var ret = ""
         if (edge.id_cn_2 == "")
             ret =
-                "        object meter\n" +
+                "        object recorder\n" +
                 "        {\n" +
                 "            name \"" + edge.id_equ + "\";\n" +
-                "            phases \"ABCN\";\n" +
-                "            bustype PQ;\n" +
-                "            nominal_voltage 400V;\n" +
+                "            parent \"" + edge.id_cn_1 + "\";\n" +
+                "            property voltage[V];\n" +
+                "            file \"" + edge.id_equ + ".csv\";\n" +
+                "            interval -1;\n" +
                 "        };\n"
         else
-            ret =
-                "        object link\n" +
-                "        {\n" +
-                "            name \"" + edge.id_equ + "\";\n" +
-                "            phases ABCN;\n" +
-                "            from \"" + edge.id_cn_1 + "\";\n" +
-                "            to \"" + edge.id_cn_2 + "\";\n" +
-                "        };\n"
+            if (edge.element.getClass.getName.endsWith ("ACLineSegment"))
+            {
+                //        <cim:ACLineSegment rdf:ID="KLE9595">
+                //                <cim:IdentifiedObject.name>GKN 3x25/25</cim:IdentifiedObject.name>
+                //                <cim:IdentifiedObject.aliasName>202519879:nis_el_cable</cim:IdentifiedObject.aliasName>
+                //                <cim:PowerSystemResource.Location rdf:resource="#_location_696818_1201171875_202519890"/>
+                //                <cim:Conductor.length>55.60291275</cim:Conductor.length>
+                //                <cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+                //                <cim:ConductingEquipment.BaseVoltage rdf:resource="BaseVoltage_400"/>
+                //                <cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+                //                <cim:Equipment.EquipmentContainer rdf:resource="#_line_ABG52414|..."/>
+                //                <cim:ACLineSegment.b0ch>106.8141502</cim:ACLineSegment.b0ch>
+                //                <cim:ACLineSegment.bch>179.0707813</cim:ACLineSegment.bch>
+                //                <cim:ACLineSegment.g0ch>0</cim:ACLineSegment.g0ch>
+                //                <cim:ACLineSegment.gch>0</cim:ACLineSegment.gch>
+                //                <cim:ACLineSegment.r0>3.368</cim:ACLineSegment.r0>
+                //                <cim:ACLineSegment.r>0.841</cim:ACLineSegment.r>
+                //                <cim:ACLineSegment.shortCircuitEndTemperature>250</cim:ACLineSegment.shortCircuitEndTemperature>
+                //                <cim:ACLineSegment.x0>0.32</cim:ACLineSegment.x0>
+                //                <cim:ACLineSegment.x>0.075</cim:ACLineSegment.x>
+                //        </cim:ACLineSegment>
+                val line = edge.element.asInstanceOf[ACLineSegment]
+                val cls = if (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
+                    "underground_line"
+                else
+                    "overhead_line"
+                val config = configuration (line)
+                ret =
+                    "        object " + cls + "\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "            length \"" + line.Conductor.len + "\"m;\n" +
+                    "            configuration \"" + config + "\";\n" +
+                    "        };\n"
+            }
+            else
+                ret =
+                    "        object link\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "        };\n"
         return (ret)
     }
 
-//            "        object underground_line\n" +
-//            "        {\n" +
-//            "            name \"HAS42130_0_stub\";\n" +
-//            "            phases \"ABCN\";\n" +
-//            "            from \"HAS42130\";\n" +
-//            "            to \"HAS42130_0\";\n" +
-//            "            length 25m;\n" +
-//            "            configuration \"line_3x25Cu/25\";\n" +
-//            "        };" +
 
     def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
@@ -130,7 +166,7 @@ class GridLABD extends Serializable
                 new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
         val start = Calendar.getInstance ()
         val finish = start.clone ().asInstanceOf[Calendar]
-        finish.add (Calendar.HOUR, 3)
+        finish.add (Calendar.MINUTE, 1)
 
         val prefix =
             "        module tape;\n" +
@@ -252,14 +288,14 @@ class GridLABD extends Serializable
                                 e)
                     case _ =>
                         {
-                            var i = 0
-                            while (i < terminals.length - 1)
+                            var i = 1
+                            while (i < terminals.length)
                             {
                                 ret = ret :+ new PreEdge (
                                         terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                                         terminals(0).ConnectivityNode,
-                                        terminals(i + 1).ACDCTerminal.IdentifiedObject.mRID,
-                                        terminals(i + 1).ConnectivityNode,
+                                        terminals(i).ACDCTerminal.IdentifiedObject.mRID,
+                                        terminals(i).ConnectivityNode,
                                         terminals(0).ConductingEquipment,
                                         1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
                                         equipment,
