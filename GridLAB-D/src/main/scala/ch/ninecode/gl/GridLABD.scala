@@ -28,8 +28,8 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
-case class PreNode (id_seq: String, voltage: Double) extends Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, voltage: Double, equipment: ConductingEquipment, element: Element) extends Serializable
+case class PreNode (id_seq: String, voltage: Double, container: String) extends Serializable
 
 class GridLABD extends Serializable
 {
@@ -50,75 +50,6 @@ class GridLABD extends Serializable
         return (null)
     }
 
-    def edge_operator (arg: Tuple2[Element, Iterable[Terminal]]): List[PreEdge] =
-    {
-        var ret = List[PreEdge] ()
-        val e = arg._1
-        val it = arg._2
-        // get the ConductingEquipment
-        var c = e
-        while ((null != c) && !c.getClass ().getName ().endsWith (".ConductingEquipment"))
-            c = c.sup
-        if (null != c)
-        {
-            // sort terminals by sequence number
-            var terminals = it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
-            // make a pre-edge for each pair of terminals
-            ret = terminals.length match
-            {
-                case 1 =>
-                    ret :+
-                        new PreEdge (
-                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(0).ConnectivityNode,
-                            "",
-                            "",
-                            terminals(0).ConductingEquipment,
-                            c.asInstanceOf[ConductingEquipment],
-                            e)
-                case 2 =>
-                    ret :+
-                        new PreEdge (
-                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(0).ConnectivityNode,
-                            terminals(1).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(1).ConnectivityNode,
-                            terminals(0).ConductingEquipment,
-                            c.asInstanceOf[ConductingEquipment],
-                            e)
-                case _ =>
-                    {
-                        var i = 0
-                        while (i < terminals.length - 1)
-                        {
-                            ret = ret :+ new PreEdge (
-                                    terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                                    terminals(0).ConnectivityNode,
-                                    terminals(i + 1).ACDCTerminal.IdentifiedObject.mRID,
-                                    terminals(i + 1).ConnectivityNode,
-                                    terminals(0).ConductingEquipment,
-                                    c.asInstanceOf[ConductingEquipment],
-                                    e)
-                            i += 1
-                        }
-                        ret
-                    }
-            }
-        }
-        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
-            // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
-            // ProtectionEquipment and CurrentRelay are emitted with terminals even though they shouldn't be
-
-        return (ret)
-    }
-
-    def node_operator (arg: Tuple2[Tuple2[ConnectivityNode,Terminal], Double]): PreNode =
-    {
-        val node = arg._1._1
-        val voltage = arg._2
-        PreNode (node.id, voltage)
-    }
-
     // emit one GridLAB-D node
     def make_node (node: PreNode): String =
     {
@@ -129,21 +60,32 @@ class GridLABD extends Serializable
             "            phases \"ABCN\";\n" +
             "            bustype PQ;\n" +
             "            nominal_voltage " + node.voltage + "V;\n" +
-            "        }\n" +
+            "        };\n" +
             ""
         return (ret)
     }
+
     def make_link (edge: PreEdge): String =
     {
-        val ret =
-            "        object link\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "        }\n" +
-            ""
+        var ret = ""
+        if (edge.id_cn_2 == "")
+            ret =
+                "        object meter\n" +
+                "        {\n" +
+                "            name \"" + edge.id_equ + "\";\n" +
+                "            phases \"ABCN\";\n" +
+                "            bustype PQ;\n" +
+                "            nominal_voltage 400V;\n" +
+                "        };\n"
+        else
+            ret =
+                "        object link\n" +
+                "        {\n" +
+                "            name \"" + edge.id_equ + "\";\n" +
+                "            phases ABCN;\n" +
+                "            from \"" + edge.id_cn_1 + "\";\n" +
+                "            to \"" + edge.id_cn_2 + "\";\n" +
+                "        };\n"
         return (ret)
     }
 
@@ -157,7 +99,7 @@ class GridLABD extends Serializable
 //            "            configuration \"line_3x25Cu/25\";\n" +
 //            "        };" +
 
-    def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
+    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
         val arguments = args.split (",").map (
             (s) =>
@@ -170,19 +112,22 @@ class GridLABD extends Serializable
                 }
         ).toMap
 
+        // get the name of the equipment of interest
+        val equipment = arguments.getOrElse ("equipment", "")
+
         val USE_UTC = false
 
         val format =
             if (USE_UTC)
             {
                 // for dates in UTC
-                val f = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                val f = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
                 f.setTimeZone (TimeZone.getTimeZone ("UTC"))
                 f
             }
             else
                 // for dates in the local time zone
-                new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ssZ")
+                new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
         val start = Calendar.getInstance ()
         val finish = start.clone ().asInstanceOf[Calendar]
         finish.add (Calendar.HOUR, 3)
@@ -200,7 +145,7 @@ class GridLABD extends Serializable
             "\n" +
             "        clock\n" +
             "        {\n" +
-            "            timezone " + (if (USE_UTC) "GMT" else "GMT0+2") + ";\n" +
+            "            timezone " + (if (USE_UTC) "GMT" else "CET-2CEST") + ";\n" + // ToDo: get local time zone string
             "            starttime '" + format.format (start.getTime ()) + "';\n" +
             "            stoptime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n" +
@@ -257,20 +202,88 @@ class GridLABD extends Serializable
             "            reactance 0.02;\n" +
             "        };\n" +
             "\n" +
-//            "        object meter\n" +
-//            "        {\n" +
-//            "            name \"HAS42130_0\";\n" +
-//            "            phases \"ABCN\";\n" +
-//            "            bustype PQ;\n" +
-//            "            nominal_voltage 400V;\n" +
-//            "        };\n" +
-//            "\n" +
             "";
 
         val result = new StringBuilder ()
         result.append (prefix)
 
-        // for now add all nodes and edges
+        // get a map of voltages
+        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+
+        def edge_operator (arg: Tuple2[Element, Iterable[Terminal]]): List[PreEdge] =
+        {
+            var ret = List[PreEdge] ()
+            val e = arg._1
+            val it = arg._2
+            // get the ConductingEquipment
+            var c = e
+            while ((null != c) && !c.getClass ().getName ().endsWith (".ConductingEquipment"))
+                c = c.sup
+            if (null != c)
+            {
+                // sort terminals by sequence number
+                var terminals = it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+                // get the equipment
+                val equipment = c.asInstanceOf[ConductingEquipment]
+                // make a pre-edge for each pair of terminals
+                ret = terminals.length match
+                {
+                    case 1 =>
+                        ret :+
+                            new PreEdge (
+                                terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                terminals(0).ConnectivityNode,
+                                "",
+                                "",
+                                terminals(0).ConductingEquipment,
+                                1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
+                                equipment,
+                                e)
+                    case 2 =>
+                        ret :+
+                            new PreEdge (
+                                terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                terminals(0).ConnectivityNode,
+                                terminals(1).ACDCTerminal.IdentifiedObject.mRID,
+                                terminals(1).ConnectivityNode,
+                                terminals(0).ConductingEquipment,
+                                1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
+                                equipment,
+                                e)
+                    case _ =>
+                        {
+                            var i = 0
+                            while (i < terminals.length - 1)
+                            {
+                                ret = ret :+ new PreEdge (
+                                        terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                        terminals(0).ConnectivityNode,
+                                        terminals(i + 1).ACDCTerminal.IdentifiedObject.mRID,
+                                        terminals(i + 1).ConnectivityNode,
+                                        terminals(0).ConductingEquipment,
+                                        1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
+                                        equipment,
+                                        e)
+                                i += 1
+                            }
+                            ret
+                        }
+                }
+            }
+            //else // shouldn't happen, terminals always reference ConductingEquipment, right?
+                // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
+                // ProtectionEquipment and CurrentRelay are emitted with terminals even though they shouldn't be
+
+            return (ret)
+        }
+
+        def node_operator (arg: Tuple2[Tuple2[ConnectivityNode,Terminal], PreEdge]): PreNode =
+        {
+            val node = arg._1._1
+            val edge = arg._2
+            val container = node.ConnectivityNodeContainer
+            PreNode (node.id, edge.voltage, container)
+        }
 
         // get the terminals
         val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
@@ -279,21 +292,13 @@ class GridLABD extends Serializable
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val equipment = get ("Elements", sc).asInstanceOf[RDD[Element]]
+        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
 
         // map the terminal 'pairs' to edges
-        val edges = equipment.keyBy (_.id).join (terms).flatMapValues (edge_operator).values
-
-        // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
-
-        def voltage_operator (arg: Tuple2[String,PreEdge]): (String, Double) =
-        {
-            (arg._1, 1000.0 * voltages.getOrElse (arg._2.equipment.BaseVoltage, 0.0))
-        }
+        val edges = elements.keyBy (_.id).join (terms).flatMapValues (edge_operator).values
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
-        val tv = edges.keyBy (_.id_seq_1).map (voltage_operator).union (edges.keyBy (_.id_seq_2).map (voltage_operator)).distinct
+        val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
         // get the connectivity nodes RDD
         val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
@@ -301,8 +306,33 @@ class GridLABD extends Serializable
         // map the connectivity nodes to prenodes with voltages
         val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
 
-        val n_strings = nodes.map (make_node);
-        val e_strings = edges.map (make_link);
+        // filter the nodes and edges for containment if requested
+
+        val nodes_edges = if ("" == equipment)
+            (nodes, edges)
+        else
+        {
+            // using the container of the equipment of interest for filtering
+            // but: ABG are not included - they belong to the distribution box or substation
+
+            val equipments = get ("Equipment", sc).asInstanceOf[RDD[Equipment]]
+            val starting = equipments.filter (_.id == equipment).collect ()
+            if (1 == starting.length)
+            {
+                val container = starting (0).EquipmentContainer
+                val fnodes = nodes.filter (_.container == container)
+                val fedges = edges.filter (_.equipment.Equipment.EquipmentContainer == container)
+                (fnodes, fedges)
+            }
+            else
+            {
+                println ("" + starting.length + " equipment matched id " + equipment); // ToDo: proper logging
+                (nodes, edges)
+            }
+        }
+
+        val n_strings = nodes_edges._1.map (make_node);
+        val e_strings = nodes_edges._2.map (make_link);
 
         n_strings.saveAsTextFile (_FilePrefix + _NodeFileName)
         e_strings.saveAsTextFile (_FilePrefix + _EdgeFileName)
@@ -353,7 +383,11 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
+        val house = if (args.length > 1)
+            args (1)
+        else
+            "HAS10002"
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -405,7 +439,7 @@ object GridLABD
         hdfs.delete (nodePath, true)
         hdfs.delete (edgePath, true)
 
-        val result = gridlab.preparation (_Context, _SqlContext, "transformer=all") // TRA5401
+        val result = gridlab.export (_Context, _SqlContext, "equipment=" + house)
 
         val graph = System.nanoTime ()
 

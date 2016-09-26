@@ -1,22 +1,20 @@
 package ch.ninecode.gl
 
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.HashMap
 import java.util.Map
 
 import org.apache.commons.io.FileUtils
-import org.apache.commons.io.filefilter.WildcardFileFilter
-
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
-
 import org.scalatest.fixture
 
-import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
@@ -86,7 +84,7 @@ class GridLABDSuite extends fixture.FunSuite
         val sql_context: SQLContext = a._SQLContext
 
         val filename =
-        FILE_DEPOT + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
+        FILE_DEPOT + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
         val elements = readFile (sql_context, filename)
 
         val read = System.nanoTime ()
@@ -99,12 +97,17 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._FilePrefix))
 
-        val results = gridlabd.preparation (context, sql_context, "transformer=all") // TRA5401
+        val result = gridlabd.export (context, sql_context, "equipment=HAS10002")
 
         val process = System.nanoTime ()
 
+        Files.write (Paths.get ("gridlabd.glm"), result.getBytes (StandardCharsets.UTF_8))
+
+        val write = System.nanoTime ()
+
         println ("read : " + (read - start) / 1e9 + " seconds")
         println ("process: " + (process - read) / 1e9 + " seconds")
+        println ("write: " + (write - process) / 1e9 + " seconds")
         println ()
 
         // clean up this run
