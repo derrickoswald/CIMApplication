@@ -34,6 +34,9 @@ case class PreNode (id_seq: String, voltage: Double) extends Serializable
 class GridLABD extends Serializable
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
+    var _FilePrefix = "hdfs://sandbox:9000/output/"
+    var _NodeFileName = "gridlabd_nodes"
+    var _EdgeFileName = "gridlabd_edges"
 
     def get (name: String, context: SparkContext): RDD[Element] =
     {
@@ -267,19 +270,6 @@ class GridLABD extends Serializable
         val result = new StringBuilder ()
         result.append (prefix)
 
-        val configuration = new Configuration ()
-        configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem") // .class.getName ()
-        configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        val hdfs = FileSystem.get (URI.create ("hdfs://sandbox:9000"), configuration)
-
-        val nodeFileName = "/output/gridlabd_nodes"
-        val nodePath = new Path (nodeFileName)
-        val edgeFileName = "/output/gridlabd_edges"
-        val edgePath = new Path (edgeFileName)
-
-        hdfs.delete (nodePath, true)
-        hdfs.delete (edgePath, true)
-
         // for now add all nodes and edges
 
         // get the terminals
@@ -314,11 +304,11 @@ class GridLABD extends Serializable
         val n_strings = nodes.map (make_node);
         val e_strings = edges.map (make_link);
 
-        n_strings.saveAsTextFile ("hdfs://sandbox:9000" + nodeFileName)
-        e_strings.saveAsTextFile ("hdfs://sandbox:9000" + edgeFileName)
+        n_strings.saveAsTextFile (_FilePrefix + _NodeFileName)
+        e_strings.saveAsTextFile (_FilePrefix + _EdgeFileName)
 
-        val nodefiles = sc.wholeTextFiles ("hdfs://sandbox:9000" + nodeFileName)
-        val edgefiles = sc.wholeTextFiles ("hdfs://sandbox:9000" + edgeFileName)
+        val nodefiles = sc.wholeTextFiles (_FilePrefix + _NodeFileName)
+        val edgefiles = sc.wholeTextFiles (_FilePrefix + _EdgeFileName)
 //        (a-hdfs-path/part-00000, its content)
 //        (a-hdfs-path/part-00001, its content)
 //        ...
@@ -403,6 +393,17 @@ object GridLABD
         gridlab._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
         val prep = System.nanoTime ()
+
+        val hdfs_configuration = new Configuration ()
+        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem") // .class.getName ()
+        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+        val hdfs = FileSystem.get (URI.create (gridlab._FilePrefix), hdfs_configuration)
+
+        val nodePath = new Path (gridlab._NodeFileName)
+        val edgePath = new Path (gridlab._EdgeFileName)
+
+        hdfs.delete (nodePath, true)
+        hdfs.delete (edgePath, true)
 
         val result = gridlab.preparation (_Context, _SqlContext, "transformer=all") // TRA5401
 
