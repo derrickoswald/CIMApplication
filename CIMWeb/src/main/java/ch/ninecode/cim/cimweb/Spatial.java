@@ -119,28 +119,28 @@ public class Spatial
                             CIMResultSet resultset = (CIMResultSet)output;
                             try
                             {
+                                out.setLength (0);
                                 out.append ("[");
-                                boolean added = false;
                                 while (resultset.next ())
                                 {
                                     out.append ("{ ");
-                                    out.append ("name: \"" + resultset.getString (1) + "\",");
-                                    out.append ("aliasName: \"" + resultset.getString (2) + "\",");
-                                    out.append ("xPosition: \"" + resultset.getString (3) + "\",");
-                                    out.append ("yPosition: \"" + resultset.getString (4) + "\",");
-                                    out.append ("PSRType: \"" + resultset.getString (5) + "\",");
-                                    out.append ("BaseVoltage: \"" + resultset.getString (6) + "\",");
-                                    out.append ("EquipmentContainer: \"" + resultset.getString (7) + "\",");
-                                    out.append ("phaseConnection: \"" + resultset.getString (8) + "\",");
-                                    out.append ("ao_name: \"" + resultset.getString (9) + "\",");
-                                    out.append ("ao_aliasName: \"" + resultset.getString (10) + "\",");
-                                    out.append ("ao_description: \"" + resultset.getString (11) + "\",");
-                                    out.append ("ao_mainAddress: \"" + resultset.getString (12) + "\",");
-                                    out.append ("ao_secondaryAddress: \"" + resultset.getString (13) + "\"");
+                                    out.append ("mRID: \"" + resultset.getString (1) + "\",");
+                                    out.append ("name: \"" + resultset.getString (2) + "\",");
+                                    out.append ("aliasName: \"" + resultset.getString (3) + "\",");
+                                    out.append ("xPosition: \"" + resultset.getString (4) + "\",");
+                                    out.append ("yPosition: \"" + resultset.getString (5) + "\",");
+                                    out.append ("PSRType: \"" + resultset.getString (6) + "\",");
+                                    out.append ("BaseVoltage: \"" + resultset.getString (7) + "\",");
+                                    out.append ("EquipmentContainer: \"" + resultset.getString (8) + "\",");
+                                    out.append ("phaseConnection: \"" + resultset.getString (9) + "\",");
+                                    out.append ("ao_name: \"" + resultset.getString (10) + "\",");
+                                    out.append ("ao_aliasName: \"" + resultset.getString (11) + "\",");
+                                    out.append ("ao_description: \"" + resultset.getString (12) + "\",");
+                                    out.append ("ao_mainAddress: \"" + resultset.getString (13) + "\",");
+                                    out.append ("ao_secondaryAddress: \"" + resultset.getString (14) + "\"");
                                     out.append ("},\n");
-                                    added = true;
                                 }
-                                if (added)
+                                if (2 < out.length ())
                                     out.deleteCharAt (out.length () - 2); // get rid of trailing comma
                                 out.append ("]\n");
                                 resultset.close ();

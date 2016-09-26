@@ -56,6 +56,7 @@ extends
 }
 
 case class HouseService (
+    val mRID: String,
     val name: String,
     val aliasName: String,
     val xPosition: String,
@@ -132,6 +133,7 @@ class SpatialOperations extends Serializable
                 case (Some (x: ServiceLocation)) ⇒
                 {
                     HouseService (
+                        x.id,
                         a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
                         a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
                         a._1.xPosition,
@@ -149,6 +151,7 @@ class SpatialOperations extends Serializable
                 case (None) ⇒
                 {
                     HouseService (
+                        "",
                         a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
                         a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
                         a._1.xPosition,
@@ -260,7 +263,8 @@ object SpatialOperations
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
+            // "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -298,7 +302,8 @@ object SpatialOperations
         val read = System.nanoTime ()
 
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
+//        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
+        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
         val s = results.schema
         val stuff = results.collect ()
 
