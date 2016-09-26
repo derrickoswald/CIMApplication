@@ -35,8 +35,9 @@ class GridLABD extends Serializable
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
     var _FilePrefix = "hdfs://sandbox:9000/output/"
-    var _NodeFileName = "gridlabd_nodes"
-    var _EdgeFileName = "gridlabd_edges"
+    var _ConfFileName = "lines"
+    var _NodeFileName = "nodes"
+    var _EdgeFileName = "edges"
 
     def get (name: String, context: SparkContext): RDD[Element] =
     {
@@ -48,6 +49,82 @@ class GridLABD extends Serializable
                 return (rdd.asInstanceOf[RDD[Element]])
         }
         return (null)
+    }
+
+    // emit a GridLAB-D line_configuration
+    def make_config (line: ACLineSegment): String =
+    {
+        var ret = ""
+        val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+
+        // ToDo: convert the 0/1 sequence values from the CIM format into a Z matrix
+
+        //        <cim:ACLineSegment rdf:ID="KLE9595">
+        //                <cim:IdentifiedObject.name>GKN 3x25/25</cim:IdentifiedObject.name>
+        //                <cim:IdentifiedObject.aliasName>202519879:nis_el_cable</cim:IdentifiedObject.aliasName>
+        //                <cim:PowerSystemResource.Location rdf:resource="#_location_696818_1201171875_202519890"/>
+        //                <cim:Conductor.length>55.60291275</cim:Conductor.length>
+        //                <cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+        //                <cim:ConductingEquipment.BaseVoltage rdf:resource="BaseVoltage_400"/>
+        //                <cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+        //                <cim:Equipment.EquipmentContainer rdf:resource="#_line_ABG52414|..."/>
+        //                <cim:ACLineSegment.b0ch>106.8141502</cim:ACLineSegment.b0ch>
+        //                <cim:ACLineSegment.bch>179.0707813</cim:ACLineSegment.bch>
+        //                <cim:ACLineSegment.g0ch>0</cim:ACLineSegment.g0ch>
+        //                <cim:ACLineSegment.gch>0</cim:ACLineSegment.gch>
+        //                <cim:ACLineSegment.r0>3.368</cim:ACLineSegment.r0>
+        //                <cim:ACLineSegment.r>0.841</cim:ACLineSegment.r>
+        //                <cim:ACLineSegment.shortCircuitEndTemperature>250</cim:ACLineSegment.shortCircuitEndTemperature>
+        //                <cim:ACLineSegment.x0>0.32</cim:ACLineSegment.x0>
+        //                <cim:ACLineSegment.x>0.075</cim:ACLineSegment.x>
+        //        </cim:ACLineSegment>
+//
+//            "        object line_configuration\n" +
+//            "        {\n" +
+//            "            name \"line_3x25Cu/25\";\n" +
+//            "            z11 0.727+0.08j Ohm/km;\n" +
+//            "            z12 0.0+0.0j Ohm/km;\n" +
+//            "            z13 0.0+0.0j Ohm/km;\n" +
+//            "            z21 0.0+0.0j Ohm/km;\n" +
+//            "            z22 0.727+0.08j Ohm/km;\n" +
+//            "            z23 0.0+0.0j Ohm/km;\n" +
+//            "            z31 0.0+0.0j Ohm/km;\n" +
+//            "            z32 0.0+0.0j Ohm/km;\n" +
+//            "            z33 0.727+0.08j Ohm/km;\n" +
+//            "        };\n" +
+//            "\n" +
+//            "        object line_configuration\n" +
+//            "        {\n" +
+//            "            name \"line_3x95Cu/95\";\n" +
+//            "            z11 0.193+0.07j Ohm/km;\n" +
+//            "            z12 0.0+0.0j Ohm/km;\n" +
+//            "            z13 0.0+0.0j Ohm/km;\n" +
+//            "            z21 0.0+0.0j Ohm/km;\n" +
+//            "            z22 0.193+0.07j Ohm/km;\n" +
+//            "            z23 0.0+0.0j Ohm/km;\n" +
+//            "            z31 0.0+0.0j Ohm/km;\n" +
+//            "            z32 0.0+0.0j Ohm/km;\n" +
+//            "            z33 0.193+0.07j Ohm/km;\n" +
+//            "        };\n" +
+
+        val diag = line.r + "+" + line.x + "j Ohm/km";
+        val zero = "0.0+0.0j Ohm/km";
+        ret =
+            "        object line_configuration\n" +
+            "        {\n" +
+            "            name \"" + config + "\";\n" +
+            "            z11 " + diag + ";\n" +
+            "            z12 " + zero + ";\n" +
+            "            z13 " + zero + ";\n" +
+            "            z21 " + zero + ";\n" +
+            "            z22 " + diag + ";\n" +
+            "            z23 " + zero + ";\n" +
+            "            z31 " + zero + ";\n" +
+            "            z32 " + zero + ";\n" +
+            "            z33 " + diag + ";\n" +
+            "        };\n"
+
+        return (ret)
     }
 
     // emit one GridLAB-D node
@@ -65,13 +142,9 @@ class GridLABD extends Serializable
         return (ret)
     }
 
+    // emit one GridLAB-D edge
     def make_link (edge: PreEdge): String =
     {
-        def configuration (line: ACLineSegment): String =
-        {
-            val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
-            return (config.replace (" ", "_"))
-        }
         var ret = ""
         if (edge.id_cn_2 == "")
             ret =
@@ -86,31 +159,12 @@ class GridLABD extends Serializable
         else
             if (edge.element.getClass.getName.endsWith ("ACLineSegment"))
             {
-                //        <cim:ACLineSegment rdf:ID="KLE9595">
-                //                <cim:IdentifiedObject.name>GKN 3x25/25</cim:IdentifiedObject.name>
-                //                <cim:IdentifiedObject.aliasName>202519879:nis_el_cable</cim:IdentifiedObject.aliasName>
-                //                <cim:PowerSystemResource.Location rdf:resource="#_location_696818_1201171875_202519890"/>
-                //                <cim:Conductor.length>55.60291275</cim:Conductor.length>
-                //                <cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
-                //                <cim:ConductingEquipment.BaseVoltage rdf:resource="BaseVoltage_400"/>
-                //                <cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
-                //                <cim:Equipment.EquipmentContainer rdf:resource="#_line_ABG52414|..."/>
-                //                <cim:ACLineSegment.b0ch>106.8141502</cim:ACLineSegment.b0ch>
-                //                <cim:ACLineSegment.bch>179.0707813</cim:ACLineSegment.bch>
-                //                <cim:ACLineSegment.g0ch>0</cim:ACLineSegment.g0ch>
-                //                <cim:ACLineSegment.gch>0</cim:ACLineSegment.gch>
-                //                <cim:ACLineSegment.r0>3.368</cim:ACLineSegment.r0>
-                //                <cim:ACLineSegment.r>0.841</cim:ACLineSegment.r>
-                //                <cim:ACLineSegment.shortCircuitEndTemperature>250</cim:ACLineSegment.shortCircuitEndTemperature>
-                //                <cim:ACLineSegment.x0>0.32</cim:ACLineSegment.x0>
-                //                <cim:ACLineSegment.x>0.075</cim:ACLineSegment.x>
-                //        </cim:ACLineSegment>
                 val line = edge.element.asInstanceOf[ACLineSegment]
                 val cls = if (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
                     "underground_line"
                 else
                     "overhead_line"
-                val config = configuration (line)
+                val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                 ret =
                     "        object " + cls + "\n" +
                     "        {\n" +
@@ -118,7 +172,7 @@ class GridLABD extends Serializable
                     "            phases ABCN;\n" +
                     "            from \"" + edge.id_cn_1 + "\";\n" +
                     "            to \"" + edge.id_cn_2 + "\";\n" +
-                    "            length \"" + line.Conductor.len + "\"m;\n" +
+                    "            length " + line.Conductor.len + "m;\n" +
                     "            configuration \"" + config + "\";\n" +
                     "        };\n"
             }
@@ -133,7 +187,6 @@ class GridLABD extends Serializable
                     "        };\n"
         return (ret)
     }
-
 
     def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
@@ -196,34 +249,6 @@ class GridLABD extends Serializable
             "            filename voltdump.csv;\n" +
             "            mode polar;\n" +
             "            runtime '" + format.format (finish.getTime ()) + "';\n" +
-            "        };\n" +
-            "\n" +
-            "        object line_configuration\n" +
-            "        {\n" +
-            "            name \"line_3x25Cu/25\";\n" +
-            "            z11 0.727+0.08j Ohm/km;\n" +
-            "            z12 0.0+0.0j Ohm/km;\n" +
-            "            z13 0.0+0.0j Ohm/km;\n" +
-            "            z21 0.0+0.0j Ohm/km;\n" +
-            "            z22 0.727+0.08j Ohm/km;\n" +
-            "            z23 0.0+0.0j Ohm/km;\n" +
-            "            z31 0.0+0.0j Ohm/km;\n" +
-            "            z32 0.0+0.0j Ohm/km;\n" +
-            "            z33 0.727+0.08j Ohm/km;\n" +
-            "        };\n" +
-            "\n" +
-            "        object line_configuration\n" +
-            "        {\n" +
-            "            name \"line_3x95Cu/95\";\n" +
-            "            z11 0.193+0.07j Ohm/km;\n" +
-            "            z12 0.0+0.0j Ohm/km;\n" +
-            "            z13 0.0+0.0j Ohm/km;\n" +
-            "            z21 0.0+0.0j Ohm/km;\n" +
-            "            z22 0.193+0.07j Ohm/km;\n" +
-            "            z23 0.0+0.0j Ohm/km;\n" +
-            "            z31 0.0+0.0j Ohm/km;\n" +
-            "            z32 0.0+0.0j Ohm/km;\n" +
-            "            z33 0.193+0.07j Ohm/km;\n" +
             "        };\n" +
             "\n" +
             "        object transformer_configuration\n" +
@@ -367,18 +392,26 @@ class GridLABD extends Serializable
             }
         }
 
+        // get one of each type of ACLineSegment
+        val c_strings = nodes_edges._2.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
+            .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
+            .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
+            .values.map (make_config)
         val n_strings = nodes_edges._1.map (make_node);
         val e_strings = nodes_edges._2.map (make_link);
 
+        c_strings.saveAsTextFile (_FilePrefix + _ConfFileName)
         n_strings.saveAsTextFile (_FilePrefix + _NodeFileName)
         e_strings.saveAsTextFile (_FilePrefix + _EdgeFileName)
 
+        val conffiles = sc.wholeTextFiles (_FilePrefix + _ConfFileName)
         val nodefiles = sc.wholeTextFiles (_FilePrefix + _NodeFileName)
         val edgefiles = sc.wholeTextFiles (_FilePrefix + _EdgeFileName)
 //        (a-hdfs-path/part-00000, its content)
 //        (a-hdfs-path/part-00001, its content)
 //        ...
 //        (a-hdfs-path/part-nnnnn, its content)
+        result.append (conffiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
         result.append (nodefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
         result.append (edgefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
 
