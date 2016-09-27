@@ -46,7 +46,7 @@ class GridLABDSuite extends fixture.FunSuite
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
 
         val context = new SparkContext (configuration)
-        context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        context.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val sql_context = new SQLContext (context)
 
         val end = System.nanoTime ()
@@ -101,7 +101,7 @@ class GridLABDSuite extends fixture.FunSuite
 
         val process = System.nanoTime ()
 
-        Files.write (Paths.get ("gridlabd.glm"), result.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get ("HAS10002.glm"), result.getBytes (StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 

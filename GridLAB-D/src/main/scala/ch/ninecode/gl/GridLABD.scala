@@ -8,9 +8,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.TimeZone
 import java.util.HashMap
 import java.util.Map
+import java.util.TimeZone
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
@@ -18,6 +18,11 @@ import scala.util.Random
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.graphx.EdgeDirection
+import org.apache.spark.graphx.EdgeTriplet
+import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.Graph.graphToGraphOps
+import org.apache.spark.graphx.VertexId
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -28,8 +33,12 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, voltage: Double, equipment: ConductingEquipment, element: Element) extends Serializable
+// define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double, container: String) extends Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, voltage: Double, equipment: ConductingEquipment, element: Element) extends Serializable
+
+// define the vertex class used by GraphX
+case class VertexData (val touched: Boolean = false)
 
 class GridLABD extends Serializable
 {
@@ -51,11 +60,24 @@ class GridLABD extends Serializable
         return (null)
     }
 
+    // make a valid configuration name
+    // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
+    def valid_config_name (string: String): String =
+    {
+        if ((null == string) || ("" == string))
+            "unknown"
+        else
+            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
+                string
+            else
+                "_" + string
+    }
+
     // emit a GridLAB-D line_configuration
     def make_config (line: ACLineSegment): String =
     {
         var ret = ""
-        val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+        val config = valid_config_name (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
 
         // ToDo: convert the 0/1 sequence values from the CIM format into a Z matrix
 
@@ -112,7 +134,7 @@ class GridLABD extends Serializable
         ret =
             "        object line_configuration\n" +
             "        {\n" +
-            "            name \"" + config + "\";\n" +
+            "            name " + config + ";\n" +
             "            z11 " + diag + ";\n" +
             "            z12 " + zero + ";\n" +
             "            z13 " + zero + ";\n" +
@@ -133,8 +155,8 @@ class GridLABD extends Serializable
         val ret =
             "        object node\n" +
             "        {\n" +
-            "            name \"" + node.id_seq + "\";\n" +
-            "            phases \"ABCN\";\n" +
+            "            name " + node.id_seq + ";\n" +
+            "            phases ABCN;\n" +
             "            bustype PQ;\n" +
             "            nominal_voltage " + node.voltage + "V;\n" +
             "        };\n" +
@@ -147,11 +169,12 @@ class GridLABD extends Serializable
     {
         var ret = ""
         if (edge.id_cn_2 == "")
+            // ToDo: slack bus for the house under test
             ret =
                 "        object recorder\n" +
                 "        {\n" +
-                "            name \"" + edge.id_equ + "\";\n" +
-                "            parent \"" + edge.id_cn_1 + "\";\n" +
+                "            name " + edge.id_equ + ";\n" +
+                "            parent " + edge.id_cn_1 + ";\n" +
                 "            property voltage[V];\n" +
                 "            file \"" + edge.id_equ + ".csv\";\n" +
                 "            interval -1;\n" +
@@ -164,26 +187,26 @@ class GridLABD extends Serializable
                     "underground_line"
                 else
                     "overhead_line"
-                val config = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+                val config = valid_config_name (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
                 ret =
                     "        object " + cls + "\n" +
                     "        {\n" +
-                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            name " + edge.id_equ + ";\n" +
                     "            phases ABCN;\n" +
-                    "            from \"" + edge.id_cn_1 + "\";\n" +
-                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "            from " + edge.id_cn_1 + ";\n" +
+                    "            to " + edge.id_cn_2 + ";\n" +
                     "            length " + line.Conductor.len + "m;\n" +
-                    "            configuration \"" + config + "\";\n" +
+                    "            configuration " + config + ";\n" +
                     "        };\n"
             }
             else
                 ret =
                     "        object link\n" +
                     "        {\n" +
-                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            name " + edge.id_equ + ";\n" +
                     "            phases ABCN;\n" +
-                    "            from \"" + edge.id_cn_1 + "\";\n" +
-                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "            from " + edge.id_cn_1 + ";\n" +
+                    "            to " + edge.id_cn_2 + ";\n" +
                     "        };\n"
         return (ret)
     }
@@ -367,38 +390,124 @@ class GridLABD extends Serializable
         // map the connectivity nodes to prenodes with voltages
         val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
 
-        // filter the nodes and edges for containment if requested
+        // export only the nodes and edges in the trafo-kreise
+        // that is, all objects connected to the equipment, isolated from the entire network by transformer(s)
+        // i.e. include everything in a "trace all", but stop at transfomers
 
-        val nodes_edges = if ("" == equipment)
-            (nodes, edges)
-        else
+        // eliminate edges with only one connectivity node
+        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2)
+
+        // construct the initial graph from the real edges
+        def vertex_id (string: String): VertexId =
         {
-            // using the container of the equipment of interest for filtering
-            // but: ABG are not included - they belong to the distribution box or substation
+            string.hashCode().asInstanceOf[VertexId]
+        }
+        def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
+        {
+            org.apache.spark.graphx.Edge (vertex_id (e.id_cn_1), vertex_id (e.id_cn_2), e)
+        }
+        val initial = Graph.fromEdges[VertexData, PreEdge](real_edges.map (make_graph_edges), VertexData (), _StorageLevel, _StorageLevel)
 
-            val equipments = get ("Equipment", sc).asInstanceOf[RDD[Equipment]]
-            val starting = equipments.filter (_.id == equipment).collect ()
-            if (1 == starting.length)
-            {
-                val container = starting (0).EquipmentContainer
-                val fnodes = nodes.filter (_.container == container)
-                val fedges = edges.filter (_.equipment.Equipment.EquipmentContainer == container)
-                (fnodes, fedges)
-            }
+        // find the starting node
+        val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
+        if (0 == starting.length)
+            return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
+        val starting_node = vertex_id (starting (0).ConnectivityNode)
+
+        // traverse the graph with the Pregel algorithm
+        def vertexProgram (id: VertexId, v: VertexData, message: Boolean): VertexData =
+        {
+            if (message)
+                if (v.touched) v else VertexData (true)
             else
             {
-                println ("" + starting.length + " equipment matched id " + equipment); // ToDo: proper logging
-                (nodes, edges)
+                // on the first pass through the Pregel algorithm all nodes get a false message
+                val b = id == starting_node
+                if (b)
+                    if (v.touched) v else VertexData (b)
+                else
+                    if (!v.touched) v else VertexData (b)
             }
         }
 
+        // function to see if the Pregel algorithm should continue or not
+        def shouldContinue (element: Element, forward: Boolean): Boolean =
+        {
+            val clazz = element.getClass.getName
+            val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
+            val ret = cls match
+            {
+                case "Switch" =>
+                    !element.asInstanceOf[Switch].normalOpen
+                case "Cut" =>
+                    !element.asInstanceOf[Cut].Switch.normalOpen
+                case "Disconnector" =>
+                    !element.asInstanceOf[Disconnector].Switch.normalOpen
+                case "Fuse" =>
+                    !element.asInstanceOf[Fuse].Switch.normalOpen
+                case "GroundDisconnector" =>
+                    !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+                case "Jumper" =>
+                    !element.asInstanceOf[Jumper].Switch.normalOpen
+                case "ProtectedSwitch" =>
+                    !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+                case "Sectionaliser" =>
+                    !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+                case "Breaker" =>
+                    !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+                case "LoadBreakSwitch" =>
+                    !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+                case "Recloser" =>
+                    !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+                case "PowerTransformer" =>
+                    false
+                case _ =>
+                {
+                    true
+                }
+            }
+            return (ret)
+        }
+
+        def sendMessage (triplet: EdgeTriplet[VertexData, PreEdge]): Iterator[(VertexId, Boolean)] =
+        {
+            var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
+
+            if (triplet.srcAttr.touched && !triplet.dstAttr.touched) // see if a message is needed
+                if (shouldContinue (triplet.attr.element, true))
+                    ret = Iterator ((triplet.dstId, true))
+
+            if (!triplet.srcAttr.touched && triplet.dstAttr.touched) // see if a message is needed in reverse
+                if (shouldContinue (triplet.attr.element, false))
+                    ret = Iterator ((triplet.srcId, true))
+
+            return (ret)
+        }
+
+        def mergeMessage (a: Boolean, b: Boolean): Boolean =
+        {
+            a || b // result message is true if either of them is true
+        }
+
+        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram, sendMessage, mergeMessage)
+
+        // get the list of traced vertices
+        val touched = graph.vertices.filter (_._2.touched).map (_._1)
+        val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
+
+        // get the list of traced edges
+        val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
+
+        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
+        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
+
         // get one of each type of ACLineSegment
-        val c_strings = nodes_edges._2.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
+        val c_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
             .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
             .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
             .values.map (make_config)
-        val n_strings = nodes_edges._1.map (make_node);
-        val e_strings = nodes_edges._2.map (make_link);
+        val n_strings = all_traced_nodes.map (make_node);
+        val e_strings = traced_edges.map (make_link);
 
         c_strings.saveAsTextFile (_FilePrefix + _ConfFileName)
         n_strings.saveAsTextFile (_FilePrefix + _NodeFileName)
@@ -512,7 +621,7 @@ object GridLABD
 
         val graph = System.nanoTime ()
 
-        Files.write (Paths.get ("gridlabd.glm"), result.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
 
         println ("" + count + " elements")
         println ("read : " + (read - start) / 1e9 + " seconds")
