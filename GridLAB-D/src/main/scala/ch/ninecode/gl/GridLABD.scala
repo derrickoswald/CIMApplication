@@ -134,7 +134,7 @@ class GridLABD extends Serializable
         ret =
             "        object line_configuration\n" +
             "        {\n" +
-            "            name " + config + ";\n" +
+            "            name \"" + config + "\";\n" +
             "            z11 " + diag + ";\n" +
             "            z12 " + zero + ";\n" +
             "            z13 " + zero + ";\n" +
@@ -150,17 +150,33 @@ class GridLABD extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (node: PreNode): String =
+    def make_node (slack: String, multiplier: Double)(node: PreNode): String =
     {
         val ret =
+        if (node.id_seq == slack)
+        {
+            val volts = node.voltage * multiplier
+            val real = volts / 2
+            val imag = volts * Math.sqrt (3.0) / 2
             "        object node\n" +
             "        {\n" +
-            "            name " + node.id_seq + ";\n" +
+            "            name \"" + node.id_seq + "\";\n" +
+            "            phases ABCN;\n" +
+            "            bustype SWING;\n" +
+            "            nominal_voltage " + volts + "V;\n" +
+            "            voltage_A " + volts + "+0.0j;\n" +
+            "            voltage_B -" + real + "-" + imag + "j;\n" +
+            "            voltage_C -" + real + "+" + imag + "j;\n" +
+            "        };\n"
+        }
+        else
+            "        object node\n" +
+            "        {\n" +
+            "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
             "            bustype PQ;\n" +
             "            nominal_voltage " + node.voltage + "V;\n" +
-            "        };\n" +
-            ""
+            "        };\n"
         return (ret)
     }
 
@@ -169,12 +185,11 @@ class GridLABD extends Serializable
     {
         var ret = ""
         if (edge.id_cn_2 == "")
-            // ToDo: slack bus for the house under test
             ret =
                 "        object recorder\n" +
                 "        {\n" +
-                "            name " + edge.id_equ + ";\n" +
-                "            parent " + edge.id_cn_1 + ";\n" +
+                "            name \"" + edge.id_equ + "\";\n" +
+                "            parent \"" + edge.id_cn_1 + "\";\n" +
                 "            property voltage[V];\n" +
                 "            file \"" + edge.id_equ + ".csv\";\n" +
                 "            interval -1;\n" +
@@ -191,22 +206,22 @@ class GridLABD extends Serializable
                 ret =
                     "        object " + cls + "\n" +
                     "        {\n" +
-                    "            name " + edge.id_equ + ";\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
                     "            phases ABCN;\n" +
-                    "            from " + edge.id_cn_1 + ";\n" +
-                    "            to " + edge.id_cn_2 + ";\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
                     "            length " + line.Conductor.len + "m;\n" +
-                    "            configuration " + config + ";\n" +
+                    "            configuration \"" + config + "\";\n" +
                     "        };\n"
             }
             else
                 ret =
                     "        object link\n" +
                     "        {\n" +
-                    "            name " + edge.id_equ + ";\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
                     "            phases ABCN;\n" +
-                    "            from " + edge.id_cn_1 + ";\n" +
-                    "            to " + edge.id_cn_2 + ";\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
                     "        };\n"
         return (ret)
     }
@@ -269,7 +284,7 @@ class GridLABD extends Serializable
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename voltdump.csv;\n" +
+            "            filename \"voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n" +
@@ -412,7 +427,8 @@ class GridLABD extends Serializable
         val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
         if (0 == starting.length)
             return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
-        val starting_node = vertex_id (starting (0).ConnectivityNode)
+        val starting_node_name = starting (0).ConnectivityNode
+        val starting_node = vertex_id (starting_node_name)
 
         // traverse the graph with the Pregel algorithm
         def vertexProgram (id: VertexId, v: VertexData, message: Boolean): VertexData =
@@ -506,7 +522,7 @@ class GridLABD extends Serializable
             .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
             .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
             .values.map (make_config)
-        val n_strings = all_traced_nodes.map (make_node);
+        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03));
         val e_strings = traced_edges.map (make_link);
 
         c_strings.saveAsTextFile (_FilePrefix + _ConfFileName)

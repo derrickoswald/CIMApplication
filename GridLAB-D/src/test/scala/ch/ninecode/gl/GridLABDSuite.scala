@@ -97,11 +97,12 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._FilePrefix))
 
-        val result = gridlabd.export (context, sql_context, "equipment=HAS10002")
+        val has = "HAS82225"  // "HAS67883" "HAS10002"
+        val result = gridlabd.export (context, sql_context, "equipment=" + has)
 
         val process = System.nanoTime ()
 
-        Files.write (Paths.get ("HAS10002.glm"), result.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get (has + ".glm"), result.getBytes (StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 
