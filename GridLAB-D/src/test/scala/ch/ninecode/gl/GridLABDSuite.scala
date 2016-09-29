@@ -92,12 +92,12 @@ class GridLABDSuite extends fixture.FunSuite
         // set up for execution
         val gridlabd = new GridLABD ()
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        gridlabd._FilePrefix = "./output/"
+        gridlabd._TempFilePrefix = "./output/"
 
         // clean up from any prior failed run
-        FileUtils.deleteDirectory (new File (gridlabd._FilePrefix))
+        FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val has = "HAS82225"  // "HAS67883" "HAS10002"
+        val has = "HAS10002" // smaller: "HAS82225" another example: "HAS67883"
         val result = gridlabd.export (context, sql_context, "equipment=" + has)
 
         val process = System.nanoTime ()
@@ -112,7 +112,7 @@ class GridLABDSuite extends fixture.FunSuite
         println ()
 
         // clean up this run
-        FileUtils.deleteDirectory (new File (gridlabd._FilePrefix))
+        FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
     }
 
 }

@@ -12,19 +12,20 @@ import java.util.HashMap
 import java.util.Map
 import java.util.TimeZone
 
+import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
@@ -42,8 +43,18 @@ case class VertexData (val touched: Boolean = false)
 
 class GridLABD extends Serializable
 {
+    /**
+     * Starting condition for Pregel trace.
+     * Either start the Pregel trace from the single starting node provided as the equipment parameter,
+     * or start from all nodes that are in the same EquipmentContainer (as provided by the CIM exporter).
+     * The Line object contains connected equipment, which is what the trace figures out.
+     * However, no significant speedup was observed, so the default value is false.
+     * If true, use the single start node, if false use all nodes in the same Line (EquipmentContainer).
+     */
+    final val SINGLE_START_NODE = false
+
     var _StorageLevel = StorageLevel.MEMORY_ONLY
-    var _FilePrefix = "hdfs://sandbox:9000/output/"
+    var _TempFilePrefix = "hdfs://sandbox:9000/output/"
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
@@ -226,6 +237,81 @@ class GridLABD extends Serializable
         return (ret)
     }
 
+    def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: VertexData, message: Boolean): VertexData =
+    {
+        if (message)
+            if (v.touched) v else VertexData (true) // here and also below, reuse the vertex data if possible to avoid memory churn
+        else
+        {
+            // on the first pass through the Pregel algorithm all nodes get a false message
+            // if this node is in in the list of starting nodes, update the vertex data
+            val b = starting_nodes.contains (id)
+            if (b)
+                if (v.touched) v else VertexData (true)
+            else
+                if (!v.touched) v else VertexData (false)
+        }
+    }
+
+    // function to see if the Pregel algorithm should continue or not
+    def shouldContinue (element: Element, forward: Boolean): Boolean =
+    {
+        val clazz = element.getClass.getName
+        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
+        val ret = cls match
+        {
+            case "Switch" =>
+                !element.asInstanceOf[Switch].normalOpen
+            case "Cut" =>
+                !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" =>
+                !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" =>
+                !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" =>
+                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" =>
+                !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "ProtectedSwitch" =>
+                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Sectionaliser" =>
+                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+            case "Breaker" =>
+                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" =>
+                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" =>
+                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "PowerTransformer" =>
+                false
+            case _ =>
+            {
+                true
+            }
+        }
+        return (ret)
+    }
+
+    def sendMessage (triplet: EdgeTriplet[VertexData, PreEdge]): Iterator[(VertexId, Boolean)] =
+    {
+        var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
+
+        if (triplet.srcAttr.touched && !triplet.dstAttr.touched) // see if a message is needed
+            if (shouldContinue (triplet.attr.element, true))
+                ret = Iterator ((triplet.dstId, true))
+
+        if (!triplet.srcAttr.touched && triplet.dstAttr.touched) // see if a message is needed in reverse
+            if (shouldContinue (triplet.attr.element, false))
+                ret = Iterator ((triplet.srcId, true))
+
+        return (ret)
+    }
+
+    def mergeMessage (a: Boolean, b: Boolean): Boolean =
+    {
+        a || b // result message is true if either of them is true
+    }
+
     def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
         val arguments = args.split (",").map (
@@ -405,9 +491,12 @@ class GridLABD extends Serializable
         // map the connectivity nodes to prenodes with voltages
         val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
 
-        // export only the nodes and edges in the trafo-kreise
-        // that is, all objects connected to the equipment, isolated from the entire network by transformer(s)
-        // i.e. include everything in a "trace all", but stop at transfomers
+        /*
+         * Use GraphX to export only the nodes and edges in the trafo-kreise.
+         * That is, emit all objects connected to the equipment,
+         * isolated from the entire network by transformer(s)
+         * i.e. include everything in a "trace all", but stop at transfomers
+         */
 
         // eliminate edges with only one connectivity node
         val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2)
@@ -427,85 +516,27 @@ class GridLABD extends Serializable
         val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
         if (0 == starting.length)
             return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
-        val starting_node_name = starting (0).ConnectivityNode
-        val starting_node = vertex_id (starting_node_name)
+        val starting_terminal = starting (0)
+        val starting_node_name = starting_terminal.ConnectivityNode
 
-        // traverse the graph with the Pregel algorithm
-        def vertexProgram (id: VertexId, v: VertexData, message: Boolean): VertexData =
-        {
-            if (message)
-                if (v.touched) v else VertexData (true)
+        // while we could start the Pregel trace from a single node, vertex_id (starting_node_name)
+        // it could be more efficient to get all objects that are in the same EquipmentContainer
+        val starting_nodes =
+            if (SINGLE_START_NODE)
+                Array[VertexId] (vertex_id (starting_node_name))
             else
             {
-                // on the first pass through the Pregel algorithm all nodes get a false message
-                val b = id == starting_node
-                if (b)
-                    if (v.touched) v else VertexData (b)
-                else
-                    if (!v.touched) v else VertexData (b)
+                // find the equipment container containing the requested equipment
+                val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
+                if (0 == starting_nodes.length)
+                    return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
+                val starting_node = starting_nodes(0)
+                val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
+                container_nodes.map (node => vertex_id (node.id))
             }
-        }
 
-        // function to see if the Pregel algorithm should continue or not
-        def shouldContinue (element: Element, forward: Boolean): Boolean =
-        {
-            val clazz = element.getClass.getName
-            val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-            val ret = cls match
-            {
-                case "Switch" =>
-                    !element.asInstanceOf[Switch].normalOpen
-                case "Cut" =>
-                    !element.asInstanceOf[Cut].Switch.normalOpen
-                case "Disconnector" =>
-                    !element.asInstanceOf[Disconnector].Switch.normalOpen
-                case "Fuse" =>
-                    !element.asInstanceOf[Fuse].Switch.normalOpen
-                case "GroundDisconnector" =>
-                    !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-                case "Jumper" =>
-                    !element.asInstanceOf[Jumper].Switch.normalOpen
-                case "ProtectedSwitch" =>
-                    !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-                case "Sectionaliser" =>
-                    !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-                case "Breaker" =>
-                    !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-                case "LoadBreakSwitch" =>
-                    !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-                case "Recloser" =>
-                    !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-                case "PowerTransformer" =>
-                    false
-                case _ =>
-                {
-                    true
-                }
-            }
-            return (ret)
-        }
-
-        def sendMessage (triplet: EdgeTriplet[VertexData, PreEdge]): Iterator[(VertexId, Boolean)] =
-        {
-            var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
-
-            if (triplet.srcAttr.touched && !triplet.dstAttr.touched) // see if a message is needed
-                if (shouldContinue (triplet.attr.element, true))
-                    ret = Iterator ((triplet.dstId, true))
-
-            if (!triplet.srcAttr.touched && triplet.dstAttr.touched) // see if a message is needed in reverse
-                if (shouldContinue (triplet.attr.element, false))
-                    ret = Iterator ((triplet.srcId, true))
-
-            return (ret)
-        }
-
-        def mergeMessage (a: Boolean, b: Boolean): Boolean =
-        {
-            a || b // result message is true if either of them is true
-        }
-
-        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram, sendMessage, mergeMessage)
+        // traverse the graph with the Pregel algorithm
+        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2.touched).map (_._1)
@@ -525,13 +556,13 @@ class GridLABD extends Serializable
         val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03));
         val e_strings = traced_edges.map (make_link);
 
-        c_strings.saveAsTextFile (_FilePrefix + _ConfFileName)
-        n_strings.saveAsTextFile (_FilePrefix + _NodeFileName)
-        e_strings.saveAsTextFile (_FilePrefix + _EdgeFileName)
+        c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
+        n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
+        e_strings.saveAsTextFile (_TempFilePrefix + _EdgeFileName)
 
-        val conffiles = sc.wholeTextFiles (_FilePrefix + _ConfFileName)
-        val nodefiles = sc.wholeTextFiles (_FilePrefix + _NodeFileName)
-        val edgefiles = sc.wholeTextFiles (_FilePrefix + _EdgeFileName)
+        val conffiles = sc.wholeTextFiles (_TempFilePrefix + _ConfFileName)
+        val nodefiles = sc.wholeTextFiles (_TempFilePrefix + _NodeFileName)
+        val edgefiles = sc.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
 //        (a-hdfs-path/part-00000, its content)
 //        (a-hdfs-path/part-00001, its content)
 //        ...
@@ -625,7 +656,7 @@ object GridLABD
         val hdfs_configuration = new Configuration ()
         hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem") // .class.getName ()
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        val hdfs = FileSystem.get (URI.create (gridlab._FilePrefix), hdfs_configuration)
+        val hdfs = FileSystem.get (URI.create (gridlab._TempFilePrefix), hdfs_configuration)
 
         val nodePath = new Path (gridlab._NodeFileName)
         val edgePath = new Path (gridlab._EdgeFileName)
