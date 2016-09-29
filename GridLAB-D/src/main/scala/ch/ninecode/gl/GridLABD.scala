@@ -36,7 +36,7 @@ import ch.ninecode.model._
 
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double, container: String) extends Serializable
-case class PreEdge (id_seq_1: String, id_cn_1: String, id_seq_2: String, id_cn_2: String, id_equ: String, voltage: Double, equipment: ConductingEquipment, element: Element) extends Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
 
 // define the vertex class used by GraphX
 case class VertexData (val touched: Boolean = false)
@@ -84,11 +84,12 @@ class GridLABD extends Serializable
                 "_" + string
     }
 
-    def edge_operator (voltages: Map[String, Double])(arg: Tuple2[Element, Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator (voltages: Map[String, Double])(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
-        val e = arg._1
-        val it = arg._2
+        val e = arg._1._1
+        val pte_op = arg._1._2
+        val t_it = arg._2
         // get the ConductingEquipment
         var c = e
         while ((null != c) && !c.getClass ().getName ().endsWith (".ConductingEquipment"))
@@ -96,9 +97,22 @@ class GridLABD extends Serializable
         if (null != c)
         {
             // sort terminals by sequence number
-            var terminals = it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+            val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // get the equipment
             val equipment = c.asInstanceOf[ConductingEquipment]
+            // make a list of voltages
+            val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
+            val volts =
+                pte_op match
+                {
+                    case Some (x: Iterable[PowerTransformerEnd]) =>
+                        // sort ends by end number
+                        // ToDo: handle the case where terminal sequence and end sequence aren't the same
+                        val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                        tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
+                    case None =>
+                        Array[Double] (volt, volt)
+                }
             // make a pre-edge for each pair of terminals
             ret = terminals.length match
             {
@@ -107,10 +121,11 @@ class GridLABD extends Serializable
                         new PreEdge (
                             terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                             terminals(0).ConnectivityNode,
+                            volts(0),
                             "",
                             "",
+                            volts(0),
                             terminals(0).ConductingEquipment,
-                            1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
                             equipment,
                             e)
                 case 2 =>
@@ -118,10 +133,11 @@ class GridLABD extends Serializable
                         new PreEdge (
                             terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                             terminals(0).ConnectivityNode,
+                            volts(0),
                             terminals(1).ACDCTerminal.IdentifiedObject.mRID,
                             terminals(1).ConnectivityNode,
+                            volts(1),
                             terminals(0).ConductingEquipment,
-                            1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
                             equipment,
                             e)
                 case _ =>
@@ -132,10 +148,11 @@ class GridLABD extends Serializable
                             ret = ret :+ new PreEdge (
                                     terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                                     terminals(0).ConnectivityNode,
+                                    volts(0),
                                     terminals(i).ACDCTerminal.IdentifiedObject.mRID,
                                     terminals(i).ConnectivityNode,
+                                    volts(i),
                                     terminals(0).ConductingEquipment,
-                                    1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0),
                                     equipment,
                                     e)
                             i += 1
@@ -154,9 +171,10 @@ class GridLABD extends Serializable
     def node_operator (arg: Tuple2[Tuple2[ConnectivityNode,Terminal], PreEdge]): PreNode =
     {
         val node = arg._1._1
+        val term = arg._1._2
         val edge = arg._2
         val container = node.ConnectivityNodeContainer
-        PreNode (node.id, edge.voltage, container)
+        PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, container)
     }
 
     // emit a GridLAB-D line_configuration
@@ -615,8 +633,17 @@ class GridLABD extends Serializable
         // get all elements
         val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
 
+        // get the transformer ends
+        val tends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
+
+        // get the transformer ends keyed by transformer
+        val ends = tends.groupBy (_.PowerTransformer)
+
+        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
+        val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
+
         // map the terminal 'pairs' to edges
-        val edges = elements.keyBy (_.id).join (terms).flatMapValues (edge_operator (voltages)).values
+        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
@@ -682,15 +709,9 @@ class GridLABD extends Serializable
             .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
             .values.map (make_line_configuration)
 
-        // get the transformer ends
-        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
-
-        // get the transformer ends keyed by transformer
-        val xx = ends.groupBy (_.PowerTransformer)
-
         // get each transformer and emit a configuration for each of them
         val t_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
-            .keyBy (_.id).leftOuterJoin (xx).values
+            .keyBy (_.id).leftOuterJoin (ends).values
             .map (make_transformer_configuration (voltages))
 
         val c_strings = l_strings.union (t_strings)
