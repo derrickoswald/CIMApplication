@@ -97,7 +97,7 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val has = "HAS10002" // smaller: "HAS82225" another example: "HAS67883"
+        val has = "HAS82225" // my house: "HAS10002" smaller network: "HAS82225" another example: "HAS67883"
         val result = gridlabd.export (context, sql_context, "equipment=" + has)
 
         val process = System.nanoTime ()
