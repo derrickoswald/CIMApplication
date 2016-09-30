@@ -233,7 +233,10 @@ class GridLABD extends Serializable
 //            "            z33 0.193+0.07j Ohm/km;\n" +
 //            "        };\n" +
 
-        val diag = line.r + "+" + line.x + "j Ohm/km";
+        // ToDo: get real values, "TT 1x150 EL_3" is actually "TT 1x150"
+        val r = if (0 == line.r) 0.225 else line.r
+        val x = if (0 == line.x) 0.068 else line.x
+        val diag = r + "+" + x + "j Ohm/km";
         val zero = "0.0+0.0j Ohm/km";
         ret =
             "        object line_configuration\n" +
@@ -331,7 +334,7 @@ class GridLABD extends Serializable
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
             "            bustype SWING;\n" +
-            "            nominal_voltage " + volts + "V;\n" +
+            "            nominal_voltage " + node.voltage + "V;\n" +
             "            voltage_A " + volts + "+0.0j;\n" +
             "            voltage_B -" + real + "-" + imag + "j;\n" +
             "            voltage_C -" + real + "+" + imag + "j;\n" +
@@ -380,7 +383,10 @@ class GridLABD extends Serializable
                         "            phases ABCN;\n" +
                         "            from \"" + edge.id_cn_1 + "\";\n" +
                         "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "            length " + line.Conductor.len + "m;\n" +
+                        (if (line.Conductor.len  <= 0)
+                        "            length 0.05m;\n" // ToDo: ERROR    [INIT] : init_overhead_line(obj=199;VER331619): Newton-Raphson method does not support zero length lines at this time
+                        else
+                        "            length " + line.Conductor.len + "m;\n") +
                         "            configuration \"" + config + "\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
@@ -453,10 +459,11 @@ class GridLABD extends Serializable
                         "            phases ABCN;\n" +
                         "            from \"" + edge.id_cn_1 + "\";\n" +
                         "            to \"" + edge.id_cn_2 + "\";\n" +
+                        "            mean_replacement_time 3600.0;\n" + // sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
                         (if (current <= 0)
-                            ""
+                            "            current_limit 9999.0A;\n" // ensure it doesn't trip
                         else
-                            "            current_limit " + current + ";\n") +
+                            "            current_limit " + current + "A;\n") +
                         "        };\n"
                     case _ =>
                         "        object link\n" +
@@ -592,7 +599,7 @@ class GridLABD extends Serializable
             "        module tape;\n" +
             "        module powerflow\n" +
             "        {\n" +
-            "            solver_method NR;\n" +
+            "            solver_method FBS;\n" +
             "            default_maximum_voltage_error 10e-6;\n" +
             "            NR_iteration_limit 5000;\n" +
             "            NR_superLU_procs 16;\n" +
