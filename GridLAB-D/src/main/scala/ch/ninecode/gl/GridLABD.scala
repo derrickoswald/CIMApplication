@@ -38,9 +38,6 @@ import ch.ninecode.model._
 case class PreNode (id_seq: String, voltage: Double, container: String) extends Serializable
 case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
 
-// define the vertex class used by GraphX
-case class VertexData (val touched: Boolean = false)
-
 class GridLABD extends Serializable
 {
     /**
@@ -487,19 +484,19 @@ class GridLABD extends Serializable
         org.apache.spark.graphx.Edge (vertex_id (e.id_cn_1), vertex_id (e.id_cn_2), e)
     }
 
-    def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: VertexData, message: Boolean): VertexData =
+    def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: Boolean, message: Boolean): Boolean =
     {
         if (message)
-            if (v.touched) v else VertexData (true) // here and also below, reuse the vertex data if possible to avoid memory churn
+            if (v) v else true // here and also below, reuse the vertex data if possible to avoid memory churn
         else
         {
             // on the first pass through the Pregel algorithm all nodes get a false message
             // if this node is in in the list of starting nodes, update the vertex data
             val b = starting_nodes.contains (id)
             if (b)
-                if (v.touched) v else VertexData (true)
+                if (v) v else true
             else
-                if (!v.touched) v else VertexData (false)
+                if (!v) v else false
         }
     }
 
@@ -542,15 +539,15 @@ class GridLABD extends Serializable
         return (ret)
     }
 
-    def sendMessage (triplet: EdgeTriplet[VertexData, PreEdge]): Iterator[(VertexId, Boolean)] =
+    def sendMessage (triplet: EdgeTriplet[Boolean, PreEdge]): Iterator[(VertexId, Boolean)] =
     {
         var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
 
-        if (triplet.srcAttr.touched && !triplet.dstAttr.touched) // see if a message is needed
+        if (triplet.srcAttr && !triplet.dstAttr) // see if a message is needed
             if (shouldContinue (triplet.attr.element, true))
                 ret = Iterator ((triplet.dstId, true))
 
-        if (!triplet.srcAttr.touched && triplet.dstAttr.touched) // see if a message is needed in reverse
+        if (!triplet.srcAttr && triplet.dstAttr) // see if a message is needed in reverse
             if (shouldContinue (triplet.attr.element, false))
                 ret = Iterator ((triplet.srcId, true))
 
@@ -577,6 +574,115 @@ class GridLABD extends Serializable
 
         // get the name of the equipment of interest
         val equipment = arguments.getOrElse ("equipment", "")
+
+        // get a map of voltages
+        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+
+        // get the terminals
+        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
+
+        // get the terminals keyed by equipment
+        val terms = terminals.groupBy (_.ConductingEquipment)
+
+        // get all elements
+        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
+
+        // get the transformer ends
+        val tends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
+
+        // get the transformer ends keyed by transformer
+        val ends = tends.groupBy (_.PowerTransformer)
+
+        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
+        val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
+
+        // map the terminal 'pairs' to edges
+        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
+
+        // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
+        val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
+
+        // get the connectivity nodes RDD
+        val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
+
+        // map the connectivity nodes to prenodes with voltages
+        val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
+
+        /*
+         * Use GraphX to export only the nodes and edges in the trafo-kreise.
+         * That is, emit all objects connected to the equipment,
+         * isolated from the entire network by transformer(s)
+         * i.e. include everything in a "trace all", but stop at transfomers
+         */
+
+        // eliminate edges with only one connectivity node
+        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2)
+
+        // construct the initial graph from the real edges
+        val initial = Graph.fromEdges[Boolean, PreEdge](real_edges.map (make_graph_edges), false, _StorageLevel, _StorageLevel)
+
+        // find the starting node
+        val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
+        if (0 == starting.length)
+            return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
+        val starting_terminal = starting (0)
+        val starting_node_name = starting_terminal.ConnectivityNode
+
+        // while we could start the Pregel trace from a single node, vertex_id (starting_node_name)
+        // it could be more efficient to get all objects that are in the same EquipmentContainer
+        val starting_nodes =
+            if (SINGLE_START_NODE)
+                Array[VertexId] (vertex_id (starting_node_name))
+            else
+            {
+                // find the equipment container containing the requested equipment
+                val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
+                if (0 == starting_nodes.length)
+                    return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
+                val starting_node = starting_nodes(0)
+                val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
+                container_nodes.map (node => vertex_id (node.id))
+            }
+
+        // traverse the graph with the Pregel algorithm
+        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
+
+        // get the list of traced vertices
+        val touched = graph.vertices.filter (_._2).map (_._1)
+        val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
+
+        // get the list of traced edges
+        val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
+
+        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
+        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
+
+        // get one of each type of ACLineSegment and emit a configuration for each of them
+        val l_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
+            .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
+            .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
+            .values.map (make_line_configuration)
+
+        // get each transformer and emit a configuration for each of them
+        val t_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
+            .keyBy (_.id).leftOuterJoin (ends).values
+            .map (make_transformer_configuration (voltages))
+
+        val c_strings = l_strings.union (t_strings)
+        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03));
+        val e_strings = traced_edges.map (make_link);
+
+        c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
+        n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
+        e_strings.saveAsTextFile (_TempFilePrefix + _EdgeFileName)
+
+        val conffiles = sc.wholeTextFiles (_TempFilePrefix + _ConfFileName)
+        val nodefiles = sc.wholeTextFiles (_TempFilePrefix + _NodeFileName)
+        val edgefiles = sc.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
+
+        /**
+         * Create the output file.
+         */
 
         val USE_UTC = false
 
@@ -628,114 +734,6 @@ class GridLABD extends Serializable
         val result = new StringBuilder ()
         result.append (prefix)
 
-        // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
-
-        // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
-
-        // get the terminals keyed by equipment
-        val terms = terminals.groupBy (_.ConductingEquipment)
-
-        // get all elements
-        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
-
-        // get the transformer ends
-        val tends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
-
-        // get the transformer ends keyed by transformer
-        val ends = tends.groupBy (_.PowerTransformer)
-
-        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
-        val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
-
-        // map the terminal 'pairs' to edges
-        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
-
-        // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
-        val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
-
-        // get the connectivity nodes RDD
-        val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
-
-        // map the connectivity nodes to prenodes with voltages
-        val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
-
-        /*
-         * Use GraphX to export only the nodes and edges in the trafo-kreise.
-         * That is, emit all objects connected to the equipment,
-         * isolated from the entire network by transformer(s)
-         * i.e. include everything in a "trace all", but stop at transfomers
-         */
-
-        // eliminate edges with only one connectivity node
-        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2)
-
-        // construct the initial graph from the real edges
-        val initial = Graph.fromEdges[VertexData, PreEdge](real_edges.map (make_graph_edges), VertexData (), _StorageLevel, _StorageLevel)
-
-        // find the starting node
-        val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
-        if (0 == starting.length)
-            return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
-        val starting_terminal = starting (0)
-        val starting_node_name = starting_terminal.ConnectivityNode
-
-        // while we could start the Pregel trace from a single node, vertex_id (starting_node_name)
-        // it could be more efficient to get all objects that are in the same EquipmentContainer
-        val starting_nodes =
-            if (SINGLE_START_NODE)
-                Array[VertexId] (vertex_id (starting_node_name))
-            else
-            {
-                // find the equipment container containing the requested equipment
-                val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
-                if (0 == starting_nodes.length)
-                    return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
-                val starting_node = starting_nodes(0)
-                val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
-                container_nodes.map (node => vertex_id (node.id))
-            }
-
-        // traverse the graph with the Pregel algorithm
-        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
-
-        // get the list of traced vertices
-        val touched = graph.vertices.filter (_._2.touched).map (_._1)
-        val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
-
-        // get the list of traced edges
-        val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
-
-        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
-        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
-
-        // get one of each type of ACLineSegment and emit a configuration for each of them
-        val l_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
-            .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-            .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
-            .values.map (make_line_configuration)
-
-        // get each transformer and emit a configuration for each of them
-        val t_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
-            .keyBy (_.id).leftOuterJoin (ends).values
-            .map (make_transformer_configuration (voltages))
-
-        val c_strings = l_strings.union (t_strings)
-        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03));
-        val e_strings = traced_edges.map (make_link);
-
-        c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
-        n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
-        e_strings.saveAsTextFile (_TempFilePrefix + _EdgeFileName)
-
-        val conffiles = sc.wholeTextFiles (_TempFilePrefix + _ConfFileName)
-        val nodefiles = sc.wholeTextFiles (_TempFilePrefix + _NodeFileName)
-        val edgefiles = sc.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
-//        (a-hdfs-path/part-00000, its content)
-//        (a-hdfs-path/part-00001, its content)
-//        ...
-//        (a-hdfs-path/part-nnnnn, its content)
         result.append (conffiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
         result.append (nodefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
         result.append (edgefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
