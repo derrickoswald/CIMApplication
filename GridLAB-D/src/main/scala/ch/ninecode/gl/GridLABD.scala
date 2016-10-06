@@ -35,7 +35,7 @@ import ch.ninecode.cim._
 import ch.ninecode.model._
 
 // define the minimal node and edge classes
-case class PreNode (id_seq: String, voltage: Double, container: String) extends Serializable
+case class PreNode (id_seq: String, voltage: Double) extends Serializable
 case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
 
 class GridLABD extends Serializable
@@ -81,9 +81,14 @@ class GridLABD extends Serializable
                 "_" + string
     }
 
-    def edge_operator (voltages: Map[String, Double])(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
+        def node_name (t: Terminal): String =
+        {
+            return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
+        }
+
         val e = arg._1._1
         val pte_op = arg._1._2
         val t_it = arg._2
@@ -117,42 +122,28 @@ class GridLABD extends Serializable
                     ret :+
                         new PreEdge (
                             terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(0).ConnectivityNode,
+                            node_name (terminals(0)),
                             volts(0),
                             "",
                             "",
                             volts(0),
-                            terminals(0).ConductingEquipment,
-                            equipment,
-                            e)
-                case 2 =>
-                    ret :+
-                        new PreEdge (
-                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(0).ConnectivityNode,
-                            volts(0),
-                            terminals(1).ACDCTerminal.IdentifiedObject.mRID,
-                            terminals(1).ConnectivityNode,
-                            volts(1),
                             terminals(0).ConductingEquipment,
                             equipment,
                             e)
                 case _ =>
                     {
-                        var i = 1
-                        while (i < terminals.length)
+                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ new PreEdge (
                                     terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                                    terminals(0).ConnectivityNode,
+                                    node_name (terminals(0)),
                                     volts(0),
                                     terminals(i).ACDCTerminal.IdentifiedObject.mRID,
-                                    terminals(i).ConnectivityNode,
+                                    node_name (terminals(i)),
                                     volts(i),
                                     terminals(0).ConductingEquipment,
                                     equipment,
                                     e)
-                            i += 1
                         }
                         ret
                     }
@@ -165,13 +156,20 @@ class GridLABD extends Serializable
         return (ret)
     }
 
-    def node_operator (arg: Tuple2[Tuple2[ConnectivityNode,Terminal], PreEdge]): PreNode =
+    def topological_node_operator (arg: Tuple2[Tuple2[TopologicalNode,Terminal], PreEdge]): PreNode =
     {
         val node = arg._1._1
         val term = arg._1._2
         val edge = arg._2
-        val container = node.ConnectivityNodeContainer
-        PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, container)
+        PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
+    }
+
+    def connectivity_node_operator (arg: Tuple2[Tuple2[ConnectivityNode,Terminal], PreEdge]): PreNode =
+    {
+        val node = arg._1._1
+        val term = arg._1._2
+        val edge = arg._2
+        PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
     // emit a GridLAB-D line_configuration
@@ -380,10 +378,10 @@ class GridLABD extends Serializable
                         "            phases ABCN;\n" +
                         "            from \"" + edge.id_cn_1 + "\";\n" +
                         "            to \"" + edge.id_cn_2 + "\";\n" +
-                        (if (line.Conductor.len  <= 0)
-                        "            length 0.05m;\n" // ToDo: ERROR    [INIT] : init_overhead_line(obj=199;VER331619): Newton-Raphson method does not support zero length lines at this time
-                        else
-                        "            length " + line.Conductor.len + "m;\n") +
+//                        (if (line.Conductor.len  <= 0)
+//                        "            length 0.05m;\n" // ToDo: ERROR    [INIT] : init_overhead_line(obj=199;VER331619): Newton-Raphson method does not support zero length lines at this time
+//                        else
+                        "            length " + line.Conductor.len + "m;\n" +
                         "            configuration \"" + config + "\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
@@ -501,7 +499,7 @@ class GridLABD extends Serializable
     }
 
     // function to see if the Pregel algorithm should continue or not
-    def shouldContinue (element: Element, forward: Boolean): Boolean =
+    def shouldContinue (element: Element): Boolean =
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
@@ -544,11 +542,11 @@ class GridLABD extends Serializable
         var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
 
         if (triplet.srcAttr && !triplet.dstAttr) // see if a message is needed
-            if (shouldContinue (triplet.attr.element, true))
+            if (shouldContinue (triplet.attr.element))
                 ret = Iterator ((triplet.dstId, true))
 
         if (!triplet.srcAttr && triplet.dstAttr) // see if a message is needed in reverse
-            if (shouldContinue (triplet.attr.element, false))
+            if (shouldContinue (triplet.attr.element))
                 ret = Iterator ((triplet.srcId, true))
 
         return (ret)
@@ -575,11 +573,16 @@ class GridLABD extends Serializable
         // get the name of the equipment of interest
         val equipment = arguments.getOrElse ("equipment", "")
 
+        // see if we should use topology nodes
+        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
+
         // get a map of voltages
         val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
+        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+println ("terminals: " + terminals.count())
+println (terminals.first ())
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
@@ -597,16 +600,31 @@ class GridLABD extends Serializable
         val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
 
         // map the terminal 'pairs' to edges
-        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
+        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages, topologicalnodes)).values
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
-        // get the connectivity nodes RDD
-        val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
+        val nodes = if (topologicalnodes)
+        {
+            // get the topological nodes RDD
+            val tnodes = get ("TopologicalNode", sc).asInstanceOf[RDD[TopologicalNode]]
+println ("topological nodes: " + tnodes.count())
+println (tnodes.first ())
 
-        // map the connectivity nodes to prenodes with voltages
-        val nodes = connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (node_operator).distinct
+            // map the topological nodes to prenodes with voltages
+            tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
+        }
+        else
+        {
+            // get the connectivity nodes RDD
+            val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
+
+            // map the connectivity nodes to prenodes with voltages
+            connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
+        }
+println ("nodes: " + nodes.count())
+println (nodes.first ())
 
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -615,18 +633,24 @@ class GridLABD extends Serializable
          * i.e. include everything in a "trace all", but stop at transfomers
          */
 
-        // eliminate edges with only one connectivity node
-        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2)
+        // eliminate edges with only one connectivity node, or the same connectivity node
+        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
+println ("real_edges: " + real_edges.count())
+println (real_edges.first ())
 
         // construct the initial graph from the real edges
         val initial = Graph.fromEdges[Boolean, PreEdge](real_edges.map (make_graph_edges), false, _StorageLevel, _StorageLevel)
+println ("vertices: " + initial.vertices.count())
+println (initial.vertices.first ())
+println ("edges: " + initial.edges.count())
+println (initial.edges.first ())
 
         // find the starting node
         val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
         if (0 == starting.length)
-            return ("" + starting.length + " equipment matched id " + equipment) // ToDo: proper logging
+            return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
         val starting_terminal = starting (0)
-        val starting_node_name = starting_terminal.ConnectivityNode
+        val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
 
         // while we could start the Pregel trace from a single node, vertex_id (starting_node_name)
         // it could be more efficient to get all objects that are in the same EquipmentContainer
@@ -634,25 +658,40 @@ class GridLABD extends Serializable
             if (SINGLE_START_NODE)
                 Array[VertexId] (vertex_id (starting_node_name))
             else
-            {
-                // find the equipment container containing the requested equipment
-                val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
-                if (0 == starting_nodes.length)
-                    return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
-                val starting_node = starting_nodes(0)
-                val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
-                container_nodes.map (node => vertex_id (node.id))
-            }
+                if (topologicalnodes)
+                {
+                    // ToDo: add container to TopologicalNode
+                    Array[VertexId] (vertex_id (starting_node_name))
+                }
+                else
+                {
+                    // find the equipment container containing the requested equipment
+                    val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
+                    val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
+                    if (0 == starting_nodes.length)
+                        return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
+                    val starting_node = starting_nodes(0)
+                    val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
+                    container_nodes.map (node => vertex_id (node.id))
+                }
 
         // traverse the graph with the Pregel algorithm
-        val graph = initial. pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
+        val graph = initial.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
+println ("vertices: " + graph.vertices.count())
+println (graph.vertices.first ())
+println ("edges: " + graph.edges.count())
+println (graph.edges.first ())
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2).map (_._1)
         val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
+println ("traced_nodes: " + traced_nodes.count())
+println (traced_nodes.first ())
 
         // get the list of traced edges
         val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
+println ("traced_edges: " + traced_edges.count())
+println (traced_edges.first ())
 
         // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
         val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values

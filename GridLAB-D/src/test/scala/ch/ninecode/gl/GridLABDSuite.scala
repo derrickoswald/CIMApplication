@@ -44,6 +44,10 @@ class GridLABDSuite extends fixture.FunSuite
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        // register topological classes
+        configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+        // register GridLAB-D classes
+        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
 
         val context = new SparkContext (configuration)
         context.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -65,11 +69,12 @@ class GridLABDSuite extends fixture.FunSuite
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "false");
         options.put ("ch.ninecode.cim.do_join", "true");
+        options.put ("ch.ninecode.cim.do_topo", "true");
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val plan = element.queryExecution
         val test = plan.toString ()
         if (!test.contains ("InputPaths"))
-            throw new Exception ("input file not found: " + filename)
+            throw new Exception ("input file not found: " + filename + "\n" + test)
 
         return (element)
     }
@@ -84,7 +89,10 @@ class GridLABDSuite extends fixture.FunSuite
         val sql_context: SQLContext = a._SQLContext
 
         val filename =
-        FILE_DEPOT + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
+//        FILE_DEPOT + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
+        FILE_DEPOT + "NIS_CIM_Export_b4_Bubenei" + ".rdf"
+//        "," +
+//        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
         val elements = readFile (sql_context, filename)
 
         val read = System.nanoTime ()
@@ -97,8 +105,8 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val has = "HAS10002" // my house: "HAS10002" smaller network: "HAS82225" another example: "HAS67883"
-        val result = gridlabd.export (context, sql_context, "equipment=" + has)
+        val has = "HAS97010" // my house: "HAS10002" smaller network: "HAS82225" another example: "HAS67883"
+        val result = gridlabd.export (context, sql_context, "equipment=" + has + ",topologicalnodes=true")
 
         val process = System.nanoTime ()
 
