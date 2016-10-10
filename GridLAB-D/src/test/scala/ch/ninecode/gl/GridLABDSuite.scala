@@ -101,6 +101,7 @@ class GridLABDSuite extends fixture.FunSuite
         val gridlabd = new GridLABD ()
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         gridlabd._TempFilePrefix = "./output/"
+        gridlabd._CSV = FILE_DEPOT + "KS_Leistungen.csv"
 
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))

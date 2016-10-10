@@ -58,7 +58,7 @@ class ShortCircuit extends Serializable
     //
     // this should only be needed until the medium voltage network is fully described and  calculations can
     // be done from the high voltage network "slack bus" connections
-    var csv: String = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
+    var csv = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
 
     // define the augmented edge class
     case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
@@ -139,7 +139,7 @@ class ShortCircuit extends Serializable
         csv = arguments.getOrElse ("csv", csv)
 
         // get all transformers in substations
-        val transformers = get ("PowerTransformer", sc).asInstanceOf[RDD[ch.ninecode.model.PowerTransformer]]
+        val transformers = get ("PowerTransformer", sc).asInstanceOf[RDD[PowerTransformer]]
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
 
         // get an RDD of substations by filtering out distribution boxes

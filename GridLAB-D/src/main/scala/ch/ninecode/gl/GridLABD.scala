@@ -34,6 +34,9 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
+// create a holder for pre-computed transformer power availabaility
+case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
+
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Serializable
 case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
@@ -55,6 +58,17 @@ class GridLABD extends Serializable
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
+
+    // name of file containing short circuit Ikw and Sk values for medium voltage transformers
+    // e.g.
+    //
+    // "","Fehlerort","Un","Ikw...RST.","Sk..RST.","Beschreibung..SAP.Nr..","Abgang","NIS.ID","NIS.Name"
+    // "1","Scheidbach Turbach",16,-37.34,89.733,20444,"SAA Lauenen","STA2040","Scheidbach"
+    // "2","Bachegg",16,-36.22,83.805,20468,"SAA Lauenen","STA9390","Bachegg"
+    //
+    // this should only be needed until the medium voltage network is fully described and  calculations can
+    // be done from the high voltage network "slack bus" connections
+    var _CSV = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
 
     def get (name: String, context: SparkContext): RDD[Element] =
     {
@@ -81,6 +95,98 @@ class GridLABD extends Serializable
                 "_" + string
     }
 
+    def read_csv (context: SparkContext): RDD[ShortCircuitData] =
+    {
+        // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
+        val spreadsheet = context.textFile (_CSV)
+
+        // create a function to trim off the double quotes
+        def trimplus (s: String): String =
+        {
+            var ret = s.trim
+            if (ret.startsWith ("\"") && ret.endsWith ("\""))
+                ret = ret.substring (1, ret.length - 1)
+            return (ret)
+        }
+        // split / clean data
+        val headerAndRows = spreadsheet.map (line => line.split(",").map (trimplus (_)))
+        // get header
+        val header = headerAndRows.first
+        // filter out header (just check if the first val matches the first header name)
+        val data = headerAndRows.filter (_(0) != header (0))
+        // splits to map (header/value pairs)
+        val short_circuit_power = data.map (splits => header.zip (splits).toMap)
+
+        // keep only the relevant information
+        short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
+    }
+
+    def short_circuit_data (context: SparkContext): RDD[(PowerTransformer, Substation, ShortCircuitData)] =
+    {
+        // get all transformers in substations
+        val transformers = get ("PowerTransformer", context).asInstanceOf[RDD[PowerTransformer]]
+        val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
+
+        // get an RDD of substations by filtering out distribution boxes
+        val stations = get ("Substation", context).asInstanceOf[RDD[ch.ninecode.model.Substation]].filter (_.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
+
+        // the Equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
+        def station_fn (x: Tuple2[String, Any]) =
+        {
+            x match
+            {
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, station: ch.ninecode.model.Substation)) =>
+                {
+                    (station.id, t)
+                }
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, bay: ch.ninecode.model.Bay)) =>
+                {
+                    (bay.Substation, t)
+                }
+                case (key: String, (t: ch.ninecode.model.PowerTransformer, level: ch.ninecode.model.VoltageLevel)) =>
+                {
+                    (level.Substation, t)
+                }
+                case _ =>
+                {
+                    throw new Exception ("this should never happen -- default case")
+                }
+            }
+        }
+
+        // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
+        val elements = get ("Elements", context).asInstanceOf[RDD[ch.ninecode.model.Element]]
+        val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
+
+        val short_circuit = read_csv (context)
+
+        // only keep the pairs where the transformer is in a substation we have
+        val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
+
+        def transformer_fn (x: Tuple2[String, Any]) =
+        {
+            x match
+            {
+                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: ShortCircuitData))) =>
+                {
+                    (a, b, c)
+                }
+                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), None)) =>
+                {
+                    (a, b, ShortCircuitData (b.id, 200, -70, false))
+                }
+                case _ =>
+                {
+                    throw new Exception ("this should never happen -- default case")
+                }
+            }
+        }
+
+        val transformers_short_circuit = transformers_stations.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).map (transformer_fn)
+
+        return (transformers_short_circuit)
+    }
+
     def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
@@ -98,7 +204,7 @@ class GridLABD extends Serializable
             c = c.sup
         if (null != c)
         {
-            // sort terminals by sequence number
+            // sort terminals by sequence number (and hence the primary is index 0)
             val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // get the equipment
             val equipment = c.asInstanceOf[ConductingEquipment]
@@ -115,39 +221,42 @@ class GridLABD extends Serializable
                     case None =>
                         Array[Double] (volt, volt)
                 }
-            // make a pre-edge for each pair of terminals
-            ret = terminals.length match
-            {
-                case 1 =>
-                    ret :+
-                        new PreEdge (
-                            terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                            node_name (terminals(0)),
-                            volts(0),
-                            "",
-                            "",
-                            volts(0),
-                            terminals(0).ConductingEquipment,
-                            equipment,
-                            e)
-                case _ =>
-                    {
-                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+            // Note: we eliminate 230V edges because transformer information doesn't exist and
+            // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
+            if (!volts.contains (230.0))
+                // make a pre-edge for each pair of terminals
+                ret = terminals.length match
+                {
+                    case 1 =>
+                        ret :+
+                            new PreEdge (
+                                terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                node_name (terminals(0)),
+                                volts(0),
+                                "",
+                                "",
+                                volts(0),
+                                terminals(0).ConductingEquipment,
+                                equipment,
+                                e)
+                    case _ =>
                         {
-                            ret = ret :+ new PreEdge (
-                                    terminals(0).ACDCTerminal.IdentifiedObject.mRID,
-                                    node_name (terminals(0)),
-                                    volts(0),
-                                    terminals(i).ACDCTerminal.IdentifiedObject.mRID,
-                                    node_name (terminals(i)),
-                                    volts(i),
-                                    terminals(0).ConductingEquipment,
-                                    equipment,
-                                    e)
+                            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                            {
+                                ret = ret :+ new PreEdge (
+                                        terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                        node_name (terminals(0)),
+                                        volts(0),
+                                        terminals(i).ACDCTerminal.IdentifiedObject.mRID,
+                                        node_name (terminals(i)),
+                                        volts(i),
+                                        terminals(0).ConductingEquipment,
+                                        equipment,
+                                        e)
+                            }
+                            ret
                         }
-                        ret
-                    }
-            }
+                }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
             // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
@@ -231,8 +340,8 @@ class GridLABD extends Serializable
         // ToDo: get real values, "TT 1x150 EL_3" is actually "TT 1x150"
         val r = if (0 == line.r) 0.225 else line.r
         val x = if (0 == line.x) 0.068 else line.x
-        val diag = r + "+" + x + "j Ohm/km";
-        val zero = "0.0+0.0j Ohm/km";
+        val diag = r + "+" + x + "j Ohm/km"
+        val zero = "0.0+0.0j Ohm/km"
         ret =
             "        object line_configuration\n" +
             "        {\n" +
@@ -268,49 +377,70 @@ class GridLABD extends Serializable
      * Most transformers have only two ends, so this should normally make one configurations
      * @param voltages a map of voltage mRID to floating point voltages
      */
-    def make_transformer_configuration (voltages: Map[String, Double])(s: Tuple2[PowerTransformer,Any]): String =
+    def make_transformer_configuration (voltages: Map[String, Double])(s: Tuple2[Tuple3[PowerTransformer,Substation,ShortCircuitData],Any]): String =
     {
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
-        val transformer = s._1
+        val transformer = s._1._1
         val power = transformer_power (transformer)
+        val sc_data = s._1._3
         val ret =
-            if ("unknown" == power)
-                ""
-            else
-                s._2 match
-                {
-                    case None =>
-                        ""
-                    case Some (x: Any) =>
-                        // sort ends by sequence number
-                        val iter = x.asInstanceOf[Iterable[PowerTransformerEnd]]
-                        val ends = iter.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                        var i = 0
-                        var temp = ""
-                        while (i < ends.length - 1)
-                        {
-                            val v0 = 1000.0 * voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
-                            val v = 1000.0 * voltages.getOrElse (ends(i + 1).TransformerEnd.BaseVoltage, 0.0)
-                            val r = ends(i + 1).r
-                            val x = ends(i + 1).x
-                            temp +=
-                                "        object transformer_configuration\n" +
-                                "        {\n" +
-                                "            name \"" + transformer.id + "_configuration" + "\";\n" +
-                                "            connect_type DELTA_GWYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
-                                "            install_type PADMOUNT;\n" +
-                                "            power_rating " + power + ";\n" +
-                                "            primary_voltage " + v0 + ";\n" +
-                                "            secondary_voltage " + v + ";\n" +
-                                "            resistance " + r + ";\n" +
-                                "            reactance " + x + ";\n" +
-                                "        };\n" +
-                                "\n" +
-                                "";
-                            i += 1
-                        }
-                        temp
-                }
+            s._2 match
+            {
+                case None =>
+                    ""
+                case Some (x: Any) =>
+                    // sort ends by sequence number
+                    val iter = x.asInstanceOf[Iterable[PowerTransformerEnd]]
+                    val ends = iter.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                    var temp = ""
+                    for (i <- 1 until ends.length)
+                    {
+                        val v0 = 1000.0 * voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
+                        val v = 1000.0 * voltages.getOrElse (ends(i).TransformerEnd.BaseVoltage, 0.0)
+                        // calculate per unit r and x
+                        var base_va = ends(i).ratedS * 1e6 // ToDo: remove this multiplier when NE-66 NIS.CIM: Scale of PowerTransformerEnd ratedS is wrong
+                        if (0.0 == base_va && "unknown" != power)
+                            base_va = power.toDouble * 1000
+                        val base_amps = base_va / v / Math.sqrt (3)
+                        val base_ohms = v / base_amps / Math.sqrt (3)
+                        val r = ends(i).r / base_ohms
+                        val x = ends(i).x / base_ohms
+                        // compute the fake line impedance from the high voltage to the transformer
+                        // Z = c * V^2 / (Sk x 1e6)     e.g. 0.90 * 16000 * 16000 / -82e6  = -2.8097
+                        // r = Z * sin(Ikw)
+                        // x = Z * cos(Ikw)
+                        val c = 0.9
+                        val z = c * v0 * v0 / (Math.abs (sc_data.Sk) * 1e6)
+                        val diag = "" + z + (if (0 <= sc_data.Ikw) "+" else "") + sc_data.Ikw + "d Ohm/km"
+                        temp +=
+                            "        object transformer_configuration\n" +
+                            "        {\n" +
+                            "            name \"" + transformer.id + "_configuration" + "\";\n" +
+                            "            connect_type DELTA_GWYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
+                            "            install_type PADMOUNT;\n" +
+                            "            power_rating " + (base_va / 1000.0) + ";\n" +
+                            "            primary_voltage " + v0 + ";\n" +
+                            "            secondary_voltage " + v + ";\n" +
+                            "            resistance " + r + ";\n" +
+                            "            reactance " + x + ";\n" +
+                            "        };\n" +
+                            // make a line configuration
+                            "        object line_configuration\n" +
+                            "        {\n" +
+                            "            name \"" + transformer.id + "_fake_line_configuration\";\n" +
+                            "            z11 " + diag + ";\n" +
+                            "            z12 0.0+0.0d Ohm/km;\n" +
+                            "            z13 0.0+0.0d Ohm/km;\n" +
+                            "            z21 0.0+0.0d Ohm/km;\n" +
+                            "            z22 " + diag + ";\n" +
+                            "            z23 0.0+0.0d Ohm/km;\n" +
+                            "            z31 0.0+0.0d Ohm/km;\n" +
+                            "            z32 0.0+0.0d Ohm/km;\n" +
+                            "            z33 " + diag + ";\n" +
+                            "        };\n"
+                    }
+                    temp
+            }
 
         return (ret)
     }
@@ -322,17 +452,15 @@ class GridLABD extends Serializable
         if (node.id_seq == slack)
         {
             val volts = node.voltage * multiplier
-            val real = volts / 2
-            val imag = volts * Math.sqrt (3.0) / 2
             "        object node\n" +
             "        {\n" +
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
             "            bustype SWING;\n" +
-            "            nominal_voltage " + node.voltage + "V;\n" +
-            "            voltage_A " + volts + "+0.0j;\n" +
-            "            voltage_B -" + real + "-" + imag + "j;\n" +
-            "            voltage_C -" + real + "+" + imag + "j;\n" +
+            "            nominal_voltage " + node.voltage + " V;\n" +
+            "            voltage_A " + volts + "+0.0d V;\n" +
+            "            voltage_B " + volts + "-120.0d V;\n" +
+            "            voltage_C " + volts + "+120.0d V;\n" +
             "        };\n"
         }
         else
@@ -397,6 +525,7 @@ class GridLABD extends Serializable
                             "            to \"" + edge.id_cn_2 + "\";\n" +
                             "        };\n"
                         else
+                        {
                             "        object transformer\n" +
                             "        {\n" +
                             "            name \"" + edge.id_equ + "\";\n" +
@@ -404,7 +533,29 @@ class GridLABD extends Serializable
                             "            from \"" + edge.id_cn_1 + "\";\n" +
                             "            to \"" + edge.id_cn_2 + "\";\n" +
                             "            configuration \"" + edge.id_equ + "_configuration" + "\";\n" +
+                            "        };\n" +
+                            // make a slack bus
+                            "        object node\n" +
+                            "        {\n" +
+                            "            name \"" + edge.id_equ + "_swing_bus\";\n" +
+                            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+                            "            bustype SWING;\n" +
+                            "            nominal_voltage " + edge.v1 + " V;\n" +
+                            "            voltage_A " + edge.v1 + "+30.0d V;\n" +
+                            "            voltage_B " + edge.v1 + "-90.0d V;\n" +
+                            "            voltage_C " + edge.v1 + "+150.0d V;\n" +
+                            "        };\n" +
+                            // make a fake cable joining the slack bus to the transformer
+                            "        object underground_line\n" +
+                            "        {\n" +
+                            "            name \"" + edge.id_equ + "_feeder\";\n" +
+                            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+                            "            from \"" + edge.id_equ + "_swing_bus\";\n" +
+                            "            to \"" + edge.id_cn_1 + "\";\n" +
+                            "            length 1000 m;\n" +
+                            "            configuration \"" + edge.id_equ + "_fake_line_configuration\";\n" +
                             "        };\n"
+                        }
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
                         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
@@ -581,8 +732,6 @@ class GridLABD extends Serializable
 
         // get the terminals
         val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
-println ("terminals: " + terminals.count())
-println (terminals.first ())
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
@@ -609,8 +758,6 @@ println (terminals.first ())
         {
             // get the topological nodes RDD
             val tnodes = get ("TopologicalNode", sc).asInstanceOf[RDD[TopologicalNode]]
-println ("topological nodes: " + tnodes.count())
-println (tnodes.first ())
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -623,8 +770,6 @@ println (tnodes.first ())
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
         }
-println ("nodes: " + nodes.count())
-println (nodes.first ())
 
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -635,15 +780,9 @@ println (nodes.first ())
 
         // eliminate edges with only one connectivity node, or the same connectivity node
         val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
-println ("real_edges: " + real_edges.count())
-println (real_edges.first ())
 
         // construct the initial graph from the real edges
         val initial = Graph.fromEdges[Boolean, PreEdge](real_edges.map (make_graph_edges), false, _StorageLevel, _StorageLevel)
-println ("vertices: " + initial.vertices.count())
-println (initial.vertices.first ())
-println ("edges: " + initial.edges.count())
-println (initial.edges.first ())
 
         // find the starting node
         val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
@@ -677,21 +816,13 @@ println (initial.edges.first ())
 
         // traverse the graph with the Pregel algorithm
         val graph = initial.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
-println ("vertices: " + graph.vertices.count())
-println (graph.vertices.first ())
-println ("edges: " + graph.edges.count())
-println (graph.edges.first ())
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2).map (_._1)
         val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
-println ("traced_nodes: " + traced_nodes.count())
-println (traced_nodes.first ())
 
         // get the list of traced edges
         val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
-println ("traced_edges: " + traced_edges.count())
-println (traced_edges.first ())
 
         // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
         val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
@@ -703,13 +834,16 @@ println (traced_edges.first ())
             .values.map (make_line_configuration)
 
         // get each transformer and emit a configuration for each of them
-        val t_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
-            .keyBy (_.id).leftOuterJoin (ends).values
+        // val pt = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
+        val shorts = short_circuit_data (sc)
+        val pt = traced_edges.map (_.element).keyBy (_.id).join (shorts.keyBy (_._1.id)).values.map (_._2)
+        val t_strings = pt
+            .keyBy (_._1.id).leftOuterJoin (ends).values
             .map (make_transformer_configuration (voltages))
 
         val c_strings = l_strings.union (t_strings)
-        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03));
-        val e_strings = traced_edges.map (make_link);
+        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03))
+        val e_strings = traced_edges.map (make_link)
 
         c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
         n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
@@ -744,7 +878,7 @@ println (traced_edges.first ())
             "        module tape;\n" +
             "        module powerflow\n" +
             "        {\n" +
-            "            solver_method FBS;\n" +
+            "            solver_method NR;\n" +
             "            default_maximum_voltage_error 10e-6;\n" +
             "            NR_iteration_limit 5000;\n" +
             "            NR_superLU_procs 16;\n" +
@@ -847,9 +981,9 @@ object GridLABD
         val start = System.nanoTime ()
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "false");
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        options.put ("ch.ninecode.cim.make_edges", "true") // backwards compatibility
+        options.put ("ch.ninecode.cim.do_join", "false")
         val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
@@ -881,6 +1015,6 @@ object GridLABD
         println ("prep : " + (prep - read) / 1e9 + " seconds")
         println ("graph: " + (graph - prep) / 1e9 + " seconds")
         println ("write: " + (System.nanoTime () - graph) / 1e9 + " seconds")
-        println ();
+        println ()
     }
 }
