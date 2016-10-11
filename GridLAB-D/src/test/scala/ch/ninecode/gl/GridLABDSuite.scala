@@ -70,6 +70,7 @@ class GridLABDSuite extends fixture.FunSuite
         options.put ("ch.ninecode.cim.make_edges", "false");
         options.put ("ch.ninecode.cim.do_join", "true");
         options.put ("ch.ninecode.cim.do_topo", "true");
+        options.put ("ch.ninecode.cim.do_topo_islands", "false");
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val plan = element.queryExecution
         val test = plan.toString ()
@@ -89,8 +90,8 @@ class GridLABDSuite extends fixture.FunSuite
         val sql_context: SQLContext = a._SQLContext
 
         val filename =
-//        FILE_DEPOT + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
-        FILE_DEPOT + "NIS_CIM_Export_b4_Bubenei" + ".rdf"
+        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Guemligen" + ".rdf"
+//        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
 //        "," +
 //        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
         val elements = readFile (sql_context, filename)
@@ -106,7 +107,7 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val has = "HAS97010" // my house: "HAS10002" smaller network: "HAS82225" another example: "HAS67883"
+        val has = "HAS10002" // my house: "HAS10002" smaller network: "HAS82225" another example: "HAS67883"
         val result = gridlabd.export (context, sql_context, "equipment=" + has + ",topologicalnodes=true")
 
         val process = System.nanoTime ()

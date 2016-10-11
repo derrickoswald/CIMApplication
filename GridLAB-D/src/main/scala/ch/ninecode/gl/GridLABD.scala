@@ -40,6 +40,13 @@ case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boole
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Serializable
 case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
+{
+    // provide a key on the two connections, independant of to-from from-to ordering
+    def key (): String =
+    {
+        if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
+    }
+}
 
 class GridLABD extends Serializable
 {
@@ -281,170 +288,6 @@ class GridLABD extends Serializable
         PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
-    // emit a GridLAB-D line_configuration
-    def make_line_configuration (line: ACLineSegment): String =
-    {
-        var ret = ""
-        val config = valid_config_name (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-
-        // ToDo: convert the 0/1 sequence values from the CIM format into a Z matrix
-
-        //        <cim:ACLineSegment rdf:ID="KLE9595">
-        //                <cim:IdentifiedObject.name>GKN 3x25/25</cim:IdentifiedObject.name>
-        //                <cim:IdentifiedObject.aliasName>202519879:nis_el_cable</cim:IdentifiedObject.aliasName>
-        //                <cim:PowerSystemResource.Location rdf:resource="#_location_696818_1201171875_202519890"/>
-        //                <cim:Conductor.length>55.60291275</cim:Conductor.length>
-        //                <cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
-        //                <cim:ConductingEquipment.BaseVoltage rdf:resource="BaseVoltage_400"/>
-        //                <cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
-        //                <cim:Equipment.EquipmentContainer rdf:resource="#_line_ABG52414|..."/>
-        //                <cim:ACLineSegment.b0ch>106.8141502</cim:ACLineSegment.b0ch>
-        //                <cim:ACLineSegment.bch>179.0707813</cim:ACLineSegment.bch>
-        //                <cim:ACLineSegment.g0ch>0</cim:ACLineSegment.g0ch>
-        //                <cim:ACLineSegment.gch>0</cim:ACLineSegment.gch>
-        //                <cim:ACLineSegment.r0>3.368</cim:ACLineSegment.r0>
-        //                <cim:ACLineSegment.r>0.841</cim:ACLineSegment.r>
-        //                <cim:ACLineSegment.shortCircuitEndTemperature>250</cim:ACLineSegment.shortCircuitEndTemperature>
-        //                <cim:ACLineSegment.x0>0.32</cim:ACLineSegment.x0>
-        //                <cim:ACLineSegment.x>0.075</cim:ACLineSegment.x>
-        //        </cim:ACLineSegment>
-//
-//            "        object line_configuration\n" +
-//            "        {\n" +
-//            "            name \"line_3x25Cu/25\";\n" +
-//            "            z11 0.727+0.08j Ohm/km;\n" +
-//            "            z12 0.0+0.0j Ohm/km;\n" +
-//            "            z13 0.0+0.0j Ohm/km;\n" +
-//            "            z21 0.0+0.0j Ohm/km;\n" +
-//            "            z22 0.727+0.08j Ohm/km;\n" +
-//            "            z23 0.0+0.0j Ohm/km;\n" +
-//            "            z31 0.0+0.0j Ohm/km;\n" +
-//            "            z32 0.0+0.0j Ohm/km;\n" +
-//            "            z33 0.727+0.08j Ohm/km;\n" +
-//            "        };\n" +
-//            "\n" +
-//            "        object line_configuration\n" +
-//            "        {\n" +
-//            "            name \"line_3x95Cu/95\";\n" +
-//            "            z11 0.193+0.07j Ohm/km;\n" +
-//            "            z12 0.0+0.0j Ohm/km;\n" +
-//            "            z13 0.0+0.0j Ohm/km;\n" +
-//            "            z21 0.0+0.0j Ohm/km;\n" +
-//            "            z22 0.193+0.07j Ohm/km;\n" +
-//            "            z23 0.0+0.0j Ohm/km;\n" +
-//            "            z31 0.0+0.0j Ohm/km;\n" +
-//            "            z32 0.0+0.0j Ohm/km;\n" +
-//            "            z33 0.193+0.07j Ohm/km;\n" +
-//            "        };\n" +
-
-        // ToDo: get real values, "TT 1x150 EL_3" is actually "TT 1x150"
-        val r = if (0 == line.r) 0.225 else line.r
-        val x = if (0 == line.x) 0.068 else line.x
-        val diag = r + "+" + x + "j Ohm/km"
-        val zero = "0.0+0.0j Ohm/km"
-        ret =
-            "        object line_configuration\n" +
-            "        {\n" +
-            "            name \"" + config + "\";\n" +
-            "            z11 " + diag + ";\n" +
-            "            z12 " + zero + ";\n" +
-            "            z13 " + zero + ";\n" +
-            "            z21 " + zero + ";\n" +
-            "            z22 " + diag + ";\n" +
-            "            z23 " + zero + ";\n" +
-            "            z31 " + zero + ";\n" +
-            "            z32 " + zero + ";\n" +
-            "            z33 " + diag + ";\n" +
-            "        };\n"
-
-        return (ret)
-    }
-
-    def transformer_power (transformer: PowerTransformer): String =
-    {
-        val name = transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name // e.g. 250kVA
-        """([0-9]+)""".r.findFirstIn (name) match
-        {
-            case Some (x) =>
-                x
-            case _ =>
-                "unknown"
-        }
-    }
-
-    /**
-     * Make one or more transformer configurations.
-     * Most transformers have only two ends, so this should normally make one configurations
-     * @param voltages a map of voltage mRID to floating point voltages
-     */
-    def make_transformer_configuration (voltages: Map[String, Double])(s: Tuple2[Tuple3[PowerTransformer,Substation,ShortCircuitData],Any]): String =
-    {
-        // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
-        val transformer = s._1._1
-        val power = transformer_power (transformer)
-        val sc_data = s._1._3
-        val ret =
-            s._2 match
-            {
-                case None =>
-                    ""
-                case Some (x: Any) =>
-                    // sort ends by sequence number
-                    val iter = x.asInstanceOf[Iterable[PowerTransformerEnd]]
-                    val ends = iter.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                    var temp = ""
-                    for (i <- 1 until ends.length)
-                    {
-                        val v0 = 1000.0 * voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
-                        val v = 1000.0 * voltages.getOrElse (ends(i).TransformerEnd.BaseVoltage, 0.0)
-                        // calculate per unit r and x
-                        var base_va = ends(i).ratedS * 1e6 // ToDo: remove this multiplier when NE-66 NIS.CIM: Scale of PowerTransformerEnd ratedS is wrong
-                        if (0.0 == base_va && "unknown" != power)
-                            base_va = power.toDouble * 1000
-                        val base_amps = base_va / v / Math.sqrt (3)
-                        val base_ohms = v / base_amps / Math.sqrt (3)
-                        val r = ends(i).r / base_ohms
-                        val x = ends(i).x / base_ohms
-                        // compute the fake line impedance from the high voltage to the transformer
-                        // Z = c * V^2 / (Sk x 1e6)     e.g. 0.90 * 16000 * 16000 / -82e6  = -2.8097
-                        // r = Z * sin(Ikw)
-                        // x = Z * cos(Ikw)
-                        val c = 0.9
-                        val z = c * v0 * v0 / (Math.abs (sc_data.Sk) * 1e6)
-                        val diag = "" + z + (if (0 <= sc_data.Ikw) "+" else "") + sc_data.Ikw + "d Ohm/km"
-                        temp +=
-                            "        object transformer_configuration\n" +
-                            "        {\n" +
-                            "            name \"" + transformer.id + "_configuration" + "\";\n" +
-                            "            connect_type DELTA_GWYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
-                            "            install_type PADMOUNT;\n" +
-                            "            power_rating " + (base_va / 1000.0) + ";\n" +
-                            "            primary_voltage " + v0 + ";\n" +
-                            "            secondary_voltage " + v + ";\n" +
-                            "            resistance " + r + ";\n" +
-                            "            reactance " + x + ";\n" +
-                            "        };\n" +
-                            // make a line configuration
-                            "        object line_configuration\n" +
-                            "        {\n" +
-                            "            name \"" + transformer.id + "_fake_line_configuration\";\n" +
-                            "            z11 " + diag + ";\n" +
-                            "            z12 0.0+0.0d Ohm/km;\n" +
-                            "            z13 0.0+0.0d Ohm/km;\n" +
-                            "            z21 0.0+0.0d Ohm/km;\n" +
-                            "            z22 " + diag + ";\n" +
-                            "            z23 0.0+0.0d Ohm/km;\n" +
-                            "            z31 0.0+0.0d Ohm/km;\n" +
-                            "            z32 0.0+0.0d Ohm/km;\n" +
-                            "            z33 " + diag + ";\n" +
-                            "        };\n"
-                    }
-                    temp
-            }
-
-        return (ret)
-    }
-
     // emit one GridLAB-D node
     def make_node (slack: String, multiplier: Double)(node: PreNode): String =
     {
@@ -475,8 +318,9 @@ class GridLABD extends Serializable
     }
 
     // emit one GridLAB-D edge
-    def make_link (edge: PreEdge): String =
+    def make_link (line: Line, trans: Trans) (edges: Iterable[PreEdge]): String =
     {
+        val edge = edges.head
         val cls = edge.element.getClass.getName
         val clazz = cls.substring (cls.lastIndexOf (".") + 1)
         // for singlely connected objects, replace with a recorder
@@ -494,68 +338,9 @@ class GridLABD extends Serializable
                 clazz match
                 {
                     case "ACLineSegment" =>
-                        val line = edge.element.asInstanceOf[ACLineSegment]
-                        val typ = if (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
-                            "underground_line"
-                        else
-                            "overhead_line"
-                        val config = valid_config_name (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-                        "        object " + typ + "\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-//                        (if (line.Conductor.len  <= 0)
-//                        "            length 0.05m;\n" // ToDo: ERROR    [INIT] : init_overhead_line(obj=199;VER331619): Newton-Raphson method does not support zero length lines at this time
-//                        else
-                        "            length " + line.Conductor.len + "m;\n" +
-                        "            configuration \"" + config + "\";\n" +
-                        "        };\n"
+                        line.emit (edges)
                     case "PowerTransformer" =>
-                        val transformer = edge.element.asInstanceOf[PowerTransformer]
-                        val power = transformer_power (transformer)
-                        // for power transformers without a configuration, just emit a link
-                        if ("unknown" == power)
-                            "        object link\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "\";\n" +
-                            "            phases ABCN;\n" +
-                            "            from \"" + edge.id_cn_1 + "\";\n" +
-                            "            to \"" + edge.id_cn_2 + "\";\n" +
-                            "        };\n"
-                        else
-                        {
-                            "        object transformer\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "\";\n" +
-                            "            phases ABCN;\n" +
-                            "            from \"" + edge.id_cn_1 + "\";\n" +
-                            "            to \"" + edge.id_cn_2 + "\";\n" +
-                            "            configuration \"" + edge.id_equ + "_configuration" + "\";\n" +
-                            "        };\n" +
-                            // make a slack bus
-                            "        object node\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "_swing_bus\";\n" +
-                            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-                            "            bustype SWING;\n" +
-                            "            nominal_voltage " + edge.v1 + " V;\n" +
-                            "            voltage_A " + edge.v1 + "+30.0d V;\n" +
-                            "            voltage_B " + edge.v1 + "-90.0d V;\n" +
-                            "            voltage_C " + edge.v1 + "+150.0d V;\n" +
-                            "        };\n" +
-                            // make a fake cable joining the slack bus to the transformer
-                            "        object underground_line\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "_feeder\";\n" +
-                            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-                            "            from \"" + edge.id_equ + "_swing_bus\";\n" +
-                            "            to \"" + edge.id_cn_1 + "\";\n" +
-                            "            length 1000 m;\n" +
-                            "            configuration \"" + edge.id_equ + "_fake_line_configuration\";\n" +
-                            "        };\n"
-                        }
+                        trans.emit (edges)
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
                         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
@@ -636,17 +421,11 @@ class GridLABD extends Serializable
     def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: Boolean, message: Boolean): Boolean =
     {
         if (message)
-            if (v) v else true // here and also below, reuse the vertex data if possible to avoid memory churn
+            true
         else
-        {
             // on the first pass through the Pregel algorithm all nodes get a false message
             // if this node is in in the list of starting nodes, update the vertex data
-            val b = starting_nodes.contains (id)
-            if (b)
-                if (v) v else true
-            else
-                if (!v) v else false
-        }
+            starting_nodes.contains (id)
     }
 
     // function to see if the Pregel algorithm should continue or not
@@ -705,7 +484,7 @@ class GridLABD extends Serializable
 
     def mergeMessage (a: Boolean, b: Boolean): Boolean =
     {
-        a || b // result message is true if either of them is true
+        a || b
     }
 
     def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
@@ -754,6 +533,7 @@ class GridLABD extends Serializable
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
+        // get the nodes RDD
         val nodes = if (topologicalnodes)
         {
             // get the topological nodes RDD
@@ -823,27 +603,39 @@ class GridLABD extends Serializable
 
         // get the list of traced edges
         val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
+        val edgecount = traced_edges.count
+        println ("traced_edges: " + edgecount)
+        if (0 != edgecount)
+            println (traced_edges.first)
 
-        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD
+        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD; get them
         val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
 
-        // get one of each type of ACLineSegment and emit a configuration for each of them
-        val l_strings = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("ACLineSegment")).asInstanceOf[RDD[ACLineSegment]]
-            .keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-            .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
-            .values.map (make_line_configuration)
+        // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
+        val combined_edges = traced_edges.groupBy (_.key).values
+        val combinedcount = combined_edges.count
+        println ("combined_edges: " + combinedcount)
+        if (0 != combinedcount)
+            println (combined_edges.first)
 
-        // get each transformer and emit a configuration for each of them
-        // val pt = traced_edges.map (_.element).filter (_.getClass.getName.endsWith ("PowerTransformer")).asInstanceOf[RDD[PowerTransformer]]
+        val double_edges = combined_edges.filter (_.size > 1)
+        val doublecount = double_edges.count
+        println ("double_edges: " + doublecount)
+        val doubles = double_edges.collect ()
+        for (x <- doubles)
+            println (x)
+
+        // get one of each type of ACLineSegment and emit a configuration for each of them
+        val line = new Line ()
+        val l_strings = line.getACLineSegmentConfigurations (combined_edges)
+
         val shorts = short_circuit_data (sc)
-        val pt = traced_edges.map (_.element).keyBy (_.id).join (shorts.keyBy (_._1.id)).values.map (_._2)
-        val t_strings = pt
-            .keyBy (_._1.id).leftOuterJoin (ends).values
-            .map (make_transformer_configuration (voltages))
+        val trans = new Trans (shorts, ends, voltages)
+        val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         val c_strings = l_strings.union (t_strings)
         val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03))
-        val e_strings = traced_edges.map (make_link)
+        val e_strings = combined_edges.map (make_link (line, trans))
 
         c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
         n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
