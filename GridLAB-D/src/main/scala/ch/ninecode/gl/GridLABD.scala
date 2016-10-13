@@ -288,6 +288,16 @@ class GridLABD extends Serializable
         PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
+    def base_name (s: String): String =
+    {
+        if (s.endsWith ("_topo_fuse"))
+            s.substring (0, s.length - "_topo_fuse".length)
+        else if (s.endsWith ("_topo"))
+            s.substring (0, s.length - "_topo".length)
+        else
+            s
+    }
+
     // emit one GridLAB-D node
     def make_node (slack: String, multiplier: Double)(node: PreNode): String =
     {
@@ -295,7 +305,8 @@ class GridLABD extends Serializable
         if (node.id_seq == slack)
         {
             val volts = node.voltage * multiplier
-            "        object node\n" +
+            val base = base_name (slack)
+            "        object meter\n" +
             "        {\n" +
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
@@ -304,10 +315,19 @@ class GridLABD extends Serializable
             "            voltage_A " + volts + "+0.0d V;\n" +
             "            voltage_B " + volts + "-120.0d V;\n" +
             "            voltage_C " + volts + "+120.0d V;\n" +
+            "        };\n" +
+            "\n" +
+            "        object recorder {\n" +
+            "            name \"" + base + "_recorder\";\n" +
+            "            parent \"" + node.id_seq + "\";\n" +
+            "            property measured_power.real, measured_power.imag;\n" +
+            "            limit 1440;\n" +
+            "            interval 60;\n" +
+            "            file \"" + base + ".csv\";\n" +
             "        };\n"
         }
         else
-            "        object node\n" +
+            "        object meter\n" +
             "        {\n" +
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
@@ -691,7 +711,7 @@ class GridLABD extends Serializable
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename \"voltdump.csv\";\n" +
+            "            filename \"" + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n"

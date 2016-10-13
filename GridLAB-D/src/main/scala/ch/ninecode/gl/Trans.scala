@@ -111,7 +111,8 @@ class Trans (
                             "            resistance " + r + ";\n" +
                             "            reactance " + x + ";\n" +
                             "        };\n" +
-                            // make a line configuration
+                            "\n" +
+                            // make a feeder line configuration
                             "        object line_configuration\n" +
                             "        {\n" +
                             "            name \"" + config + "_fake_line_configuration\";\n" +
