@@ -92,6 +92,7 @@ class Line extends Serializable
         .map (x => valid_config_name (x)).mkString ("||")
     }
 
+    // see http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html
     def parallel (r1: Double, x1: Double, r2: Double, x2: Double): Tuple2[Double, Double] =
     {
         val rs = r1 + r2
@@ -117,7 +118,12 @@ class Line extends Serializable
             val r2 = if (0 == line2.r) DEFAULT_R else line2.r
             val x2 = if (0 == line2.x) DEFAULT_X else line2.x
             val (r, x) = parallel (r1, x1, r2, x2)
-            make_line_configuration (item._1, ACLineSegment (null, 0.0, 0.0, 0.0, 0.0, 0.0, r, 0.0, 0.0, x, "", "", ""))
+            val r10 = if (0 == line1.r0) DEFAULT_R else line1.r0
+            val x10 = if (0 == line1.x0) DEFAULT_X else line1.x0
+            val r20 = if (0 == line2.r0) DEFAULT_R else line2.r0
+            val x20 = if (0 == line2.x0) DEFAULT_X else line2.x0
+            val (r0, x0) = parallel (r10, x10, r20, x20)
+            make_line_configuration (item._1, ACLineSegment (null, 0.0, 0.0, 0.0, 0.0, r0, r, 0.0, x0, x, "", "", ""))
         }
         else
             throw new Exception ("more than two parallel elements")

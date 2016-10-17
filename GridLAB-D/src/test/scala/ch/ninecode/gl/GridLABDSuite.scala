@@ -108,7 +108,7 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val has = "HAS76506" // Bubenei: "HAS97010", Brügg: "HAS76506", Gümligen: "HAS10002"
+        val has = "HAS6830" // Bubenei: "HAS97010", Brügg: "HAS76580", Gümligen: "HAS10002"
         val result = gridlabd.export (context, sql_context, "equipment=" + has + ",topologicalnodes=true")
 
         val process = System.nanoTime ()

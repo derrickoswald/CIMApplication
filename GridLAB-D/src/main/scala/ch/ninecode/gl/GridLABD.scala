@@ -299,8 +299,38 @@ class GridLABD extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, multiplier: Double)(node: PreNode): String =
+    def make_node (slack: String, multiplier: Double)(arg: Tuple2[PreNode,Option[Iterable[Tuple2[Terminal, SolarGeneratingUnit]]]]): String =
     {
+        val node = arg._1
+        val pv = arg._2
+        val loads = pv match
+            {
+                case Some (solars) =>
+                    val solargeneratingunits = solars.map ((x) => { x._2 }).toList
+                    var load = ""
+                    for (solargeneratingunit <- solargeneratingunits)
+                    {
+                        val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
+                        val power3 = power / 3 // per phase
+                        if (power > 0)
+                            load +=
+                                "\n" +
+                                "        object load\n" +
+                                "        {\n" +
+                                "             name \"" + node.id_seq + "_pv\";\n" +
+                                "             parent \"" + node.id_seq + "\";\n" +
+                                "             phases ABCN;\n" +
+                                "             constant_power_A -" + power3 + ";\n" +
+                                "             constant_power_B -" + power3 + ";\n" +
+                                "             constant_power_C -" + power3 + ";\n" +
+                                "             nominal_voltage " + node.voltage + "V;\n" +
+                                "             load_class C;\n" +
+                                "        }\n"
+                    }
+                    load
+                case None =>
+                    ""
+            }
         val ret =
         if (node.id_seq == slack)
         {
@@ -324,16 +354,20 @@ class GridLABD extends Serializable
             "            limit 1440;\n" +
             "            interval 60;\n" +
             "            file \"" + base + ".csv\";\n" +
-            "        };\n"
+            "        };\n" +
+            loads
         }
         else
+        {
             "        object meter\n" +
             "        {\n" +
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
             "            bustype PQ;\n" +
             "            nominal_voltage " + node.voltage + "V;\n" +
-            "        };\n"
+            "        };\n" +
+            loads
+        }
         return (ret)
     }
 
@@ -507,6 +541,32 @@ class GridLABD extends Serializable
         a || b
     }
 
+    // get the existing photo-voltaic installations keyed by terminal
+    def getSolarInstallations (sc: SparkContext): RDD[(Terminal, SolarGeneratingUnit)] =
+    {
+
+        // start with pv stations
+        val solar = get ("SolarGeneratingUnit", sc).asInstanceOf[RDD[SolarGeneratingUnit]]
+
+        // link to service location ids via UserAttribute
+        val attributes = get ("UserAttribute", sc).asInstanceOf[RDD[UserAttribute]]
+        val sl = solar.keyBy (_.id).join (attributes.keyBy (_.name)).values
+
+        // link to energy consumer (house connection)
+        val hs = sl.keyBy (_._2.value).join (attributes.keyBy (_.name))
+
+        // just get the house and pv
+        val ss = hs.map (x => (x._2._2.value, x._2._1._1))
+
+        // get the terminals
+        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+
+        // link to the connectivity node through the terminal
+        val t = terminals.keyBy (_.ConductingEquipment).join (ss).values
+
+        return (t)
+    }
+
     def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
     {
         val arguments = args.split (",").map (
@@ -633,17 +693,9 @@ class GridLABD extends Serializable
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy (_.key).values
-        val combinedcount = combined_edges.count
-        println ("combined_edges: " + combinedcount)
-        if (0 != combinedcount)
-            println (combined_edges.first)
 
-        val double_edges = combined_edges.filter (_.size > 1)
-        val doublecount = double_edges.count
-        println ("double_edges: " + doublecount)
-        val doubles = double_edges.collect ()
-        for (x <- doubles)
-            println (x)
+        // get the existing photo-voltaic installations keyed by terminal
+        val solars = getSolarInstallations (sc)
 
         // get one of each type of ACLineSegment and emit a configuration for each of them
         val line = new Line ()
@@ -654,7 +706,7 @@ class GridLABD extends Serializable
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         val c_strings = l_strings.union (t_strings)
-        val n_strings = all_traced_nodes.map (make_node (starting_node_name, 1.03))
+        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node_name, 1.03))
         val e_strings = combined_edges.map (make_link (line, trans))
 
         c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
@@ -714,7 +766,8 @@ class GridLABD extends Serializable
             "            filename \"" + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + format.format (finish.getTime ()) + "';\n" +
-            "        };\n"
+            "        };\n" +
+            "\n"
 
         val result = new StringBuilder ()
         result.append (prefix)
@@ -819,8 +872,12 @@ object GridLABD
         val result = gridlab.export (_Context, _SqlContext, "equipment=" + house)
 
         val graph = System.nanoTime ()
-
-        Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
+        val header =
+            "// $Id: " + house + ".glm\n" +
+            "// Einspeiseleistung\n" +
+            "//*********************************************\n"
+        val contents = header + result
+        Files.write (Paths.get (house + ".glm"), header.getBytes (StandardCharsets.UTF_8))
 
         println ("" + count + " elements")
         println ("read : " + (read - start) / 1e9 + " seconds")
