@@ -180,7 +180,9 @@ class GridLABD extends Serializable
                 }
                 case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), None)) =>
                 {
-                    (a, b, ShortCircuitData (b.id, 200, -70, false))
+                    // Sk = 100 MVA
+                    // Ikw= -61°
+                    (a, b, ShortCircuitData (b.id, 100, -61, false))
                 }
                 case _ =>
                 {
@@ -299,7 +301,7 @@ class GridLABD extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, multiplier: Double)(arg: Tuple2[PreNode,Option[Iterable[Tuple2[Terminal, SolarGeneratingUnit]]]]): String =
+    def make_node (slack: String, power: Double)(arg: Tuple2[PreNode,Option[Iterable[Tuple2[Terminal, SolarGeneratingUnit]]]]): String =
     {
         val node = arg._1
         val pv = arg._2
@@ -324,7 +326,7 @@ class GridLABD extends Serializable
                                 "             constant_power_B -" + power3 + ";\n" +
                                 "             constant_power_C -" + power3 + ";\n" +
                                 "             nominal_voltage " + node.voltage + "V;\n" +
-                                "             load_class C;\n" +
+                                "             load_class R;\n" +
                                 "        }\n"
                     }
                     load
@@ -334,18 +336,27 @@ class GridLABD extends Serializable
         val ret =
         if (node.id_seq == slack)
         {
-            val volts = node.voltage * multiplier
+            val power3 = power / 3 // per phase
             val base = base_name (slack)
             "        object meter\n" +
             "        {\n" +
             "            name \"" + node.id_seq + "\";\n" +
             "            phases ABCN;\n" +
-            "            bustype SWING;\n" +
-            "            nominal_voltage " + node.voltage + " V;\n" +
-            "            voltage_A " + volts + "+0.0d V;\n" +
-            "            voltage_B " + volts + "-120.0d V;\n" +
-            "            voltage_C " + volts + "+120.0d V;\n" +
+            "            bustype PQ;\n" +
+            "            nominal_voltage " + node.voltage + "V;\n" +
             "        };\n" +
+            "\n" +
+            "        object load\n" +
+            "        {\n" +
+            "             name \"" + node.id_seq + "_pv\";\n" +
+            "             parent \"" + node.id_seq + "\";\n" +
+            "             phases ABCN;\n" +
+            "             constant_power_A -" + power3 + ";\n" +
+            "             constant_power_B -" + power3 + ";\n" +
+            "             constant_power_C -" + power3 + ";\n" +
+            "             nominal_voltage " + node.voltage + "V;\n" +
+            "             load_class R;\n" +
+            "        }\n" +
             "\n" +
             "        object recorder {\n" +
             "            name \"" + base + "_recorder\";\n" +
@@ -706,7 +717,7 @@ class GridLABD extends Serializable
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         val c_strings = l_strings.union (t_strings)
-        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node_name, 1.03))
+        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node_name, 30000))
         val e_strings = combined_edges.map (make_link (line, trans))
 
         c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
@@ -740,6 +751,7 @@ class GridLABD extends Serializable
 
         val prefix =
             "        module tape;\n" +
+            "\n" +
             "        module powerflow\n" +
             "        {\n" +
             "            solver_method NR;\n" +

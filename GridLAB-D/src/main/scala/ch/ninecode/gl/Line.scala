@@ -108,25 +108,31 @@ class Line extends Serializable
     {
         if (1 == item._2.size)
             make_line_configuration (item._1, item._2.head.element.asInstanceOf[ACLineSegment])
-        else if (2 == item._2.size)
+        else
         {
             // compute parallel impedance -- http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html#c3
-            val line1 = item._2.head.element.asInstanceOf[ACLineSegment]
-            val line2 = item._2.tail.head.element.asInstanceOf[ACLineSegment]
-            val r1 = if (0 == line1.r) DEFAULT_R else line1.r
-            val x1 = if (0 == line1.x) DEFAULT_X else line1.x
-            val r2 = if (0 == line2.r) DEFAULT_R else line2.r
-            val x2 = if (0 == line2.x) DEFAULT_X else line2.x
-            val (r, x) = parallel (r1, x1, r2, x2)
-            val r10 = if (0 == line1.r0) DEFAULT_R else line1.r0
-            val x10 = if (0 == line1.x0) DEFAULT_X else line1.x0
-            val r20 = if (0 == line2.r0) DEFAULT_R else line2.r0
-            val x20 = if (0 == line2.x0) DEFAULT_X else line2.x0
-            val (r0, x0) = parallel (r10, x10, r20, x20)
-            make_line_configuration (item._1, ACLineSegment (null, 0.0, 0.0, 0.0, 0.0, r0, r, 0.0, x0, x, "", "", ""))
+            val lines = item._2.toArray
+            var line = lines(0).element.asInstanceOf[ACLineSegment]
+            var rt = if (0 == line.r) DEFAULT_R else line.r
+            var xt = if (0 == line.x) DEFAULT_X else line.x
+            var r0t = if (0 == line.r0) DEFAULT_R else line.r0
+            var x0t = if (0 == line.x0) DEFAULT_X else line.x0
+            for (i <- 1 until lines.size)
+            {
+                line = lines(i).element.asInstanceOf[ACLineSegment]
+                val rl = if (0 == line.r) DEFAULT_R else line.r
+                val xl = if (0 == line.x) DEFAULT_X else line.x
+                val rl0 = if (0 == line.r0) DEFAULT_R else line.r0
+                val xl0 = if (0 == line.x0) DEFAULT_X else line.x0
+                val (r, x) = parallel (rt, xt, rl, xl)
+                val (r0, x0) = parallel (r0t, x0t, rl0, xl0)
+                rt = r
+                xt = x
+                r0t = r0
+                x0t = x0
+            }
+            make_line_configuration (item._1, ACLineSegment (null, 0.0, 0.0, 0.0, 0.0, r0t, rt, 0.0, x0t, xt, "", "", ""))
         }
-        else
-            throw new Exception ("more than two parallel elements")
     }
 
     // get one of each type of ACLineSegment and emit a configuration for each of them

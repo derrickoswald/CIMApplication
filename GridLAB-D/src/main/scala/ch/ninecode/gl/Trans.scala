@@ -92,7 +92,7 @@ class Trans (
                             x = par._2
                         }
 
-                        // compute the fake line impedance from the high voltage to the transformer
+                        // compute the fake line impedance from the middle voltage supply to the transformer
                         // Z = c * V^2 / (Sk x 1e6)     e.g. 0.90 * 16000 * 16000 / -82e6  = -2.8097
                         // r = Z * sin(Ikw)
                         // x = Z * cos(Ikw)
@@ -179,6 +179,7 @@ class Trans (
             "            to \"" + edge.id_cn_2 + "\";\n" +
             "            configuration \"" + config + "\";\n" +
             "        };\n" +
+            "\n" +
             // make a slack bus
             "        object node\n" +
             "        {\n" +
@@ -190,6 +191,7 @@ class Trans (
             "            voltage_B " + edge.v1 + "-90.0d V;\n" +
             "            voltage_C " + edge.v1 + "+150.0d V;\n" +
             "        };\n" +
+            "\n" +
             // make a fake cable joining the slack bus to the transformer
             "        object underground_line\n" +
             "        {\n" +
