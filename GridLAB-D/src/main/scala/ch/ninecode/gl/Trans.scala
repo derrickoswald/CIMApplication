@@ -149,7 +149,7 @@ class Trans (
     // get one of each type of PowerTransformer and emit a configuration for each of them
     def getTransformerConfigurations (edges: RDD[Iterable[PreEdge]]): RDD[String] =
     {
-        // ToDo: this assumes that all transformers are identical -- what if there are randowm transformers in parallel
+        // ToDo: this assumes that all transformers are identical -- what if there are random transformers in parallel
         val pt = edges.keyBy (_.head.element.id).join (shorts.keyBy (_._1.id)).values
         pt.keyBy (_._1.head.element.id).leftOuterJoin (ends).values.map (make_transformer_configuration)
     }

@@ -135,22 +135,22 @@ class GridLABD extends Serializable
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
 
         // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation", context).asInstanceOf[RDD[ch.ninecode.model.Substation]].filter (_.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
+        val stations = get ("Substation", context).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
 
         // the Equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
         def station_fn (x: Tuple2[String, Any]) =
         {
             x match
             {
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, station: ch.ninecode.model.Substation)) =>
+                case (key: String, (t: PowerTransformer, station: Substation)) =>
                 {
                     (station.id, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, bay: ch.ninecode.model.Bay)) =>
+                case (key: String, (t: PowerTransformer, bay: Bay)) =>
                 {
                     (bay.Substation, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, level: ch.ninecode.model.VoltageLevel)) =>
+                case (key: String, (t: PowerTransformer, level: VoltageLevel)) =>
                 {
                     (level.Substation, t)
                 }
@@ -162,7 +162,7 @@ class GridLABD extends Serializable
         }
 
         // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
-        val elements = get ("Elements", context).asInstanceOf[RDD[ch.ninecode.model.Element]]
+        val elements = get ("Elements", context).asInstanceOf[RDD[Element]]
         val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
 
         val short_circuit = read_csv (context)
@@ -174,11 +174,11 @@ class GridLABD extends Serializable
         {
             x match
             {
-                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: ShortCircuitData))) =>
+                case (key: String, ((a: PowerTransformer, b: Substation), Some (c: ShortCircuitData))) =>
                 {
                     (a, b, c)
                 }
-                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), None)) =>
+                case (key: String, ((a: PowerTransformer, b: Substation), None)) =>
                 {
                     // Sk = 100 MVA
                     // Ikw= -61°
@@ -475,7 +475,7 @@ class GridLABD extends Serializable
 
     def vertex_id (string: String): VertexId =
     {
-        string.hashCode().asInstanceOf[VertexId]
+        string.hashCode.asInstanceOf[VertexId]
     }
 
     def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =

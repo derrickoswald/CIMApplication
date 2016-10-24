@@ -143,22 +143,22 @@ class ShortCircuit extends Serializable
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
 
         // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation", sc).asInstanceOf[RDD[ch.ninecode.model.Substation]].filter (_.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
+        val stations = get ("Substation", sc).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
 
         // the Equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
         def station_fn (x: Tuple2[String, Any]) =
         {
             x match
             {
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, station: ch.ninecode.model.Substation)) =>
+                case (key: String, (t: PowerTransformer, station: Substation)) =>
                 {
                     (station.id, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, bay: ch.ninecode.model.Bay)) =>
+                case (key: String, (t: PowerTransformer, bay: Bay)) =>
                 {
                     (bay.Substation, t)
                 }
-                case (key: String, (t: ch.ninecode.model.PowerTransformer, level: ch.ninecode.model.VoltageLevel)) =>
+                case (key: String, (t: PowerTransformer, level: VoltageLevel)) =>
                 {
                     (level.Substation, t)
                 }
@@ -170,7 +170,7 @@ class ShortCircuit extends Serializable
         }
 
         // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
-        val elements = get ("Elements", sc).asInstanceOf[RDD[ch.ninecode.model.Element]]
+        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
         val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
 //        tpairs.count
 //        tpairs.first
@@ -188,11 +188,11 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), Some (c: ShortCircuitData))) =>
+                case (key: String, ((a: PowerTransformer, b: Substation), Some (c: ShortCircuitData))) =>
                 {
                     (a, b, c)
                 }
-                case (key: String, ((a: ch.ninecode.model.PowerTransformer, b: ch.ninecode.model.Substation), None)) =>
+                case (key: String, ((a: PowerTransformer, b: Substation), None)) =>
                 {
                     (a, b, ShortCircuitData (b.id, 200, -70, false))
                 }
@@ -208,11 +208,11 @@ class ShortCircuit extends Serializable
         // get all transformers with their end data
 
         // get the ends
-        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[ch.ninecode.model.PowerTransformerEnd]]
+        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
         // Note: if the end count does not equal twice the number of transformers, we have a three (or more) terminal transformer and hence a problem
 
         // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[ch.ninecode.model.Terminal]]
+        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
 
         // keep only terminals for transformer ends
         val transformer_terminals = terminals.keyBy (_.id).join (ends.keyBy (_.TransformerEnd.Terminal)).values
@@ -222,10 +222,10 @@ class ShortCircuit extends Serializable
         {
             x match
             {
-                case (key: String, (iterator: Iterable[Any], (transformer: ch.ninecode.model.PowerTransformer, substation: ch.ninecode.model.Substation, short_circuit: ShortCircuitData))) =>
+                case (key: String, (iterator: Iterable[Any], (transformer: PowerTransformer, substation: Substation, short_circuit: ShortCircuitData))) =>
                 {
-                    val i1 = iterator.head.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)]
-                    val i2 = iterator.last.asInstanceOf[(ch.ninecode.model.Terminal, ch.ninecode.model.PowerTransformerEnd)] // ToDo: three (or more) terminal transformer
+                    val i1 = iterator.head.asInstanceOf[(Terminal, PowerTransformerEnd)]
+                    val i2 = iterator.last.asInstanceOf[(Terminal, PowerTransformerEnd)] // ToDo: three (or more) terminal transformer
                     val v_a = voltages.getOrElse (i1._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
                     val v_b = voltages.getOrElse (i2._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
                     if (v_a > v_b)
@@ -263,7 +263,7 @@ class ShortCircuit extends Serializable
         // convert CIM nodes into Graphx vertices as RDD of (key, value) pairs
 
         // get the list of nodes
-        val nodes = get ("ConnectivityNode", context).asInstanceOf[RDD[ch.ninecode.model.ConnectivityNode]]
+        val nodes = get ("ConnectivityNode", context).asInstanceOf[RDD[ConnectivityNode]]
 
         def node_function (x: Tuple2[String, Any]) =
         {
@@ -302,7 +302,7 @@ class ShortCircuit extends Serializable
 //        someedges.first
 
         // get the wires
-        val segments = get ("ACLineSegment", context).asInstanceOf[RDD[ch.ninecode.model.ACLineSegment]]
+        val segments = get ("ACLineSegment", context).asInstanceOf[RDD[ACLineSegment]]
 //        segments.count
 //        segments.first
 
@@ -310,7 +310,7 @@ class ShortCircuit extends Serializable
         {
             val ep = x match
             {
-                case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ch.ninecode.model.ACLineSegment))) =>
+                case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ACLineSegment))) =>
                 {
                     // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
                     if (0.0 != wire.r)

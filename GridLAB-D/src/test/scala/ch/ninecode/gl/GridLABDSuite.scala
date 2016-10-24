@@ -35,8 +35,9 @@ class GridLABDSuite extends fixture.FunSuite
         val configuration = new SparkConf (false)
         configuration.setAppName ("GridLABDSuite")
         configuration.setMaster ("local[2]")
-        configuration.set ("spark.driver.memory", "1g")
+        configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
         // register low level classes
         configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
@@ -50,7 +51,7 @@ class GridLABDSuite extends fixture.FunSuite
         configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
 
         val context = new SparkContext (configuration)
-        context.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val sql_context = new SQLContext (context)
 
         val end = System.nanoTime ()
