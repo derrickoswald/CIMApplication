@@ -115,12 +115,7 @@ class GridLABDSuite extends fixture.FunSuite
 
         val process = System.nanoTime ()
 
-        val header =
-            "// $Id: " + house + ".glm\n" +
-            "// Einspeiseleistung\n" +
-            "//*********************************************\n"
-        val contents = header + result
-        Files.write (Paths.get (house + ".glm"), contents.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 

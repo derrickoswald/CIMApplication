@@ -50,16 +50,6 @@ case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: Str
 
 class GridLABD extends Serializable
 {
-    /**
-     * Starting condition for Pregel trace.
-     * Either start the Pregel trace from the single starting node provided as the equipment parameter,
-     * or start from all nodes that are in the same EquipmentContainer (as provided by the CIM exporter).
-     * The Line object contains connected equipment, which is what the trace figures out.
-     * However, no significant speedup was observed, so the default value is false.
-     * If true, use the single start node, if false use all nodes in the same Line (EquipmentContainer).
-     */
-    final val SINGLE_START_NODE = false
-
     var _StorageLevel = StorageLevel.MEMORY_ONLY
     var _TempFilePrefix = "hdfs://sandbox:9000/output/"
     var _ConfFileName = "lines"
@@ -583,8 +573,11 @@ class GridLABD extends Serializable
         return (t)
     }
 
-    def prepare (sc: SparkContext, sqlContext: SQLContext, voltages: Map[String,Double], topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
+    def prepare (sc: SparkContext, sqlContext: SQLContext, topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
     {
+        // get a map of voltages
+        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+
         // get the terminals
         val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
@@ -635,71 +628,19 @@ class GridLABD extends Serializable
         return (Graph.apply[PreNode, PreEdge] (nodes.map (make_graph_vertices), real_edges.map (make_graph_edges), PreNode ("", 0.0), _StorageLevel, _StorageLevel))
     }
 
-    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String =
+    def make_glm (sc: SparkContext, sqlContext: SQLContext, initial: Graph[PreNode, PreEdge], starting_node: String, equipment: String): String =
     {
-        val arguments = args.split (",").map (
-            (s) =>
-                {
-                    val pair = s.split ("=")
-                    if (2 == pair.length)
-                        (pair(0), pair(1))
-                    else
-                        (pair(0), "")
-                }
-        ).toMap
-
-        // see if we should use topology nodes
-        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
-
-        // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
-
-        // prepare the initial graph
-        val initial = prepare (sc, sqlContext, voltages, topologicalnodes)
-
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
          * That is, emit all objects connected to the equipment,
          * isolated from the entire network by transformer(s)
          * i.e. include everything in a "trace all", but stop at transfomers
          */
-
-        // get the name of the equipment of interest
-        val equipment = arguments.getOrElse ("equipment", "")
-
-        // find the starting node
-        val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
-        if (0 == starting.length)
-            return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
-        val starting_terminal = starting (0)
-        val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
-
-        // while we could start the Pregel trace from a single node, vertex_id (starting_node_name)
-        // it could be more efficient to get all objects that are in the same EquipmentContainer
-        val starting_nodes =
-            if (SINGLE_START_NODE)
-                Array[VertexId] (vertex_id (starting_node_name))
-            else
-                if (topologicalnodes)
-                {
-                    // ToDo: add container to TopologicalNode
-                    Array[VertexId] (vertex_id (starting_node_name))
-                }
-                else
-                {
-                    // find the equipment container containing the requested equipment
-                    val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
-                    val starting_nodes = connectivitynodes.filter (_.id == starting_node_name).collect ()
-                    if (0 == starting_nodes.length)
-                        return ("" + starting_nodes.length + " nodes matched id " + starting_node_name) // ToDo: proper logging
-                    val starting_node = starting_nodes(0)
-                    val container_nodes = connectivitynodes.filter (_.ConnectivityNodeContainer == starting_node.ConnectivityNodeContainer).collect ()
-                    container_nodes.map (node => vertex_id (node.id))
-                }
+        val start_at = Array[VertexId] (vertex_id (starting_node))
 
         // trace the graph with the Pregel algorithm
         val binary_graph = initial.mapVertices { case (vid, _) => false }
-        val graph = binary_graph.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
+        val graph = binary_graph.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (start_at), sendMessage, mergeMessage)
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2)
@@ -727,6 +668,9 @@ class GridLABD extends Serializable
         // ToDo: avoid this duplication
         val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
+        // get a map of voltages
+        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+
         // get the transformer configuration using short circuit data to model the upstream connection
         val shorts = short_circuit_data (sc)
         val trans = new Trans (shorts, ends, voltages)
@@ -739,7 +683,7 @@ class GridLABD extends Serializable
         val solars = getSolarInstallations (sc)
 
         // get the node strings
-        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node_name, 30000))
+        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node, 30000))
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -774,6 +718,10 @@ class GridLABD extends Serializable
         finish.add (Calendar.MINUTE, 1)
 
         val prefix =
+            "// $Id: " + equipment + ".glm\n" +
+            "// Einspeiseleistung\n" +
+            "//*********************************************\n"
+            "\n" +
             "        module tape;\n" +
             "\n" +
             "        module powerflow\n" +
@@ -813,6 +761,38 @@ class GridLABD extends Serializable
         result.append (edgefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
 
         return (result.toString ())
+    }
+
+    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String =
+    {
+        val arguments = args.split (",").map (
+            (s) =>
+                {
+                    val pair = s.split ("=")
+                    if (2 == pair.length)
+                        (pair(0), pair(1))
+                    else
+                        (pair(0), "")
+                }
+        ).toMap
+
+        // see if we should use topology nodes
+        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
+
+        // get the name of the equipment of interest
+        val equipment = arguments.getOrElse ("equipment", "")
+
+        // find the starting node
+        val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
+        if (0 == starting.length)
+            return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
+        val starting_terminal = starting (0)
+        val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
+
+        // prepare the initial graph
+        val initial = prepare (sc, sqlContext, topologicalnodes)
+
+        return (make_glm (sc, sqlContext, initial, starting_node_name, equipment))
     }
 }
 
@@ -891,8 +871,8 @@ object GridLABD
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        options.put ("ch.ninecode.cim.make_edges", "true") // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "true")
+        options.put ("ch.ninecode.cim.make_edges", "false")
+        options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
@@ -915,15 +895,10 @@ object GridLABD
         hdfs.delete (nodePath, true)
         hdfs.delete (edgePath, true)
 
-        val result = gridlab.export (_Context, _SqlContext, "equipment=" + house)
+        val result = gridlab.export (_Context, _SqlContext, "equipment=" + house + ",topologicalnodes=true")
 
         val graph = System.nanoTime ()
-        val header =
-            "// $Id: " + house + ".glm\n" +
-            "// Einspeiseleistung\n" +
-            "//*********************************************\n"
-        val contents = header + result
-        Files.write (Paths.get (house + ".glm"), header.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
 
         println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")
