@@ -720,7 +720,7 @@ class GridLABD extends Serializable
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
             "// Einspeiseleistung\n" +
-            "//*********************************************\n"
+            "//*********************************************\n" +
             "\n" +
             "        module tape;\n" +
             "\n" +
@@ -793,6 +793,24 @@ class GridLABD extends Serializable
         val initial = prepare (sc, sqlContext, topologicalnodes)
 
         return (make_glm (sc, sqlContext, initial, starting_node_name, equipment))
+    }
+
+    case class Solution (house: String, date: String, real: Double, imaginary: Double)
+    def csv2solution (input: String): Solution =
+    {
+        val parts = input.split (",")
+        Solution (parts(0), parts(1), parts(2).toDouble, parts(3).toDouble)
+    }
+
+    def solve (sc: SparkContext, sqlContext: SQLContext, filename: String): RDD[Solution] =
+    {
+        val files = sc.parallelize (Array[String] (filename))
+        val out = files.pipe (Array[String] ("bash", "-c", "while read line; do FILE=$line; gridlabd $FILE; echo -ne ${FILE%.*},; cat ${FILE%.*}.csv | tail --lines=1; done < /dev/stdin"))
+        val cc = out.collect
+        val ret = out.map (csv2solution);
+        for (i <- cc)
+            println (i.toString + "\n")
+        return (ret)
     }
 }
 
