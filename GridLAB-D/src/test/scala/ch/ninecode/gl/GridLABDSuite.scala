@@ -37,6 +37,7 @@ class GridLABDSuite extends fixture.FunSuite
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
+        //configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
         // register low level classes
@@ -51,7 +52,7 @@ class GridLABDSuite extends fixture.FunSuite
         configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
 
         val context = new SparkContext (configuration)
-        context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        context.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val sql_context = new SQLContext (context)
 
         val end = System.nanoTime ()
@@ -67,11 +68,11 @@ class GridLABDSuite extends fixture.FunSuite
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "false");
-        options.put ("ch.ninecode.cim.do_join", "true");
-        options.put ("ch.ninecode.cim.do_topo", "true");
-        options.put ("ch.ninecode.cim.do_topo_islands", "false");
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        options.put ("ch.ninecode.cim.make_edges", "false")
+        options.put ("ch.ninecode.cim.do_join", "true")
+        options.put ("ch.ninecode.cim.do_topo", "true")
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val plan = element.queryExecution
         val test = plan.toString ()

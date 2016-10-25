@@ -652,6 +652,10 @@ class GridLABD extends Serializable
         // eliminate edges with only one connectivity node, or the same connectivity node
         val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
 
+        // persist nodes & edges to avoid recompute
+        nodes.persist (_StorageLevel)
+        real_edges.persist (_StorageLevel)
+
         // construct the initial graph from the real edges
         val initial = Graph.fromEdges[Boolean, PreEdge](real_edges.map (make_graph_edges), false, _StorageLevel, _StorageLevel)
 
@@ -825,19 +829,22 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
         val house = if (args.length > 1)
             args (1)
         else
-            "HAS10002"
+            "HAS78459" // Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830", Gümligen: "HAS10002"
+
+        val start = System.nanoTime ()
 
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("GridLAB-D")
         configuration.setMaster ("spark://sandbox:7077")
         configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
-        configuration.set ("spark.driver.memory", "1g")
+        configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         // get the necessary jar files to send to the cluster
         val s1 = jarForObject (new DefaultSource ()) // "/home/derrick/code/CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"
         val s2 = jarForObject (gridlab) // "/home/derrick/code/CIMApplication/GridLAB-D/target/GridLAB-D-1.0-SNAPSHOT.jar"
@@ -848,19 +855,26 @@ object GridLABD
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        // register topological classes
+        configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+        // register GridLAB-D classes
+        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
 
         // make a Spark context and SQL context
         val _Context = new SparkContext (configuration)
         _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         val _SqlContext = new SQLContext (_Context)
 
-        val start = System.nanoTime ()
+        val setup = System.nanoTime ()
+
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "true") // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "false")
+        options.put ("ch.ninecode.cim.do_join", "true")
+        options.put ("ch.ninecode.cim.do_topo", "true")
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
@@ -868,16 +882,16 @@ object GridLABD
 
         gridlab._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        val prep = System.nanoTime ()
-
         val hdfs_configuration = new Configuration ()
         hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem") // .class.getName ()
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
         val hdfs = FileSystem.get (URI.create (gridlab._TempFilePrefix), hdfs_configuration)
 
+        val confPath = new Path (gridlab._ConfFileName)
         val nodePath = new Path (gridlab._NodeFileName)
         val edgePath = new Path (gridlab._EdgeFileName)
 
+        hdfs.delete (confPath, true)
         hdfs.delete (nodePath, true)
         hdfs.delete (edgePath, true)
 
@@ -892,9 +906,9 @@ object GridLABD
         Files.write (Paths.get (house + ".glm"), header.getBytes (StandardCharsets.UTF_8))
 
         println ("" + count + " elements")
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("prep : " + (prep - read) / 1e9 + " seconds")
-        println ("graph: " + (graph - prep) / 1e9 + " seconds")
+        println ("setup : " + (setup - start) / 1e9 + " seconds")
+        println ("read : " + (read - setup) / 1e9 + " seconds")
+        println ("graph: " + (graph - read) / 1e9 + " seconds")
         println ("write: " + (System.nanoTime () - graph) / 1e9 + " seconds")
         println ()
     }
