@@ -478,6 +478,11 @@ class GridLABD extends Serializable
         string.hashCode.asInstanceOf[VertexId]
     }
 
+    def make_graph_vertices (v: PreNode): Tuple2[VertexId, PreNode] =
+    {
+        (vertex_id (v.id_seq), v)
+    }
+
     def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
     {
         org.apache.spark.graphx.Edge (vertex_id (e.id_cn_1), vertex_id (e.id_cn_2), e)
@@ -578,28 +583,8 @@ class GridLABD extends Serializable
         return (t)
     }
 
-    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String  =
+    def prepare (sc: SparkContext, sqlContext: SQLContext, voltages: Map[String,Double], topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
     {
-        val arguments = args.split (",").map (
-            (s) =>
-                {
-                    val pair = s.split ("=")
-                    if (2 == pair.length)
-                        (pair(0), pair(1))
-                    else
-                        (pair(0), "")
-                }
-        ).toMap
-
-        // get the name of the equipment of interest
-        val equipment = arguments.getOrElse ("equipment", "")
-
-        // see if we should use topology nodes
-        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
-
-        // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
-
         // get the terminals
         val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
@@ -609,17 +594,17 @@ class GridLABD extends Serializable
         // get all elements
         val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
 
-        // get the transformer ends
-        val tends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
-
         // get the transformer ends keyed by transformer
-        val ends = tends.groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
 
         // map the terminal 'pairs' to edges
         val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages, topologicalnodes)).values
+
+        // eliminate edges with only one connectivity node, or the same connectivity node
+        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
@@ -642,6 +627,36 @@ class GridLABD extends Serializable
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
         }
 
+        // persist edges and nodes to avoid recompute
+        real_edges.persist (_StorageLevel)
+        nodes.persist (_StorageLevel)
+
+        // construct the initial graph from the real edges and nodes
+        return (Graph.apply[PreNode, PreEdge] (nodes.map (make_graph_vertices), real_edges.map (make_graph_edges), PreNode ("", 0.0), _StorageLevel, _StorageLevel))
+    }
+
+    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String =
+    {
+        val arguments = args.split (",").map (
+            (s) =>
+                {
+                    val pair = s.split ("=")
+                    if (2 == pair.length)
+                        (pair(0), pair(1))
+                    else
+                        (pair(0), "")
+                }
+        ).toMap
+
+        // see if we should use topology nodes
+        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
+
+        // get a map of voltages
+        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+
+        // prepare the initial graph
+        val initial = prepare (sc, sqlContext, voltages, topologicalnodes)
+
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
          * That is, emit all objects connected to the equipment,
@@ -649,18 +664,11 @@ class GridLABD extends Serializable
          * i.e. include everything in a "trace all", but stop at transfomers
          */
 
-        // eliminate edges with only one connectivity node, or the same connectivity node
-        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
-
-        // persist nodes & edges to avoid recompute
-        nodes.persist (_StorageLevel)
-        real_edges.persist (_StorageLevel)
-
-        // construct the initial graph from the real edges
-        val initial = Graph.fromEdges[Boolean, PreEdge](real_edges.map (make_graph_edges), false, _StorageLevel, _StorageLevel)
+        // get the name of the equipment of interest
+        val equipment = arguments.getOrElse ("equipment", "")
 
         // find the starting node
-        val starting = terminals.filter (_.ConductingEquipment == equipment).collect ()
+        val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
         if (0 == starting.length)
             return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
         val starting_terminal = starting (0)
@@ -689,39 +697,51 @@ class GridLABD extends Serializable
                     container_nodes.map (node => vertex_id (node.id))
                 }
 
-        // traverse the graph with the Pregel algorithm
-        val graph = initial.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
+        // trace the graph with the Pregel algorithm
+        val binary_graph = initial.mapVertices { case (vid, _) => false }
+        val graph = binary_graph.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (starting_nodes), sendMessage, mergeMessage)
 
         // get the list of traced vertices
-        val touched = graph.vertices.filter (_._2).map (_._1)
-        val traced_nodes = touched.keyBy (x => x).join (nodes.keyBy (x => vertex_id (x.id_seq))).reduceByKey ((a, b) ⇒ a).values.values
+        val touched = graph.vertices.filter (_._2)
+        val traced_nodes = touched.join (initial.vertices).reduceByKey ((a, b) ⇒ a).values.values
 
         // get the list of traced edges
-        val traced_edges = traced_nodes.keyBy (_.id_seq).join (real_edges.keyBy (_.id_cn_1).union (real_edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
+        val edges = initial.edges.map (_.attr)
+        val traced_edges = traced_nodes.keyBy (_.id_seq).join (edges.keyBy (_.id_cn_1).union (edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
         val edgecount = traced_edges.count
         println ("traced_edges: " + edgecount)
         if (0 != edgecount)
             println (traced_edges.first)
 
         // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD; get them
-        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (nodes.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
+        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (initial.vertices.values.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy (_.key).values
-
-        // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (sc)
 
         // get one of each type of ACLineSegment and emit a configuration for each of them
         val line = new Line ()
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
+        // get the transformer ends keyed by transformer
+        // ToDo: avoid this duplication
+        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+
+        // get the transformer configuration using short circuit data to model the upstream connection
         val shorts = short_circuit_data (sc)
         val trans = new Trans (shorts, ends, voltages)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
+        // get the combined configuration strings
         val c_strings = l_strings.union (t_strings)
+
+        // get the existing photo-voltaic installations keyed by terminal
+        val solars = getSolarInstallations (sc)
+
+        // get the node strings
         val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node_name, 30000))
+
+        // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
 
         c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
