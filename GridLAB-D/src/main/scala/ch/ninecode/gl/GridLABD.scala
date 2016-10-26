@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.HashMap
 import java.util.TimeZone
+import javax.xml.bind.DatatypeConverter
 
 import scala.collection.Map
 import scala.Iterator
@@ -47,6 +48,9 @@ case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: Str
         if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
     }
 }
+
+// output
+case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
 
 class GridLABD extends Serializable
 {
@@ -628,7 +632,15 @@ class GridLABD extends Serializable
         return (Graph.apply[PreNode, PreEdge] (nodes.map (make_graph_vertices), real_edges.map (make_graph_edges), PreNode ("", 0.0), _StorageLevel, _StorageLevel))
     }
 
-    def make_glm (sc: SparkContext, sqlContext: SQLContext, initial: Graph[PreNode, PreEdge], starting_node: String, equipment: String): String =
+    def make_glm (
+        sc: SparkContext,
+        sqlContext: SQLContext,
+        initial: Graph[PreNode, PreEdge],
+        starting_node: String,
+        equipment: String,
+        power: Double,
+        start: Calendar,
+        finish: Calendar): String =
     {
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -683,7 +695,7 @@ class GridLABD extends Serializable
         val solars = getSolarInstallations (sc)
 
         // get the node strings
-        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node, 30000))
+        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node, power))
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -713,9 +725,6 @@ class GridLABD extends Serializable
             else
                 // for dates in the local time zone
                 new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        val start = Calendar.getInstance ()
-        val finish = start.clone ().asInstanceOf[Calendar]
-        finish.add (Calendar.MINUTE, 1)
 
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
@@ -782,6 +791,15 @@ class GridLABD extends Serializable
         // get the name of the equipment of interest
         val equipment = arguments.getOrElse ("equipment", "")
 
+        // get the power of the PV
+        val power = arguments.getOrElse ("power", "30000").toDouble
+
+        // get the starting and finishing time
+        val t0 = arguments.getOrElse ("start", DatatypeConverter.printDateTime (Calendar.getInstance ()))
+        val t0plus = DatatypeConverter.parseDateTime (t0)
+        t0plus.add (Calendar.MINUTE, 1)
+        val t1 = arguments.getOrElse ("finish", DatatypeConverter.printDateTime (t0plus))
+
         // find the starting node
         val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
         if (0 == starting.length)
@@ -792,24 +810,35 @@ class GridLABD extends Serializable
         // prepare the initial graph
         val initial = prepare (sc, sqlContext, topologicalnodes)
 
-        return (make_glm (sc, sqlContext, initial, starting_node_name, equipment))
+        val start = DatatypeConverter.parseDateTime (t0)
+        val finish = DatatypeConverter.parseDateTime (t1)
+
+        return (make_glm (sc, sqlContext, initial, starting_node_name, equipment, power, start, finish))
     }
 
-    case class Solution (house: String, date: String, real: Double, imaginary: Double)
     def csv2solution (input: String): Solution =
     {
+        // ABG64200_topo,400.262423,0.002335,400.262423,4.191125,400.262423,2.096730
         val parts = input.split (",")
-        Solution (parts(0), parts(1), parts(2).toDouble, parts(3).toDouble)
+        Solution (parts(0), parts(1).toDouble, parts(2).toDouble, parts(3).toDouble, parts(4).toDouble, parts(5).toDouble, parts(6).toDouble)
     }
 
     def solve (sc: SparkContext, sqlContext: SQLContext, filename: String): RDD[Solution] =
     {
+        val voltages =
+            Array[String] (
+                "bash",
+                "-c",
+                "while read line; do " +
+                    "FILE=$line; " +
+                    "gridlabd $FILE; " +
+                    "tail --lines=+3 ${FILE%.*}_voltdump.csv; " +
+                "done < /dev/stdin")
+
         val files = sc.parallelize (Array[String] (filename))
-        val out = files.pipe (Array[String] ("bash", "-c", "while read line; do FILE=$line; gridlabd $FILE; echo -ne ${FILE%.*},; cat ${FILE%.*}.csv | tail --lines=1; done < /dev/stdin"))
-        val cc = out.collect
+        val out = files.pipe (voltages)
         val ret = out.map (csv2solution);
-        for (i <- cc)
-            println (i.toString + "\n")
+
         return (ret)
     }
 }

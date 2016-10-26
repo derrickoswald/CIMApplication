@@ -57,12 +57,26 @@ case class Complex (re: Double, im: Double) extends Ordered[Complex]
         round (re, digits).toString + (if (im < 0) "-" + round (-im, digits).toString else "+" + round (im, digits).toString) + "j"
 }
 
-object Complex {
+object Complex
+{
     // constants
     val j = new Complex (0, 1)
 
     // factory methods
     def apply (re: Double) = new Complex (re)
+
+    // to/from polar coordinates
+    def fromPolar (magnitude: Double, angle: Double, degrees: Boolean = false) =
+    {
+        val a = if (degrees) angle * Pi / 180.0 else angle
+        new Complex (magnitude * cos (a), magnitude * sin (a))
+    }
+
+    def toPolar (c: Complex, degrees: Boolean)
+    {
+        val a = atan2 (c.im, c.re)
+        (c.modulus, if (degrees) a * 180.0 / Pi else a)
+    }
 
     // implicit conversions
     implicit def fromDouble (d: Double) = new Complex (d)

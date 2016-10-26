@@ -4,15 +4,27 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.Calendar
 import java.util.HashMap
 import java.util.Map
+import javax.xml.bind.DatatypeConverter
+import java.sql.Connection
+import java.sql.DriverManager
+import java.sql.Types
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Statement
+import java.sql.Timestamp
+import java.util.Random
 
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
+
 import org.scalatest.fixture
 
 import ch.ninecode.cim._
@@ -82,6 +94,69 @@ class GridLABDSuite extends fixture.FunSuite
         return (element)
     }
 
+    def store(house: String, power: Double, t1: Calendar, results: RDD[Solution]) =
+    {
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+
+        var connection: Connection = null
+        try
+        {
+            // create a database connection
+            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+
+            // create schema
+            val statement = connection.createStatement ()
+            statement.executeUpdate ("drop table if exists simulation")
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house string, power double, time datetime)")
+            statement.executeUpdate ("drop table if exists results")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node string, vreal double, vimag double)")
+            statement.close ()
+
+            // insert the simulation
+            val insert = connection.prepareStatement ("insert into simulation (id, house, power, time) values (?, ?, ?, ?)")
+            insert.setNull (1, Types.INTEGER)
+            insert.setString (2, house)
+            insert.setDouble (3, power)
+            insert.setTimestamp (4, new Timestamp(t1.getTimeInMillis))
+            insert.executeUpdate ()
+            val resultset = statement.executeQuery ("select last_insert_rowid() id")
+            resultset.next ()
+            val id = resultset.getInt ("id")
+
+            // insert the results
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, vreal, vimag) values (?, ?, ?, ?, ?)")
+            for (solution ← results.collect) {
+                val c = Complex.fromPolar (solution.voltA_mag, solution.voltA_angle)
+                datainsert.setNull (1, Types.INTEGER)
+                datainsert.setInt (2, id)
+                datainsert.setString (3, solution.node)
+                datainsert.setDouble (4, c.re)
+                datainsert.setDouble (5, c.im)
+                datainsert.executeUpdate ()
+            }
+        }
+        catch
+        {
+            // if the error message is "out of memory",
+            // it probably means no database file is found
+            case e: SQLException ⇒ println ("exception caught: " + e);
+        }
+        finally
+        {
+            try
+            {
+                if (connection != null)
+                    connection.close()
+            }
+            catch {
+                // connection close failed
+                case e: SQLException ⇒ println ("exception caught: " + e);
+            }
+        }
+
+    }
+
     test ("Basic")
     {
         a: ContextPair ⇒
@@ -111,13 +186,23 @@ class GridLABDSuite extends fixture.FunSuite
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
         val house = "HAS97010" // Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002"
-        val result = gridlabd.export (context, sql_context, "equipment=" + house + ",topologicalnodes=true")
+        val power = 30000
+        val t0 = Calendar.getInstance ()
+        val t1 = t0.clone ().asInstanceOf[Calendar]
+        t1.add (Calendar.MINUTE, 1)
+        val result = gridlabd.export (context, sql_context,
+            "equipment=" + house +
+            ",power=" + power +
+            ",topologicalnodes=true" +
+            ",start=" + DatatypeConverter.printDateTime (t0) +
+            ",finish=" + DatatypeConverter.printDateTime (t1))
 
         val process = System.nanoTime ()
 
         val file = Paths.get (house + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
-        val f = gridlabd.solve (context, sql_context, file.toString)
+        val results = gridlabd.solve (context, sql_context, file.toString)
+        store (house, power, t1, results)
         val write = System.nanoTime ()
 
         println ("read : " + (read - start) / 1e9 + " seconds")
