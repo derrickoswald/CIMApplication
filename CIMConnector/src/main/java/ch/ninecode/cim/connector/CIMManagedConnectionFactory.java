@@ -97,11 +97,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         else
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
-        connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter ());
-        connection._Adapter = (CIMResourceAdapter)getResourceAdapter ();
-        connection._Subject = subject;
-        connection._RequestInfo = _info;
-        connection.setLogWriter (getLogWriter ());
+        connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter (), getLogWriter ());
         connection.connect (subject, _info);
 
         return (connection);
@@ -117,21 +113,26 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     @Override
     public ManagedConnection matchManagedConnections (Set connections, Subject subject, ConnectionRequestInfo info) throws ResourceException
     {
-        ManagedConnection ret = null;
+        CIMManagedConnection ret = null;
         Iterator iterator = connections.iterator ();
         while (iterator.hasNext ())
         {
             CIMManagedConnection connection = (CIMManagedConnection)iterator.next ();
-            if (((null == connection._RequestInfo) && (null == info)) || ((null != connection._RequestInfo) && connection._RequestInfo.equals (info)))
-                if (((null == connection._Subject) && (null == subject)) || ((null != connection._Subject) && connection._Subject.equals (subject)))
-                {
-                    ret = connection;
-                    if (null == connection._SparkContext) // if it was closed, reopen it
-                        connection.connect (connection._Subject, connection._RequestInfo);
-
-                    break;
-                }
+            if (null == connection._SparkContext) // always match a closed connection
+            {
+                ret = connection;
+                break;
+            }
+            else
+                if (((null == connection._RequestInfo) && (null == info)) || ((null != connection._RequestInfo) && connection._RequestInfo.equals (info)))
+                    if (((null == connection._Subject) && (null == subject)) || ((null != connection._Subject) && connection._Subject.equals (subject)))
+                    {
+                        ret = connection;
+                        break;
+                    }
         }
+        if ((null != ret) && (null == ret._SparkContext)) // if it was closed, reopen it
+            ret.connect (subject, info);
 
         return (ret);
     }

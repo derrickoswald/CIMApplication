@@ -61,7 +61,7 @@ class GridLABDSuite extends fixture.FunSuite
         // register topological classes
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
+        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge], classOf[ch.ninecode.gl.Solution]))
 
         val context = new SparkContext (configuration)
         context.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN

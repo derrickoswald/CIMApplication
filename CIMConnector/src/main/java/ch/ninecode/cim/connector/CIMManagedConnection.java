@@ -42,23 +42,23 @@ public class CIMManagedConnection implements ManagedConnection
     private static final String TRANSACTIONS_NOT_SUPPORTED_ERROR = "Transactions not supported";
 
     protected CIMResourceAdapter _Adapter;
+    protected PrintWriter _PrintWriter;
+    protected Vector<ConnectionEventListener> _Listeners;
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
     protected CIMConnection _Connection;
-    protected Vector<ConnectionEventListener> _Listeners;
-    protected PrintWriter _PrintWriter;
     protected SparkContext _SparkContext;
     protected SQLContext _SqlContext;
 
     /**
      * Constructor for CIMManagedConnection
      */
-    public CIMManagedConnection (CIMResourceAdapter adapter)
+    public CIMManagedConnection (CIMResourceAdapter adapter, PrintWriter writer)
     {
         super ();
         _Adapter = adapter;
+        _PrintWriter = writer;
         _Listeners = new Vector<> ();
-        _PrintWriter = null;
     }
 
     public void close ()
@@ -115,14 +115,13 @@ public class CIMManagedConnection implements ManagedConnection
         throws ResourceException
     {
         PrintWriter logger;
-        CIMConnectionRequestInfo _info;
 
         logger = getLogWriter ();
         _Subject = subject;
         if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
-            _info = new CIMConnectionRequestInfo ();
+            _RequestInfo = new CIMConnectionRequestInfo ();
         else
-            _info = (CIMConnectionRequestInfo)info;
+            _RequestInfo = (CIMConnectionRequestInfo)info;
         if (null != logger)
             logger.println ("CIMConnectionRequestInfo = " + info.toString ());
 
@@ -132,36 +131,26 @@ public class CIMManagedConnection implements ManagedConnection
         configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
         // set up the spark master
-        if ("" != _info.getMaster ())
-            configuration.setMaster (_info.getMaster ());
+        if ("" != _RequestInfo.getMaster ())
+            configuration.setMaster (_RequestInfo.getMaster ());
         else
             // run Spark locally with as many worker threads as logical cores on the machine
             configuration.setMaster ("local[*]");
 
         // add the other properties
-        for (String key : _info.getProperties ().keySet ())
-            configuration.set (key, _info.getProperties ().get (key));
+        for (String key : _RequestInfo.getProperties ().keySet ())
+            configuration.set (key, _RequestInfo.getProperties ().get (key));
 
         // set up the list of jars to send with the connection request
         String jar = CIMScalaJarPath ();
-        String[] jars = new String[_info.getJars ().size () + (null == jar ? 0 : 1)];
-        jars = _info.getJars ().toArray (jars);
+        String[] jars = new String[_RequestInfo.getJars ().size () + (null == jar ? 0 : 1)];
+        jars = _RequestInfo.getJars ().toArray (jars);
         if (null != jar)
             jars[jars.length - 1] = jar;
         configuration.setJars (jars);
 
         if (null != logger)
             logger.println ("SparkConf = " + configuration.toDebugString ());
-
-//        try
-//        {
-//            System.out.println ("SparkConf = " + configuration.toDebugString ());
-//            System.getProperties ().store (System.out, "current properties");
-//        }
-//        catch (java.io.IOException e)
-//        {
-//            System.out.println ("couldn't write properties");
-//        }
 
         // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
         // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
@@ -707,8 +696,18 @@ public class CIMManagedConnection implements ManagedConnection
         CHIM.apply_to_all_classes (fn);
 
         // register edge related classes
-        Class<?>[] c2 = { PreEdge.class, Extremum.class, Edge.class };
-        configuration.registerKryoClasses (c2);
+        if (configuration.getBoolean ("ch.ninecode.cim.make_edges", false))
+        {
+            Class<?>[] classes = { PreEdge.class, Extremum.class, Edge.class };
+            configuration.registerKryoClasses (classes);
+        }
+
+        // register topological classes
+        if (configuration.getBoolean ("ch.ninecode.cim.do_topo", false))
+        {
+            Class<?>[] classes = { CuttingEdge.class, TopologicalData.class };
+            configuration.registerKryoClasses (classes);
+        }
 
         // make a Spark context and SQL context
         _SparkContext = SparkContext.getOrCreate (configuration);

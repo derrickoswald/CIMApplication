@@ -63,7 +63,7 @@ public class CIMInteractionImpl implements Interaction
         String[] files = filename.split (",");
         HashMap<String,String> options = new HashMap<> ();
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "false");
+        options.put ("ch.ninecode.cim.make_edges", "true");
         options.put ("ch.ninecode.cim.do_join", "true");
         DataFrame element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
         QueryExecution plan = element.queryExecution ();
