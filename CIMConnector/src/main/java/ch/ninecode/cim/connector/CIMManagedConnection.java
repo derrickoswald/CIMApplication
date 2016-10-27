@@ -63,7 +63,7 @@ public class CIMManagedConnection implements ManagedConnection
 
     public void close ()
     {
-        if (null != _SparkContext)
+        if (null != _SparkContext && !_SparkContext.isStopped ())
             _SparkContext.stop ();
         _SparkContext = null;
         _SqlContext = null;
@@ -739,7 +739,7 @@ public class CIMManagedConnection implements ManagedConnection
         if (null != _Connection)
             _Connection.invalidate ();
         _Connection = null;
-        _Listeners = null;
+        _Listeners.clear ();
     }
 
     /**

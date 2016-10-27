@@ -98,6 +98,9 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
         connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter ());
+        connection._Adapter = (CIMResourceAdapter)getResourceAdapter ();
+        connection._Subject = subject;
+        connection._RequestInfo = _info;
         connection.setLogWriter (getLogWriter ());
         connection.connect (subject, _info);
 
@@ -122,8 +125,10 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             if (((null == connection._RequestInfo) && (null == info)) || ((null != connection._RequestInfo) && connection._RequestInfo.equals (info)))
                 if (((null == connection._Subject) && (null == subject)) || ((null != connection._Subject) && connection._Subject.equals (subject)))
                 {
-                    System.out.println ("subject matched");
                     ret = connection;
+                    if (null == connection._SparkContext) // if it was closed, reopen it
+                        connection.connect (connection._Subject, connection._RequestInfo);
+
                     break;
                 }
         }
