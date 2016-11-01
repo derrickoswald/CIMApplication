@@ -464,7 +464,7 @@ class ShortCircuit extends Serializable
         val has = graph.vertices.filter (
             (v: Tuple2[VertexId, VertexData]) =>
             {
-                v._2.name.startsWith ("HAS") && v._2.message.r != Double.PositiveInfinity
+                (v._2.name.startsWith ("HAS") || v._2.name.startsWith ("HAK")) && v._2.message.r != Double.PositiveInfinity
             }
         ).values
         has.setName ("house_connections")

@@ -61,7 +61,8 @@ class ShortCircuitSuite extends fixture.FunSuite
         val context: SparkContext = a._SparkContext
         val sql_context: SQLContext = a._SQLContext
 
-        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
+        // val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
+        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
 
         val start = System.nanoTime ()
         val files = filename.split (",")
