@@ -84,7 +84,7 @@
                         <div class="form-group">
                             <div class="col-sm-3">
                                 <div aria-describedby="files_help">
-                                    <div type="button" class="btn btn-file">
+                                    <div class="btn btn-file">
                                         <span>Browse</span>
                                         <input id="file_button" type="file" name="files[]" multiple/>
                                     </div>
@@ -125,7 +125,8 @@
                         <div class="form-group">
                             <label class="col-sm-3 control-label" for="cim_file">CIM file</label>
                             <div class="col-sm-9">
-                                <input id="cim_file" class="form-control" type="text" name="cim_file" placeholder="NIS_CIM_Export_sias_current_20160816_V8_Bruegg">
+                                <select id="cim_file" class="form-control" name="cim_file">
+                                </select>
                             </div>
                         </div>
                         <div class="form-group">
@@ -164,7 +165,8 @@
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label" for="cim_file2">CIM file</label>
                                     <div class="col-sm-9">
-                                        <input id="cim_file2" class="form-control" type="text" name="cim_file2" placeholder="NIS_CIM_Export_sias_current_20160816_V8_Bruegg">
+                                        <select id="cim_file2" class="form-control" name="cim_file2">
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="form-group">

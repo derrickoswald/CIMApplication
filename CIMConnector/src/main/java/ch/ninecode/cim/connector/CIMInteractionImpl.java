@@ -3,6 +3,7 @@ package ch.ninecode.cim.connector;
 import java.util.HashMap;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -11,6 +12,11 @@ import javax.resource.cci.InteractionSpec;
 import javax.resource.cci.Record;
 import javax.resource.cci.ResourceWarning;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.execution.QueryExecution;
 import org.apache.spark.sql.DataFrame;
@@ -105,6 +111,73 @@ public class CIMInteractionImpl implements Interaction
                 CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
                 switch (_spec.getFunctionName ())
                 {
+                    case CIMInteractionSpec.LIST_FILES:
+                        if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
+                        {
+                            ((CIMMappedRecord) output).clear ();
+                            try
+                            {
+                                CIMConnection connection = (CIMConnection)getConnection ();
+                                Configuration hdfs_configuration = new Configuration ();
+                                hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+                                hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem");
+                                String prefix = connection._ManagedConnection._Adapter.getInputFilePrefix ();
+                                String suffix = connection._ManagedConnection._Adapter.getInputFileSuffix ();
+                                FileSystem hdfs = FileSystem.get (URI.create (prefix), hdfs_configuration);
+                                Path root = new Path (prefix);
+                                RemoteIterator<LocatedFileStatus> iterator = hdfs.listFiles (root, false); // ToDo: recursive
+                                StringBuilder sb = new StringBuilder ();
+                                sb.append (
+                                    "{\n" +
+                                    "    \"files\":\n" +
+                                    "    [\n");
+                                boolean have = false;
+                                while (iterator.hasNext())
+                                {
+                                    // "LocatedFileStatus{path=hdfs://sandbox:9000/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+                                    // "LocatedFileStatus{path=hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+
+                                    LocatedFileStatus fs = iterator.next ();
+                                    String path = fs.getPath ().toString ();
+                                    if (path.startsWith (prefix))
+                                        path = path.substring (prefix.length ());
+                                    if (path.endsWith (suffix))
+                                        path = path.substring (0, path.length () - suffix.length ());
+                                    if (have)
+                                        sb.append (",\n");
+                                    sb.append ("        {\n");
+                                    sb.append ("            \"path\": ");
+                                    sb.append ("\"");
+                                    sb.append (path);
+                                    sb.append ("\",\n");
+                                    sb.append ("            \"length\": ");
+                                    sb.append (fs.getLen ());
+                                    sb.append (",\n");
+                                    sb.append ("            \"modification_time\": ");
+                                    sb.append (fs.getModificationTime ());
+                                    sb.append (",\n");
+                                    sb.append ("            \"access_time\": ");
+                                    sb.append (fs.getAccessTime ());
+                                    sb.append ("\n");
+                                    sb.append ("        }");
+                                    have = true;
+                                }
+                                sb.append (
+                                    "\n" +
+                                    "    ]\n" +
+                                    "}");
+                                ((CIMMappedRecord) output).put ("files", sb.toString ());
+                                ret = true;
+                            }
+                            catch (Exception exception)
+                            {
+                                throw new ResourceException ("problem", exception);
+                            }
+                        }
+                        else
+                            throw new ResourceException (INVALID_OUTPUT_ERROR);
+                        break;
+
                     case CIMInteractionSpec.READ_FUNCTION:
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
