@@ -12,7 +12,8 @@ import ch.ninecode.model._
 class Trans (
     shorts: RDD[(PowerTransformer, Substation, ShortCircuitData)],
     ends: RDD[(String, Iterable[PowerTransformerEnd])],
-    voltages: scala.collection.Map[String, Double]) extends Serializable
+    voltages: scala.collection.Map[String, Double],
+    with_feeder: Boolean) extends Serializable
 {
     // make a valid configuration name
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
@@ -26,6 +27,7 @@ class Trans (
             else
                 "_" + string
     }
+
     def transformer_power (transformer: PowerTransformer): String =
     {
         val name = transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name // e.g. 250kVA
@@ -47,6 +49,24 @@ class Trans (
         val r = (((rp - xp) * rs) + (((x1 * r2) + (x2 * r1)) * xs)) / ((rs * rs) + (xs * xs))
         val x = ((((x1 * r2) + (x2 * r1)) * rs) - ((rp - xp) * xs)) / ((rs * rs) + (xs * xs))
         return (new Tuple2 (r, x))
+    }
+
+    def make_transformer (s: Tuple2[Tuple2[Iterable[PreEdge],Tuple3[PowerTransformer,Substation,ShortCircuitData]],Option[Iterable[PowerTransformerEnd]]]): Transformer =
+    {
+        val primary =
+            s._2 match
+            {
+                case None =>
+                    null
+                case Some (a: Any) =>
+                    // sort ends by sequence number
+                    val iter = a.asInstanceOf[Iterable[PowerTransformerEnd]]
+                    val ends = iter.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                    ends (0)
+            }
+        val an_edge = s._1._1.head
+        val node = if (an_edge.id_seq_1 == primary.TransformerEnd.Terminal) an_edge.id_cn_1 else an_edge.id_cn_2
+        Transformer (node, s._1._2._1)
     }
 
     /**
@@ -110,22 +130,24 @@ class Trans (
                             "            secondary_voltage " + v + ";\n" +
                             "            resistance " + r + ";\n" +
                             "            reactance " + x + ";\n" +
-                            "        };\n" +
-                            "\n" +
-                            // make a feeder line configuration
-                            "        object line_configuration\n" +
-                            "        {\n" +
-                            "            name \"" + config + "_fake_line_configuration\";\n" +
-                            "            z11 " + diag + ";\n" +
-                            "            z12 0.0+0.0d Ohm/km;\n" +
-                            "            z13 0.0+0.0d Ohm/km;\n" +
-                            "            z21 0.0+0.0d Ohm/km;\n" +
-                            "            z22 " + diag + ";\n" +
-                            "            z23 0.0+0.0d Ohm/km;\n" +
-                            "            z31 0.0+0.0d Ohm/km;\n" +
-                            "            z32 0.0+0.0d Ohm/km;\n" +
-                            "            z33 " + diag + ";\n" +
                             "        };\n"
+                        if (with_feeder)
+                            temp +=
+                                "\n" +
+                                // make a feeder line configuration
+                                "        object line_configuration\n" +
+                                "        {\n" +
+                                "            name \"" + config + "_fake_line_configuration\";\n" +
+                                "            z11 " + diag + ";\n" +
+                                "            z12 0.0+0.0d Ohm/km;\n" +
+                                "            z13 0.0+0.0d Ohm/km;\n" +
+                                "            z21 0.0+0.0d Ohm/km;\n" +
+                                "            z22 " + diag + ";\n" +
+                                "            z23 0.0+0.0d Ohm/km;\n" +
+                                "            z31 0.0+0.0d Ohm/km;\n" +
+                                "            z32 0.0+0.0d Ohm/km;\n" +
+                                "            z33 " + diag + ";\n" +
+                                "        };\n"
                     }
                     temp
             }
@@ -154,6 +176,13 @@ class Trans (
         pt.keyBy (_._1.head.element.id).leftOuterJoin (ends).values.map (make_transformer_configuration)
     }
 
+    def getTransformers (edges: RDD[Iterable[PreEdge]]): RDD[Transformer] =
+    {
+        // ToDo: this assumes that all transformers are identical -- what if there are random transformers in parallel
+        val pt = edges.keyBy (_.head.element.id).join (shorts.keyBy (_._1.id)).values
+        pt.keyBy (_._1.head.element.id).leftOuterJoin (ends).values.map (make_transformer)
+    }
+
     def emit (edges: Iterable[PreEdge]): String =
     {
         val edge = edges.head
@@ -170,38 +199,58 @@ class Trans (
             "        };\n"
         else
         {
-            val config = configurationName (edges)
-            "        object transformer\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n" +
-            "\n" +
-            // make a slack bus
-            "        object node\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_swing_bus\";\n" +
-            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-            "            bustype SWING;\n" +
-            "            nominal_voltage " + edge.v1 + " V;\n" +
-            "            voltage_A " + edge.v1 + "+30.0d V;\n" +
-            "            voltage_B " + edge.v1 + "-90.0d V;\n" +
-            "            voltage_C " + edge.v1 + "+150.0d V;\n" +
-            "        };\n" +
-            "\n" +
-            // make a fake cable joining the slack bus to the transformer
-            "        object underground_line\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_feeder\";\n" +
-            "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-            "            from \"" + edge.id_equ + "_swing_bus\";\n" +
-            "            to \"" + edge.id_cn_1 + "\";\n" +
-            "            length 1000 m;\n" +
-            "            configuration \"" + config + "_fake_line_configuration\";\n" +
-            "        };\n"
+            var config = configurationName (edges)
+            var ret =
+                "        object transformer\n" +
+                "        {\n" +
+                "            name \"" + edge.id_equ + "\";\n" +
+                "            phases ABCN;\n" +
+                "            from \"" + edge.id_cn_1 + "\";\n" +
+                "            to \"" + edge.id_cn_2 + "\";\n" +
+                "            configuration \"" + config + "\";\n" +
+                "        };\n"
+            if (with_feeder)
+                ret +=
+                    "\n" +
+                    // make a slack bus
+                    "        object node\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "_swing_bus\";\n" +
+                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+                    "            bustype SWING;\n" +
+                    "            nominal_voltage " + edge.v1 + " V;\n" +
+                    "            voltage_A " + edge.v1 + "+30.0d V;\n" +
+                    "            voltage_B " + edge.v1 + "-90.0d V;\n" +
+                    "            voltage_C " + edge.v1 + "+150.0d V;\n" +
+                    "        };\n" +
+                    "\n" +
+                    // make a fake cable joining the slack bus to the transformer
+                    "        object underground_line\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "_feeder\";\n" +
+                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+                    "            from \"" + edge.id_equ + "_swing_bus\";\n" +
+                    "            to \"" + edge.id_cn_1 + "\";\n" +
+                    "            length 1000 m;\n" +
+                    "            configuration \"" + config + "_fake_line_configuration\";\n" +
+                    "        };\n"
+//            else
+//                ret +=
+//                    "\n" +
+//                    // make a slack bus
+//                    "        object node\n" +
+//                    "        {\n" +
+//                    "            name \"" + edge.id_equ + "_swing_bus\";\n" +
+//                    "            parent \"" + edge.id_cn_1 + "\";\n" +
+//                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+//                    "            bustype SWING;\n" +
+//                    "            nominal_voltage " + edge.v1 + " V;\n" +
+//                    "            voltage_A " + edge.v1 + "+30.0d V;\n" +
+//                    "            voltage_B " + edge.v1 + "-90.0d V;\n" +
+//                    "            voltage_C " + edge.v1 + "+150.0d V;\n" +
+//                    "        };\n" +
+//                    "\n"
+            ret
         }
     }
 }

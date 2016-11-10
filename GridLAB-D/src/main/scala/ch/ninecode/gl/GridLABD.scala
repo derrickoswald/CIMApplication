@@ -48,6 +48,8 @@ case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: Str
         if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
     }
 }
+case class PV (node: String, solar: SolarGeneratingUnit)
+case class Transformer (node: String, transformer: PowerTransformer)
 
 // output
 case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
@@ -262,8 +264,6 @@ class GridLABD extends Serializable
                 }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
-            // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
-            // ProtectionEquipment and CurrentRelay are emitted with terminals even though they shouldn't be
 
         return (ret)
     }
@@ -295,84 +295,110 @@ class GridLABD extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, power: Double)(arg: Tuple2[PreNode,Option[Iterable[Tuple2[Terminal, SolarGeneratingUnit]]]]): String =
+    def make_node (slack: String, power: Double)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
         val node = arg._1
         val pv = arg._2
+        val transformer = arg._3
         val loads = pv match
-            {
-                case Some (solars) =>
-                    val solargeneratingunits = solars.map ((x) => { x._2 }).toList
-                    var load = ""
-                    for (solargeneratingunit <- solargeneratingunits)
-                    {
-                        val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-                        val power3 = power / 3 // per phase
-                        if (power > 0)
-                            load +=
-                                "\n" +
-                                "        object load\n" +
-                                "        {\n" +
-                                "             name \"" + node.id_seq + "_pv\";\n" +
-                                "             parent \"" + node.id_seq + "\";\n" +
-                                "             phases ABCN;\n" +
-                                "             constant_power_A -" + power3 + ";\n" +
-                                "             constant_power_B -" + power3 + ";\n" +
-                                "             constant_power_C -" + power3 + ";\n" +
-                                "             nominal_voltage " + node.voltage + "V;\n" +
-                                "             load_class R;\n" +
-                                "        }\n"
-                    }
-                    load
-                case None =>
-                    ""
+        {
+            case Some (solars) =>
+                val solargeneratingunits = solars.map ((x) => { x.solar }).toList
+                var load = ""
+                for (solargeneratingunit <- solargeneratingunits)
+                {
+                    val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
+                    val power3 = power / 3 // per phase
+                    if (power > 0)
+                        load +=
+                            "\n" +
+                            "        object load\n" +
+                            "        {\n" +
+                            "             name \"" + node.id_seq + "_pv\";\n" +
+                            "             parent \"" + node.id_seq + "\";\n" +
+                            "             phases ABCN;\n" +
+                            "             constant_power_A -" + power3 + ";\n" +
+                            "             constant_power_B -" + power3 + ";\n" +
+                            "             constant_power_C -" + power3 + ";\n" +
+                            "             nominal_voltage " + node.voltage + "V;\n" +
+                            "             load_class R;\n" +
+                            "        }\n"
+                }
+                load
+            case None =>
+                ""
+        }
+        val ret = transformer match
+        {
+            case Some (trafos) =>
+                val transformers = trafos.map ((x) => { x.transformer }).toList
+                var trafo = ""
+                for (transformer <- transformers)
+                {
+                    // make a slack bus
+                    val id = transformer.id
+                    val voltage = "16000" // ToDo: don't cheat here
+                    trafo +=
+                        "        object node\n" +
+                        "        {\n" +
+                        "            name \"" + node.id_seq + "\";\n" +
+                        "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+                        "            bustype SWING;\n" +
+                        "            nominal_voltage " + voltage + " V;\n" +
+                        "            voltage_A " + voltage + "+30.0d V;\n" +
+                        "            voltage_B " + voltage + "-90.0d V;\n" +
+                        "            voltage_C " + voltage + "+150.0d V;\n" +
+                        "        };\n"
+                }
+                trafo + loads
+            case None =>
+                if (node.id_seq == slack)
+                {
+                    val power3 = power / 3 // per phase
+                    val base = base_name (slack)
+                    "        object meter\n" +
+                    "        {\n" +
+                    "            name \"" + node.id_seq + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            bustype PQ;\n" +
+                    "            nominal_voltage " + node.voltage + "V;\n" +
+                    "        };\n" +
+                    "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "             name \"" + node.id_seq + "_pv\";\n" +
+                    "             parent \"" + node.id_seq + "\";\n" +
+                    "             phases ABCN;\n" +
+                    "             constant_power_A -" + power3 + ";\n" +
+                    "             constant_power_B -" + power3 + ";\n" +
+                    "             constant_power_C -" + power3 + ";\n" +
+                    "             nominal_voltage " + node.voltage + "V;\n" +
+                    "             load_class R;\n" +
+                    "        }\n" +
+                    "\n" +
+                    "        object recorder {\n" +
+                    "            name \"" + base + "_recorder\";\n" +
+                    "            parent \"" + node.id_seq + "\";\n" +
+                    "            property measured_power.real, measured_power.imag;\n" +
+                    "            limit 1440;\n" +
+                    "            interval 60;\n" +
+                    "            file \"" + base + ".csv\";\n" +
+                    "        };\n" +
+                    loads
+                }
+                else
+                {
+                    "        object meter\n" +
+                    "        {\n" +
+                    "            name \"" + node.id_seq + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            bustype PQ;\n" +
+                    "            nominal_voltage " + node.voltage + "V;\n" +
+                    "        };\n" +
+                    loads
+                }
             }
-        val ret =
-        if (node.id_seq == slack)
-        {
-            val power3 = power / 3 // per phase
-            val base = base_name (slack)
-            "        object meter\n" +
-            "        {\n" +
-            "            name \"" + node.id_seq + "\";\n" +
-            "            phases ABCN;\n" +
-            "            bustype PQ;\n" +
-            "            nominal_voltage " + node.voltage + "V;\n" +
-            "        };\n" +
-            "\n" +
-            "        object load\n" +
-            "        {\n" +
-            "             name \"" + node.id_seq + "_pv\";\n" +
-            "             parent \"" + node.id_seq + "\";\n" +
-            "             phases ABCN;\n" +
-            "             constant_power_A -" + power3 + ";\n" +
-            "             constant_power_B -" + power3 + ";\n" +
-            "             constant_power_C -" + power3 + ";\n" +
-            "             nominal_voltage " + node.voltage + "V;\n" +
-            "             load_class R;\n" +
-            "        }\n" +
-            "\n" +
-            "        object recorder {\n" +
-            "            name \"" + base + "_recorder\";\n" +
-            "            parent \"" + node.id_seq + "\";\n" +
-            "            property measured_power.real, measured_power.imag;\n" +
-            "            limit 1440;\n" +
-            "            interval 60;\n" +
-            "            file \"" + base + ".csv\";\n" +
-            "        };\n" +
-            loads
-        }
-        else
-        {
-            "        object meter\n" +
-            "        {\n" +
-            "            name \"" + node.id_seq + "\";\n" +
-            "            phases ABCN;\n" +
-            "            bustype PQ;\n" +
-            "            nominal_voltage " + node.voltage + "V;\n" +
-            "        };\n" +
-            loads
-        }
+
         return (ret)
     }
 
@@ -552,7 +578,7 @@ class GridLABD extends Serializable
     }
 
     // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations (sc: SparkContext): RDD[(Terminal, SolarGeneratingUnit)] =
+    def getSolarInstallations (topologicalnodes: Boolean) (sc: SparkContext): RDD[PV] =
     {
 
         // start with pv stations
@@ -572,7 +598,8 @@ class GridLABD extends Serializable
         val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // link to the connectivity node through the terminal
-        val t = terminals.keyBy (_.ConductingEquipment).join (ss).values
+        val t = terminals.keyBy (_.ConductingEquipment).join (ss).values.map (
+            (x) => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
         return (t)
     }
@@ -635,12 +662,14 @@ class GridLABD extends Serializable
     def make_glm (
         sc: SparkContext,
         sqlContext: SQLContext,
+        topologicalnodes: Boolean,
         initial: Graph[PreNode, PreEdge],
         starting_node: String,
         equipment: String,
         power: Double,
         start: Calendar,
-        finish: Calendar): String =
+        finish: Calendar,
+        with_feeder: Boolean): String =
     {
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -685,17 +714,22 @@ class GridLABD extends Serializable
 
         // get the transformer configuration using short circuit data to model the upstream connection
         val shorts = short_circuit_data (sc)
-        val trans = new Trans (shorts, ends, voltages)
+        val trans = new Trans (shorts, ends, voltages, with_feeder)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
         val c_strings = l_strings.union (t_strings)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (sc)
+        val solars = getSolarInstallations (topologicalnodes) (sc)
+
+        // get the transformers keyed by primary terminal
+        val transformers = trans.getTransformers (combined_edges)
 
         // get the node strings
-        val n_strings = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_._1.TopologicalNode)).values.map (make_node (starting_node, power))
+        val dd = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
+        val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
+        val n_strings = qq.map (make_node (starting_node, power))
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -800,6 +834,9 @@ class GridLABD extends Serializable
         t0plus.add (Calendar.MINUTE, 1)
         val t1 = arguments.getOrElse ("finish", DatatypeConverter.printDateTime (t0plus))
 
+        // get the flag for adding a medium voltage feeder
+        val with_feeder = arguments.getOrElse ("feeder", "false").toBoolean
+
         // find the starting node
         val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
         if (0 == starting.length)
@@ -813,7 +850,7 @@ class GridLABD extends Serializable
         val start = DatatypeConverter.parseDateTime (t0)
         val finish = DatatypeConverter.parseDateTime (t1)
 
-        return (make_glm (sc, sqlContext, initial, starting_node_name, equipment, power, start, finish))
+        return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
     def csv2solution (input: String): Solution =
@@ -876,11 +913,13 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+            //"hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+
         val house = if (args.length > 1)
             args (1)
         else
-            "HAS78459" // Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830", Gümligen: "HAS10002"
+            "HAS174735" // Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
 
         val start = System.nanoTime ()
 
@@ -921,7 +960,7 @@ object GridLABD
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
-        options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        options.put ("ch.ninecode.cim.do_topo_islands", "true")
         val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
@@ -934,9 +973,9 @@ object GridLABD
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
         val hdfs = FileSystem.get (URI.create (gridlab._TempFilePrefix), hdfs_configuration)
 
-        val confPath = new Path (gridlab._ConfFileName)
-        val nodePath = new Path (gridlab._NodeFileName)
-        val edgePath = new Path (gridlab._EdgeFileName)
+        val confPath = new Path (gridlab._TempFilePrefix, gridlab._ConfFileName)
+        val nodePath = new Path (gridlab._TempFilePrefix, gridlab._NodeFileName)
+        val edgePath = new Path (gridlab._TempFilePrefix, gridlab._EdgeFileName)
 
         hdfs.delete (confPath, true)
         hdfs.delete (nodePath, true)
@@ -946,6 +985,9 @@ object GridLABD
 
         val graph = System.nanoTime ()
         Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
+
+        // clean up this run
+        hdfs.delete(new Path (gridlab._TempFilePrefix), true)
 
         println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")
