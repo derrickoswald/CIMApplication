@@ -20,6 +20,7 @@ import scala.util.Random
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.Logging
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.EdgeDirection
@@ -30,6 +31,7 @@ import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType};
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._
@@ -54,7 +56,7 @@ case class Transformer (node: String, transformer: PowerTransformer)
 // output
 case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
 
-class GridLABD extends Serializable
+class GridLABD extends Serializable with Logging
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
     var _TempFilePrefix = "hdfs://sandbox:9000/output/"
@@ -853,28 +855,69 @@ class GridLABD extends Serializable
         return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
-    def csv2solution (input: String): Solution =
+    def check (input: String): Boolean =
     {
-        // ABG64200_topo,400.262423,0.002335,400.262423,4.191125,400.262423,2.096730
-        val parts = input.split (",")
-        Solution (parts(0), parts(1).toDouble, parts(2).toDouble, parts(3).toDouble, parts(4).toDouble, parts(5).toDouble, parts(6).toDouble)
+        if (input != "")
+        {
+            logError ("gridlabd failed, message is: " + input)
+            false
+        }
+        else
+            true
     }
 
-    def solve (sc: SparkContext, sqlContext: SQLContext, filename: String): RDD[Solution] =
+    def read_result (sqlContext: SQLContext, filename: String): RDD[Solution] =
     {
-        val voltages =
+//    def csv2solution (input: String): Solution =
+//    {
+//
+//        // ABG64200_topo,400.262423,0.002335,400.262423,4.191125,400.262423,2.096730
+//        val parts = input.split (",")
+//        Solution (parts(0), parts(1).toDouble, parts(2).toDouble, parts(3).toDouble, parts(4).toDouble, parts(5).toDouble, parts(6).toDouble)
+//    }
+
+        val customSchema = StructType (
+            Array
+            (
+                StructField ("node_name", StringType, true),
+                StructField ("voltA_mag", DoubleType, true),
+                StructField ("voltA_angle", DoubleType, true),
+                StructField ("voltB_mag", DoubleType, true),
+                StructField ("voltB_angle", DoubleType, true),
+                StructField ("voltC_mag", DoubleType, true),
+                StructField ("voltC_angle", DoubleType, true)
+            )
+        )
+
+        val df = sqlContext.read
+            .format ("com.databricks.spark.csv")
+            .option ("header", "true") // Use first line of all files as header
+            .schema (customSchema)
+            .load (filename)
+
+        df.map { r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) }
+
+    }
+
+    def solve (sc: SparkContext, sqlContext: SQLContext, filename_root: String): RDD[Solution] =
+    {
+        val gridlabd =
             Array[String] (
                 "bash",
                 "-c",
                 "while read line; do " +
                     "FILE=$line; " +
-                    "gridlabd $FILE; " +
-                    "tail --lines=+3 ${FILE%.*}_voltdump.csv; " +
+                    "gridlabd $FILE 2>${FILE%.*}.out; " +
+                    "cat ${FILE%.*}.out; " + // tail --lines=+3 ${FILE%.*}_voltdump.csv;
                 "done < /dev/stdin")
 
-        val files = sc.parallelize (Array[String] (filename))
-        val out = files.pipe (voltages)
-        val ret = out.map (csv2solution);
+        val files = sc.parallelize (Array[String] (filename_root  + ".glm"))
+        val out = files.pipe (gridlabd)
+        val success = out.map (check).fold (true)(_ && _)
+        val ret = if (success)
+            read_result (sqlContext, filename_root + "_voltdump.csv")
+        else
+            sc.parallelize (Array[Solution] ())
 
         return (ret)
     }
