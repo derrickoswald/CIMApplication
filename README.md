@@ -32,5 +32,19 @@ new parallel applications running on a cluster of machines.
 
 - currently only works within [Tomee](https://tomee.apache.org/) the [openejb](https://en.wikipedia.org/wiki/Apache_OpenEJB) container hosted in [Tomcat](https://tomcat.apache.org/).
 - currently only works with [Spark standalone](https://spark.apache.org/docs/1.6.0/spark-standalone.html) version 1.6.0
-- curently has minimal functionality - simple CIM file reading to get a count of elements
 
+#TomEE Setup
+
+- download and unzip/untar TomEE+ distribution in a suitable directory (for example in /opt)
+- if necessary, change the files ownership, e.g chown --recursive /opt/apache-tomee-plus-7.0.1/
+- to access the manager GUI (http://localhost:8080/manager/html), edit conf/tomcat-users.xml to
+uncomment the section at the bottom of the file with rolename="tomee-admin" and username="tomee",
+and then change the password as appropriate
+- to enable TomEE, edit conf/tomee.xml and uncomment the <Deployments dir="apps"/>
+- to deploy the application and reset, could be these instructions (restart.sh marked executable):
+
+    bin/shutdown.sh 2>/dev/null
+    rm -rf apps/*
+    rm logs/*
+    cp ~/code/CIMApplication/CIMEar/target/CIMApplication.ear apps
+    bin/startup.sh

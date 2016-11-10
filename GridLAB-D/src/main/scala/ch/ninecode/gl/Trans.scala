@@ -6,11 +6,11 @@ import ch.ninecode.cim._
 import ch.ninecode.model._
 
 /**
- * @param shorts the RDD of short circuit data by substation, mapped to transformers
+ * @param transformers the RDD of transformers
  * @param voltages a map of voltage mRID to floating point voltages
  */
 class Trans (
-    shorts: RDD[(PowerTransformer, Substation, ShortCircuitData)],
+    transformers: RDD[TData],
     ends: RDD[(String, Iterable[PowerTransformerEnd])],
     voltages: scala.collection.Map[String, Double],
     with_feeder: Boolean) extends Serializable
@@ -51,7 +51,7 @@ class Trans (
         return (new Tuple2 (r, x))
     }
 
-    def make_transformer (s: Tuple2[Tuple2[Iterable[PreEdge],Tuple3[PowerTransformer,Substation,ShortCircuitData]],Option[Iterable[PowerTransformerEnd]]]): Transformer =
+    def make_transformer (s: Tuple2[Tuple2[Iterable[PreEdge],TData],Option[Iterable[PowerTransformerEnd]]]): Transformer =
     {
         val primary =
             s._2 match
@@ -66,21 +66,21 @@ class Trans (
             }
         val an_edge = s._1._1.head
         val node = if (an_edge.id_seq_1 == primary.TransformerEnd.Terminal) an_edge.id_cn_1 else an_edge.id_cn_2
-        Transformer (node, s._1._2._1)
+        Transformer (node, s._1._2.transformer)
     }
 
     /**
      * Make one or more transformer configurations.
      * Most transformers have only two ends, so this should normally make one configurations
      */
-    def make_transformer_configuration (s: Tuple2[Tuple2[Iterable[PreEdge],Tuple3[PowerTransformer,Substation,ShortCircuitData]],Option[Iterable[PowerTransformerEnd]]]): String =
+    def make_transformer_configuration (s: Tuple2[Tuple2[Iterable[PreEdge],TData],Option[Iterable[PowerTransformerEnd]]]): String =
     {
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
         val edges = s._1._1
         val config: String = configurationName (edges)
         val transformer = edges.head.element.asInstanceOf[PowerTransformer]
         val power = transformer_power (transformer)
-        val sc_data = s._1._2._3
+        val sc_data = s._1._2.short
         val ret =
             s._2 match
             {
@@ -172,14 +172,14 @@ class Trans (
     def getTransformerConfigurations (edges: RDD[Iterable[PreEdge]]): RDD[String] =
     {
         // ToDo: this assumes that all transformers are identical -- what if there are random transformers in parallel
-        val pt = edges.keyBy (_.head.element.id).join (shorts.keyBy (_._1.id)).values
+        val pt = edges.keyBy (_.head.element.id).join (transformers.keyBy (_.transformer.id)).values
         pt.keyBy (_._1.head.element.id).leftOuterJoin (ends).values.map (make_transformer_configuration)
     }
 
     def getTransformers (edges: RDD[Iterable[PreEdge]]): RDD[Transformer] =
     {
         // ToDo: this assumes that all transformers are identical -- what if there are random transformers in parallel
-        val pt = edges.keyBy (_.head.element.id).join (shorts.keyBy (_._1.id)).values
+        val pt = edges.keyBy (_.head.element.id).join (transformers.keyBy (_.transformer.id)).values
         pt.keyBy (_._1.head.element.id).leftOuterJoin (ends).values.map (make_transformer)
     }
 

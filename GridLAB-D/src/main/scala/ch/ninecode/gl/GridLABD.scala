@@ -100,100 +100,6 @@ class GridLABD extends Serializable with Logging
                 "_" + string
     }
 
-    def read_csv (context: SparkContext): RDD[ShortCircuitData] =
-    {
-        // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
-        val spreadsheet = context.textFile (_CSV)
-
-        // create a function to trim off the double quotes
-        def trimplus (s: String): String =
-        {
-            var ret = s.trim
-            if (ret.startsWith ("\"") && ret.endsWith ("\""))
-                ret = ret.substring (1, ret.length - 1)
-            return (ret)
-        }
-        // split / clean data
-        val headerAndRows = spreadsheet.map (line => line.split(",").map (trimplus (_)))
-        // get header
-        val header = headerAndRows.first
-        // filter out header (just check if the first val matches the first header name)
-        val data = headerAndRows.filter (_(0) != header (0))
-        // splits to map (header/value pairs)
-        val short_circuit_power = data.map (splits => header.zip (splits).toMap)
-
-        // keep only the relevant information
-        short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
-    }
-
-    def short_circuit_data (context: SparkContext): RDD[(PowerTransformer, Substation, ShortCircuitData)] =
-    {
-        // get all transformers in substations
-        val transformers = get ("PowerTransformer", context).asInstanceOf[RDD[PowerTransformer]]
-        val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
-
-        // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation", context).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
-
-        // the Equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
-        def station_fn (x: Tuple2[String, Any]) =
-        {
-            x match
-            {
-                case (key: String, (t: PowerTransformer, station: Substation)) =>
-                {
-                    (station.id, t)
-                }
-                case (key: String, (t: PowerTransformer, bay: Bay)) =>
-                {
-                    (bay.Substation, t)
-                }
-                case (key: String, (t: PowerTransformer, level: VoltageLevel)) =>
-                {
-                    (level.Substation, t)
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
-        }
-
-        // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
-        val elements = get ("Elements", context).asInstanceOf[RDD[Element]]
-        val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
-
-        val short_circuit = read_csv (context)
-
-        // only keep the pairs where the transformer is in a substation we have
-        val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
-
-        def transformer_fn (x: Tuple2[String, Any]) =
-        {
-            x match
-            {
-                case (key: String, ((a: PowerTransformer, b: Substation), Some (c: ShortCircuitData))) =>
-                {
-                    (a, b, c)
-                }
-                case (key: String, ((a: PowerTransformer, b: Substation), None)) =>
-                {
-                    // Sk = 100 MVA
-                    // Ikw= -61°
-                    (a, b, ShortCircuitData (b.id, 100, -61, false))
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
-        }
-
-        val transformers_short_circuit = transformers_stations.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).map (transformer_fn)
-
-        return (transformers_short_circuit)
-    }
-
     def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
@@ -715,8 +621,9 @@ class GridLABD extends Serializable with Logging
         val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the transformer configuration using short circuit data to model the upstream connection
-        val shorts = short_circuit_data (sc)
-        val trans = new Trans (shorts, ends, voltages, with_feeder)
+        val _transformers = new Transformers (if (with_feeder) _CSV else null)
+        val _td = _transformers.getTransformerData (sc, sqlContext)
+        val trans = new Trans (_td, ends, voltages, with_feeder)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
@@ -868,14 +775,6 @@ class GridLABD extends Serializable with Logging
 
     def read_result (sqlContext: SQLContext, filename: String): RDD[Solution] =
     {
-//    def csv2solution (input: String): Solution =
-//    {
-//
-//        // ABG64200_topo,400.262423,0.002335,400.262423,4.191125,400.262423,2.096730
-//        val parts = input.split (",")
-//        Solution (parts(0), parts(1).toDouble, parts(2).toDouble, parts(3).toDouble, parts(4).toDouble, parts(5).toDouble, parts(6).toDouble)
-//    }
-
         val customSchema = StructType (
             Array
             (
@@ -891,12 +790,12 @@ class GridLABD extends Serializable with Logging
 
         val df = sqlContext.read
             .format ("com.databricks.spark.csv")
-            .option ("header", "true") // Use first line of all files as header
+            .option ("header", "true")
+            .option ("comment", "#")
             .schema (customSchema)
             .load (filename)
 
         df.map { r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) }
-
     }
 
     def solve (sc: SparkContext, sqlContext: SQLContext, filename_root: String): RDD[Solution] =
