@@ -43,7 +43,6 @@
 
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    <li><a href="#" data-toggle="modal" data-target="#file_modal">Load Files</a></li>
                     <li><a href="#" data-toggle="modal" data-target="#server_modal">Connect</a></li>
                     <li><a href="#" data-toggle="modal" data-target="#export_modal">Export</a></li>
                     <li class="dropdown">
@@ -69,47 +68,6 @@
     <!-- Content -->
     <section id="map" class="intro">
     </section>
-
-    <!-- File Dialog Modal -->
-    <div id="file_modal" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-
-            <div class="modal-content">
-                <div class="modal-header text-center" style="padding:35px 50px;">
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h2><i class="fa fa-upload"></i> Load files</h2>
-                </div>
-                <div class="modal-body" style="padding:40px 50px;">
-                    <div class="row">
-                        <div class="form-group">
-                            <div class="col-sm-3">
-                                <div aria-describedby="files_help">
-                                    <div class="btn btn-file">
-                                        <span>Browse</span>
-                                        <input id="file_button" type="file" name="files[]" multiple/>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-9">
-                                <div class="input-group" aria-describedby="files_help" style="width: 100%;">
-                                    <div id="files_drop_zone" class="form-control drop_zone">
-                                        Drop files here...
-                                    </div>
-                                </div>
-                                <span id="files_help" class="help-block nonexpert">
-                                    Click the browse button and choose a CIM XML file,
-                                    or drag a file from your operating system file browser onto the drop zone above.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Server Dialog Modal -->
     <div id="server_modal" class="modal fade" role="dialog">

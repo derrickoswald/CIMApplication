@@ -24,7 +24,8 @@
 
         <!-- test dependencies versions -->
         <version.dependency.junit>4.12</version.dependency.junit>
-        <version.dependency.tomee>7.0.1</version.dependency.tomee> <!-- 1.7.1 -->
+        <version.dependency.tomee>7.0.1</version.dependency.tomee>
+        <version.dependency.arquillian>1.1.11.Final</version.dependency.arquillian>
         <tomee.classifier>plus</tomee.classifier>
         <version.dependency.shrinkwrap>2.2.2</version.dependency.shrinkwrap>
         <version.dependency.el>2.2.4</version.dependency.el>
@@ -114,7 +115,7 @@
         <dependency>
             <groupId>org.jboss.arquillian</groupId>
             <artifactId>arquillian-bom</artifactId>
-            <version>1.1.11.Final</version>
+            <version>${version.dependency.arquillian}</version>
             <scope>test</scope>
             <type>pom</type>
         </dependency>
@@ -122,10 +123,18 @@
         <dependency>
             <groupId>org.jboss.arquillian.junit</groupId>
             <artifactId>arquillian-junit-container</artifactId>
-            <version>1.1.11.Final</version>
+            <version>${version.dependency.arquillian}</version>
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.tomee</groupId>
+            <artifactId>arquillian-tomee-remote</artifactId>
+            <version>${version.dependency.tomee}</version>
+            <scope>test</scope>
+        </dependency>
+
+<!--
         <dependency>
             <groupId>org.apache.tomee</groupId>
             <artifactId>arquillian-tomee-embedded</artifactId>
@@ -153,6 +162,7 @@
             <version>${version.dependency.tomee}</version>
             <scope>test</scope>
         </dependency>
+-->
 
         <!-- Expressions -->
         <dependency>

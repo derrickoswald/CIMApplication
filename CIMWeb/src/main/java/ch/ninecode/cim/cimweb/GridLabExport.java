@@ -101,9 +101,9 @@ public class GridLabExport
                         if (decodedPath.endsWith (".jar"))
                             input.put ("jars", decodedPath);
                         if (null == transformer)
-                            input.put ("method", "preparation");
+                            input.put ("method", "prepare");
                         else
-                            input.put ("method", "stuff");
+                            input.put ("method", "export");
                         if (null != transformer)
                             input.put ("transformer", transformer);
                         final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);

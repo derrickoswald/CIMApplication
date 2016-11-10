@@ -6,21 +6,15 @@ import java.io.File;
 import java.util.Properties;
 
 import javax.inject.Inject;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NameClassPair;
-import javax.naming.NamingEnumeration;
-import javax.naming.NamingException;
+import javax.naming.*;
 import javax.resource.cci.Connection;
 import javax.resource.cci.ConnectionFactory;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.FileAsset;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
-import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -54,7 +48,7 @@ public class CIMWebTest
 //        System.out.println (ear.toString (true));
 //        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
 
-        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File("../CIMEar/target/CIMApplication.ear"));
+        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
         System.out.println (ear.toString (true));
         ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
 

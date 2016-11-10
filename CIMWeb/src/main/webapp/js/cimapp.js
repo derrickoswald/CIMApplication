@@ -377,7 +377,7 @@ define
             var feature;
             if (null != CURRENT_FEATURE)
             {
-                var text = JSON.stringify (CURRENT_FEATURE, null, 2);
+                var text = JSON.stringify (CURRENT_FEATURE.properties, null, 2);
                 if (null != CURRENT_SELECTION)
                     for (var i = 0; i < CURRENT_SELECTION.length; i++)
                     {

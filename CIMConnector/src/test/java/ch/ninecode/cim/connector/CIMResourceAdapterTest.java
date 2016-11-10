@@ -72,10 +72,53 @@ public class CIMResourceAdapterTest
     }
 
     /**
-     * Build a connection specification used by all the tests.
-     * @return
+     * Get the initial context for the CIMConnector.
+     *
+     * @returns The initial JNDI naming context.
      */
-    CIMConnectionSpec remoteConfig ()
+    protected InitialContext getInitialContext () throws Exception
+    {
+        final Properties properties = new Properties ();
+        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
+        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
+        final InitialContext context = new InitialContext (properties);
+        assertNotNull ("context", context);
+
+        return (context);
+    }
+
+    /**
+     * Get the connection factory.
+     *
+     * @returns The connection factory for the CIMConnector.
+     */
+    protected ConnectionFactory getConnectionFactory () throws Exception
+    {
+        final InitialContext context = getInitialContext ();
+
+        return (getConnectionFactory (context));
+    }
+
+    /**
+     * Get the connection factory.
+     *
+     * @param context The initial JNDI naming context.
+     * @returns The connection factory for the CIMConnector.
+     */
+    protected ConnectionFactory getConnectionFactory (InitialContext context) throws Exception
+    {
+        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
+        assertNotNull ("connectionFactory", factory);
+
+        return (factory);
+    }
+
+    /**
+     * Build a connection specification used by all the tests.
+     *
+     * @return A configured connection specification.
+     */
+    protected CIMConnectionSpec remoteConfig () throws Exception
     {
         CIMConnectionSpec ret;
 
@@ -89,19 +132,39 @@ public class CIMResourceAdapterTest
         return (ret);
     }
 
+    /**
+     * Get a connection to Spark.
+     *
+     * @return A connection to the Spark system.
+     */
+    protected Connection getConnection () throws Exception
+    {
+        final InitialContext context = getInitialContext ();
+        final ConnectionFactory factory = getConnectionFactory (context);
+
+        return (getConnection (factory));
+    }
+
+    /**
+     * Get a connection to Spark.
+     *
+     * @param factory The connection factory for the CIMConnector.
+     * @return A connection to the Spark system.
+     */
+    protected Connection getConnection (ConnectionFactory factory) throws Exception
+    {
+        final Connection connection = factory.getConnection (remoteConfig ());
+        assertNotNull ("connection", connection);
+
+        return (connection);
+    }
+
     @Test
     public void testResourceAdapter () throws Exception
     {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext context = new InitialContext (properties);
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
-        assertNotNull ("connectionFactory", factory);
-        final Connection connection = factory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
+        final Connection connection = getConnection ();
         connection.close ();
-        final ResourceAdapter resourceAdapter = (ResourceAdapter) context.lookup ("java:openejb/Resource/CIMResourceAdapter"); // from id of resourceadapter element in ra.xml
+        final ResourceAdapter resourceAdapter = (ResourceAdapter) getInitialContext ().lookup ("java:openejb/Resource/CIMResourceAdapter"); // from id of resourceadapter element in ra.xml
         assertNotNull ("resourceAdapter", resourceAdapter);
         assertNotNull ("YarnConfigurationPath", ((CIMResourceAdapter) resourceAdapter).getYarnConfigurationPath ());
     }
@@ -109,14 +172,7 @@ public class CIMResourceAdapterTest
     @Test
     public void testMetadata () throws Exception
     {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext context = new InitialContext (properties);
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", factory);
-        final Connection connection = factory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
+        final Connection connection = getConnection ();
         ConnectionMetaData meta = connection.getMetaData ();
         assertNotNull ("meta data", meta);
         assertEquals ("Spark", meta.getEISProductName ());
@@ -129,15 +185,9 @@ public class CIMResourceAdapterTest
     @Test
     public void testRead () throws Exception
     {
-        long ELEMENTS = new Long (366348l);
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext context = new InitialContext (properties);
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", factory);
-        final Connection connection = factory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
+        final long ELEMENTS = new Long (368636l);
+        final ConnectionFactory factory = getConnectionFactory ();
+        final Connection connection = getConnection (factory);
         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
         spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
@@ -157,14 +207,8 @@ public class CIMResourceAdapterTest
     @Test
     public void testReadEnergyConsumer () throws Exception
     {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext context = new InitialContext (properties);
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", factory);
-        final Connection connection = factory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
+        final ConnectionFactory factory = getConnectionFactory ();
+        final Connection connection = getConnection (factory);
         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
         spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
@@ -174,17 +218,13 @@ public class CIMResourceAdapterTest
         final Interaction interaction = connection.createInteraction ();
         final Record output = interaction.execute (spec, input);
         assertNotNull ("output", output);
-        if ((!output.getClass ().isAssignableFrom (CIMResultSet.class)))
-            throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
-        else
-        {
-            CIMResultSet resultset = (CIMResultSet)output;
-            assertTrue ("resultset is empty", resultset.next ());
-            assertNotNull ("mRID", resultset.getString (1));
-            assertTrue ("zero x coordinate", 0.0 != resultset.getDouble (5));
-            assertTrue ("zero y coordinate", 0.0 != resultset.getDouble (6));
-            resultset.close ();
-        }
+        assertTrue ("resultset", output.getClass ().isAssignableFrom (CIMResultSet.class));
+        CIMResultSet resultset = (CIMResultSet)output;
+        assertTrue ("resultset empty", resultset.next ());
+        assertNotNull ("mRID", resultset.getString (1));
+        assertTrue ("zero x coordinate", 0.0 != resultset.getDouble (5));
+        assertTrue ("zero y coordinate", 0.0 != resultset.getDouble (6));
+        resultset.close ();
         interaction.close ();
         connection.close ();
     }
@@ -198,14 +238,8 @@ public class CIMResourceAdapterTest
     @Test
     public void testGetString () throws Exception
     {
-        final Properties properties = new Properties ();
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
-        final InitialContext context = new InitialContext (properties);
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector");
-        assertNotNull ("connectionFactory", factory);
-        final Connection connection = factory.getConnection (remoteConfig ());
-        assertNotNull ("connection", connection);
+        final ConnectionFactory factory = getConnectionFactory ();
+        final Connection connection = getConnection (factory);
         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
         spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
