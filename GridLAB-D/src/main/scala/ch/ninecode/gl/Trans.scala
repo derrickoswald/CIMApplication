@@ -96,7 +96,7 @@ class Trans (
                         val v0 = 1000.0 * voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
                         val v = 1000.0 * voltages.getOrElse (ends(i).TransformerEnd.BaseVoltage, 0.0)
                         // calculate per unit r and x
-                        var base_va = ends(i).ratedS * 1e6 // ToDo: remove this multiplier when NE-66 NIS.CIM: Scale of PowerTransformerEnd ratedS is wrong
+                        var base_va = ends(i).ratedS
                         if (0.0 == base_va && "unknown" != power)
                             base_va = power.toDouble * 1000
                         val base_amps = base_va / v / Math.sqrt (3)
