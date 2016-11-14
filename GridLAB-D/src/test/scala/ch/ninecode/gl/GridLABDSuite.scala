@@ -222,7 +222,7 @@ class GridLABDSuite extends fixture.FunSuite
         println ()
 
         // clean up this run
-        FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
+        // FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
     }
 
 }

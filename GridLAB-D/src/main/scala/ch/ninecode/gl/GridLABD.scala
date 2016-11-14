@@ -18,6 +18,12 @@ import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -311,7 +317,7 @@ class GridLABD extends Serializable with Logging
                     "            property measured_power.real, measured_power.imag;\n" +
                     "            limit 1440;\n" +
                     "            interval 60;\n" +
-                    "            file \"" + base + ".csv\";\n" +
+                    "            file \"" + _TempFilePrefix + base + ".csv\";\n" +
                     "        };\n" +
                     "\n" +
                     "        object recorder {\n" +
@@ -320,8 +326,8 @@ class GridLABD extends Serializable with Logging
                     "            property voltage_A.real,voltage_A.imag;\n" +
                     "            limit 288;\n" +
                     "            interval 300;\n" +
-                    "            file \"temp/" + has (node.id_seq) + "_voltage.csv\";\n" +
-                    "        };\n"
+                    "            file \"" + _TempFilePrefix + has (node.id_seq) + "_voltage.csv\";\n" +
+                    "        };\n" +
                     "\n" +
                     loads
                 }
@@ -369,7 +375,7 @@ class GridLABD extends Serializable with Logging
                         "            property voltage_A.real,voltage_A.imag;\n" +
                         "            limit 288;\n" +
                         "            interval 300;\n" +
-                        "            file \"temp/" + has (node.id_seq) + "_voltage.csv\";\n" +
+                        "            file \"" + _TempFilePrefix + has (node.id_seq) + "_voltage.csv\";\n" +
                         "        };\n"
                     else
                         "") +
@@ -627,17 +633,9 @@ class GridLABD extends Serializable with Logging
 
         val USE_UTC = false
 
-        val format =
-            if (USE_UTC)
-            {
-                // for dates in UTC
-                val f = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-                f.setTimeZone (TimeZone.getTimeZone ("UTC"))
-                f
-            }
-            else
-                // for dates in the local time zone
-                new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        if (USE_UTC)
+            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
 
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
@@ -669,7 +667,7 @@ class GridLABD extends Serializable with Logging
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename \"" + equipment + "_voltdump.csv\";\n" +
+            "            filename \"" + _TempFilePrefix + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + format.format (finish.getTime ()) + "';\n" +
             "        };\n" +
@@ -732,6 +730,35 @@ class GridLABD extends Serializable with Logging
         return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
+    case class ComplexDataElement (millis: Long, value: Complex)
+
+    def read_records (sqlContext: SQLContext, filename: String): RDD[ComplexDataElement] =
+    {
+        def toTimeStamp (string: String): Long =
+        {
+            // ToDo: unkludge this assumption of CET
+            javax.xml.bind.DatatypeConverter.parseDateTime (string.replace (" CET", "").replace (" ", "T")).getTimeInMillis ()
+        }
+
+        val customSchema = StructType (
+            Array
+            (
+                StructField ("timestamp", StringType, true),
+                StructField ("real", DoubleType, true),
+                StructField ("imag", DoubleType, true)
+            )
+        )
+
+        val df = sqlContext.read
+            .format ("com.databricks.spark.csv")
+            .option ("header", "true")
+            .option ("comment", "#")
+            .schema (customSchema)
+            .load (filename)
+
+        df.map { r => ComplexDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2))) }
+    }
+
     def check (input: String): Boolean =
     {
         if (input.contains ("WARNING") || input.contains ("ERROR") || input.contains ("FAIL"))
@@ -741,6 +768,26 @@ class GridLABD extends Serializable with Logging
         }
         else
             true
+    }
+
+    def list_files (directory: String): TraversableOnce[String] =
+    {
+        val hdfs_configuration = new Configuration ()
+        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+        val hdfs = FileSystem.get (URI.create (directory), hdfs_configuration)
+        val root = new Path (directory)
+        var files = Vector[String] ()
+        val iterator = hdfs.listFiles (root, false) // ToDo: recursive
+        while (iterator.hasNext ())
+        {
+            // "LocatedFileStatus{path=hdfs://sandbox:9000/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+            // "LocatedFileStatus{path=hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+            val fs = iterator.next ()
+            val path = fs.getPath ().toString ()
+            files = files :+ path
+        }
+        files
     }
 
     def read_result (sqlContext: SQLContext, filename: String): RDD[Solution] =
@@ -776,15 +823,24 @@ class GridLABD extends Serializable with Logging
                 "-c",
                 "while read line; do " +
                     "FILE=$line; " +
-                    "gridlabd $FILE 2>${FILE%.*}.out; " +
-                    "cat ${FILE%.*}.out; " + // tail --lines=+3 ${FILE%.*}_voltdump.csv;
+                    "gridlabd $FILE 2>" + _TempFilePrefix + "${FILE%.*}.out; " +
+                    "cat " + _TempFilePrefix + "${FILE%.*}.out; " +
                 "done < /dev/stdin")
 
         val files = sc.parallelize (Array[String] (filename_root  + ".glm"))
         val out = files.pipe (gridlabd)
         val success = out.map (check).fold (true)(_ && _)
         val ret = if (success)
-            read_result (sqlContext, filename_root + "_voltdump.csv")
+        {
+            val outputs = list_files (_TempFilePrefix)
+            for (x <- outputs)
+            {
+                val data = read_records (sqlContext, x)
+                data.name = x
+                data.cache ()
+            }
+            read_result (sqlContext, _TempFilePrefix + filename_root + "_voltdump.csv")
+        }
         else
             sc.parallelize (Array[Solution] ())
 
