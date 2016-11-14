@@ -1,5 +1,6 @@
 package ch.ninecode.gl
 
+import java.io.File
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
@@ -17,6 +18,7 @@ import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
+import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -31,7 +33,7 @@ import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType};
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._
@@ -214,6 +216,16 @@ class GridLABD extends Serializable with Logging
     // emit one GridLAB-D node
     def make_node (slack: String, power: Double)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
+        def has (string: String): String =
+        {
+            string.substring (0, string.indexOf ("_"))
+        }
+        def exists (filename: String): Boolean =
+        {
+            val f = new File (filename)
+            f.exists
+        }
+
         val node = arg._1
         val pv = arg._2
         val transformer = arg._3
@@ -301,6 +313,16 @@ class GridLABD extends Serializable with Logging
                     "            interval 60;\n" +
                     "            file \"" + base + ".csv\";\n" +
                     "        };\n" +
+                    "\n" +
+                    "        object recorder {\n" +
+                    "            name \"" + has (node.id_seq) + "_voltage_recorder\";\n" +
+                    "            parent \"" + node.id_seq + "\";\n" +
+                    "            property voltage_A.real,voltage_A.imag;\n" +
+                    "            limit 288;\n" +
+                    "            interval 300;\n" +
+                    "            file \"temp/" + has (node.id_seq) + "_voltage.csv\";\n" +
+                    "        };\n"
+                    "\n" +
                     loads
                 }
                 else
@@ -312,6 +334,46 @@ class GridLABD extends Serializable with Logging
                     "            bustype PQ;\n" +
                     "            nominal_voltage " + node.voltage + "V;\n" +
                     "        };\n" +
+                    // assumes meter data files exist
+                    // from Yamshid,
+                    // then: sed -i.bak '/Timestamp/d' *.csv
+                    // and then: sed -i.bak 's/\"//g' *.csv
+                    (if (exists ("meter_data/" + has (node.id_seq) + "_R.csv"))
+                        "\n" +
+                        "        object load\n" +
+                        "        {\n" +
+                        "            name \"" + node.id_seq + "_load\";\n" +
+                        "            parent \"" + node.id_seq + "\";\n" +
+                        "            phases ABCN;\n" +
+                        "            nominal_voltage " + node.voltage + "V;\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_current_A\";\n" +
+                        "                file \"meter_data/" + has (node.id_seq) + "_R.csv\";\n" +
+                        "            };\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_current_B\";\n" +
+                        "                file \"meter_data/" + has (node.id_seq) + "_S.csv\";\n" +
+                        "            };\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_current_C\";\n" +
+                        "                file \"meter_data/" + has (node.id_seq) + "_T.csv\";\n" +
+                        "            };\n" +
+                        "        };\n" +
+                        "\n" +
+                        "        object recorder {\n" +
+                        "            name \"" + has (node.id_seq) + "_voltage_recorder\";\n" +
+                        "            parent \"" + node.id_seq + "\";\n" +
+                        "            property voltage_A.real,voltage_A.imag;\n" +
+                        "            limit 288;\n" +
+                        "            interval 300;\n" +
+                        "            file \"temp/" + has (node.id_seq) + "_voltage.csv\";\n" +
+                        "        };\n"
+                    else
+                        "") +
+                    "\n" +
                     loads
                 }
             }
@@ -325,18 +387,7 @@ class GridLABD extends Serializable with Logging
         val edge = edges.head
         val cls = edge.element.getClass.getName
         val clazz = cls.substring (cls.lastIndexOf (".") + 1)
-        // for singlely connected objects, replace with a recorder
         val ret =
-            if (edge.id_cn_2 == "")
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + edge.id_equ + "\";\n" +
-                "            parent \"" + edge.id_cn_1 + "\";\n" +
-                "            property voltage[V];\n" +
-                "            file \"" + edge.id_equ + ".csv\";\n" +
-                "            interval -1;\n" +
-                "        };\n"
-            else
                 clazz match
                 {
                     case "ACLineSegment" =>
@@ -683,7 +734,7 @@ class GridLABD extends Serializable with Logging
 
     def check (input: String): Boolean =
     {
-        if (input != "")
+        if (input.contains ("WARNING") || input.contains ("ERROR") || input.contains ("FAIL"))
         {
             logError ("gridlabd failed, message is: " + input)
             false

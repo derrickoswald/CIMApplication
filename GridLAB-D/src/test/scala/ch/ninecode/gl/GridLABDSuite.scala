@@ -190,9 +190,16 @@ class GridLABDSuite extends fixture.FunSuite
 
         val house = "HAS174735" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
         val power = 30000
-        val t0 = Calendar.getInstance ()
-        val t1 = t0.clone ().asInstanceOf[Calendar]
-        t1.add (Calendar.MINUTE, 1)
+
+        // val t0 = Calendar.getInstance ()
+        // or
+        // val t1 = t0.clone ().asInstanceOf[Calendar]
+        // t1.add (Calendar.MINUTE, 1)
+        // parse ISO8601 format date
+        // 2015-11-18 12:00:00
+        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
+        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
+
         val result = gridlabd.export (context, sql_context,
             "equipment=" + house +
             ",power=" + power +
