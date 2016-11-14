@@ -168,10 +168,10 @@ class GridLABDSuite extends fixture.FunSuite
 
         val filename =
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Guemligen" + ".rdf"
-            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
+//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
 
 //        "," +
 //        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
@@ -188,7 +188,7 @@ class GridLABDSuite extends fixture.FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val house = "HAS97010" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
+        val house = "HAS174735" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
         val power = 30000
         val t0 = Calendar.getInstance ()
         val t1 = t0.clone ().asInstanceOf[Calendar]

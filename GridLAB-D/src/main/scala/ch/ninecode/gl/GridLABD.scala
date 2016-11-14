@@ -40,9 +40,18 @@ import ch.ninecode.model._
 // create a holder for pre-computed transformer power availabaility
 case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
+// just to get a single copy of the vertex_id function
+trait Graphable
+{
+    def vertex_id (string: String): VertexId =
+    {
+        string.hashCode.asInstanceOf[VertexId]
+    }
+}
+
 // define the minimal node and edge classes
-case class PreNode (id_seq: String, voltage: Double) extends Serializable
-case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Serializable
+case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Graphable with Serializable
 {
     // provide a key on the two connections, independant of to-from from-to ordering
     def key (): String =
@@ -401,88 +410,14 @@ class GridLABD extends Serializable with Logging
         return (ret)
     }
 
-    def vertex_id (string: String): VertexId =
-    {
-        string.hashCode.asInstanceOf[VertexId]
-    }
-
     def make_graph_vertices (v: PreNode): Tuple2[VertexId, PreNode] =
     {
-        (vertex_id (v.id_seq), v)
+        (v.vertex_id (v.id_seq), v)
     }
 
     def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
     {
-        org.apache.spark.graphx.Edge (vertex_id (e.id_cn_1), vertex_id (e.id_cn_2), e)
-    }
-
-    def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: Boolean, message: Boolean): Boolean =
-    {
-        if (message)
-            true
-        else
-            // on the first pass through the Pregel algorithm all nodes get a false message
-            // if this node is in in the list of starting nodes, update the vertex data
-            starting_nodes.contains (id)
-    }
-
-    // function to see if the Pregel algorithm should continue or not
-    def shouldContinue (element: Element): Boolean =
-    {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        val ret = cls match
-        {
-            case "Switch" =>
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" =>
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" =>
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" =>
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" =>
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" =>
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "ProtectedSwitch" =>
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" =>
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "Breaker" =>
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" =>
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" =>
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "PowerTransformer" =>
-                false
-            case _ =>
-            {
-                true
-            }
-        }
-        return (ret)
-    }
-
-    def sendMessage (triplet: EdgeTriplet[Boolean, PreEdge]): Iterator[(VertexId, Boolean)] =
-    {
-        var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
-
-        if (triplet.srcAttr && !triplet.dstAttr) // see if a message is needed
-            if (shouldContinue (triplet.attr.element))
-                ret = Iterator ((triplet.dstId, true))
-
-        if (!triplet.srcAttr && triplet.dstAttr) // see if a message is needed in reverse
-            if (shouldContinue (triplet.attr.element))
-                ret = Iterator ((triplet.srcId, true))
-
-        return (ret)
-    }
-
-    def mergeMessage (a: Boolean, b: Boolean): Boolean =
-    {
-        a || b
+        org.apache.spark.graphx.Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
     }
 
     // get the existing photo-voltaic installations keyed by terminal
@@ -585,26 +520,10 @@ class GridLABD extends Serializable with Logging
          * isolated from the entire network by transformer(s)
          * i.e. include everything in a "trace all", but stop at transfomers
          */
-        val start_at = Array[VertexId] (vertex_id (starting_node))
-
-        // trace the graph with the Pregel algorithm
-        val binary_graph = initial.mapVertices { case (vid, _) => false }
-        val graph = binary_graph.pregel[Boolean] (false, 10000, EdgeDirection.Either) (vertexProgram (start_at), sendMessage, mergeMessage)
-
-        // get the list of traced vertices
-        val touched = graph.vertices.filter (_._2)
-        val traced_nodes = touched.join (initial.vertices).reduceByKey ((a, b) ⇒ a).values.values
-
-        // get the list of traced edges
-        val edges = initial.edges.map (_.attr)
-        val traced_edges = traced_nodes.keyBy (_.id_seq).join (edges.keyBy (_.id_cn_1).union (edges.keyBy (_.id_cn_2))).values.values.keyBy (_.id_equ).reduceByKey ((a, b) ⇒ a).values
-        val edgecount = traced_edges.count
-        println ("traced_edges: " + edgecount)
-        if (0 != edgecount)
-            println (traced_edges.first)
-
-        // OK, this is subtle, edges that stop the trace have one node that isn't in the traced_nodes RDD; get them
-        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (initial.vertices.values.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
+        val trace = new Trace (initial)
+        val pn = PreNode ("", 0.0) // just to access the vertex_id function
+        val start_at = Array[VertexId] (pn.vertex_id (starting_node))
+        val (traced_nodes, traced_edges) = trace.run (start_at)
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy (_.key).values
@@ -636,7 +555,7 @@ class GridLABD extends Serializable with Logging
         val transformers = trans.getTransformers (combined_edges)
 
         // get the node strings
-        val dd = all_traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
+        val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
         val n_strings = qq.map (make_node (starting_node, power))
 
