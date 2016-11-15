@@ -61,7 +61,14 @@ class GridLABDSuite extends fixture.FunSuite
         // register topological classes
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge], classOf[ch.ninecode.gl.Solution]))
+        configuration.registerKryoClasses (Array (
+            classOf[ch.ninecode.gl.ShortCircuitData],
+            classOf[ch.ninecode.gl.PreNode],
+            classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PV],
+            classOf[ch.ninecode.gl.Transformer],
+            classOf[ch.ninecode.gl.Solution],
+            classOf[ch.ninecode.gl.ComplexDataElement]))
 
         val context = new SparkContext (configuration)
         context.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -94,7 +101,7 @@ class GridLABDSuite extends fixture.FunSuite
         return (element)
     }
 
-    def store(house: String, power: Double, t1: Calendar, results: RDD[Solution]) =
+    def store(house: String, power: Double, t1: Calendar, results: RDD[Solution]): Int =
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -110,37 +117,40 @@ class GridLABDSuite extends fixture.FunSuite
             statement.executeUpdate ("drop table if exists simulation")
             statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house string, power double, time datetime)")
             statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node string, vreal double, vimag double)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node string, time datetime, vreal double, vimag double)")
             statement.close ()
 
             // insert the simulation
+            val now = Calendar.getInstance ()
             val insert = connection.prepareStatement ("insert into simulation (id, house, power, time) values (?, ?, ?, ?)")
             insert.setNull (1, Types.INTEGER)
             insert.setString (2, house)
             insert.setDouble (3, power)
-            insert.setTimestamp (4, new Timestamp(t1.getTimeInMillis))
+            insert.setTimestamp (4, new Timestamp (now.getTimeInMillis))
             insert.executeUpdate ()
             val resultset = statement.executeQuery ("select last_insert_rowid() id")
             resultset.next ()
             val id = resultset.getInt ("id")
 
             // insert the results
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, vreal, vimag) values (?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, time, vreal, vimag) values (?, ?, ?, ?, ?, ?)")
             for (solution ← results.collect) {
                 val c = Complex.fromPolar (solution.voltA_mag, solution.voltA_angle)
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, solution.node)
-                datainsert.setDouble (4, c.re)
-                datainsert.setDouble (5, c.im)
+                datainsert.setTimestamp (4, new Timestamp (t1.getTimeInMillis))
+                datainsert.setDouble (5, c.re)
+                datainsert.setDouble (6, c.im)
                 datainsert.executeUpdate ()
             }
+            return (id)
         }
         catch
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e);
+            case e: SQLException ⇒ println ("exception caught: " + e); return (-1)
         }
         finally
         {
@@ -155,6 +165,67 @@ class GridLABDSuite extends fixture.FunSuite
             }
         }
 
+    }
+
+    def store_rdd (connection: Connection, id: Int, rdd: RDD[ComplexDataElement]): Unit =
+    {
+        // insert the results
+        connection.setAutoCommit (false)
+        val node = rdd.name.substring (0, rdd.name.length() - "_voltage.csv".length ())
+        val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, time, vreal, vimag) values (?, ?, ?, ?, ?, ?)")
+        for (dataitem ← rdd.collect)
+        {
+            datainsert.setNull (1, Types.INTEGER)
+            datainsert.setInt (2, id)
+            datainsert.setString (3, node)
+            datainsert.setTimestamp (4, new Timestamp (dataitem.millis))
+            datainsert.setDouble (5, dataitem.value.re)
+            datainsert.setDouble (6, dataitem.value.im)
+            datainsert.executeUpdate ()
+        }
+        connection.commit ()
+    }
+
+    def load_and_store (sql_context: SQLContext, gridlabd: GridLABD, id: Int)
+    {
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+
+        var connection: Connection = null
+        try
+        {
+            // create a database connection
+            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            val outputs = gridlabd.list_files (gridlabd._TempFilePrefix)
+            for (x <- outputs)
+            {
+                if (x.endsWith ("_voltage.csv"))
+                {
+                    val data = gridlabd.read_records (sql_context, x)
+                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    store_rdd (connection, id, data)
+                }
+            }
+
+        }
+        catch
+        {
+            // if the error message is "out of memory",
+            // it probably means no database file is found
+            case e: SQLException ⇒ println ("exception caught: " + e)
+        }
+        finally
+        {
+            try
+            {
+                if (connection != null)
+                    connection.close()
+            }
+            catch {
+                // connection close failed
+                case e: SQLException ⇒ println ("exception caught: " + e);
+            }
+        }
     }
 
     test ("Basic")
@@ -213,7 +284,9 @@ class GridLABDSuite extends fixture.FunSuite
         val file = Paths.get (house + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
         val results = gridlabd.solve (context, sql_context, house)
-        store (house, power, t1, results)
+        val id = store (house, power, t1, results)
+        load_and_store (sql_context: SQLContext, gridlabd: GridLABD, id)
+
         val write = System.nanoTime ()
 
         println ("read : " + (read - start) / 1e9 + " seconds")

@@ -72,6 +72,7 @@ case class Transformer (node: String, transformer: PowerTransformer)
 
 // output
 case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
+case class ComplexDataElement (millis: Long, value: Complex)
 
 class GridLABD extends Serializable with Logging
 {
@@ -326,7 +327,7 @@ class GridLABD extends Serializable with Logging
                     "            property voltage_A.real,voltage_A.imag;\n" +
                     "            limit 288;\n" +
                     "            interval 300;\n" +
-                    "            file \"" + _TempFilePrefix + has (node.id_seq) + "_voltage.csv\";\n" +
+                    "            file \"" + _TempFilePrefix + node.id_seq + "_voltage.csv\";\n" +
                     "        };\n" +
                     "\n" +
                     loads
@@ -375,7 +376,7 @@ class GridLABD extends Serializable with Logging
                         "            property voltage_A.real,voltage_A.imag;\n" +
                         "            limit 288;\n" +
                         "            interval 300;\n" +
-                        "            file \"" + _TempFilePrefix + has (node.id_seq) + "_voltage.csv\";\n" +
+                        "            file \"" + _TempFilePrefix + node.id_seq + "_voltage.csv\";\n" +
                         "        };\n"
                     else
                         "") +
@@ -730,8 +731,6 @@ class GridLABD extends Serializable with Logging
         return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
-    case class ComplexDataElement (millis: Long, value: Complex)
-
     def read_records (sqlContext: SQLContext, filename: String): RDD[ComplexDataElement] =
     {
         def toTimeStamp (string: String): Long =
@@ -835,9 +834,12 @@ class GridLABD extends Serializable with Logging
             val outputs = list_files (_TempFilePrefix)
             for (x <- outputs)
             {
-                val data = read_records (sqlContext, x)
-                data.name = x
-                data.cache ()
+                if (x.endsWith (".csv"))
+                {
+                    val data = read_records (sqlContext, x)
+                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    data.cache ()
+                }
             }
             read_result (sqlContext, _TempFilePrefix + filename_root + "_voltdump.csv")
         }
