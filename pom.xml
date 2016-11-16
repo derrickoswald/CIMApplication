@@ -78,6 +78,7 @@
         <module>ShortCircuit</module>
         <module>GridLAB-D</module>
         <module>Spatial</module>
+        <module>GeoVis</module>
     </modules>
 
     <dependencyManagement>

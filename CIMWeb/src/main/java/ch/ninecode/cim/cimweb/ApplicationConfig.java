@@ -28,7 +28,8 @@ public class ApplicationConfig extends Application
                 ShortCircuitCalculation.class,
                 GridLabExport.class,
                 Spatial.class,
-                TimeSeries.class
+                TimeSeries.class,
+                Visualize.class
             )
         );
     }
