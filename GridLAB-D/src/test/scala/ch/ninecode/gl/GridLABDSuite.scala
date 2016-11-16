@@ -219,9 +219,10 @@ class GridLABDSuite extends fixture.FunSuite
             try
             {
                 if (connection != null)
-                    connection.close()
+                    connection.close ()
             }
-            catch {
+            catch
+            {
                 // connection close failed
                 case e: SQLException ⇒ println ("exception caught: " + e);
             }

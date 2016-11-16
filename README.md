@@ -40,11 +40,32 @@ new parallel applications running on a cluster of machines.
 - to access the manager GUI (http://localhost:8080/manager/html), edit conf/tomcat-users.xml to
 uncomment the section at the bottom of the file with rolename="tomee-admin" and username="tomee",
 and then change the password as appropriate
-- to enable TomEE, edit conf/tomee.xml and uncomment the <Deployments dir="apps"/>
-- to deploy the application and reset, could be these instructions (restart.sh marked executable):
+- to enable TomEE, edit conf/tomee.xml and uncomment the &lt;Deployments dir="apps"/&gt; and make the apps directory:
+
+    mkdir /opt/apache-tomee-plus-7.0.1/apps
+
+- to deploy the application and reset, you could use these instructions (restart.sh marked executable):
 
     bin/shutdown.sh 2>/dev/null
     rm -rf apps/*
     rm logs/*
     cp ~/code/CIMApplication/CIMEar/target/CIMApplication.ear apps
     bin/startup.sh
+
+- to enable SQLite access via JNDI, copy the SQLite jar file to the lib directory, and copy the SQLite data file too:
+
+    cp .../org/xerial/sqlite-jdbc/3.14.2.1/sqlite-jdbc-3.14.2.1.jar /opt/apache-tomee-plus-7.0.1/lib
+    mkdir /opt/apache-tomee-plus-7.0.1/database
+    cp .../results.db /opt/apache-tomee-plus-7.0.1/database/timeseries.db
+
+- then add a resource entry to the conf/tomee.xml, like so:
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <tomee>
+      <!-- see http://tomee.apache.org/containers-and-resources.html -->
+      <Deployments dir="apps" />
+      <Resource id="SQLite Database" type="DataSource">
+        JdbcDriver  org.sqlite.JDBC
+        JdbcUrl jdbc:sqlite:/opt/apache-tomee-plus-7.0.1/database/timeseries.db
+      </Resource>
+    </tomee>

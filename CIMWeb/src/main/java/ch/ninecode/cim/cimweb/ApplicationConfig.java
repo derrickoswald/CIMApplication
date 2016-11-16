@@ -27,7 +27,8 @@ public class ApplicationConfig extends Application
                 EnergyConsumer.class,
                 ShortCircuitCalculation.class,
                 GridLabExport.class,
-                Spatial.class
+                Spatial.class,
+                TimeSeries.class
             )
         );
     }

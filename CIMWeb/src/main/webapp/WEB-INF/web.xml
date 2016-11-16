@@ -16,4 +16,22 @@
       <res-sharing-scope>Shareable</res-sharing-scope>
     </resource-ref -->
 
+    <resource-ref>
+         <description>
+             Resource reference to a factory for java.sql.Connection
+             instances for a SQLite results database which
+             is configured in the &lt;Context&gt;
+             configuration for the web application.
+         </description>
+         <res-ref-name>
+             jdbc/TimeSeries
+         </res-ref-name>
+         <res-type>
+             javax.sql.DataSource
+         </res-type>
+         <res-auth>
+             Container
+         </res-auth>
+    </resource-ref>
+
 </web-app>
