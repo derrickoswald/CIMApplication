@@ -4,7 +4,7 @@
 	xmlns="http://xmlns.jcp.org/xml/ns/javaee"
 	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/connector_1_7.xsd"
 	version="1.7"
-	metadata-complete="true">
+	metadata-complete="false">
 	<description>Interface to CIM data in Apache Spark.</description>
 	<display-name>CIMConnector</display-name>
 	<vendor-name>9code GmbH</vendor-name>

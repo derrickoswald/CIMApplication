@@ -87,19 +87,9 @@ public class GridLabExport
                         // set up the method call details for the CIMConnector
                         GridLABD gl = new GridLABD ();
                         input.put ("class", gl.getClass ().getName ());
-                        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-                        String path = gl.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
-                        String decodedPath;
-                        try
-                        {
-                            decodedPath = URLDecoder.decode (path, "UTF-8");
-                        }
-                        catch (UnsupportedEncodingException e)
-                        {
-                            decodedPath = path;
-                        }
-                        if (decodedPath.endsWith (".jar"))
-                            input.put ("jars", decodedPath);
+                        String jar = factory.JarPath (gl);
+                        if (null != jar)
+                            input.put ("jars", jar);
                         if (null == transformer)
                             input.put ("method", "prepare");
                         else
@@ -107,7 +97,7 @@ public class GridLabExport
                         if (null != transformer)
                             input.put ("transformer", transformer);
                         final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
-                        output.setRecordShortDescription ("the results of the read operation");
+                        output.setRecordShortDescription ("the results of the gridlab conversion");
                         final Interaction interaction = connection.createInteraction ();
                         if (interaction.execute (spec, input, output))
                         {

@@ -16,4 +16,14 @@
 	<module>
 		<connector>CIMConnector.rar</connector>
 	</module>
+
+    <connection-factory>
+        <description>Connection factory for Spark connection using CIMConnector</description>
+        <name>java:app/SparkConnectionFactory</name>
+        <interface-name>ch.ninecode.cim.connector.CIMConnectionFactory</interface-name>
+        <resource-adapter>CIMConnector</resource-adapter>
+        <min-pool-size>2</min-pool-size>
+        <transaction-support>NoTransaction</transaction-support>
+    </connection-factory>
+
 </application>

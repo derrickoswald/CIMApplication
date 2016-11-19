@@ -2,6 +2,9 @@ package ch.ninecode.cim.cimweb;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.resource.ConnectionFactoryDefinition;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -20,13 +23,14 @@ import ch.ninecode.cim.connector.CIMMappedRecord;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Properties;
 
 @ConnectionFactoryDefinition
 (
-    name = "java:comp/env/eis/SparkConnectionFactory",
-    description = "Connection factory for Spark",
+    name = "java:app/SparkConnectionFactory",
+    description = "Connection factory for Spark connection using CIMConnector",
     interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
-    resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
+    resourceAdapter = "CIMConnector", // reference CIMConnector.rar in application.xml
     minPoolSize = 2,
     transactionSupport = TransactionSupportLevel.NoTransaction
 )
@@ -35,7 +39,14 @@ import java.io.StringWriter;
 @Path("/list")
 public class ListFiles
 {
-    @Resource (lookup="openejb:Resource/CIMConnector.rar")
+    @Resource
+    (
+        description = "Connection factory for Spark connection using CIMConnector",
+        //name = "openejb:Resource/CIMConnector.rar",
+        lookup = "java:app/SparkConnectionFactory",
+        type = ch.ninecode.cim.connector.CIMConnectionFactory.class, // javax.resource.cci.ConnectionFactory.class
+        authenticationType = Resource.AuthenticationType.APPLICATION
+    )
     CIMConnectionFactory factory;
 
     /**
@@ -60,6 +71,20 @@ public class ListFiles
     public String listFiles ()
     {
         StringBuffer out = new StringBuffer ();
+        if (null == factory)
+        {
+            //out.append ("injection of openejb:Resource/CIMConnector.rar failed... again\n");
+            try
+            {
+                Context context = new InitialContext (new Properties ());
+                factory = (CIMConnectionFactory) context.lookup ("openejb:Resource/CIMConnector.rar");
+            }
+            catch (NamingException e)
+            {
+                out.append (e.getMessage ());
+            }
+        }
+
         if (null != factory)
         {
             Connection connection;
@@ -76,10 +101,12 @@ public class ListFiles
                         output.setRecordShortDescription ("the results of the list operation");
                         final Interaction interaction = connection.createInteraction ();
                         if (interaction.execute (spec, null, output))
+                        {
                             if (!output.isEmpty ())
                                 out.append (output.get ("files").toString ());
                             else
                                 out.append ("interaction returned empty");
+                        }
                         else
                             out.append ("interaction execution failed");
                         interaction.close ();
@@ -113,6 +140,9 @@ public class ListFiles
                         }
                     }
                 }
+                else
+                    out.append ("getConnection failed.");
+
             }
             catch (ResourceException exception)
             {
@@ -123,6 +153,23 @@ public class ListFiles
                 exception.printStackTrace (writer);
                 out.append (string.toString ());
                 writer.close ();
+            }
+        }
+        else
+        {
+            out.append ("Factory openejb:Resource/CIMConnector.rar is null.");
+            final Properties properties = new Properties ();
+            Context context;
+            try
+            {
+                context = new InitialContext (properties);
+                factory = (CIMConnectionFactory) context.lookup ("openejb:Resource/CIMConnector.rar");
+                if (null != factory)
+                    return (out.toString () + "....\n" + listFiles ());
+            }
+            catch (NamingException e)
+            {
+                out.append (e.getMessage ());
             }
         }
 

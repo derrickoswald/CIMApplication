@@ -2,11 +2,14 @@ package ch.ninecode.cim.cimweb;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.sql.SQLException;
 import java.util.List;
+import java.util.Properties;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.MatrixParam;
@@ -18,15 +21,14 @@ import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
-import javax.resource.cci.Record;
 import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
-import ch.ninecode.cim.connector.CIMResultSet;
-import ch.ninecode.sp.SpatialOperations;
+
+import ch.ninecode.geo.GeoVis;
 
 @ConnectionFactoryDefinition
 (
@@ -51,12 +53,12 @@ public class Visualize
     @Produces ({"text/plain", "application/json"})
     public String Operation
     (
-        @PathParam ("method") String method, // "extract"
+        @PathParam ("method") String method, // "extract_json"
         @MatrixParam ("file") List<String> files,
-        @DefaultValue ("7.28") @MatrixParam ("xmin") String xmin,
-        @DefaultValue ("47.12") @MatrixParam ("ymin") String ymin,
-        @DefaultValue ("7.29") @MatrixParam ("xmax") String xmax,
-        @DefaultValue ("47.13") @MatrixParam ("ymax") String ymax,
+        @DefaultValue ("7.71") @MatrixParam ("xmin") String xmin,
+        @DefaultValue ("46.57") @MatrixParam ("ymin") String ymin,
+        @DefaultValue ("7.73") @MatrixParam ("xmax") String xmax,
+        @DefaultValue ("46.60") @MatrixParam ("ymax") String ymax,
         @DefaultValue ("true") @MatrixParam ("reduceLines") String reduceLines,
         @DefaultValue ("2000") @MatrixParam ("maxLines") String maxLines,
         @DefaultValue ("true") @MatrixParam ("dougPeuk") String dougPeuk,
@@ -65,6 +67,19 @@ public class Visualize
     )
     {
         StringBuffer out = new StringBuffer ();
+        if (null == factory)
+        {
+            //out.append ("injection of openejb:Resource/CIMConnector.rar failed... again\n");
+            try
+            {
+                Context context = new InitialContext (new Properties ());
+                factory = (CIMConnectionFactory) context.lookup ("openejb:Resource/CIMConnector.rar");
+            }
+            catch (NamingException e)
+            {
+                out.append (e.getMessage ());
+            }
+        }
         if (null != factory)
         {
             Connection connection;
@@ -86,18 +101,18 @@ public class Visualize
                         }
 
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-                        spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
+                        spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file names and class and method to run");
 
                         // set up the method call details for the CIMConnector
-                        SpatialOperations ops = new SpatialOperations ();
+                        GeoVis vis = new GeoVis ();
                         input.put ("method", method);
-                        input.put ("class", ops.getClass ().getName ());
-                        String jar = factory.JarPath (ops);
+                        input.put ("class", vis.getClass ().getName ());
+                        String jar = factory.JarPath (vis);
                         if (null != jar)
                             input.put ("jars", jar);
-                        ops = null;
+                        vis = null;
 
                         // set up the parameters
                         input.put ("filename", sb.toString ());
@@ -110,45 +125,15 @@ public class Visualize
                         input.put ("dougPeuk", dougPeuk);
                         input.put ("dougPeukFactor", dougPeukFactor);
                         input.put ("resolution", resolution);
-                        out.append (input.toString ());
+                        //out.append (input.toString ());
 
+                        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
+                        output.setRecordShortDescription ("the results of the GeoJSON conversion");
                         final Interaction interaction = connection.createInteraction ();
-                        final Record output = interaction.execute (spec, input);
-                        if ((null == output) || !output.getClass ().isAssignableFrom (CIMResultSet.class))
-                            throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
-                        else
+                        if (interaction.execute (spec, input, output))
                         {
-                            CIMResultSet resultset = (CIMResultSet)output;
-                            try
-                            {
-                                out.setLength (0);
-                                out.append ("[");
-                                while (resultset.next ())
-                                {
-                                    out.append ("{ ");
-                                    out.append ("mRID: \"" + resultset.getString (1) + "\",");
-                                    out.append ("name: \"" + resultset.getString (2) + "\",");
-                                    out.append ("aliasName: \"" + resultset.getString (3) + "\",");
-                                    out.append ("location: \"" + resultset.getString (4) + "\",");
-                                    out.append ("baseVoltage: \"" + resultset.getString (5) + "\"");
-                                    out.append ("},\n");
-                                }
-                                if (2 < out.length ())
-                                    out.deleteCharAt (out.length () - 2); // get rid of trailing comma
-                                out.append ("]\n");
-                                resultset.close ();
-                            }
-                            catch (SQLException sqlexception)
-                            {
-                                out.append ("SQLException on ResultSet");
-                                out.append ("\n");
-                                StringWriter string = new StringWriter ();
-                                PrintWriter writer = new PrintWriter (string);
-                                sqlexception.printStackTrace (writer);
-                                out.append (string.toString ());
-                                writer.close ();
-                            }
-
+                            String result = output.get ("result").toString ();
+                            out.append (result);
                         }
                         interaction.close ();
                         connection.close ();

@@ -59,6 +59,11 @@
                             <artifactId>Spatial</artifactId>
                             <bundleFileName>Spatial-1.0-SNAPSHOT.jar</bundleFileName>
                         </jarModule>
+                        <jarModule>
+                            <groupId>ch.ninecode.geo</groupId>
+                            <artifactId>GeoVis</artifactId>
+                            <bundleFileName>GeoVis-1.0-SNAPSHOT.jar</bundleFileName>
+                        </jarModule>
                     </modules>
                 </configuration>
             </plugin>
@@ -98,6 +103,13 @@
         <dependency>
             <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.geo</groupId>
+            <artifactId>GeoVis</artifactId>
             <version>1.0-SNAPSHOT</version>
             <type>jar</type>
         </dependency>

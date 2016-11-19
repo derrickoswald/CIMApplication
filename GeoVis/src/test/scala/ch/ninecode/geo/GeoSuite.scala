@@ -90,25 +90,27 @@ class GeoSuite extends fixture.FunSuite
         val read = System.nanoTime ()
 
         val visualize = new ch.ninecode.geo.GeoVis ()
-        val results = visualize.extract (context, sql_context, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
-
+//        val results = visualize.extract (context, sql_context, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
+        val results = visualize.extract_json (context, sql_context, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
+        println (results)
         val process = System.nanoTime ()
 
-        for (record <- results)
-            println (record)
 
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("process: " + (process - read) / 1e9 + " seconds")
-        println ()
-
-        for (record <- results)
-        {
-            val c = record.getStruct (0)
-            println (c.getString (0) + " = " + c.getString (2) + ": " + c.getString (1) + " @ " + c.getString (4))
-            val d = record.getSeq[String] (1)
-            for (x <- d)
-                println (x)
-        }
+//        for (record <- results)
+//            println (record)
+//
+//        println ("read : " + (read - start) / 1e9 + " seconds")
+//        println ("process: " + (process - read) / 1e9 + " seconds")
+//        println ()
+//
+//        for (record <- results)
+//        {
+//            val c = record.getStruct (0)
+//            println (c.getString (0) + " = " + c.getString (2) + ": " + c.getString (1) + " @ " + c.getString (4))
+//            val d = record.getSeq[String] (1)
+//            for (x <- d)
+//                println (x)
+//        }
 
     }
 

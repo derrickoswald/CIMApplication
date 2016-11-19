@@ -86,7 +86,7 @@ class GridLABDSuite extends fixture.FunSuite
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
-        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        val options = new HashMap[String, String] ()
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "true")
@@ -115,9 +115,9 @@ class GridLABDSuite extends fixture.FunSuite
             // create schema
             val statement = connection.createStatement ()
             statement.executeUpdate ("drop table if exists simulation")
-            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house string, power double, time datetime)")
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house text, power double, time text)")
             statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node string, time datetime, vreal double, vimag double)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node text, time text, vreal double, vimag double)")
             statement.close ()
 
             // insert the simulation

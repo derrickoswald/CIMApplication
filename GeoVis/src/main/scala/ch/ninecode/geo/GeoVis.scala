@@ -12,6 +12,8 @@ import scala.math._
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
+import org.apache.spark.sql.Row
+
 
 case class SpezificAcLineSegment(id: String, name: String, aliasName: String, location: String, baseVoltage: String)
 case class BBox(xmin: Double, ymin: Double, xmax: Double, ymax: Double)
@@ -83,7 +85,7 @@ class GeoVis extends Serializable
                     yPos.toDouble <= bbox.ymax)
             })
 
-        val orderedPoints = filteredPoints.sortBy(_.sequenceNumber);
+        val orderedPoints = filteredPoints.sortBy(_.sequenceNumber)
 
         val groupedPoints = orderedPoints.map((pp: PositionPoint) ⇒ (pp.Location, (pp.sequenceNumber, pp.xPosition, pp.yPosition)))
             .groupByKey()
@@ -162,6 +164,63 @@ class GeoVis extends Serializable
         val nen = sqrt(pow(deltaY, 2) + pow(deltaX, 2))
         return zah / nen
     }
+
+    def toGeoJSON (record: Row): String =
+    {
+        val c = record.getStruct (0)
+        val sb = new StringBuilder ()
+
+        sb.append ("        {\n")
+        sb.append ("            \"type\": \"Feature\",\n")
+        sb.append ("            \"geometry\":\n")
+        sb.append ("            {\n")
+        sb.append ("                \"type\": \"Line\",\n")
+        val d = record.getSeq[String] (1)
+        sb.append ("                \"coordinates\": [")
+        var first = true
+        for (i <- 0 until d.length; if (0 == (1 & i)) )
+        {
+            if (first)
+                first = false
+            else
+                sb.append (", ")
+            sb.append ("[")
+            sb.append (d(i))
+            sb.append (",")
+            sb.append (d(i + 1))
+            sb.append ("]")
+        }
+        sb.append ("]\n")
+        sb.append ("            },\n")
+        sb.append ("            \"properties\":\n")
+        sb.append ("            {\n")
+        sb.append ("                \"id\": \"")
+        sb.append (c.getString (0))
+        sb.append ("\",\n                \"name\": \"")
+        sb.append (c.getString (1))
+        sb.append ("\",\n                \"aliasName\": \"")
+        sb.append (c.getString (2))
+        sb.append ("\",\n                \"baseVoltage\": \"")
+        sb.append (c.getString (4))
+        sb.append ("\n            }\n")
+        sb.append ("        }")
+        return (sb.toString ())
+    }
+
+    def extract_json (sc: SparkContext, sqlContext: SQLContext, args: String): String =
+    {
+        val ret = new StringBuilder ()
+
+        val df = extract (sc, sqlContext, args)
+
+        ret.append ("{\n")
+        ret.append ("    \"type\": \"FeatureCollection\",\n")
+        ret.append ("    \"features\": \n")
+        ret.append ("    [\n")
+        val strings = df.map (toGeoJSON)
+        ret.append (strings.fold ("") ((a,b) => a + (if ("" == a) "" else ",\n") + b))
+        ret.append ("\n    ]\n")
+        ret.append ("\n}\n")
+        return (ret.toString ())
+    }
 }
-
-

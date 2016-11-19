@@ -181,7 +181,6 @@ public class CIMResultSet implements Record, ResultSet
         _LastNull = null == row.get (columnIndex - 1);
         double ret = Double.parseDouble (row.get (columnIndex - 1).toString ());
         return (ret);
-
     }
 
     @Override
@@ -383,8 +382,10 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public Object getObject (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        if (null == _Rows) throw new SQLException (INVALID);
+        Row row = _Rows[_Index];
+        _LastNull = null == row.get (columnIndex - 1);
+        return (row.get (columnIndex - 1));
     }
 
     @Override
@@ -929,6 +930,11 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public Array getArray (int columnIndex) throws SQLException
     {
+//        if (null == _Rows) throw new SQLException (INVALID);
+//        Row row = _Rows[_Index];
+//        _LastNull = null == row.get (columnIndex - 1);
+//        return (row.getSeq (arg0) (columnIndex - 1));
+
         // TODO Auto-generated method stub
         return null;
     }
