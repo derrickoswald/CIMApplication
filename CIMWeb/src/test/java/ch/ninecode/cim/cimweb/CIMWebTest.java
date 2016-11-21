@@ -24,8 +24,8 @@ import org.junit.runner.RunWith;
 @RunWith (Arquillian.class)
 public class CIMWebTest
 {
-    private static final String WEBEAR_SRC = "src/main";
-    private static final String WEBAPP_SRC = WEBEAR_SRC + "/webapp";
+//    private static final String WEBEAR_SRC = "src/main";
+//    private static final String WEBAPP_SRC = WEBEAR_SRC + "/webapp";
 
     @Deployment
     public static EnterpriseArchive createDeployment ()

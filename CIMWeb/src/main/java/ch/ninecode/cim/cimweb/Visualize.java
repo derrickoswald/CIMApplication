@@ -16,12 +16,10 @@ import javax.ws.rs.MatrixParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.resource.ConnectionFactoryDefinition;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
-import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
@@ -29,16 +27,6 @@ import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 
 import ch.ninecode.geo.GeoVis;
-
-@ConnectionFactoryDefinition
-(
-    name = "java:comp/env/eis/SparkConnectionFactory",
-    description = "Connection factory for Spark",
-    interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
-    resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
-    minPoolSize = 2,
-    transactionSupport = TransactionSupportLevel.NoTransaction
-)
 
 @Stateless
 @Path("Visualize/")

@@ -14,7 +14,6 @@ import org.junit.runner.RunWith;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.ConnectionFactory;
 import javax.resource.cci.ConnectionMetaData;
@@ -127,7 +126,7 @@ public class CIMResourceAdapterTest
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
-        ret.getJars ().add ("../../CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"); // assumes CIMScala project is peer of CIMApplication
+        ret.getJars ().add ("../../CIMScala/target/CIMScala-2.10-1.6.0-1.7.0.jar"); // assumes CIMScala project is peer of CIMApplication
 
         return (ret);
     }

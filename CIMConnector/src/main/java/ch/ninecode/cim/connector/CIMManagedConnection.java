@@ -106,7 +106,7 @@ public class CIMManagedConnection implements ManagedConnection
         else
             if (null != logger)
                 logger.println ("CIMScala jar file: " + ret);
-                // i.e.  /opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.6.0.jar
+                // i.e.  /opt/apache-tomee-plus-1.7.4/apps/CIMApplication/CIMConnector/CIMScala-2.10-1.6.0-1.7.0.jar
 
         return (ret);
     }

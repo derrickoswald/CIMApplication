@@ -8,13 +8,13 @@
 
     <display-name>Sample application to access CIMConnector</display-name>
     <description>End-to-end demonstration program for reading and computing with CIM files in Spark.</description>
-
+<!--
     <resource-ref>
         <description>
             Resource reference to a factory for the CIMConnnector.
         </description>
         <res-ref-name>
-            CIMConnector
+            eis/SparkConnectionFactory
         </res-ref-name>
         <res-type>
             javax.resource.cci.ConnectionFactory
@@ -43,6 +43,10 @@
         <res-auth>
             Container
         </res-auth>
+        <res-sharing-scope>
+            Shareable
+        </res-sharing-scope>
     </resource-ref>
+-->
 
 </web-app>

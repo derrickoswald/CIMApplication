@@ -13,8 +13,6 @@ import javax.ws.rs.Path;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Date;
-import javax.resource.ConnectionFactoryDefinition;
-import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import java.util.Properties;
 import javax.naming.InitialContext;
@@ -29,16 +27,6 @@ import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
-
-@ConnectionFactoryDefinition
-(
-    name = "java:comp/env/eis/SparkConnectionFactory",
-    description = "Connection factory for Spark",
-    interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
-    resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
-    minPoolSize = 2,
-    transactionSupport = TransactionSupportLevel.NoTransaction
-)
 
 @Stateless
 @Path("/ejb")

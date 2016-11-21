@@ -631,8 +631,8 @@ object ShortCircuit
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
         // get the necessary jar files to send to the cluster
-        val s1 = jarForObject (new DefaultSource ()) // "/home/derrick/code/CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"
-        val s2 = jarForObject (shortcircuit) // "/home/derrick/code/CIMApplication/ShortCircuit/target/ShortCircuit-1.0-SNAPSHOT.jar"
+        val s1 = jarForObject (new DefaultSource ())
+        val s2 = jarForObject (shortcircuit)
         configuration.setJars (Array (s1, s2))
 
         // register low level classes

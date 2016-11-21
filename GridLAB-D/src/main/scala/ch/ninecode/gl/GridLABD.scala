@@ -902,8 +902,8 @@ object GridLABD
         configuration.set ("spark.executor.memory", "4g")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         // get the necessary jar files to send to the cluster
-        val s1 = jarForObject (new DefaultSource ()) // "/home/derrick/code/CIMScala/target/CIMScala-2.10-1.6.0-1.6.0.jar"
-        val s2 = jarForObject (gridlab) // "/home/derrick/code/CIMApplication/GridLAB-D/target/GridLAB-D-1.0-SNAPSHOT.jar"
+        val s1 = jarForObject (new DefaultSource ())
+        val s2 = jarForObject (gridlab)
         configuration.setJars (Array (s1, s2))
 
         // register low level classes

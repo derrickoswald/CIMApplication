@@ -1,5 +1,14 @@
 package ch.ninecode.cim.cimweb;
 
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.logging.Logger;
+
+import javax.annotation.Resource;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -8,21 +17,19 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.Properties;
-import java.sql.DriverManager;
-
 @Path("/timeseries")
 @Produces({"application/json"})
 public class TimeSeries
 {
+    static protected String LOGGER_NAME = TimeSeries.class.getName ();
+    static protected Logger _Logger = Logger.getLogger (LOGGER_NAME); // , String resourceBundleName)
+
+    @Resource
+    (
+        description = "Connection factory for JDBC connections to the time series database",
+        lookup = "java:app/jdbc/TimeSeries"
+    )
+    DataSource _DataSource;
 
     protected void meta (Connection connection, StringBuilder sb) throws SQLException
     {
@@ -51,16 +58,29 @@ public class TimeSeries
     {
         StringBuilder ret = new StringBuilder ();
 
-        try
+        if (null == _DataSource)
         {
-            Context context = new InitialContext ();
-            DataSource datasource = (DataSource)context.lookup ("java:comp/env/jdbc/TimeSeries");
+            _Logger.severe ("injection of java:app/jdbc/TimeSeries failed");
+            try
+            {
+                Context context = new InitialContext ();
+                _DataSource = (DataSource)context.lookup ("java:app/jdbc/TimeSeries"); // was: ("java:comp/env/jdbc/TimeSeries");
+            }
+            catch (NamingException e)
+            {
+                _Logger.severe ("lookup of java:app/jdbc/TimeSeries failed");
+                ret.append (e.getMessage ());
+            }
+        }
+
+        if (null != _DataSource)
+        {
 
             Connection connection  = null;
             try
             {
                 // create a database connection
-                connection = datasource.getConnection ();
+                connection = _DataSource.getConnection ();
                 // meta (connection, ret);
 
                 // select the results
@@ -111,10 +131,8 @@ public class TimeSeries
                 }
             }
         }
-        catch (NamingException ne)
-        {
-            ret.append (ne.getMessage ());
-        }
+        else
+            _Logger.severe ("factory for TimeSeries is null");
 
         return (ret.toString ());
     }

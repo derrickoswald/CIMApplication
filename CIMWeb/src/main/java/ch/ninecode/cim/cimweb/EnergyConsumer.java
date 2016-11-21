@@ -9,8 +9,6 @@ import javax.ws.rs.Produces;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.SQLException;
-import javax.resource.ConnectionFactoryDefinition;
-import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
@@ -24,16 +22,6 @@ import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 import ch.ninecode.cim.connector.CIMResultSet;
-
-@ConnectionFactoryDefinition
-(
-    name = "java:comp/env/eis/SparkConnectionFactory",
-    description = "Connection factory for Spark",
-    interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
-    resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
-    minPoolSize = 2,
-    transactionSupport = TransactionSupportLevel.NoTransaction
-)
 
 @Stateless
 @Path("/EnergyConsumer")
