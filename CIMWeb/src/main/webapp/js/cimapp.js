@@ -81,29 +81,26 @@ define
 
         /**
          * Make a select option list of the files.
-         * @param listing The list files on HDFS as an object with a "files" property, each of which has a name and details.
+         * @param files The array of files on HDFS, each object has a name and details.
          */
-        function make_file_list (listing)
+        function make_file_list (files)
         {
-            //{
-            //    "files":
             //    [
-            //        "{
-            //            "path": "hdfs://sandbox:9000/data/KS_Leistungen.csv",
-            //            "length": 403242,
-            //            "modification_time": 1478602451352,
-            //            "access_time": 1478607251538
-            //        "},
-            //        "{
-            //            "path": "hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf",
-            //            "length": 14360795,
-            //            "modification_time": 1478607196243,
-            //            "access_time": 1478607196018
-            //        "}
+            //      {
+            //        "path":"KS_Leistungen.csv",
+            //        "length":403242,
+            //        "modification_time":1479825255343,
+            //        "access_time":1479825255110
+            //      },
+            //      {
+            //        "path":"NIS_CIM_Export_sias_current_20160816_Kiental_V9",
+            //        "length":14432564,
+            //        "modification_time":1479825253185,
+            //        "access_time":1479825252379
+            //      }
             //    ]
-            //}
             var options = ""
-            listing.files.forEach (function (s) { options += "<option value='" + s.path + "'>" + s.path + " " + s.length + "</option>\n" } );
+            files.forEach (function (s) { options += "<option value='" + s.path + "'>" + s.path + " " + s.length + "</option>\n" } );
             document.getElementById ("cim_file").innerHTML = options;
             document.getElementById ("cim_file2").innerHTML = options;
         }
@@ -236,7 +233,10 @@ define
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
                         resp = JSON.parse (xmlhttp.responseText);
-                        make_file_list (resp);
+                        if (resp.status != "OK")
+                            alert (resp.message);
+                        else
+                            make_file_list (resp.result.files);
                     }
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);

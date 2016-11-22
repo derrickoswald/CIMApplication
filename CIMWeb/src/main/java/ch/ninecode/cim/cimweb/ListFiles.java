@@ -19,14 +19,12 @@ import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 @Stateless
 @Path("/list")
-public class ListFiles
+public class ListFiles extends RESTful
 {
     static protected String LOGGER_NAME = ListFiles.class.getName ();
     static protected Logger _Logger = Logger.getLogger (LOGGER_NAME); // , String resourceBundleName)
@@ -60,7 +58,7 @@ public class ListFiles
     @Produces ({"application/json"})
     public String listFiles ()
     {
-        StringBuffer out = new StringBuffer ();
+        RESTfulResult ret = new RESTfulResult ();
         if (null == _CIMConnectionFactory)
         {
             _Logger.severe ("injection of java:app/eis/SparkConnectionFactory failed");
@@ -69,10 +67,11 @@ public class ListFiles
                 Context context = new InitialContext (new Properties ());
                 _CIMConnectionFactory = (CIMConnectionFactory) context.lookup ("openejb:Resource/CIMConnector.rar");
             }
-            catch (NamingException e)
+            catch (NamingException ne)
             {
                 _Logger.severe ("lookup of openejb:Resource/CIMConnector.rar failed");
-                out.append (e.getMessage ());
+                ret._Status = FAIL;
+                ret._Message = ne.getMessage ();
             }
         }
 
@@ -94,24 +93,24 @@ public class ListFiles
                         if (interaction.execute (spec, null, output))
                         {
                             if (!output.isEmpty ())
-                                out.append (output.get ("files").toString ());
+                                ret.setResult (output.get ("files").toString ());
                             else
-                                out.append ("interaction returned empty");
+                                ret._Message = "interaction returned empty";
                         }
                         else
-                            out.append ("interaction execution failed");
+                        {
+                            _Logger.severe ("interaction execution failed");
+                            ret._Status = FAIL;
+                            ret._Message = "interaction execution failed";
+                        }
                         interaction.close ();
                         connection.close ();
                     }
-                    catch (ResourceException resourceexception)
+                    catch (ResourceException re)
                     {
-                        out.append ("ResourceException on interaction");
-                        out.append ("\n");
-                        StringWriter string = new StringWriter ();
-                        PrintWriter writer = new PrintWriter (string);
-                        resourceexception.printStackTrace (writer);
-                        out.append (string.toString ());
-                        writer.close ();
+                        _Logger.severe ("interaction resource exception");
+                        ret._Status = FAIL;
+                        ret._Message = re.getMessage ();
                     }
                     finally
                     {
@@ -119,36 +118,36 @@ public class ListFiles
                         {
                             connection.close ();
                         }
-                        catch (ResourceException resourceexception)
+                        catch (ResourceException re)
                         {
-                            out.append ("ResourceException on close");
-                            out.append ("\n");
-                            StringWriter string = new StringWriter ();
-                            PrintWriter writer = new PrintWriter (string);
-                            resourceexception.printStackTrace (writer);
-                            out.append (string.toString ());
-                            writer.close ();
+                            _Logger.severe ("close resource exception");
+                            ret._Status = FAIL;
+                            ret._Message = re.getMessage ();
                         }
                     }
                 }
                 else
-                    out.append ("getConnection failed.");
+                {
+                    _Logger.severe ("_CIMConnectionFactory.getConnection() is null");
+                    ret._Status = FAIL;
+                    ret._Message = "getConnection failed";
+                }
 
             }
-            catch (ResourceException exception)
+            catch (ResourceException re)
             {
-                out.append ("ResourceException");
-                out.append ("\n");
-                StringWriter string = new StringWriter ();
-                PrintWriter writer = new PrintWriter (string);
-                exception.printStackTrace (writer);
-                out.append (string.toString ());
-                writer.close ();
+                _Logger.severe ("resource exception");
+                ret._Status = FAIL;
+                ret._Message = re.getMessage ();
             }
         }
         else
+        {
             _Logger.severe ("_CIMConnectionFactory for CIMConnector is null");
+            ret._Status = FAIL;
+            ret._Message = "CIMConnector is null";
+        }
 
-        return (out.toString ());
+        return (ret.toString ());
     }
 }
