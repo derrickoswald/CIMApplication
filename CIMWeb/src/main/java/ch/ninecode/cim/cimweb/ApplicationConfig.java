@@ -47,8 +47,8 @@ public class ApplicationConfig extends Application
                 ListFiles.class,
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,
-                ShortCircuitCalculation.class,
                 GridLabExport.class,
+                ShortCircuitCalculation.class,
                 Spatial.class,
                 TimeSeries.class,
                 Visualize.class

@@ -427,6 +427,46 @@ define
         }
 
         /**
+         * @summary Connect to the server to see if it's alive.
+         * @description Invoke the server-side ping function.
+         * @function ping
+         * @memberOf module:cimapp
+         */
+        function ping ()
+        {
+            var url;
+            var xmlhttp;
+
+            url = window.location.origin + window.location.pathname + "cim/ping";
+            xmlhttp = new XMLHttpRequest ();
+            xmlhttp.open ("GET", url, true);
+            xmlhttp.setRequestHeader ("Accept", "application/json");
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+                var msg;
+                var reason;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status != "OK")
+                        {
+                            alert (resp.message);
+                            document.getElementById ("functions").style.display = "none";
+                            document.getElementById ("search").style.display = "none";
+                        }
+//                        else
+//                            do_connect ();
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            xmlhttp.send ();
+        }
+
+        /**
          * @summary Initialize the map.
          * @description Create the background map, centered on Bern and showing most of Switzerland.
          * @param {object} event - optional, the vector tile checkbox change event

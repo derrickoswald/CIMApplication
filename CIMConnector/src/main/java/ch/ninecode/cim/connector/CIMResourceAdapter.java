@@ -110,6 +110,16 @@ public class CIMResourceAdapter implements ResourceAdapter
         return (ret);
     }
 
+    /**
+     * Override hashCode to ensure singleton behaviour of the ResourceAdapter.
+     * @return a constant hash value
+     */
+    @Override
+    public int hashCode ()
+    {
+        return (42424242);
+    }
+
     @ConfigProperty
     (
         type = String.class,

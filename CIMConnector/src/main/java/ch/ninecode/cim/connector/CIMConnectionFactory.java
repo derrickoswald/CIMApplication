@@ -16,10 +16,19 @@ import javax.resource.spi.ManagedConnectionFactory;
 
 public class CIMConnectionFactory implements ConnectionFactory
 {
+
     private static final long serialVersionUID = 1L;
     protected CIMManagedConnectionFactory _ManagedConnectionFactory;
     protected ConnectionManager _ConnectionManager;
     protected Reference _Reference;
+
+    /**
+     * An implementation class for ConnectionFactory must provide a default constructor.
+     * @throws ResourceException
+     */
+    public CIMConnectionFactory () throws ResourceException
+    {
+    }
 
     public CIMConnectionFactory (ManagedConnectionFactory mcf, ConnectionManager cm)
         throws ResourceException
