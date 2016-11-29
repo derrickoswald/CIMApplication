@@ -24,7 +24,7 @@
         <version.dependency.scalatest>3.0.0-M14</version.dependency.scalatest>
         <version.dependency.junit>4.11</version.dependency.junit>
         <version.dependency.spark>1.6.0</version.dependency.spark>
-        <version.dependency.cimscala>2.10-1.6.0-1.7.1</version.dependency.cimscala>
+        <version.dependency.cimscala>2.10-1.6.0-1.7.2</version.dependency.cimscala>
     </properties>
 
     <dependencies>

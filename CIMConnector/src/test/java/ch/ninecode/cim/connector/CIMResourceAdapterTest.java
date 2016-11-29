@@ -126,7 +126,7 @@ public class CIMResourceAdapterTest
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
-        ret.getJars ().add ("../../CIMScala/target/CIMScala-2.10-1.6.0-1.7.1.jar"); // assumes CIMScala project is peer of CIMApplication
+        ret.getJars ().add ("../../CIMScala/target/CIMScala-2.10-1.6.0-1.7.2.jar"); // assumes CIMScala project is peer of CIMApplication
 
         return (ret);
     }
