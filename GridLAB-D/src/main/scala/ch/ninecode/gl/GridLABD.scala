@@ -220,19 +220,197 @@ class GridLABD extends Serializable with Logging
             s
     }
 
+    def emit_pv (solargeneratingunits: List[SolarGeneratingUnit], parent: String, voltage: Double): String =
+    {
+        var load = ""
+        var index = 1
+        for (solargeneratingunit <- solargeneratingunits)
+        {
+            val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
+            val power3 = power / 3 // per phase
+            if (power > 0)
+            {
+                load +=
+                    "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "             name \"" + parent + "_pv_" + index + "\";\n" +
+                    "             parent \"" + parent + "\";\n" +
+                    "             phases ABCN;\n" +
+                    "             constant_power_A -" + power3 + ";\n" +
+                    "             constant_power_B -" + power3 + ";\n" +
+                    "             constant_power_C -" + power3 + ";\n" +
+                    "             nominal_voltage " + voltage + "V;\n" +
+                    "             load_class R;\n" +
+                    "        }\n"
+                index += 1
+            }
+        }
+        load
+    }
+
+    def emit_primary_node (transformers: List[PowerTransformer], name: String): String =
+    {
+        var trafo = ""
+//        for (transformer <- transformers)
+//        {
+//            val id = transformer.id
+//            val voltage = "16000" // ToDo: don't cheat here
+//            trafo +=
+//                "        object node\n" +
+//                "        {\n" +
+//                "            name \"" + name + "\";\n" + // ToDo: handle multiple transformers
+//                "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
+//                "            bustype SWING;\n" +
+//                "            nominal_voltage " + voltage + " V;\n" +
+//                "            voltage_A " + voltage + "+30.0d V;\n" +
+//                "            voltage_B " + voltage + "-90.0d V;\n" +
+//                "            voltage_C " + voltage + "+150.0d V;\n" +
+//                "        };\n"
+//        }
+        trafo
+    }
+
+    def has (string: String): String =
+    {
+        string.substring (0, string.indexOf ("_"))
+    }
+
+    def emit_slack (slack: String, power: Double, parent: String, voltage: Double): String =
+    {
+        "        object meter\n" +
+        "        {\n" +
+        "            name \"" + slack + "\";\n" +
+        "            phases ABCN;\n" +
+        "            bustype SWING;\n" +
+        "            nominal_voltage " + voltage + "V;\n" +
+        "            object player\n" +
+        "            {\n" +
+        "                property \"voltage_A\";\n" +
+        "                file \"meter_data/TRA16716_R.csv\";\n" +
+        "            };\n" +
+        "            object player\n" +
+        "            {\n" +
+        "                property \"voltage_B\";\n" +
+        "                file \"meter_data/TRA16716_S.csv\";\n" +
+        "            };\n" +
+        "            object player\n" +
+        "            {\n" +
+        "                property \"voltage_C\";\n" +
+        "                file \"meter_data/TRA16716_T.csv\";\n" +
+        "            };\n" +
+        "        };\n" +
+        "\n" +
+        "        object recorder {\n" +
+        "            name \"" + has (slack) + "_voltage_recorder\";\n" +
+        "            parent \"" + slack + "\";\n" +
+        "            property voltage_A.real,voltage_A.imag;\n" +
+        "            limit 288;\n" +
+        "            interval 300;\n" +
+        "            file \"" + _TempFilePrefix + slack + "_voltage.csv\";\n" +
+        "        };\n"
+
+//        val power3 = power / 3 // per phase
+//        val base = base_name (slack)
+//        "        object meter\n" +
+//        "        {\n" +
+//        "            name \"" + parent + "\";\n" +
+//        "            phases ABCN;\n" +
+//        "            bustype PQ;\n" +
+//        "            nominal_voltage " + voltage + "V;\n" +
+//        "        };\n" +
+//        "\n" +
+//        "        object load\n" +
+//        "        {\n" +
+//        "             name \"" + parent + "_pv\";\n" +
+//        "             parent \"" + parent + "\";\n" +
+//        "             phases ABCN;\n" +
+//        "             constant_power_A -" + power3 + ";\n" +
+//        "             constant_power_B -" + power3 + ";\n" +
+//        "             constant_power_C -" + power3 + ";\n" +
+//        "             nominal_voltage " + voltage + "V;\n" +
+//        "             load_class R;\n" +
+//        "        }\n" +
+//        "\n" +
+//        "        object recorder {\n" +
+//        "            name \"" + base + "_recorder\";\n" +
+//        "            parent \"" + parent + "\";\n" +
+//        "            property measured_power.real, measured_power.imag;\n" +
+//        "            limit 1440;\n" +
+//        "            interval 60;\n" +
+//        "            file \"" + _TempFilePrefix + base + ".csv\";\n" +
+//        "        };\n" +
+//        "\n" +
+//        "        object recorder {\n" +
+//        "            name \"" + has (parent) + "_voltage_recorder\";\n" +
+//        "            parent \"" + parent + "\";\n" +
+//        "            property voltage_A.real,voltage_A.imag;\n" +
+//        "            limit 288;\n" +
+//        "            interval 300;\n" +
+//        "            file \"" + _TempFilePrefix + parent + "_voltage.csv\";\n" +
+//        "        };\n" +
+//        "\n"
+    }
+
+    def exists (filename: String): Boolean =
+    {
+        val f = new File (filename)
+        f.exists
+    }
+
+    def emit_node (name: String, voltage: Double): String =
+    {
+        "        object meter\n" +
+        "        {\n" +
+        "            name \"" + name + "\";\n" +
+        "            phases ABCN;\n" +
+        "            bustype PQ;\n" +
+        "            nominal_voltage " + voltage + "V;\n" +
+        "        };\n" +
+        // assumes meter data files exist
+        // from Yamshid,
+        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
+        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
+        (if (exists ("meter_data/" + has (name) + "_R.csv"))
+            "\n" +
+            "        object load\n" +
+            "        {\n" +
+            "            name \"" + name + "_load\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            phases ABCN;\n" +
+            "            nominal_voltage " + voltage + "V;\n" +
+            "            object player\n" +
+            "            {\n" +
+            "                property \"constant_current_A\";\n" +
+            "                file \"meter_data/" + has (name) + "_R.csv\";\n" +
+            "            };\n" +
+            "            object player\n" +
+            "            {\n" +
+            "                property \"constant_current_B\";\n" +
+            "                file \"meter_data/" + has (name) + "_S.csv\";\n" +
+            "            };\n" +
+            "            object player\n" +
+            "            {\n" +
+            "                property \"constant_current_C\";\n" +
+            "                file \"meter_data/" + has (name) + "_T.csv\";\n" +
+            "            };\n" +
+            "        };\n"
+        else
+            "") +
+        "\n" +
+        "        object recorder {\n" +
+        "            name \"" + has (name) + "_voltage_recorder\";\n" +
+        "            parent \"" + name + "\";\n" +
+        "            property voltage_A.real,voltage_A.imag;\n" +
+        "            limit 288;\n" +
+        "            interval 300;\n" +
+        "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
+        "        };\n"
+    }
+
     // emit one GridLAB-D node
     def make_node (slack: String, power: Double)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
-        def has (string: String): String =
-        {
-            string.substring (0, string.indexOf ("_"))
-        }
-        def exists (filename: String): Boolean =
-        {
-            val f = new File (filename)
-            f.exists
-        }
-
         val node = arg._1
         val pv = arg._2
         val transformer = arg._3
@@ -240,27 +418,7 @@ class GridLABD extends Serializable with Logging
         {
             case Some (solars) =>
                 val solargeneratingunits = solars.map ((x) => { x.solar }).toList
-                var load = ""
-                for (solargeneratingunit <- solargeneratingunits)
-                {
-                    val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-                    val power3 = power / 3 // per phase
-                    if (power > 0)
-                        load +=
-                            "\n" +
-                            "        object load\n" +
-                            "        {\n" +
-                            "             name \"" + node.id_seq + "_pv\";\n" +
-                            "             parent \"" + node.id_seq + "\";\n" +
-                            "             phases ABCN;\n" +
-                            "             constant_power_A -" + power3 + ";\n" +
-                            "             constant_power_B -" + power3 + ";\n" +
-                            "             constant_power_C -" + power3 + ";\n" +
-                            "             nominal_voltage " + node.voltage + "V;\n" +
-                            "             load_class R;\n" +
-                            "        }\n"
-                }
-                load
+                emit_pv (solargeneratingunits, node.id_seq, node.voltage)
             case None =>
                 ""
         }
@@ -268,121 +426,12 @@ class GridLABD extends Serializable with Logging
         {
             case Some (trafos) =>
                 val transformers = trafos.map ((x) => { x.transformer }).toList
-                var trafo = ""
-                for (transformer <- transformers)
-                {
-                    // make a slack bus
-                    val id = transformer.id
-                    val voltage = "16000" // ToDo: don't cheat here
-                    trafo +=
-                        "        object node\n" +
-                        "        {\n" +
-                        "            name \"" + node.id_seq + "\";\n" +
-                        "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-                        "            bustype SWING;\n" +
-                        "            nominal_voltage " + voltage + " V;\n" +
-                        "            voltage_A " + voltage + "+30.0d V;\n" +
-                        "            voltage_B " + voltage + "-90.0d V;\n" +
-                        "            voltage_C " + voltage + "+150.0d V;\n" +
-                        "        };\n"
-                }
-                trafo + loads
+                emit_primary_node (transformers, node.id_seq) + loads
             case None =>
                 if (node.id_seq == slack)
-                {
-                    val power3 = power / 3 // per phase
-                    val base = base_name (slack)
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + node.id_seq + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            bustype PQ;\n" +
-                    "            nominal_voltage " + node.voltage + "V;\n" +
-                    "        };\n" +
-                    "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "             name \"" + node.id_seq + "_pv\";\n" +
-                    "             parent \"" + node.id_seq + "\";\n" +
-                    "             phases ABCN;\n" +
-                    "             constant_power_A -" + power3 + ";\n" +
-                    "             constant_power_B -" + power3 + ";\n" +
-                    "             constant_power_C -" + power3 + ";\n" +
-                    "             nominal_voltage " + node.voltage + "V;\n" +
-                    "             load_class R;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "        object recorder {\n" +
-                    "            name \"" + base + "_recorder\";\n" +
-                    "            parent \"" + node.id_seq + "\";\n" +
-                    "            property measured_power.real, measured_power.imag;\n" +
-                    "            limit 1440;\n" +
-                    "            interval 60;\n" +
-                    "            file \"" + _TempFilePrefix + base + ".csv\";\n" +
-                    "        };\n" +
-                    "\n" +
-                    "        object recorder {\n" +
-                    "            name \"" + has (node.id_seq) + "_voltage_recorder\";\n" +
-                    "            parent \"" + node.id_seq + "\";\n" +
-                    "            property voltage_A.real,voltage_A.imag;\n" +
-                    "            limit 288;\n" +
-                    "            interval 300;\n" +
-                    "            file \"" + _TempFilePrefix + node.id_seq + "_voltage.csv\";\n" +
-                    "        };\n" +
-                    "\n" +
-                    loads
-                }
+                    emit_slack (slack, power, node.id_seq, node.voltage) + loads
                 else
-                {
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + node.id_seq + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            bustype PQ;\n" +
-                    "            nominal_voltage " + node.voltage + "V;\n" +
-                    "        };\n" +
-                    // assumes meter data files exist
-                    // from Yamshid,
-                    // then: sed -i.bak '/Timestamp/d' *.csv
-                    // and then: sed -i.bak 's/\"//g' *.csv
-                    (if (exists ("meter_data/" + has (node.id_seq) + "_R.csv"))
-                        "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + node.id_seq + "_load\";\n" +
-                        "            parent \"" + node.id_seq + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            nominal_voltage " + node.voltage + "V;\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_current_A\";\n" +
-                        "                file \"meter_data/" + has (node.id_seq) + "_R.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_current_B\";\n" +
-                        "                file \"meter_data/" + has (node.id_seq) + "_S.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_current_C\";\n" +
-                        "                file \"meter_data/" + has (node.id_seq) + "_T.csv\";\n" +
-                        "            };\n" +
-                        "        };\n" +
-                        "\n" +
-                        "        object recorder {\n" +
-                        "            name \"" + has (node.id_seq) + "_voltage_recorder\";\n" +
-                        "            parent \"" + node.id_seq + "\";\n" +
-                        "            property voltage_A.real,voltage_A.imag;\n" +
-                        "            limit 288;\n" +
-                        "            interval 300;\n" +
-                        "            file \"" + _TempFilePrefix + node.id_seq + "_voltage.csv\";\n" +
-                        "        };\n"
-                    else
-                        "") +
-                    "\n" +
-                    loads
-                }
+                    emit_node (node.id_seq, node.voltage) + loads
             }
 
         return (ret)
@@ -400,7 +449,8 @@ class GridLABD extends Serializable with Logging
                     case "ACLineSegment" =>
                         line.emit (edges)
                     case "PowerTransformer" =>
-                        trans.emit (edges)
+//                        trans.emit (edges)
+                        ""
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
                         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
@@ -615,7 +665,7 @@ class GridLABD extends Serializable with Logging
         // get the node strings
         val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
-        val n_strings = qq.map (make_node (starting_node, power))
+        val n_strings = qq.map (make_node ("SAM34179_topo" /*starting_node*/, power)) // ToDo: better way to handle all HAS
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -848,6 +898,63 @@ class GridLABD extends Serializable with Logging
 
         return (ret)
     }
+
+    case class DataPoint (
+        node: String,
+        timestamp: Long,
+        r: Complex,
+        s: Complex,
+        t: Complex)
+
+    def read_datapoint (sqlContext: SQLContext, filename: String): RDD[DataPoint] =
+    {
+        def toTimeStamp (string: String): Long =
+        {
+            // ToDo: unkludge this assumption of CET
+            javax.xml.bind.DatatypeConverter.parseDateTime (string.replace (" CET", "").replace (" ", "T")).getTimeInMillis ()
+        }
+
+        val node = filename.substring (0, filename.indexOf ('.'))
+        val customSchema = StructType (
+            Array
+            (
+                // "Timestamp","R_Mod","R_Ang","S_Mod","S_Ang","T_Mod","T_Ang"
+                // "2015-11-18 12:00:00",0.198788486176047,83.4268614094015,0.194118852729444,70.3877147789223,0.420925355009587,5.30872600027156
+                // "2015-11-18 12:05:00",0.210957266522948,82.5091613689104,0.199117955836656,73.3358437157651,0.425782866971673,3.81119591963858
+                StructField ("Timestamp", StringType, true),
+                StructField ("R_Mod", DoubleType, true),
+                StructField ("R_Ang", DoubleType, true),
+                StructField ("S_Mod", DoubleType, true),
+                StructField ("S_Ang", DoubleType, true),
+                StructField ("T_Mod", DoubleType, true),
+                StructField ("T_Ang", DoubleType, true)
+            )
+        )
+
+        val df = sqlContext.read
+            .format ("com.databricks.spark.csv")
+            .option ("header", "true")
+            .option ("comment", "#")
+            .schema (customSchema)
+            .load (filename)
+
+        df.map { r => DataPoint (
+            node,
+            toTimeStamp (r.getString (0)),
+            Complex.fromPolar (r.getDouble (1), r.getDouble (2), true),
+            Complex.fromPolar (r.getDouble (3), r.getDouble (4), true),
+            Complex.fromPolar (r.getDouble (5), r.getDouble (6), true)
+            ) }
+    }
+
+//    def read_players (sc: SparkContext, sqlContext: SQLContext, directory: String): RDD[DataPoint] =
+//    {
+//        val measurements = list_files (directory)
+//        val ret = for (x <- measurements; if x.endsWith (".csv"))
+//            yield read_datapoint (sqlContext, x)
+//val ss = sc.parallelize (ret)
+//        return (ss)
+//    }
 }
 
 object GridLABD
