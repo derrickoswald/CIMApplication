@@ -68,7 +68,7 @@ class GridLABDSuite extends fixture.FunSuite
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Transformer],
             classOf[ch.ninecode.gl.Solution],
-            classOf[ch.ninecode.gl.ComplexDataElement]))
+            classOf[ch.ninecode.gl.ThreePhaseComplexVoltageDataElement]))
 
         val context = new SparkContext (configuration)
         context.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -117,7 +117,7 @@ class GridLABDSuite extends fixture.FunSuite
             statement.executeUpdate ("drop table if exists simulation")
             statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house text, power double, time text)")
             statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, node text, time text, vreal double, vimag double)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, element text, time text, real_a double, imag_a double, real_b double, imag_b double, real_c double, imag_c double, units text)")
             statement.close ()
 
             // insert the simulation
@@ -133,15 +133,22 @@ class GridLABDSuite extends fixture.FunSuite
             val id = resultset.getInt ("id")
 
             // insert the results
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, time, vreal, vimag) values (?, ?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             for (solution ← results.collect) {
-                val c = Complex.fromPolar (solution.voltA_mag, solution.voltA_angle)
+                val a = Complex.fromPolar (solution.voltA_mag, solution.voltA_angle)
+                val b = Complex.fromPolar (solution.voltB_mag, solution.voltB_angle)
+                val c = Complex.fromPolar (solution.voltC_mag, solution.voltC_angle)
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, solution.node)
                 datainsert.setTimestamp (4, new Timestamp (t1.getTimeInMillis))
-                datainsert.setDouble (5, c.re)
-                datainsert.setDouble (6, c.im)
+                datainsert.setDouble (5, a.re)
+                datainsert.setDouble (6, a.im)
+                datainsert.setDouble (7, b.re)
+                datainsert.setDouble (8, b.im)
+                datainsert.setDouble (9, c.re)
+                datainsert.setDouble (10, c.im)
+                datainsert.setString (11, "Volts")
                 datainsert.executeUpdate ()
             }
             return (id)
@@ -167,20 +174,50 @@ class GridLABDSuite extends fixture.FunSuite
 
     }
 
-    def store_rdd (connection: Connection, id: Int, rdd: RDD[ComplexDataElement]): Unit =
+    def store_rdd (connection: Connection, id: Int, rdd: RDD[ThreePhaseComplexVoltageDataElement]): Unit =
     {
         // insert the results
         connection.setAutoCommit (false)
         val node = rdd.name.substring (0, rdd.name.length() - "_voltage.csv".length ())
-        val datainsert = connection.prepareStatement ("insert into results (id, simulation, node, time, vreal, vimag) values (?, ?, ?, ?, ?, ?)")
+        val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         for (dataitem ← rdd.collect)
         {
             datainsert.setNull (1, Types.INTEGER)
             datainsert.setInt (2, id)
             datainsert.setString (3, node)
             datainsert.setTimestamp (4, new Timestamp (dataitem.millis))
-            datainsert.setDouble (5, dataitem.value.re)
-            datainsert.setDouble (6, dataitem.value.im)
+            datainsert.setDouble (5, dataitem.value_a.re)
+            datainsert.setDouble (6, dataitem.value_a.im)
+            datainsert.setDouble (7, dataitem.value_b.re)
+            datainsert.setDouble (8, dataitem.value_b.im)
+            datainsert.setDouble (9, dataitem.value_c.re)
+            datainsert.setDouble (10, dataitem.value_c.im)
+            datainsert.setString (11, "Volts")
+            datainsert.executeUpdate ()
+        }
+        connection.commit ()
+    }
+
+    // ToDo: fix this duplication
+    def store_rdd2 (connection: Connection, id: Int, rdd: RDD[ThreePhaseComplexCurrentDataElement]): Unit =
+    {
+        // insert the results
+        connection.setAutoCommit (false)
+        val node = rdd.name.substring (0, rdd.name.length() - "_current.csv".length ())
+        val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        for (dataitem ← rdd.collect)
+        {
+            datainsert.setNull (1, Types.INTEGER)
+            datainsert.setInt (2, id)
+            datainsert.setString (3, node)
+            datainsert.setTimestamp (4, new Timestamp (dataitem.millis))
+            datainsert.setDouble (5, dataitem.value_a.re)
+            datainsert.setDouble (6, dataitem.value_a.im)
+            datainsert.setDouble (7, dataitem.value_b.re)
+            datainsert.setDouble (8, dataitem.value_b.im)
+            datainsert.setDouble (9, dataitem.value_c.re)
+            datainsert.setDouble (10, dataitem.value_c.im)
+            datainsert.setString (11, "Amps")
             datainsert.executeUpdate ()
         }
         connection.commit ()
@@ -201,9 +238,15 @@ class GridLABDSuite extends fixture.FunSuite
             {
                 if (x.endsWith ("_voltage.csv"))
                 {
-                    val data = gridlabd.read_records (sql_context, x)
+                    val data = gridlabd.read_voltage_records (sql_context, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     store_rdd (connection, id, data)
+                }
+                else if (x.endsWith ("_current.csv"))
+                {
+                    val data = gridlabd.read_current_records (sql_context, x)
+                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    store_rdd2 (connection, id, data)
                 }
             }
 

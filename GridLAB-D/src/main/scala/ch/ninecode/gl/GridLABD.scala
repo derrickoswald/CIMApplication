@@ -72,7 +72,8 @@ case class Transformer (node: String, transformer: PowerTransformer)
 
 // output
 case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
-case class ComplexDataElement (millis: Long, value: Complex)
+case class ThreePhaseComplexVoltageDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
+case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
 
 class GridLABD extends Serializable with Logging
 {
@@ -304,7 +305,7 @@ class GridLABD extends Serializable with Logging
         "        object recorder {\n" +
         "            name \"" + has (slack) + "_voltage_recorder\";\n" +
         "            parent \"" + slack + "\";\n" +
-        "            property voltage_A.real,voltage_A.imag;\n" +
+        "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            limit 288;\n" +
         "            interval 300;\n" +
         "            file \"" + _TempFilePrefix + slack + "_voltage.csv\";\n" +
@@ -401,7 +402,7 @@ class GridLABD extends Serializable with Logging
         "        object recorder {\n" +
         "            name \"" + has (name) + "_voltage_recorder\";\n" +
         "            parent \"" + name + "\";\n" +
-        "            property voltage_A.real,voltage_A.imag;\n" +
+        "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            limit 288;\n" +
         "            interval 300;\n" +
         "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
@@ -447,7 +448,16 @@ class GridLABD extends Serializable with Logging
                 clazz match
                 {
                     case "ACLineSegment" =>
-                        line.emit (edges)
+                        line.emit (edges) +
+                        "\n" +
+                        "        object recorder {\n" +
+                        "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+                        "            parent \"" + edge.id_equ + "\";\n" +
+                        "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
+                        "            limit 288;\n" +
+                        "            interval 300;\n" +
+                        "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
+                        "        };\n"
                     case "PowerTransformer" =>
 //                        trans.emit (edges)
                         ""
@@ -781,7 +791,7 @@ class GridLABD extends Serializable with Logging
         return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
-    def read_records (sqlContext: SQLContext, filename: String): RDD[ComplexDataElement] =
+    def read_voltage_records (sqlContext: SQLContext, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -793,8 +803,12 @@ class GridLABD extends Serializable with Logging
             Array
             (
                 StructField ("timestamp", StringType, true),
-                StructField ("real", DoubleType, true),
-                StructField ("imag", DoubleType, true)
+                StructField ("voltage_A.real", DoubleType, true),
+                StructField ("voltage_A.imag", DoubleType, true),
+                StructField ("voltage_B.real", DoubleType, true),
+                StructField ("voltage_B.imag", DoubleType, true),
+                StructField ("voltage_C.real", DoubleType, true),
+                StructField ("voltage_C.imag", DoubleType, true)
             )
         )
 
@@ -805,7 +819,38 @@ class GridLABD extends Serializable with Logging
             .schema (customSchema)
             .load (filename)
 
-        df.map { r => ComplexDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2))) }
+        df.map { r => ThreePhaseComplexVoltageDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) }
+    }
+
+    def read_current_records (sqlContext: SQLContext, filename: String): RDD[ThreePhaseComplexCurrentDataElement] =
+    {
+        def toTimeStamp (string: String): Long =
+        {
+            // ToDo: unkludge this assumption of CET
+            javax.xml.bind.DatatypeConverter.parseDateTime (string.replace (" CET", "").replace (" ", "T")).getTimeInMillis ()
+        }
+
+        val customSchema = StructType (
+            Array
+            (
+                StructField ("timestamp", StringType, true),
+                StructField ("current_in_A.real", DoubleType, true),
+                StructField ("current_in_A.imag", DoubleType, true),
+                StructField ("current_in_B.real", DoubleType, true),
+                StructField ("current_in_B.imag", DoubleType, true),
+                StructField ("current_in_C.real", DoubleType, true),
+                StructField ("current_in_C.imag", DoubleType, true)
+            )
+        )
+
+        val df = sqlContext.read
+            .format ("com.databricks.spark.csv")
+            .option ("header", "true")
+            .option ("comment", "#")
+            .schema (customSchema)
+            .load (filename)
+
+        df.map { r => ThreePhaseComplexCurrentDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) }
     }
 
     def check (input: String): Boolean =
@@ -884,9 +929,15 @@ class GridLABD extends Serializable with Logging
             val outputs = list_files (_TempFilePrefix)
             for (x <- outputs)
             {
-                if (x.endsWith (".csv"))
+                if (x.endsWith ("_voltage.csv"))
                 {
-                    val data = read_records (sqlContext, x)
+                    val data = read_voltage_records (sqlContext, x)
+                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    data.cache ()
+                }
+                else if (x.endsWith ("_current.csv"))
+                {
+                    val data = read_current_records (sqlContext, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     data.cache ()
                 }
