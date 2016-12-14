@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>CIMApplication</artifactId>
+        <groupId>ch.ninecode.cim</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>SmartMeter</artifactId>
+    <groupId>ch.ninecode.sm</groupId>
+    <name>SmartMeter</name>
+    <description>Show where repeaters are needed to connect smart meters.</description>
+    <inceptionYear>2016</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/SmartMeter</url>
+
+    <properties>
+        <encoding>UTF-8</encoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <version.dependency.scala>2.10</version.dependency.scala>
+        <scala.compat.version>2.10</scala.compat.version>
+        <version.dependency.scalalibrary>2.10.5</version.dependency.scalalibrary>
+        <version.dependency.scalatest>3.0.0-M14</version.dependency.scalatest>
+        <version.dependency.junit>4.11</version.dependency.junit>
+        <version.dependency.spark>1.6.0</version.dependency.spark>
+        <version.dependency.cimscala>2.10-1.6.0-1.7.2</version.dependency.cimscala>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${version.dependency.scalalibrary}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.scalatest}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.dependency.junit}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${version.dependency.scala}</artifactId>
+            <scope>provided</scope>
+            <version>${version.dependency.spark}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMScala</artifactId>
+            <version>${version.dependency.cimscala}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${version.dependency.scala}</artifactId>
+            <scope>provided</scope>
+            <version>${version.dependency.spark}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive-thriftserver_${version.dependency.scala}</artifactId>
+            <scope>provided</scope>
+            <version>${version.dependency.spark}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-graphx_${version.dependency.scala}</artifactId>
+            <scope>provided</scope>
+            <version>${version.dependency.spark}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <!-- see http://davidb.github.com/scala-maven-plugin -->
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <args>
+                                <arg>-deprecation</arg>
+                                <arg>-dependencyfile</arg>
+                                <arg>${project.build.directory}/.scala_dependencies</arg>
+                            </args>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- disable surefire -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.18.1</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>SmartMeterSuite.txt</filereports>
+                    <suites>ch.ninecode.sm.SmartMeterSuite</suites>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

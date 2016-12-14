@@ -32,7 +32,7 @@ import ch.ninecode.cim.connector.CIMMappedRecord;
 @Path("/ejb")
 public class SimpleRESTEJB
 {
-    @Resource (lookup="java:comp/env/eis/SparkConnectionFactory")
+    //@Resource (lookup="java:comp/env/eis/SparkConnectionFactory")
     //@Resource (name = "java:comp/env/eis/SparkConnectionFactory", type = ConnectionFactory.class)
     CIMConnectionFactory factory;
 

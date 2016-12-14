@@ -127,6 +127,8 @@ public class CIMManagedConnection implements ManagedConnection
         // create the configuration
         SparkConf configuration = new SparkConf (false);
         configuration.setAppName ("CIMConnector");
+        configuration.set ("spark.driver.userClassPathFirst", "false"); // default
+        configuration.set ("spark.executor.userClassPathFirst", "false"); // default
         configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
         // set up the spark master

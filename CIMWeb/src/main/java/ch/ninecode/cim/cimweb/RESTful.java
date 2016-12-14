@@ -34,12 +34,12 @@ public class RESTful
     protected static final String OK = "OK";
     protected static final String FAIL = "FAIL";
 
-//    @Resource
-//    (
-//        description = "Connection factory for Spark connection using CIMConnector",
-//        lookup = "java:app/eis/SparkConnectionFactory", // "openejb:Resource/CIMConnector.rar"
-//        authenticationType = Resource.AuthenticationType.APPLICATION
-//    )
+    @Resource
+    (
+        description = "Connection factory for Spark connection using CIMConnector",
+        lookup = "java:app/eis/SparkConnectionFactory", // "openejb:Resource/CIMConnector.rar"
+        authenticationType = Resource.AuthenticationType.APPLICATION
+    )
     protected CIMConnectionFactory _ConnectionFactory = null;
 
     public class RESTfulResult
@@ -200,7 +200,7 @@ public class RESTful
                     Context context = new InitialContext (properties);
                     print_context (out, context, "java:");
                     print_context (out, context, "openejb:");
-                    _ConnectionFactory = (CIMConnectionFactory) context.lookup ("java:/app/eis/SparkConnectionFactory"); // "openejb:Resource/CIMConnector.rar");
+                    _ConnectionFactory = (CIMConnectionFactory) context.lookup ("openejb:Resource/CIMConnector.rar");
                 }
                 catch (NameNotFoundException nnfe)
                 {
