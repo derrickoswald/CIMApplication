@@ -195,22 +195,46 @@ class SmartMeter extends Serializable with Logging
         return (Graph.apply[PreNode, PreEdge] (nodes.map (make_graph_vertices), real_edges.map (make_graph_edges), PreNode ("", 0.0), _StorageLevel, _StorageLevel))
     }
 
-    def node_JSON (node: PreNode): String =
+    def node_JSON (node: FinalNodeData): String =
     {
-        "{ \"name\": \"" + node.id_seq + "\", \"voltage\": " + node.voltage + " }"
+        val name = node.id_seq
+        val index1 = name.indexOf ("_")
+        val id = if (0 < index1) name.substring (0, index1) else name
+        val neighbor = node.neighbor
+        val index2 = neighbor.indexOf ("_")
+        val nid = if (0 < index2) neighbor.substring (0, index2) else neighbor
+        "{ \"name\": \"" + id + "\", \"voltage\": " + node.voltage + ", \"neighbor\": \"" + nid + "\", \"total_distance\": " + node.total_distance + ", \"nearest_distance\": " + node.nearest_distance + " }"
     }
 
-    def make_JSON (nodes: RDD[PreNode], edges: RDD[PreEdge]): String =
+    def edge_JSON (edge: PreEdge): String =
     {
-        return ("[ " + nodes.map (node_JSON).fold ("")((x: String, y: String) => x + (if ("" == x) "" else ", ") + y) + " ]")
+        val id1 = edge.id_cn_1
+        val index1 = id1.indexOf ("_")
+        val cn1 = if (0 < index1) id1.substring (0, index1) else id1
+        val id2 = edge.id_cn_2
+        val index2 = id2.indexOf ("_")
+        val cn2 = if (0 < index2) id2.substring (0, index2) else id2
+        "{ \"name\": \"" + edge.id_equ + "\", \"cn1\": \"" + cn1 + "\", \"cn2\": \"" + cn2 + "\"" + " }"
+    }
+
+    def make_JSON (nodes: RDD[FinalNodeData], edges: RDD[PreEdge]): String =
+    {
+        val nodestring = nodes.map (node_JSON).fold ("")((x: String, y: String) => x + (if ("" == x) "" else ", ") + y)
+        val edgestring = edges.map (edge_JSON).fold ("")((x: String, y: String) => x + (if ("" == x) "" else ", ") + y)
+        return ("{ \"nodes\": [ " + nodestring + " ], \"edges\": [ " + edgestring + " ] }")
     }
 
     def run (sc: SparkContext, sqlContext: SQLContext, starting_node: String): String =
     {
         val pn = PreNode ("", 0.0) // just to access the vertex_id function
-        val start_at = Array[VertexId] (pn.vertex_id (starting_node))
+        val use_topological_nodes = true
 
-        val initial = prepare (sc, sqlContext, false)
+        val initial = prepare (sc, sqlContext, use_topological_nodes)
+
+        // get the ConnectivityNode corresponding to the given starting node
+        val terminal = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter ((terminal) => terminal.ConductingEquipment == starting_node).first
+        val start_at = Array[VertexId] (pn.vertex_id (if (use_topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
+
         val trace = new Trace (initial)
         val (traced_nodes, traced_edges) = trace.run (start_at)
 

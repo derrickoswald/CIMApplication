@@ -102,14 +102,14 @@ class SmartMeterSuite extends fixture.FunSuite
         val sql_context: SQLContext = a._SQLContext
 
         val filename =
-            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Wildenrueti_V9" + ".rdf"
 
         val elements = readFile (sql_context, filename)
 
         val read = System.nanoTime ()
 
         val smart = new SmartMeter ()
-        val text = smart.run (context, sql_context, "ABG169410_node")
+        val text = smart.run (context, sql_context, "ABG91246")
         println (text)
 
         val process = System.nanoTime ()

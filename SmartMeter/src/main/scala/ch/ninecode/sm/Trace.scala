@@ -36,6 +36,24 @@ case class NodeData
     nearest_distance: Double
 )
 
+case class AugmentedNodeData
+(
+    id_seq: String,
+    voltage: Double,
+    neighbor: VertexId,
+    total_distance: Double,
+    nearest_distance: Double
+)
+
+case class FinalNodeData
+(
+    id_seq: String,
+    voltage: Double,
+    neighbor: String,
+    total_distance: Double,
+    nearest_distance: Double
+)
+
 /**
  * Distance trace.
  * Concept:
@@ -118,19 +136,16 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable with Logging
         var ret:Iterator[(VertexId, NodeData)] = Iterator.empty
 
         if (null == triplet.dstAttr) // a message is needed if the destination NodeData is null
-            if (null == triplet.srcAttr)
-                logError ("source and destination node data are both null")
-            else
+        {
+            if (null != triplet.srcAttr)
                 if (shouldContinue (triplet.attr.element))
                 {
                     val hop = span (triplet.attr.element)
                     ret = Iterator ((triplet.dstId, NodeData (triplet.srcId, triplet.srcAttr.total_distance + hop, hop)))
                 }
-
-        if (null == triplet.srcAttr) // a message is needed in the reverse direction if the source NodeData is null
-            if (null == triplet.dstAttr)
-                logError ("source and destination node data are both null")
-            else
+        }
+        else
+            if (null == triplet.srcAttr) // a message is needed in the reverse direction if the source NodeData is null
                 if (shouldContinue (triplet.attr.element))
                 {
                     val hop = span (triplet.attr.element)
@@ -181,7 +196,8 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable with Logging
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2 != null)
-        val traced_nodes = touched.join (initial.vertices).map ((x) => (x._1, x._2._2))
+        val traced_nodes = touched.join (initial.vertices)
+        val just_traced_nodes = traced_nodes.map ((x) => (x._1, x._2._2))
 
         // get the list of edges
         val edges = initial.edges.map (_.attr)
@@ -204,8 +220,8 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable with Logging
         // singly-connected edges that are not transformers.
 
         // get the edges with their connected nodes
-        val one = edges.keyBy ((x) => x.vertex_id (x.id_cn_1)).leftOuterJoin (traced_nodes).values
-        val two = one.keyBy ((x) => x._1.vertex_id (x._1.id_cn_2)).leftOuterJoin (traced_nodes).values.map ((x) => (x._1._1, x._1._2, x._2))
+        val one = edges.keyBy ((x) => x.vertex_id (x.id_cn_1)).leftOuterJoin (just_traced_nodes).values
+        val two = one.keyBy ((x) => x._1.vertex_id (x._1.id_cn_2)).leftOuterJoin (just_traced_nodes).values.map ((x) => (x._1._1, x._1._2, x._2))
 
         // filter out non-transformer leaf edges
         val traced_edges = two.filter (keep).map (_._1)
@@ -213,7 +229,35 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable with Logging
         // create a more complete list of traced nodes using the edge list
         val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (initial.vertices.values.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
 
-        (all_traced_nodes, traced_edges)
+        // join the traced nodes with their vertex data
+        def ff (a: Tuple2[PreNode, Option[NodeData]]) =
+        {
+            val node = a._1
+            val data = a._2
+            data match
+            {
+                case Some (data) =>
+                    new AugmentedNodeData (node.id_seq, node.voltage, data.neighbor, data.total_distance, data.nearest_distance)
+                case None =>
+                    new AugmentedNodeData (node.id_seq, node.voltage, 0L, 0.0, 0.0)
+            }
+        }
+        val traced_nodes_plus = all_traced_nodes.keyBy ((a) => a.vertex_id (a.id_seq)).leftOuterJoin (touched).values.map (ff)
+        def gg (a: Tuple2[AugmentedNodeData, Option[PreNode]]) =
+        {
+            val data = a._1
+            val node = a._2
+            node match
+            {
+                case Some (node) =>
+                    new FinalNodeData (data.id_seq, data.voltage, node.id_seq, data.total_distance, data.nearest_distance)
+                case None =>
+                    new FinalNodeData (data.id_seq, data.voltage, "", data.total_distance, data.nearest_distance)
+            }
+        }
+        val final_traced_nodes = traced_nodes_plus.keyBy (_.neighbor).leftOuterJoin (just_traced_nodes).values.map (gg)
+
+        (final_traced_nodes, traced_edges)
     }
 
 }
