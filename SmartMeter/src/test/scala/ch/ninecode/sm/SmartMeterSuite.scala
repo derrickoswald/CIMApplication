@@ -108,7 +108,7 @@ class SmartMeterSuite extends fixture.FunSuite
 
         val read = System.nanoTime ()
 
-        val smart = new SmartMeter ()
+        val smart = SmartMeter ()
         val text = smart.run (context, sql_context, "ABG91246")
         println (text)
 

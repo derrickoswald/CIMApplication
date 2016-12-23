@@ -2,6 +2,24 @@ package ch.ninecode.sm
 
 import scala.collection.Map
 
+import java.io.File
+import java.io.UnsupportedEncodingException
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.HashMap
+import java.util.TimeZone
+import javax.xml.bind.DatatypeConverter
+
+import scala.collection.Map
+import scala.Iterator
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+
 import org.apache.spark.Logging
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.EdgeTriplet
@@ -12,8 +30,29 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
+import org.apache.commons.io.FileUtils
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.spark.Logging
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.graphx.EdgeDirection
+import org.apache.spark.graphx.EdgeTriplet
+import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.Graph.graphToGraphOps
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
+import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.model._
+import ch.ninecode.cim.TopologicalData
+import ch.ninecode.cim.CuttingEdge
+import ch.ninecode.cim.Extremum
+import ch.ninecode.cim.DefaultSource
 
 class SmartMeter extends Serializable with Logging
 {
@@ -242,3 +281,94 @@ class SmartMeter extends Serializable with Logging
     }
 
 }
+
+object SmartMeter
+{
+    def jarForObject (obj: Object): String =
+    {
+        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+        try
+        {
+            ret = URLDecoder.decode (ret, "UTF-8")
+        }
+        catch
+        {
+            case e: UnsupportedEncodingException => e.printStackTrace ()
+        }
+        if (!ret.toLowerCase ().endsWith (".jar"))
+        {
+            // as an aid to debugging, make jar in tmp and pass that name
+            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
+            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
+            writer.close ()
+            ret = name
+        }
+
+        return (ret)
+    }
+
+    def main (args: Array[String])
+    {
+        val smart = new SmartMeter ();
+        val filename = if (args.length > 0)
+            args (0)
+        else
+            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_Wildenrueti_V9" + ".rdf"
+
+        val starting_node = if (args.length > 1)
+            args (1)
+        else
+            "ABG91246"
+
+        val start = System.nanoTime ()
+
+        // create the configuration
+        val configuration = new SparkConf (false)
+        configuration.setAppName ("SmartMeter")
+        configuration.setMaster ("spark://sandbox:7077")
+        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
+        configuration.set ("spark.driver.memory", "2g")
+        configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
+        // get the necessary jar files to send to the cluster
+        val s1 = jarForObject (new DefaultSource ())
+        val s2 = jarForObject (smart)
+        configuration.setJars (Array (s1, s2))
+
+        // register low level classes
+        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
+
+        // make a Spark context and SQL context
+        val _Context = new SparkContext (configuration)
+        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        val _SqlContext = new SQLContext (_Context)
+
+        val setup = System.nanoTime ()
+
+        val files = filename.split (",")
+        val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        options.put ("ch.ninecode.cim.do_topo_islands", "true")
+        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val count = elements.count
+
+        val read = System.nanoTime ()
+
+        smart._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+
+        val result = smart.run (_Context, _SqlContext, starting_node)
+
+        val graph = System.nanoTime ()
+
+        println (result)
+
+        println ("" + count + " elements")
+        println ("setup : " + (setup - start) / 1e9 + " seconds")
+        println ("read : " + (read - setup) / 1e9 + " seconds")
+        println ("graph: " + (graph - read) / 1e9 + " seconds")
+        println ()
+    }
+}
+
