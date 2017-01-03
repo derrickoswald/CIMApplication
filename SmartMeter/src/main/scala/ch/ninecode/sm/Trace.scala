@@ -5,7 +5,6 @@ import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
-import org.apache.spark.Logging
 
 import ch.ninecode.model._
 
@@ -64,7 +63,7 @@ case class FinalNodeData
  *   (Note: there is no backtrack, so it really ony works for acyclic graphs).
  *
  */
-class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable with Logging
+class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
     def vertexProgram (starting_nodes: Array[VertexId]) (id: VertexId, v: NodeData, message: NodeData): NodeData =
     {

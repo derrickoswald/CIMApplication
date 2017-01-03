@@ -6,21 +6,19 @@ import java.util.Map
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture
 
-import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
 class ShortCircuitSuite extends fixture.FunSuite
 {
-    case class ContextPair (_SparkContext: SparkContext, _SQLContext: SQLContext)
-
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 
-    type FixtureParam = ContextPair
+    type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
@@ -44,22 +42,18 @@ class ShortCircuitSuite extends fixture.FunSuite
         // register short circuit inner classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
 
-        val context = new SparkContext (configuration)
-        context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val sql_context = new SQLContext (context)
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         try
         {
-            withFixture (test.toNoArgTest (ContextPair (context, sql_context))) // "loan" the fixture to the test
+            withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
-        finally context.stop () // clean up the fixture
+        finally session.stop () // clean up the fixture
     }
 
     test ("Basic")
     {
-        a: ContextPair ⇒
-
-        val context: SparkContext = a._SparkContext
-        val sql_context: SQLContext = a._SQLContext
+        session: SparkSession ⇒
 
         // val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
         val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
@@ -67,21 +61,22 @@ class ShortCircuitSuite extends fixture.FunSuite
         val start = System.nanoTime ()
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
         options.put ("ch.ninecode.cim.do_join", "false");
-        val elements = sql_context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
 
         val shortcircuit = new ShortCircuit ()
         shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        shortcircuit.preparation (context, sql_context, "csv=" + FILE_DEPOT + "KS_Leistungen.csv")
+        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=" + FILE_DEPOT + "KS_Leistungen.csv")
 
         val prep = System.nanoTime ()
 
-        val rdd = shortcircuit.stuff (context, sql_context, "transformer=all") // TRA5401
+        val rdd = shortcircuit.stuff (session.sparkContext, session.sqlContext, "transformer=all") // TRA5401
 
         val graph = System.nanoTime ()
 

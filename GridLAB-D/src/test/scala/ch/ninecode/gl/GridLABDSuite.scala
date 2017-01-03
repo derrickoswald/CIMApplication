@@ -23,6 +23,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture
@@ -32,11 +33,9 @@ import ch.ninecode.model._
 
 class GridLABDSuite extends fixture.FunSuite
 {
-    case class ContextPair (_SparkContext: SparkContext, _SQLContext: SQLContext)
-
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 
-    type FixtureParam = ContextPair
+    type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
@@ -70,33 +69,29 @@ class GridLABDSuite extends fixture.FunSuite
             classOf[ch.ninecode.gl.Solution],
             classOf[ch.ninecode.gl.ThreePhaseComplexVoltageDataElement]))
 
-        val context = new SparkContext (configuration)
-        context.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val sql_context = new SQLContext (context)
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val end = System.nanoTime ()
         println ("setup : " + (end - start) / 1e9 + " seconds")
         try
         {
-            withFixture (test.toNoArgTest (ContextPair (context, sql_context))) // "loan" the fixture to the test
+            withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
-        finally context.stop () // clean up the fixture
+        finally session.stop () // clean up the fixture
     }
 
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "true")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-        val plan = element.queryExecution
-        val test = plan.toString ()
-        if (!test.contains ("InputPaths"))
-            throw new Exception ("input file not found: " + filename + "\n" + test)
 
         return (element)
     }
@@ -274,12 +269,9 @@ class GridLABDSuite extends fixture.FunSuite
 
     test ("Basic")
     {
-        a: ContextPair ⇒
+        session: SparkSession ⇒
 
         val start = System.nanoTime ()
-
-        val context: SparkContext = a._SparkContext
-        val sql_context: SQLContext = a._SQLContext
 
         val filename =
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Guemligen" + ".rdf"
@@ -290,8 +282,8 @@ class GridLABDSuite extends fixture.FunSuite
 
 //        "," +
 //        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
-        val elements = readFile (sql_context, filename)
-
+        val elements = readFile (session.sqlContext, filename)
+        println (elements.count () + " elements")
         val read = System.nanoTime ()
 
         // set up for execution
@@ -315,7 +307,7 @@ class GridLABDSuite extends fixture.FunSuite
         val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
         val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
 
-        val result = gridlabd.export (context, sql_context,
+        val result = gridlabd.export (session.sparkContext, session.sqlContext,
             "equipment=" + house +
             ",power=" + power +
             ",topologicalnodes=true" +
@@ -327,9 +319,9 @@ class GridLABDSuite extends fixture.FunSuite
 
         val file = Paths.get (house + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
-        val results = gridlabd.solve (context, sql_context, house)
+        val results = gridlabd.solve (session.sparkContext, session.sqlContext, house)
         val id = store (house, power, t1, results)
-        load_and_store (sql_context: SQLContext, gridlabd: GridLABD, id)
+        load_and_store (session.sqlContext, gridlabd, id)
 
         val write = System.nanoTime ()
 

@@ -68,27 +68,11 @@ public class CIMInteractionImpl implements Interaction
     {
         String[] files = filename.split (",");
         HashMap<String,String> options = new HashMap<> ();
+        options.put ("path", filename);
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "true");
         options.put ("ch.ninecode.cim.do_join", "true");
         DataFrame element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
-        QueryExecution plan = element.queryExecution ();
-        String test = plan.toString ();
-//        res9: String =
-//        == Parsed Logical Plan ==
-//        Relation[sup#5101] CIMRelation
-//
-//        == Analyzed Logical Plan ==
-//        sup: element
-//        Relation[sup#5101] CIMRelation
-//
-//        == Optimized Logical Plan ==
-//        Relation[sup#5101] CIMRelation
-//
-//        == Physical Plan ==
-//        Scan CIMRelation[sup#5101] InputPaths: hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V8_Bruegg.rdf
-        if (!test.contains ("InputPaths"))
-            throw new ResourceException ("input file not found: " + filename);
 
         return (element);
     }

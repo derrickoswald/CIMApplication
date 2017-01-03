@@ -22,6 +22,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType};
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._
@@ -92,30 +94,31 @@ class ShortCircuit extends Serializable
         return (null)
     }
 
-    def read_csv (context: SparkContext): RDD[ShortCircuitData] =
+    def read_csv (sqlContext: SQLContext): RDD[ShortCircuitData] =
     {
-        // read the csv as a text file (could also install com.databricks.spark.csv, see https://github.com/databricks/spark-csv)
-        val spreadsheet = context.textFile (csv)
+        val customSchema = StructType (
+            Array
+            (
+                StructField ("id", StringType, true),
+                StructField ("Fehlerort", StringType, true),
+                StructField ("Un", DoubleType, true),
+                StructField ("Ikw...RST.", DoubleType, true),
+                StructField ("Sk..RST.", DoubleType, true),
+                StructField ("Beschreibung..SAP.Nr..", StringType, true),
+                StructField ("Abgang", StringType, true),
+                StructField ("NIS.ID", StringType, true),
+                StructField ("NIS.Name", StringType, true)
+            )
+        )
 
-        // create a function to trim off the double quotes
-        def trimplus (s: String): String =
-        {
-            var ret = s.trim
-            if (ret.startsWith ("\"") && ret.endsWith ("\""))
-                ret = ret.substring (1, ret.length - 1)
-            return (ret)
-        }
-        // split / clean data
-        val headerAndRows = spreadsheet.map (line => line.split(",").map (trimplus (_)))
-        // get header
-        val header = headerAndRows.first
-        // filter out header (just check if the first val matches the first header name)
-        val data = headerAndRows.filter (_(0) != header (0))
-        // splits to map (header/value pairs)
-        val short_circuit_power = data.map (splits => header.zip (splits).toMap)
+        val df = sqlContext.read
+            .format ("csv")
+            .option ("header", "true")
+            .schema (customSchema)
+            .csv (csv)
 
-        // keep only the relevant information
-        short_circuit_power.map ((record: scala.collection.immutable.Map[String,String]) => { ShortCircuitData (record("NIS.ID"), record("Sk..RST.").toDouble, record("Ikw...RST.").toDouble, true) })
+        import sqlContext.implicits._
+        df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
     }
 
     def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame  =
@@ -175,7 +178,7 @@ class ShortCircuit extends Serializable
 //        tpairs.count
 //        tpairs.first
 
-        val short_circuit = read_csv (sc)
+        val short_circuit = read_csv (sqlContext)
 //        short_circuit.count
 //        short_circuit.first
 
@@ -646,28 +649,28 @@ object ShortCircuit
         // register short circuit inner classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
 
-        // make a Spark context and SQL context
-        val _Context = new SparkContext (configuration)
-        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val _SqlContext = new SQLContext (_Context)
+        // create a Sprk session
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val start = System.nanoTime ()
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
         options.put ("ch.ninecode.cim.do_join", "false");
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
 
         shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        shortcircuit.preparation (_Context, _SqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
+        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
 
         val prep = System.nanoTime ()
 
-        val rdd = shortcircuit.stuff (_Context, _SqlContext, "transformer=all") // TRA5401
+        val rdd = shortcircuit.stuff (session.sparkContext, session.sqlContext, "transformer=all") // TRA5401
 
         val graph = System.nanoTime ()
 

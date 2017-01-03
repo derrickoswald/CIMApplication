@@ -16,6 +16,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._
@@ -45,10 +46,10 @@ extends
     def this () = { this (null, 0, false, 0.0, 0.0, 0.0, null, 0.0, 0.0, 0.0, null, null, null, "", "") }
     def ConductingEquipment: ConductingEquipment = sup.asInstanceOf[ConductingEquipment]
     override def copy (): Row = { return (clone ().asInstanceOf[PositionedEnergyConsumer]); }
-    override def get (i: Int): Any =
+    override def get (i: Int): Object =
     {
         if (i < productArity)
-            productElement (i)
+            productElement (i).asInstanceOf[AnyRef]
         else
             throw new IllegalArgumentException ("invalid property index " + i)
     }
@@ -285,25 +286,25 @@ object SpatialOperations
         // register edge related classes
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
 
-        // make a Spark context and SQL context
-        val _Context = new SparkContext (configuration)
-        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val _SqlContext = new SQLContext (_Context)
+        // make a Spark session
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val start = System.nanoTime ()
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "false");
         options.put ("ch.ninecode.cim.do_join", "false");
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
 
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 //        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
-        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
+        val results = spatial.nearest (session.sparkContext, session.sqlContext, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
         val s = results.schema
         val stuff = results.collect ()
 

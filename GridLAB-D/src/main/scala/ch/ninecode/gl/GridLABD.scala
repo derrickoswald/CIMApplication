@@ -28,7 +28,6 @@ import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.spark.Logging
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.EdgeDirection
@@ -38,7 +37,10 @@ import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
 import org.apache.spark.storage.StorageLevel
 
@@ -75,7 +77,7 @@ case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB
 case class ThreePhaseComplexVoltageDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
 case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
 
-class GridLABD extends Serializable with Logging
+class GridLABD extends Serializable
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
     var _TempFilePrefix = "hdfs://sandbox:9000/output/"
@@ -813,13 +815,14 @@ class GridLABD extends Serializable with Logging
         )
 
         val df = sqlContext.read
-            .format ("com.databricks.spark.csv")
+            .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
-            .load (filename)
+            .csv (filename)
 
-        df.map { r => ThreePhaseComplexVoltageDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) }
+        import sqlContext.implicits._
+        df.map ( r => ThreePhaseComplexVoltageDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
     }
 
     def read_current_records (sqlContext: SQLContext, filename: String): RDD[ThreePhaseComplexCurrentDataElement] =
@@ -844,20 +847,21 @@ class GridLABD extends Serializable with Logging
         )
 
         val df = sqlContext.read
-            .format ("com.databricks.spark.csv")
+            .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
-            .load (filename)
+            .csv (filename)
 
-        df.map { r => ThreePhaseComplexCurrentDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) }
+        import sqlContext.implicits._
+        df.map ( r => ThreePhaseComplexCurrentDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
     }
 
     def check (input: String): Boolean =
     {
         if (input.contains ("WARNING") || input.contains ("ERROR") || input.contains ("FAIL"))
         {
-            logError ("gridlabd failed, message is: " + input)
+            println ("gridlabd failed, message is: " + input)
             false
         }
         else
@@ -900,13 +904,14 @@ class GridLABD extends Serializable with Logging
         )
 
         val df = sqlContext.read
-            .format ("com.databricks.spark.csv")
+            .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
-            .load (filename)
+            .csv (filename)
 
-        df.map { r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) }
+        import sqlContext.implicits._
+        df.map ( r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) ).rdd
     }
 
     def solve (sc: SparkContext, sqlContext: SQLContext, filename_root: String): RDD[Solution] =
@@ -983,19 +988,20 @@ class GridLABD extends Serializable with Logging
         )
 
         val df = sqlContext.read
-            .format ("com.databricks.spark.csv")
+            .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
-            .load (filename)
+            .csv (filename)
 
-        df.map { r => DataPoint (
+        import sqlContext.implicits._
+        df.map ( r => DataPoint (
             node,
             toTimeStamp (r.getString (0)),
             Complex.fromPolar (r.getDouble (1), r.getDouble (2), true),
             Complex.fromPolar (r.getDouble (3), r.getDouble (4), true),
             Complex.fromPolar (r.getDouble (5), r.getDouble (6), true)
-            ) }
+            ) ).rdd
     }
 
 //    def read_players (sc: SparkContext, sqlContext: SQLContext, directory: String): RDD[DataPoint] =
@@ -1075,21 +1081,21 @@ object GridLABD
         // register GridLAB-D classes
         configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
 
-        // make a Spark context and SQL context
-        val _Context = new SparkContext (configuration)
-        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val _SqlContext = new SQLContext (_Context)
+        // make a Spark session
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
 
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
@@ -1109,7 +1115,7 @@ object GridLABD
         hdfs.delete (nodePath, true)
         hdfs.delete (edgePath, true)
 
-        val result = gridlab.export (_Context, _SqlContext, "equipment=" + house + ",topologicalnodes=true")
+        val result = gridlab.export (session.sparkContext, session.sqlContext, "equipment=" + house + ",topologicalnodes=true")
 
         val graph = System.nanoTime ()
         Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))

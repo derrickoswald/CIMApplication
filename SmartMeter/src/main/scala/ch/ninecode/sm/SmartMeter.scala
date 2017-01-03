@@ -1,60 +1,27 @@
 package ch.ninecode.sm
 
-import scala.collection.Map
-
-import java.io.File
 import java.io.UnsupportedEncodingException
-import java.net.URI
 import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.HashMap
-import java.util.TimeZone
-import javax.xml.bind.DatatypeConverter
 
 import scala.collection.Map
-import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
-import org.apache.spark.Logging
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.EdgeTriplet
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.Graph.graphToGraphOps
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.storage.StorageLevel
-import org.apache.commons.io.FileUtils
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.spark.Logging
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
 import org.apache.spark.storage.StorageLevel
 
+import ch.ninecode.cim._
 import ch.ninecode.model._
-import ch.ninecode.cim.TopologicalData
-import ch.ninecode.cim.CuttingEdge
-import ch.ninecode.cim.Extremum
-import ch.ninecode.cim.DefaultSource
 
-class SmartMeter extends Serializable with Logging
+class SmartMeter extends Serializable
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
 
@@ -311,7 +278,7 @@ object SmartMeter
 
     def main (args: Array[String])
     {
-        val smart = new SmartMeter ();
+        val smart = new SmartMeter
         val filename = if (args.length > 0)
             args (0)
         else
@@ -340,25 +307,25 @@ object SmartMeter
         // register low level classes
         configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
 
-        // make a Spark context and SQL context
-        val _Context = new SparkContext (configuration)
-        _Context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val _SqlContext = new SQLContext (_Context)
+        // make a Spark session
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
 
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
+        options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        val elements = _SqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
 
         smart._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        val result = smart.run (_Context, _SqlContext, starting_node)
+        val result = smart.run (session.sparkContext, session.sqlContext, starting_node)
 
         val graph = System.nanoTime ()
 

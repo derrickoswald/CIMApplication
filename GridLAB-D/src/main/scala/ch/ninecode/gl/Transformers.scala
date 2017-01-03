@@ -5,7 +5,6 @@ import scala.collection.Map
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.spark.Logging
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.EdgeDirection
@@ -24,7 +23,7 @@ import ch.ninecode.model._
 
 case class TData (transformer: PowerTransformer, station: Substation, voltages: Array[Double], ends: Array[PowerTransformerEnd], terminals: Array[Terminal], short: ShortCircuitData)
 
-class Transformers (csv: String = null) extends Serializable with Logging
+class Transformers (csv: String = null) extends Serializable
 {
     def get (name: String, context: SparkContext): RDD[Element] =
     {
@@ -56,12 +55,13 @@ class Transformers (csv: String = null) extends Serializable with Logging
         )
 
         val df = sqlContext.read
-            .format ("com.databricks.spark.csv")
+            .format ("csv")
             .option ("header", "true")
             .schema (customSchema)
-            .load (csv)
+            .csv (csv)
 
-        df.map { r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) }
+        import sqlContext.implicits._
+        df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
     }
 
     def getTransformerData (context: SparkContext, sqlContext: SQLContext): RDD[TData] =

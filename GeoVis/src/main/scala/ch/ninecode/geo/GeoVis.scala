@@ -217,7 +217,8 @@ class GeoVis extends Serializable
         ret.append ("    \"type\": \"FeatureCollection\",\n")
         ret.append ("    \"features\": \n")
         ret.append ("    [\n")
-        val strings = df.map (toGeoJSON)
+        import sqlContext.implicits._
+        val strings = df.map (toGeoJSON).rdd
         ret.append (strings.fold ("") ((a,b) => a + (if ("" == a) "" else ",\n") + b))
         ret.append ("\n    ]\n")
         ret.append ("\n}\n")

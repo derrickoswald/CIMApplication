@@ -8,6 +8,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture
@@ -18,11 +19,9 @@ import ch.ninecode.model._
 
 class GeoSuite extends fixture.FunSuite
 {
-    case class ContextPair (_SparkContext: SparkContext, _SQLContext: SQLContext)
-
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 
-    type FixtureParam = ContextPair
+    type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
@@ -43,55 +42,48 @@ class GeoSuite extends fixture.FunSuite
         // register edge related classes
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
 
-        val context = new SparkContext (configuration)
-        context.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        val sql_context = new SQLContext (context)
+        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val end = System.nanoTime ()
         println ("setup : " + (end - start) / 1e9 + " seconds")
         try
         {
-            withFixture (test.toNoArgTest (ContextPair (context, sql_context))) // "loan" the fixture to the test
+            withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
-        finally context.stop () // clean up the fixture
+        finally session.stop () // clean up the fixture
     }
 
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "false");
-        options.put ("ch.ninecode.cim.do_join", "false");
+        options.put ("path", filename)
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        options.put ("ch.ninecode.cim.make_edges", "false")
+        options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "false")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-        val plan = element.queryExecution
-        val test = plan.toString ()
-        if (!test.contains ("InputPaths"))
-            throw new Exception ("input file not found: " + filename)
 
         return (element)
     }
 
     test ("Basic")
     {
-        a: ContextPair ⇒
+        session: SparkSession ⇒
 
         val start = System.nanoTime ()
 
-        val context: SparkContext = a._SparkContext
-        val sql_context: SQLContext = a._SQLContext
-
         val filename =
         FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
-        val elements = readFile (sql_context, filename)
-
+        val elements = readFile (session.sqlContext, filename)
+        println (elements.count () + " elements")
         val read = System.nanoTime ()
 
         val visualize = new ch.ninecode.geo.GeoVis ()
 //        val results = visualize.extract (context, sql_context, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
-        val results = visualize.extract_json (context, sql_context, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
+        val results = visualize.extract_json (session.sparkContext, session.sqlContext, "xmin=7.71,ymin=46.57,xmax=7.73,ymax=46.60")
         println (results)
         val process = System.nanoTime ()
 
