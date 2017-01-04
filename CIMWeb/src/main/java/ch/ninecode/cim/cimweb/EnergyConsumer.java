@@ -64,10 +64,10 @@ public class EnergyConsumer
                     try
                     {
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-                        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
+                        spec.setFunctionName (CIMInteractionSpec.GET_DATASET_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
-                        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+                        input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
                         input.put ("query", "select s.sup.sup.sup.sup.mRID mRID, s.sup.sup.sup.sup.aliasName aliasName, s.sup.sup.sup.sup.name name, s.sup.sup.sup.sup.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.sup.sup.sup.Location = p.Location and p.sequenceNumber = 0");
                         final Interaction interaction = connection.createInteraction ();
                         final Record output = interaction.execute (spec, input);

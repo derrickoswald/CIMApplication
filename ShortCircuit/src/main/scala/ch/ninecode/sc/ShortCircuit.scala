@@ -60,7 +60,7 @@ class ShortCircuit extends Serializable
     //
     // this should only be needed until the medium voltage network is fully described and  calculations can
     // be done from the high voltage network "slack bus" connections
-    var csv = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
+    var csv = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
 
     // define the augmented edge class
     case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
@@ -624,7 +624,7 @@ object ShortCircuit
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -666,7 +666,7 @@ object ShortCircuit
         val read = System.nanoTime ()
 
         shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=hdfs://sandbox:9000/data/KS_Leistungen.csv")
+        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=hdfs://sandbox:8020/data/KS_Leistungen.csv")
 
         val prep = System.nanoTime ()
 
