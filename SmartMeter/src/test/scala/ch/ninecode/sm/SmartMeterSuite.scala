@@ -33,7 +33,7 @@ import ch.ninecode.model._
 
 class SmartMeterSuite extends fixture.FunSuite
 {
-    val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
+    val FILE_DEPOT = "src/test/resources/"
 
     type FixtureParam = SparkSession
 
@@ -72,16 +72,16 @@ class SmartMeterSuite extends fixture.FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    def readFile (context: SQLContext, filename: String): DataFrame =
+    def readFile (context: SQLContext, filename: String, use_topolocial_nodes: Boolean): DataFrame =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
-        options.put ("ch.ninecode.cim.do_join", "true")
-        options.put ("ch.ninecode.cim.do_topo", "true")
-        options.put ("ch.ninecode.cim.do_topo_islands", "true")
+        options.put ("ch.ninecode.cim.do_join", "false")
+        options.put ("ch.ninecode.cim.do_topo", use_topolocial_nodes.toString)
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
 
         return (element)
@@ -93,15 +93,17 @@ class SmartMeterSuite extends fixture.FunSuite
 
         val start = System.nanoTime ()
 
-        val filename =
-            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Wildenrueti_V9" + ".rdf"
-
-        val elements = readFile (session.sqlContext, filename)
+        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
+        val use_topological_nodes = true
+        val starting_node = "SAM10106"
+            
+        val elements = readFile (session.sqlContext, filename, use_topological_nodes)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
 
         val smart = new SmartMeter ()
-        val text = smart.run (session.sparkContext, session.sqlContext, "ABG91246")
+        val text = smart.run (session.sparkContext, session.sqlContext, starting_node, use_topological_nodes)
+        println ("traced nodes: " )
         println (text)
 
         val process = System.nanoTime ()
