@@ -325,7 +325,7 @@ object SmartMeter
         val filename = if (args.length > 0)
             args (0)
         else
-      "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_Wildenrueti_V9" + ".rdf"
+      "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Wildenrueti_V9" + ".rdf"
 
     val starting_node = if (args.length > 1)
       args(1)
