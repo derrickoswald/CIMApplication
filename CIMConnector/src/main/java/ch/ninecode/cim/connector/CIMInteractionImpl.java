@@ -18,8 +18,8 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.execution.QueryExecution;
-import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 
 public class CIMInteractionImpl implements Interaction
@@ -64,7 +64,7 @@ public class CIMInteractionImpl implements Interaction
         return (_Connection);
     }
 
-    protected DataFrame readFile (SQLContext context, String filename) throws ResourceException
+    protected Dataset<Row> readFile (SQLContext context, String filename) throws ResourceException
     {
         String[] files = filename.split (",");
         HashMap<String,String> options = new HashMap<> ();
@@ -72,7 +72,7 @@ public class CIMInteractionImpl implements Interaction
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "true");
         options.put ("ch.ninecode.cim.do_join", "true");
-        DataFrame element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
+        Dataset<Row> element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
 
         return (element);
     }
@@ -301,8 +301,8 @@ public class CIMInteractionImpl implements Interaction
                                 String query = record.get ("query").toString ();
                                 SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
                                 readFile (sql, filename);
-                                DataFrame result = sql.sql (query);
-                                ret = new CIMResultSet (result.schema (), result.collect ());
+                                Dataset<Row> result = sql.sql (query);
+                                ret = new CIMResultSet (result.schema (), result.collectAsList ());
                             }
                             catch (Exception exception)
                             {
@@ -359,9 +359,9 @@ public class CIMInteractionImpl implements Interaction
                                                 System.out.println (method + " (sc, sql, \"" + args + "\")");
                                                 Object o = _method.invoke (_obj, sc, sql, args);
                                                 System.out.println ("got a result");
-                                                DataFrame result = (DataFrame)o;
+                                                Dataset<Row> result = (Dataset<Row>)o;
                                                 System.out.println ("it's a DataFrame with " + result.count () + " rows");
-                                                ret = new CIMResultSet (result.schema (), result.collect ());;
+                                                ret = new CIMResultSet (result.schema (), result.collectAsList ());;
                                             }
                                             catch (InvocationTargetException ite)
                                             {

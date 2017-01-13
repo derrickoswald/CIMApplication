@@ -20,6 +20,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 
 import javax.resource.cci.Record;
@@ -32,13 +33,13 @@ public class CIMResultSet implements Record, ResultSet
     private static final long serialVersionUID = 1L;
     final String INVALID = "ResultSet is invalid";
     protected StructType _Schema;
-    protected Row[] _Rows;
+    protected List<Row> _Rows;
     protected int _Index;
     protected boolean _LastNull;
     protected String _Name;
     protected String _Description;
 
-    public CIMResultSet (StructType schema, Row[] rows)
+    public CIMResultSet (StructType schema, List<Row> rows)
     {
         _Schema = schema;
         _Rows = rows;
@@ -98,7 +99,7 @@ public class CIMResultSet implements Record, ResultSet
     {
         if (null == _Rows) throw new SQLException (INVALID);
         _Index++;
-        return (_Index < _Rows.length);
+        return (_Index < _Rows.size ());
     }
 
     @Override
@@ -120,7 +121,7 @@ public class CIMResultSet implements Record, ResultSet
     public String getString (int columnIndex) throws SQLException
     {
         if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows[_Index];
+        Row row = _Rows.get (_Index);
         Object value = row.get (columnIndex - 1);
         _LastNull = null == value;
         String ret = _LastNull ? "null" : value.toString ();
@@ -131,7 +132,7 @@ public class CIMResultSet implements Record, ResultSet
     public boolean getBoolean (int columnIndex) throws SQLException
     {
         if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows[_Index];
+        Row row = _Rows.get (_Index);
         Object value = row.get (columnIndex - 1);
         _LastNull = null == value;
         boolean ret = _LastNull ? false : Boolean.parseBoolean (value.toString ());
@@ -177,7 +178,7 @@ public class CIMResultSet implements Record, ResultSet
     public double getDouble (int columnIndex) throws SQLException
     {
         if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows[_Index];
+        Row row = _Rows.get (_Index);
         _LastNull = null == row.get (columnIndex - 1);
         double ret = Double.parseDouble (row.get (columnIndex - 1).toString ());
         return (ret);
@@ -383,7 +384,7 @@ public class CIMResultSet implements Record, ResultSet
     public Object getObject (int columnIndex) throws SQLException
     {
         if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows[_Index];
+        Row row = _Rows.get (_Index);
         _LastNull = null == row.get (columnIndex - 1);
         return (row.get (columnIndex - 1));
     }
