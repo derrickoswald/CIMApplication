@@ -22,6 +22,7 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
+
 case class PositionedEnergyConsumer
 (
     override val sup: ConductingEquipment,
