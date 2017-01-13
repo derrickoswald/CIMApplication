@@ -62,7 +62,7 @@ public class SimpleRESTEJB
                 spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
                 final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                 input.setRecordShortDescription ("the parameters for this read operation");
-                input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+                input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
                 final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
                 output.setRecordShortDescription ("the results of the read operation");
                 final Interaction interaction = connection.createInteraction ();

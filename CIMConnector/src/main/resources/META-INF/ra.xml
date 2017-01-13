@@ -29,7 +29,7 @@
         <config-property>
             <config-property-name>InputFilePrefix</config-property-name>
             <config-property-type>java.lang.String</config-property-type>
-            <config-property-value>hdfs://sandbox:8020/data/</config-property-value>
+            <config-property-value>hdfs://sandbox:9000/data/</config-property-value>
         </config-property>
         <config-property>
             <config-property-name>InputFileSuffix</config-property-name>

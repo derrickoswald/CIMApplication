@@ -191,7 +191,7 @@ public class CIMResourceAdapterTest
         spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
         input.setRecordShortDescription ("record containing the file name with key filename");
-        input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
         final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
         output.setRecordShortDescription ("record that will return key count");
         final Interaction interaction = connection.createInteraction ();
@@ -209,10 +209,10 @@ public class CIMResourceAdapterTest
         final ConnectionFactory factory = getConnectionFactory ();
         final Connection connection = getConnection (factory);
         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.GET_DATASET_FUNCTION);
+        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
         input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
-        input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
         input.put ("query", "select s.sup.sup.sup.sup.mRID mRID, s.sup.sup.sup.sup.aliasName aliasName, s.sup.sup.sup.sup.name name, s.sup.sup.sup.sup.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.sup.sup.sup.Location = p.Location and p.sequenceNumber = 0");
         final Interaction interaction = connection.createInteraction ();
         final Record output = interaction.execute (spec, input);
@@ -243,7 +243,7 @@ public class CIMResourceAdapterTest
         spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
         input.setRecordShortDescription ("record containing the file name and class and method to run");
-        input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+        input.put ("filename", "hdfs://sandbox:9000/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
         input.put ("class", "ch.ninecode.cim.connector.CIMResourceAdapterTest");
         input.put ("method", "dummy");
         final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);

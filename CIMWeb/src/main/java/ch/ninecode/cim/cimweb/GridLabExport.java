@@ -63,7 +63,7 @@ public class GridLabExport
                 {
                     try
                     {
-                        String full_file = "hdfs://sandbox:8020/data/" + filename + ".rdf";
+                        String full_file = "hdfs://sandbox:9000/data/" + filename + ".rdf";
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                         spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);

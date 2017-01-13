@@ -18,8 +18,8 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
+import org.apache.spark.sql.execution.QueryExecution;
+import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.SQLContext;
 
 public class CIMInteractionImpl implements Interaction
@@ -64,7 +64,7 @@ public class CIMInteractionImpl implements Interaction
         return (_Connection);
     }
 
-    protected Dataset<Row> readFile (SQLContext context, String filename) throws ResourceException
+    protected DataFrame readFile (SQLContext context, String filename) throws ResourceException
     {
         String[] files = filename.split (",");
         HashMap<String,String> options = new HashMap<> ();
@@ -72,7 +72,7 @@ public class CIMInteractionImpl implements Interaction
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
         options.put ("ch.ninecode.cim.make_edges", "true");
         options.put ("ch.ninecode.cim.do_join", "true");
-        Dataset<Row> element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
+        DataFrame element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
 
         return (element);
     }
@@ -118,8 +118,8 @@ public class CIMInteractionImpl implements Interaction
                                 boolean have = false;
                                 while (iterator.hasNext())
                                 {
-                                    // "LocatedFileStatus{path=hdfs://sandbox:8020/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
-                                    // "LocatedFileStatus{path=hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+                                    // "LocatedFileStatus{path=hdfs://sandbox:9000/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+                                    // "LocatedFileStatus{path=hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
 
                                     LocatedFileStatus fs = iterator.next ();
                                     String path = fs.getPath ().toString ();
@@ -292,7 +292,7 @@ public class CIMInteractionImpl implements Interaction
                 CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
                 switch (_spec.getFunctionName ())
                 {
-                    case CIMInteractionSpec.GET_DATASET_FUNCTION:
+                    case CIMInteractionSpec.GET_DATAFRAME_FUNCTION:
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             try
                             {
@@ -301,8 +301,8 @@ public class CIMInteractionImpl implements Interaction
                                 String query = record.get ("query").toString ();
                                 SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
                                 readFile (sql, filename);
-                                Dataset<Row> result = sql.sql (query);
-                                ret = new CIMResultSet (result.schema (), (Row[])result.collect ());
+                                DataFrame result = sql.sql (query);
+                                ret = new CIMResultSet (result.schema (), result.collect ());
                             }
                             catch (Exception exception)
                             {
@@ -359,9 +359,9 @@ public class CIMInteractionImpl implements Interaction
                                                 System.out.println (method + " (sc, sql, \"" + args + "\")");
                                                 Object o = _method.invoke (_obj, sc, sql, args);
                                                 System.out.println ("got a result");
-                                                Dataset<Row> result = (Dataset<Row>)o;
-                                                System.out.println ("it's a Dataset<Row> with " + result.count () + " rows");
-                                                ret = new CIMResultSet (result.schema (), (Row[])result.collect ());;
+                                                DataFrame result = (DataFrame)o;
+                                                System.out.println ("it's a DataFrame with " + result.count () + " rows");
+                                                ret = new CIMResultSet (result.schema (), result.collect ());;
                                             }
                                             catch (InvocationTargetException ite)
                                             {
