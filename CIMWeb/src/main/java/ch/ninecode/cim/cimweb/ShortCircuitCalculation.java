@@ -70,13 +70,13 @@ public class ShortCircuitCalculation
                 {
                     try
                     {
-                        String full_file = "hdfs://sandbox:9000/data/" + filename + ".rdf";
+                        String full_file = "hdfs://sandbox:8020/data/" + filename + ".rdf";
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                         spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
                         final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                         input.setRecordShortDescription ("record containing the file name and class and method to run");
                         input.put ("filename", full_file);
-                        input.put ("csv", "hdfs://sandbox:9000/data/" + spreadsheet + ".csv");
+                        input.put ("csv", "hdfs://sandbox:8020/data/" + spreadsheet + ".csv");
 
                         // set up the method call details for the CIMConnector
                         ShortCircuit sc = new ShortCircuit ();

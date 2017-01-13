@@ -80,7 +80,7 @@ case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, 
 class GridLABD extends Serializable
 {
     var _StorageLevel = StorageLevel.MEMORY_ONLY
-    var _TempFilePrefix = "hdfs://sandbox:9000/output/"
+    var _TempFilePrefix = "hdfs://sandbox:8020/output/"
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
@@ -94,7 +94,7 @@ class GridLABD extends Serializable
     //
     // this should only be needed until the medium voltage network is fully described and  calculations can
     // be done from the high voltage network "slack bus" connections
-    var _CSV = "hdfs://sandbox:9000/data/KS_Leistungen.csv"
+    var _CSV = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
 
     def get (name: String, context: SparkContext): RDD[Element] =
     {
@@ -879,8 +879,8 @@ class GridLABD extends Serializable
         val iterator = hdfs.listFiles (root, false) // ToDo: recursive
         while (iterator.hasNext ())
         {
-            // "LocatedFileStatus{path=hdfs://sandbox:9000/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
-            // "LocatedFileStatus{path=hdfs://sandbox:9000/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+            // "LocatedFileStatus{path=hdfs://sandbox:8020/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
+            // "LocatedFileStatus{path=hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
             val fs = iterator.next ()
             val path = fs.getPath ().toString ()
             files = files :+ path
@@ -1047,8 +1047,8 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            //"hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+            //"hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
+            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
 
         val house = if (args.length > 1)
             args (1)

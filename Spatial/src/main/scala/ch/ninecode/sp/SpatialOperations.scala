@@ -265,8 +265,8 @@ object SpatialOperations
         val filename = if (args.length > 0)
             args (0)
         else
-            // "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
-            "hdfs://sandbox:9000/data/" + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
+            // "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_b4_Bruegg" + ".rdf"
+            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_b4_Guemligen" + ".rdf"
 
         // create the configuration
         val configuration = new SparkConf (false)
