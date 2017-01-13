@@ -18,6 +18,8 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
+import com.google.gson.Gson
+
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
@@ -218,9 +220,9 @@ class SmartMeter extends Serializable
     }
 
   def node_JSON(node: FinalNodeData): String =
-    {
-      val ao_ids = node.ao_id mkString "," 
-      "{ \"name\": \"" + node.id_seq + "\", \"ao_id\": [" + ao_ids + "], \"voltage\": " + node.voltage + ", \"parent\": \"" + node.parent + "\", \"neighbor\": \"" + node.neighbor + "\", \"total_distance\": " + node.total_distance + ", \"nearest_distance\": " + node.nearest_distance + " }"
+    {    
+      val gson = new Gson
+      gson.toJson(node)
     }
 
   def make_JSON(nodes: RDD[FinalNodeData]): String =
@@ -282,8 +284,8 @@ class SmartMeter extends Serializable
                         val node = joinedNode._2._1
                         val ao = joinedNode._2._2
                         val ao_ids = ao match {
-                          case Some(i) => i.toList
-                          case _ => List("")
+                          case Some(i) => i.toArray
+                          case _ => Array("")
                         }
                         FinalNodeData(node.id_seq, ao_ids, node.voltage, node.neighbor, node.parent, node.total_distance, node.nearest_distance)
                       })
