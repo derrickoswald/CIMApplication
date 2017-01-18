@@ -40,8 +40,8 @@ case class NodeData
 
 case class FinalNodeData
 (
-    id_seq: String,
-    ao_id: List[String],
+    name: String,
+    ao_id: Array[String],
     voltage: Double,
     neighbor: String,
     parent: String,

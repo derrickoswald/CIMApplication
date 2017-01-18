@@ -33,7 +33,7 @@ import ch.ninecode.model._
 
 class SmartMeterSuite extends fixture.FunSuite
 {
-    val FILE_DEPOT = "src/test/resources/"
+    val FILE_DEPOT = "src/test/"
 
     type FixtureParam = SparkSession
 
@@ -93,7 +93,7 @@ class SmartMeterSuite extends fixture.FunSuite
 
         val start = System.nanoTime ()
 
-        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
+        val filename = FILE_DEPOT + "resources/" + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
         val use_topological_nodes = true
         val starting_node = "SAM10106"
             
@@ -103,10 +103,15 @@ class SmartMeterSuite extends fixture.FunSuite
 
         val smart = new SmartMeter ()
         val text = smart.run (session.sparkContext, session.sqlContext, starting_node, use_topological_nodes)
+        
+        val process = System.nanoTime ()
+        
         println ("traced nodes: " )
         println (text)
-
-        val process = System.nanoTime ()
+        
+        val out_content = "smartmeter_tree = " + text
+        val out_path = FILE_DEPOT + "output/" + "smartmeter_tree.js"
+        Files.write(Paths.get(out_path), out_content.getBytes(StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 
