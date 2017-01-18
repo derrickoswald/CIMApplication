@@ -93,9 +93,9 @@ class GridLABD extends Serializable
     // be done from the high voltage network "slack bus" connections
     var _CSV = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
 
-    def get (name: String, context: SparkContext): RDD[Element] =
+    def get (name: String, session: SparkSession): RDD[Element] =
     {
-        val rdds = context.getPersistentRDDs
+        val rdds = session.sparkContext.getPersistentRDDs
         for (key <- rdds.keys)
         {
             val rdd = rdds (key)
@@ -538,14 +538,14 @@ class GridLABD extends Serializable
     }
 
     // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations (topologicalnodes: Boolean) (sc: SparkContext): RDD[PV] =
+    def getSolarInstallations (topologicalnodes: Boolean) (session: SparkSession): RDD[PV] =
     {
 
         // start with pv stations
-        val solar = get ("SolarGeneratingUnit", sc).asInstanceOf[RDD[SolarGeneratingUnit]]
+        val solar = get ("SolarGeneratingUnit", session).asInstanceOf[RDD[SolarGeneratingUnit]]
 
         // link to service location ids via UserAttribute
-        val attributes = get ("UserAttribute", sc).asInstanceOf[RDD[UserAttribute]]
+        val attributes = get ("UserAttribute", session).asInstanceOf[RDD[UserAttribute]]
         val sl = solar.keyBy (_.id).join (attributes.keyBy (_.name)).values
 
         // link to energy consumer (house connection)
@@ -555,7 +555,7 @@ class GridLABD extends Serializable
         val ss = hs.map (x => (x._2._2.value, x._2._1._1))
 
         // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // link to the connectivity node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (ss).values.map (
@@ -564,22 +564,22 @@ class GridLABD extends Serializable
         return (t)
     }
 
-    def prepare (sc: SparkContext, sqlContext: SQLContext, topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
+    def prepare (session: SparkSession, topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
+        val elements = get ("Elements", session).asInstanceOf[RDD[Element]]
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd", session).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
@@ -597,7 +597,7 @@ class GridLABD extends Serializable
         val nodes = if (topologicalnodes)
         {
             // get the topological nodes RDD
-            val tnodes = get ("TopologicalNode", sc).asInstanceOf[RDD[TopologicalNode]]
+            val tnodes = get ("TopologicalNode", session).asInstanceOf[RDD[TopologicalNode]]
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -605,7 +605,7 @@ class GridLABD extends Serializable
         else
         {
             // get the connectivity nodes RDD
-            val connectivitynodes = get ("ConnectivityNode", sc).asInstanceOf[RDD[ConnectivityNode]]
+            val connectivitynodes = get ("ConnectivityNode", session).asInstanceOf[RDD[ConnectivityNode]]
 
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
@@ -620,8 +620,7 @@ class GridLABD extends Serializable
     }
 
     def make_glm (
-        sc: SparkContext,
-        sqlContext: SQLContext,
+        session: SparkSession,
         topologicalnodes: Boolean,
         initial: Graph[PreNode, PreEdge],
         starting_node: String,
@@ -651,14 +650,14 @@ class GridLABD extends Serializable
 
         // get the transformer ends keyed by transformer
         // ToDo: avoid this duplication
-        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd", session).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // get a map of voltages
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the transformer configuration using short circuit data to model the upstream connection
         val _transformers = new Transformers (if (with_feeder) _CSV else null)
-        val _td = _transformers.getTransformerData (sc, sqlContext)
+        val _td = _transformers.getTransformerData (session)
         val trans = new Trans (_td, ends, voltages, with_feeder)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
@@ -666,7 +665,7 @@ class GridLABD extends Serializable
         val c_strings = l_strings.union (t_strings)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (topologicalnodes) (sc)
+        val solars = getSolarInstallations (topologicalnodes) (session)
 
         // get the transformers keyed by primary terminal
         val transformers = trans.getTransformers (combined_edges)
@@ -683,9 +682,9 @@ class GridLABD extends Serializable
         n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
         e_strings.saveAsTextFile (_TempFilePrefix + _EdgeFileName)
 
-        val conffiles = sc.wholeTextFiles (_TempFilePrefix + _ConfFileName)
-        val nodefiles = sc.wholeTextFiles (_TempFilePrefix + _NodeFileName)
-        val edgefiles = sc.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
+        val conffiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _ConfFileName)
+        val nodefiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _NodeFileName)
+        val edgefiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
 
         /**
          * Create the output file.
@@ -743,7 +742,7 @@ class GridLABD extends Serializable
         return (result.toString ())
     }
 
-    def export (sc: SparkContext, sqlContext: SQLContext, args: String): String =
+    def export (session: SparkSession, args: String): String =
     {
         val arguments = args.split (",").map (
             (s) =>
@@ -775,22 +774,22 @@ class GridLABD extends Serializable
         val with_feeder = arguments.getOrElse ("feeder", "false").toBoolean
 
         // find the starting node
-        val starting = get ("Terminal", sc).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
+        val starting = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
         if (0 == starting.length)
             return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
         val starting_terminal = starting (0)
         val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
 
         // prepare the initial graph
-        val initial = prepare (sc, sqlContext, topologicalnodes)
+        val initial = prepare (session, topologicalnodes)
 
         val start = DatatypeConverter.parseDateTime (t0)
         val finish = DatatypeConverter.parseDateTime (t1)
 
-        return (make_glm (sc, sqlContext, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
+        return (make_glm (session, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
     }
 
-    def read_voltage_records (sqlContext: SQLContext, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
+    def read_voltage_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -811,18 +810,18 @@ class GridLABD extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.read
             .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
             .csv (filename)
 
-        import sqlContext.implicits._
+        import session.implicits._
         df.map ( r => ThreePhaseComplexVoltageDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
     }
 
-    def read_current_records (sqlContext: SQLContext, filename: String): RDD[ThreePhaseComplexCurrentDataElement] =
+    def read_current_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexCurrentDataElement] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -843,14 +842,14 @@ class GridLABD extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.read
             .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
             .csv (filename)
 
-        import sqlContext.implicits._
+        import session.implicits._
         df.map ( r => ThreePhaseComplexCurrentDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
     }
 
@@ -885,7 +884,7 @@ class GridLABD extends Serializable
         files
     }
 
-    def read_result (sqlContext: SQLContext, filename: String): RDD[Solution] =
+    def read_result (session: SparkSession, filename: String): RDD[Solution] =
     {
         val customSchema = StructType (
             Array
@@ -900,18 +899,18 @@ class GridLABD extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.read
             .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
             .csv (filename)
 
-        import sqlContext.implicits._
+        import session.implicits._
         df.map ( r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) ).rdd
     }
 
-    def solve (sc: SparkContext, sqlContext: SQLContext, filename_root: String): RDD[Solution] =
+    def solve (session: SparkSession, filename_root: String): RDD[Solution] =
     {
         val gridlabd =
             Array[String] (
@@ -923,7 +922,7 @@ class GridLABD extends Serializable
                     "cat " + _TempFilePrefix + "${FILE%.*}.out; " +
                 "done < /dev/stdin")
 
-        val files = sc.parallelize (Array[String] (filename_root  + ".glm"))
+        val files = session.sparkContext.parallelize (Array[String] (filename_root  + ".glm"))
         val out = files.pipe (gridlabd)
         val success = out.map (check).fold (true)(_ && _)
         val ret = if (success)
@@ -933,21 +932,21 @@ class GridLABD extends Serializable
             {
                 if (x.endsWith ("_voltage.csv"))
                 {
-                    val data = read_voltage_records (sqlContext, x)
+                    val data = read_voltage_records (session, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     data.cache ()
                 }
                 else if (x.endsWith ("_current.csv"))
                 {
-                    val data = read_current_records (sqlContext, x)
+                    val data = read_current_records (session, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     data.cache ()
                 }
             }
-            read_result (sqlContext, _TempFilePrefix + filename_root + "_voltdump.csv")
+            read_result (session, _TempFilePrefix + filename_root + "_voltdump.csv")
         }
         else
-            sc.parallelize (Array[Solution] ())
+            session.sparkContext.parallelize (Array[Solution] ())
 
         return (ret)
     }
@@ -959,7 +958,7 @@ class GridLABD extends Serializable
         s: Complex,
         t: Complex)
 
-    def read_datapoint (sqlContext: SQLContext, filename: String): RDD[DataPoint] =
+    def read_datapoint (session: SparkSession, filename: String): RDD[DataPoint] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -984,14 +983,14 @@ class GridLABD extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.read
             .format ("csv")
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
             .csv (filename)
 
-        import sqlContext.implicits._
+        import session.implicits._
         df.map ( r => DataPoint (
             node,
             toTimeStamp (r.getString (0)),
@@ -1000,15 +999,6 @@ class GridLABD extends Serializable
             Complex.fromPolar (r.getDouble (5), r.getDouble (6), true)
             ) ).rdd
     }
-
-//    def read_players (sc: SparkContext, sqlContext: SQLContext, directory: String): RDD[DataPoint] =
-//    {
-//        val measurements = list_files (directory)
-//        val ret = for (x <- measurements; if x.endsWith (".csv"))
-//            yield read_datapoint (sqlContext, x)
-//val ss = sc.parallelize (ret)
-//        return (ss)
-//    }
 }
 
 object GridLABD
@@ -1044,7 +1034,6 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            //"hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
             "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
 
         val house = if (args.length > 1)
@@ -1092,7 +1081,7 @@ object GridLABD
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
         val read = System.nanoTime ()
@@ -1112,13 +1101,13 @@ object GridLABD
         hdfs.delete (nodePath, true)
         hdfs.delete (edgePath, true)
 
-        val result = gridlab.export (session.sparkContext, session.sqlContext, "equipment=" + house + ",topologicalnodes=true")
+        val result = gridlab.export (session, "equipment=" + house + ",topologicalnodes=true")
 
         val graph = System.nanoTime ()
         Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
 
         // clean up this run
-        hdfs.delete(new Path (gridlab._TempFilePrefix), true)
+        hdfs.delete (new Path (gridlab._TempFilePrefix), true)
 
         println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")

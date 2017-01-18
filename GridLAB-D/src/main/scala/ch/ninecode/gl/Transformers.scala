@@ -2,7 +2,7 @@ package ch.ninecode.gl
 
 import scala.collection.Map
 
-import org.apache.spark.SparkContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
@@ -20,9 +20,9 @@ case class TData (transformer: PowerTransformer, station: Substation, voltages: 
 
 class Transformers (csv: String = null) extends Serializable
 {
-    def get (name: String, context: SparkContext): RDD[Element] =
+    def get (name: String, session: SparkSession): RDD[Element] =
     {
-        val rdds = context.getPersistentRDDs
+        val rdds = session.sparkContext.getPersistentRDDs
         for (key <- rdds.keys)
         {
             val rdd = rdds (key)
@@ -32,7 +32,7 @@ class Transformers (csv: String = null) extends Serializable
         return (null)
     }
 
-    def read_csv (sqlContext: SQLContext): RDD[ShortCircuitData] =
+    def read_csv (session: SparkSession): RDD[ShortCircuitData] =
     {
         val customSchema = StructType (
             Array
@@ -49,24 +49,24 @@ class Transformers (csv: String = null) extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.read
             .format ("csv")
             .option ("header", "true")
             .schema (customSchema)
             .csv (csv)
 
-        import sqlContext.implicits._
+        import session.implicits._
         df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
     }
 
-    def getTransformerData (context: SparkContext, sqlContext: SQLContext): RDD[TData] =
+    def getTransformerData (session: SparkSession): RDD[TData] =
     {
         // get all transformers in substations
-        val transformers = get ("PowerTransformer", context).asInstanceOf[RDD[PowerTransformer]]
+        val transformers = get ("PowerTransformer", session).asInstanceOf[RDD[PowerTransformer]]
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
 
         // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation", context).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
+        val stations = get ("Substation", session).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
 
         // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
         def station_fn (x: Tuple2[String, Any]) =
@@ -93,14 +93,14 @@ class Transformers (csv: String = null) extends Serializable
         }
 
         // create an RDD of container-transformer pairs, e.g. { (KAB8526,TRA13730), (STA4551,TRA4425), ... }
-        val elements = get ("Elements", context).asInstanceOf[RDD[Element]]
+        val elements = get ("Elements", session).asInstanceOf[RDD[Element]]
         val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
 
         // only keep the pairs where the transformer is in a substation we have
         val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd", context).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd", session).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // attach all PowerTransformerEnd elements
         val transformers_stations_plus_ends = transformers_stations.keyBy (_._1.id).leftOuterJoin (ends).map (
@@ -115,7 +115,7 @@ class Transformers (csv: String = null) extends Serializable
             )
 
         // get the TERMINALS keyed by transformer
-        val terms = get ("Terminal", context).asInstanceOf[RDD[Terminal]].groupBy (_.ConductingEquipment)
+        val terms = get ("Terminal", session).asInstanceOf[RDD[Terminal]].groupBy (_.ConductingEquipment)
 
         // attach all Terminal elements
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).map (
@@ -157,12 +157,12 @@ class Transformers (csv: String = null) extends Serializable
         }
 
         // get a map of voltages
-        val voltages = get ("BaseVoltage", context).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         val transformer_data = if (null != csv)
         {
             // join with short circuit data if available
-            val short_circuit = read_csv (sqlContext)
+            val short_circuit = read_csv (session)
             transformers_stations_plus_ends_plus_terminals.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).values.map (transformer_fn (voltages))
         }
         else

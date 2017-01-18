@@ -19,14 +19,14 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.scalatest.fixture
+import org.scalatest.fixture.FunSuite
 
 import javax.xml.bind.DatatypeConverter
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class GridLABDSuite extends fixture.FunSuite
+class GridLABDSuite extends FunSuite
 {
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 
@@ -76,7 +76,7 @@ class GridLABDSuite extends fixture.FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    def readFile (context: SQLContext, filename: String): DataFrame =
+    def readFile (session: SparkSession, filename: String): DataFrame =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
@@ -86,7 +86,7 @@ class GridLABDSuite extends fixture.FunSuite
         options.put ("ch.ninecode.cim.do_join", "true")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val element = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
 
         return (element)
     }
@@ -213,7 +213,7 @@ class GridLABDSuite extends fixture.FunSuite
         connection.commit ()
     }
 
-    def load_and_store (sql_context: SQLContext, gridlabd: GridLABD, id: Int)
+    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int)
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -228,13 +228,13 @@ class GridLABDSuite extends fixture.FunSuite
             {
                 if (x.endsWith ("_voltage.csv"))
                 {
-                    val data = gridlabd.read_voltage_records (sql_context, x)
+                    val data = gridlabd.read_voltage_records (session, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     store_rdd (connection, id, data)
                 }
                 else if (x.endsWith ("_current.csv"))
                 {
-                    val data = gridlabd.read_current_records (sql_context, x)
+                    val data = gridlabd.read_current_records (session, x)
                     data.name = x.substring (x.lastIndexOf ("/") + 1)
                     store_rdd2 (connection, id, data)
                 }
@@ -277,7 +277,7 @@ class GridLABDSuite extends fixture.FunSuite
 
 //        "," +
 //        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
-        val elements = readFile (session.sqlContext, filename)
+        val elements = readFile (session, filename)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
 
@@ -302,7 +302,7 @@ class GridLABDSuite extends fixture.FunSuite
         val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
         val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
 
-        val result = gridlabd.export (session.sparkContext, session.sqlContext,
+        val result = gridlabd.export (session,
             "equipment=" + house +
             ",power=" + power +
             ",topologicalnodes=true" +
@@ -314,9 +314,9 @@ class GridLABDSuite extends fixture.FunSuite
 
         val file = Paths.get (house + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
-        val results = gridlabd.solve (session.sparkContext, session.sqlContext, house)
+        val results = gridlabd.solve (session, house)
         val id = store (house, power, t1, results)
-        load_and_store (session.sqlContext, gridlabd, id)
+        load_and_store (session, gridlabd, id)
 
         val write = System.nanoTime ()
 
