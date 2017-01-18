@@ -2,24 +2,19 @@ package ch.ninecode.gl
 
 import scala.collection.Map
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.Graph.graphToGraphOps
-import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType};
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
 
-import ch.ninecode.cim._
 import ch.ninecode.model._
+
+// create a holder for pre-computed transformer power availability
+case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
 case class TData (transformer: PowerTransformer, station: Substation, voltages: Array[Double], ends: Array[PowerTransformerEnd], terminals: Array[Terminal], short: ShortCircuitData)
 

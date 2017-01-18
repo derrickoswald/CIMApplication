@@ -2,7 +2,6 @@ package ch.ninecode.gl
 
 import org.apache.spark.rdd.RDD
 
-import ch.ninecode.cim._
 import ch.ninecode.model._
 
 /**

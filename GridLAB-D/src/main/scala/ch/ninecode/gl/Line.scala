@@ -4,7 +4,6 @@ import scala.math.sqrt
 
 import org.apache.spark.rdd.RDD
 
-import ch.ninecode.cim._
 import ch.ninecode.model._
 
 class Line extends Serializable

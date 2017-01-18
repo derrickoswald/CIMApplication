@@ -4,29 +4,24 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.Calendar
-import java.util.HashMap
-import java.util.Map
-import javax.xml.bind.DatatypeConverter
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.Types
-import java.sql.ResultSet
 import java.sql.SQLException
-import java.sql.Statement
 import java.sql.Timestamp
-import java.util.Random
+import java.sql.Types
+import java.util.Calendar
+import java.util.HashMap
 
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
 import org.scalatest.fixture
+
+import javax.xml.bind.DatatypeConverter
 
 import ch.ninecode.cim._
 import ch.ninecode.model._

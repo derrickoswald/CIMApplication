@@ -47,9 +47,6 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-// create a holder for pre-computed transformer power availabaility
-case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
-
 // just to get a single copy of the vertex_id function
 trait Graphable
 {
