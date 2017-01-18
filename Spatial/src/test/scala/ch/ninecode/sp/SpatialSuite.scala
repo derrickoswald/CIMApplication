@@ -11,13 +11,13 @@ import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import org.scalatest.fixture
+import org.scalatest.fixture.FunSuite
 
 import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class SpatialSuite extends fixture.FunSuite
+class SpatialSuite extends FunSuite
 {
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 

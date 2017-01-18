@@ -26,12 +26,12 @@ import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import org.scalatest.fixture
+import org.scalatest.fixture.FunSuite
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class SmartMeterSuite extends fixture.FunSuite
+class SmartMeterSuite extends FunSuite
 {
     val FILE_DEPOT = "src/test/"
 

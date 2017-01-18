@@ -9,12 +9,12 @@ import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import org.scalatest.fixture
+import org.scalatest.fixture.FunSuite
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class ShortCircuitSuite extends fixture.FunSuite
+class ShortCircuitSuite extends FunSuite
 {
     val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
 
