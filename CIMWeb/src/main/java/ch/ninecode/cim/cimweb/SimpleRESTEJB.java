@@ -1,26 +1,24 @@
 package ch.ninecode.cim.cimweb;
 
-import javax.annotation.Resource;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Date;
+import java.util.Properties;
+
 import javax.ejb.Stateless;
 import javax.naming.Context;
+import javax.naming.InitialContext;
 import javax.naming.NameClassPair;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.Date;
-
-import java.util.Properties;
-import javax.naming.InitialContext;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.ConnectionMetaData;
 import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMConnectionSpec;

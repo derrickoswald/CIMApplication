@@ -624,13 +624,13 @@ object ShortCircuit
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
+            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V10" + ".rdf"
 
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("ShortCircuit")
         configuration.setMaster ("spark://sandbox:7077")
-        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
+//        configuration.setSparkHome ("/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
         // get the necessary jar files to send to the cluster
