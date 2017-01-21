@@ -273,7 +273,8 @@ class GridLABDSuite extends FunSuite
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
 //            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
-            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+            FILE_DEPOT + "bkw_cim_export_haelig" + ".rdf"
 
 //        "," +
 //        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
@@ -282,7 +283,7 @@ class GridLABDSuite extends FunSuite
         val read = System.nanoTime ()
 
         // set up for execution
-        val gridlabd = new GridLABD ()
+        val gridlabd = new GridLABD (session)
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         gridlabd._TempFilePrefix = "./output/"
         gridlabd._CSV = FILE_DEPOT + "KS_Leistungen.csv"
@@ -290,7 +291,7 @@ class GridLABDSuite extends FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val house = "HAS174735" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
+        val equipment = "TRA5200" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
         val power = 30000
 
         // val t0 = Calendar.getInstance ()
@@ -299,23 +300,27 @@ class GridLABDSuite extends FunSuite
         // t1.add (Calendar.MINUTE, 1)
         // parse ISO8601 format date
         // 2015-11-18 12:00:00
-        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
-        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
+//        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
+//        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
+        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-25 12:00:00".replace (" ", "T"))
+        // ToDo: determine how many windows and how much time these require
+        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-26 06:00:00".replace (" ", "T"))
 
         val result = gridlabd.export (session,
-            "equipment=" + house +
+            "equipment=" + equipment +
             ",power=" + power +
             ",topologicalnodes=true" +
             ",start=" + DatatypeConverter.printDateTime (t0) +
             ",finish=" + DatatypeConverter.printDateTime (t1) +
+            ",swing=" + "ABG20106" +
             ",feeder=false")
 
         val process = System.nanoTime ()
 
-        val file = Paths.get (house + ".glm")
+        val file = Paths.get (equipment + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
-        val results = gridlabd.solve (session, house)
-        val id = store (house, power, t1, results)
+        val results = gridlabd.solve (session, equipment)
+        val id = store (equipment, power, t1, results)
         load_and_store (session, gridlabd, id)
 
         val write = System.nanoTime ()

@@ -60,7 +60,7 @@ trait Graphable
 case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable
 case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Graphable with Serializable
 {
-    // provide a key on the two connections, independant of to-from from-to ordering
+    // provide a key on the two connections, independent of to-from from-to ordering
     def key (): String =
     {
         if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
@@ -74,13 +74,20 @@ case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB
 case class ThreePhaseComplexVoltageDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
 case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
 
-class GridLABD extends Serializable
+class GridLABD (session: SparkSession) extends Serializable
 {
+    val USE_UTC = false
+
+    val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+    if (USE_UTC)
+        _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
+
     var _StorageLevel = StorageLevel.MEMORY_ONLY
     var _TempFilePrefix = "hdfs://sandbox:8020/output/"
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
+    var _NextSlot = 0
 
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
@@ -93,7 +100,7 @@ class GridLABD extends Serializable
     // be done from the high voltage network "slack bus" connections
     var _CSV = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
 
-    def get (name: String, session: SparkSession): RDD[Element] =
+    def get (name: String): RDD[Element] =
     {
         val rdds = session.sparkContext.getPersistentRDDs
         for (key <- rdds.keys)
@@ -276,80 +283,43 @@ class GridLABD extends Serializable
         string.substring (0, string.indexOf ("_"))
     }
 
-    def emit_slack (slack: String, power: Double, parent: String, voltage: Double): String =
+    def emit_slack (name: String, voltage: Double): String =
     {
         "        object meter\n" +
         "        {\n" +
-        "            name \"" + slack + "\";\n" +
+        "            name \"" + name + "\";\n" +
         "            phases ABCN;\n" +
         "            bustype SWING;\n" +
         "            nominal_voltage " + voltage + "V;\n" +
-        "            object player\n" +
-        "            {\n" +
-        "                property \"voltage_A\";\n" +
-        "                file \"meter_data/TRA16716_R.csv\";\n" +
-        "            };\n" +
-        "            object player\n" +
-        "            {\n" +
-        "                property \"voltage_B\";\n" +
-        "                file \"meter_data/TRA16716_S.csv\";\n" +
-        "            };\n" +
-        "            object player\n" +
-        "            {\n" +
-        "                property \"voltage_C\";\n" +
-        "                file \"meter_data/TRA16716_T.csv\";\n" +
-        "            };\n" +
+// the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+        "            voltage_A " + voltage + "+30.0d;\n" +
+        "            voltage_B " + voltage + "-90.0d;\n" +
+        "            voltage_C " + voltage + "+150.0d;\n" +
+// or we could use player files from meter measurements
+//        "            object player\n" +
+//        "            {\n" +
+//        "                property \"voltage_A\";\n" +
+//        "                file \"meter_data/TRA16716_R.csv\";\n" +
+//        "            };\n" +
+//        "            object player\n" +
+//        "            {\n" +
+//        "                property \"voltage_B\";\n" +
+//        "                file \"meter_data/TRA16716_S.csv\";\n" +
+//        "            };\n" +
+//        "            object player\n" +
+//        "            {\n" +
+//        "                property \"voltage_C\";\n" +
+//        "                file \"meter_data/TRA16716_T.csv\";\n" +
+//        "            };\n" +
         "        };\n" +
         "\n" +
         "        object recorder {\n" +
-        "            name \"" + has (slack) + "_voltage_recorder\";\n" +
-        "            parent \"" + slack + "\";\n" +
+        "            name \"" + has (name) + "_voltage_recorder\";\n" +
+        "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-        "            limit 288;\n" +
-        "            interval 300;\n" +
-        "            file \"" + _TempFilePrefix + slack + "_voltage.csv\";\n" +
+        "            interval 5;\n" +
+        "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
         "        };\n"
-
-//        val power3 = power / 3 // per phase
-//        val base = base_name (slack)
-//        "        object meter\n" +
-//        "        {\n" +
-//        "            name \"" + parent + "\";\n" +
-//        "            phases ABCN;\n" +
-//        "            bustype PQ;\n" +
-//        "            nominal_voltage " + voltage + "V;\n" +
-//        "        };\n" +
-//        "\n" +
-//        "        object load\n" +
-//        "        {\n" +
-//        "             name \"" + parent + "_pv\";\n" +
-//        "             parent \"" + parent + "\";\n" +
-//        "             phases ABCN;\n" +
-//        "             constant_power_A -" + power3 + ";\n" +
-//        "             constant_power_B -" + power3 + ";\n" +
-//        "             constant_power_C -" + power3 + ";\n" +
-//        "             nominal_voltage " + voltage + "V;\n" +
-//        "             load_class R;\n" +
-//        "        }\n" +
-//        "\n" +
-//        "        object recorder {\n" +
-//        "            name \"" + base + "_recorder\";\n" +
-//        "            parent \"" + parent + "\";\n" +
-//        "            property measured_power.real, measured_power.imag;\n" +
-//        "            limit 1440;\n" +
-//        "            interval 60;\n" +
-//        "            file \"" + _TempFilePrefix + base + ".csv\";\n" +
-//        "        };\n" +
-//        "\n" +
-//        "        object recorder {\n" +
-//        "            name \"" + has (parent) + "_voltage_recorder\";\n" +
-//        "            parent \"" + parent + "\";\n" +
-//        "            property voltage_A.real,voltage_A.imag;\n" +
-//        "            limit 288;\n" +
-//        "            interval 300;\n" +
-//        "            file \"" + _TempFilePrefix + parent + "_voltage.csv\";\n" +
-//        "        };\n" +
-//        "\n"
     }
 
     def exists (filename: String): Boolean =
@@ -358,7 +328,126 @@ class GridLABD extends Serializable
         f.exists
     }
 
-    def emit_node (name: String, voltage: Double): String =
+    def load_from_player_file (name: String, voltage: Double): String =
+    {
+        // assumes meter data files exist
+        // from Yamshid,
+        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
+        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
+        val house = has (name)
+        // by supplying player files for only EnergyConsumer objects
+        // this existence test picks only HASXXXX nodes (i.e. not ABGXXXX or PINXXXX)
+        val ret =
+            if (exists ("meter_data/" + house + "_R.csv"))
+                "\n" +
+                "        object load\n" +
+                "        {\n" +
+                "            name \"" + name + "_load\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            phases ABCN;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_current_A\";\n" +
+                "                file \"meter_data/" + house + "_R.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_current_B\";\n" +
+                "                file \"meter_data/" + house + "_S.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_current_C\";\n" +
+                "                file \"meter_data/" + house + "_T.csv\";\n" +
+                "            };\n" +
+                "        };\n"
+            else
+                ""
+        return (ret)
+    }
+
+    def ramp_by (from: Double, to: Double, step: Double, angle: Double, interval: Int, slot: Int, window: Int, t0: Calendar): String =
+    {
+        val ret = new StringBuilder ()
+        def addrow (time: Calendar, power: Double, angle: Double) =
+        {
+            ret.append (DatatypeConverter.printDateTime (time).replace ("T", " ").replace ("+01:00", ""))
+            ret.append (",")
+            ret.append (- power / 3) // negative load injects power, 1/3 per phase
+            ret.append ("<")
+            ret.append (angle)
+            ret.append ("d\n")
+        }
+        val time = t0.clone ().asInstanceOf[Calendar]
+        // all zero before this slot
+        time.add (Calendar.SECOND, window * slot)
+        addrow (time, 0.0, angle)
+        time.add (Calendar.SECOND, interval)
+        var power = from
+        while (power < to)
+        {
+            addrow (time, power, angle)
+            time.add (Calendar.SECOND, interval)
+            power = power + step
+        }
+        addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+
+        return (ret.toString ())
+    }
+
+    def generate_player_file (name: String, voltage: Double, t0: Calendar): String =
+    {
+        val house = has (name)
+        val ret =
+            if (house.startsWith ("HAS"))
+            {
+//                val accumulator = session.sparkContext.longAccumulator ("Experiment_Slot")
+//                accumulator.add (1L)
+//                val next_slot = accumulator.value // window in player file time series where this experiment is run
+                val next_slot = _NextSlot
+                _NextSlot += 1
+
+                val r_phase = 0.0
+                val s_phase = 240.0
+                val t_phase = 120.0
+                var contents = ramp_by (0, 100000, 1000, r_phase, 5, next_slot, 15 * 60, t0)
+                Files.write (Paths.get ("generated_data/" + house + "_R.csv"), contents.getBytes (StandardCharsets.UTF_8))
+                    contents = ramp_by (0, 100000, 1000, s_phase, 5, next_slot, 15 * 60, t0)
+                Files.write (Paths.get ("generated_data/" + house + "_S.csv"), contents.getBytes (StandardCharsets.UTF_8))
+                    contents = ramp_by (0, 100000, 1000, t_phase, 5, next_slot, 15 * 60, t0)
+                Files.write (Paths.get ("generated_data/" + house + "_T.csv"), contents.getBytes (StandardCharsets.UTF_8))
+
+                "\n" +
+                "        object load\n" +
+                "        {\n" +
+                "            name \"" + name + "_load\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            phases ABCN;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_A\";\n" +
+                "                file \"generated_data/" + house + "_R.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_B\";\n" +
+                "                file \"generated_data/" + house + "_S.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_C\";\n" +
+                "                file \"generated_data/" + house + "_T.csv\";\n" +
+                "            };\n" +
+                "        };\n"
+            }
+            else
+                ""
+        return (ret)
+    }
+
+    def emit_node (name: String, voltage: Double, t0: Calendar): String =
     {
         "        object meter\n" +
         "        {\n" +
@@ -367,49 +456,21 @@ class GridLABD extends Serializable
         "            bustype PQ;\n" +
         "            nominal_voltage " + voltage + "V;\n" +
         "        };\n" +
-        // assumes meter data files exist
-        // from Yamshid,
-        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
-        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
-        (if (exists ("meter_data/" + has (name) + "_R.csv"))
-            "\n" +
-            "        object load\n" +
-            "        {\n" +
-            "            name \"" + name + "_load\";\n" +
-            "            parent \"" + name + "\";\n" +
-            "            phases ABCN;\n" +
-            "            nominal_voltage " + voltage + "V;\n" +
-            "            object player\n" +
-            "            {\n" +
-            "                property \"constant_current_A\";\n" +
-            "                file \"meter_data/" + has (name) + "_R.csv\";\n" +
-            "            };\n" +
-            "            object player\n" +
-            "            {\n" +
-            "                property \"constant_current_B\";\n" +
-            "                file \"meter_data/" + has (name) + "_S.csv\";\n" +
-            "            };\n" +
-            "            object player\n" +
-            "            {\n" +
-            "                property \"constant_current_C\";\n" +
-            "                file \"meter_data/" + has (name) + "_T.csv\";\n" +
-            "            };\n" +
-            "        };\n"
-        else
-            "") +
+//                 load_from_player_file (name, voltage) +
+                 generate_player_file (name, voltage, t0) +
         "\n" +
-        "        object recorder {\n" +
+        "        object recorder\n" +
+        "        {\n" +
         "            name \"" + has (name) + "_voltage_recorder\";\n" +
         "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-        "            limit 288;\n" +
-        "            interval 300;\n" +
+        "            interval 5;\n" +
         "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, power: Double)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
+    def make_node (slack: String, t0: Calendar)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
         val node = arg._1
         val pv = arg._2
@@ -422,17 +483,21 @@ class GridLABD extends Serializable
             case None =>
                 ""
         }
-        val ret = transformer match
+        val trans = transformer match
         {
             case Some (trafos) =>
                 val transformers = trafos.map ((x) => { x.transformer }).toList
-                emit_primary_node (transformers, node.id_seq) + loads
+                emit_primary_node (transformers, node.id_seq)
             case None =>
-                if (node.id_seq == slack)
-                    emit_slack (slack, power, node.id_seq, node.voltage) + loads
-                else
-                    emit_node (node.id_seq, node.voltage) + loads
-            }
+                ""
+        }
+        val nod =
+            if (node.id_seq == slack)
+                emit_slack (node.id_seq, node.voltage)
+            else
+                emit_node (node.id_seq, node.voltage, t0)
+
+        val ret = nod + trans + loads
 
         return (ret)
     }
@@ -453,13 +518,11 @@ class GridLABD extends Serializable
                         "            name \"" + edge.id_equ + "_current_recorder\";\n" +
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
-                        "            limit 288;\n" +
-                        "            interval 300;\n" +
+                        "            interval 5;\n" +
                         "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
-//                        trans.emit (edges)
-                        ""
+                        trans.emit (edges)
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
                         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
@@ -538,14 +601,14 @@ class GridLABD extends Serializable
     }
 
     // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations (topologicalnodes: Boolean) (session: SparkSession): RDD[PV] =
+    def getSolarInstallations (topologicalnodes: Boolean): RDD[PV] =
     {
 
         // start with pv stations
-        val solar = get ("SolarGeneratingUnit", session).asInstanceOf[RDD[SolarGeneratingUnit]]
+        val solar = get ("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
 
         // link to service location ids via UserAttribute
-        val attributes = get ("UserAttribute", session).asInstanceOf[RDD[UserAttribute]]
+        val attributes = get ("UserAttribute").asInstanceOf[RDD[UserAttribute]]
         val sl = solar.keyBy (_.id).join (attributes.keyBy (_.name)).values
 
         // link to energy consumer (house connection)
@@ -555,7 +618,7 @@ class GridLABD extends Serializable
         val ss = hs.map (x => (x._2._2.value, x._2._1._1))
 
         // get the terminals
-        val terminals = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // link to the connectivity node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (ss).values.map (
@@ -564,22 +627,22 @@ class GridLABD extends Serializable
         return (t)
     }
 
-    def prepare (session: SparkSession, topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
+    def prepare (topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get ("Elements", session).asInstanceOf[RDD[Element]]
+        val elements = get ("Elements").asInstanceOf[RDD[Element]]
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd", session).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
@@ -597,7 +660,7 @@ class GridLABD extends Serializable
         val nodes = if (topologicalnodes)
         {
             // get the topological nodes RDD
-            val tnodes = get ("TopologicalNode", session).asInstanceOf[RDD[TopologicalNode]]
+            val tnodes = get ("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -605,7 +668,7 @@ class GridLABD extends Serializable
         else
         {
             // get the connectivity nodes RDD
-            val connectivitynodes = get ("ConnectivityNode", session).asInstanceOf[RDD[ConnectivityNode]]
+            val connectivitynodes = get ("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
 
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
@@ -620,14 +683,13 @@ class GridLABD extends Serializable
     }
 
     def make_glm (
-        session: SparkSession,
         topologicalnodes: Boolean,
         initial: Graph[PreNode, PreEdge],
         starting_node: String,
         equipment: String,
-        power: Double,
         start: Calendar,
         finish: Calendar,
+        swing_node: String,
         with_feeder: Boolean): String =
     {
         /*
@@ -650,10 +712,10 @@ class GridLABD extends Serializable
 
         // get the transformer ends keyed by transformer
         // ToDo: avoid this duplication
-        val ends = get ("PowerTransformerEnd", session).asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // get a map of voltages
-        val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the transformer configuration using short circuit data to model the upstream connection
         val _transformers = new Transformers (if (with_feeder) _CSV else null)
@@ -665,7 +727,7 @@ class GridLABD extends Serializable
         val c_strings = l_strings.union (t_strings)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (topologicalnodes) (session)
+        val solars = getSolarInstallations (topologicalnodes)
 
         // get the transformers keyed by primary terminal
         val transformers = trans.getTransformers (combined_edges)
@@ -673,7 +735,7 @@ class GridLABD extends Serializable
         // get the node strings
         val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
-        val n_strings = qq.map (make_node ("SAM34179_topo" /*starting_node*/, power)) // ToDo: better way to handle all HAS
+        val n_strings = qq.map (make_node (swing_node, start))
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -689,12 +751,6 @@ class GridLABD extends Serializable
         /**
          * Create the output file.
          */
-
-        val USE_UTC = false
-
-        val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        if (USE_UTC)
-            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
 
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
@@ -715,8 +771,8 @@ class GridLABD extends Serializable
             "        clock\n" +
             "        {\n" +
             "            timezone " + (if (USE_UTC) "GMT" else "CET-2CEST") + ";\n" + // ToDo: get local time zone string
-            "            starttime '" + format.format (start.getTime ()) + "';\n" +
-            "            stoptime '" + format.format (finish.getTime ()) + "';\n" +
+            "            starttime '" + _DateFormat.format (start.getTime ()) + "';\n" +
+            "            stoptime '" + _DateFormat.format (finish.getTime ()) + "';\n" +
             "        };\n" +
             "\n" +
             "        class player\n" +
@@ -728,7 +784,7 @@ class GridLABD extends Serializable
             "        {\n" +
             "            filename \"" + _TempFilePrefix + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
-            "            runtime '" + format.format (finish.getTime ()) + "';\n" +
+            "            runtime '" + _DateFormat.format (finish.getTime ()) + "';\n" +
             "        };\n" +
             "\n"
 
@@ -755,14 +811,14 @@ class GridLABD extends Serializable
                 }
         ).toMap
 
+        // clean up from any prior failed run
+        FileUtils.deleteDirectory (new File (_TempFilePrefix))
+
         // see if we should use topology nodes
         val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
 
         // get the name of the equipment of interest
         val equipment = arguments.getOrElse ("equipment", "")
-
-        // get the power of the PV
-        val power = arguments.getOrElse ("power", "30000").toDouble
 
         // get the starting and finishing time
         val t0 = arguments.getOrElse ("start", DatatypeConverter.printDateTime (Calendar.getInstance ()))
@@ -770,23 +826,43 @@ class GridLABD extends Serializable
         t0plus.add (Calendar.MINUTE, 1)
         val t1 = arguments.getOrElse ("finish", DatatypeConverter.printDateTime (t0plus))
 
+        // get the name of the swing bus equipment
+        val swing = arguments.getOrElse ("swing", "")
+
         // get the flag for adding a medium voltage feeder
         val with_feeder = arguments.getOrElse ("feeder", "false").toBoolean
 
         // find the starting node
-        val starting = get ("Terminal", session).asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).collect ()
+        val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
         if (0 == starting.length)
-            return ("" + starting.length + " equipment matched id " + equipment + "\n") // ToDo: proper logging
-        val starting_terminal = starting (0)
+        {
+            println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
+            return ("")
+        }
+        else if (1 < starting.length)
+            println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
+        val starting_terminal = starting(0)
         val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
 
+        // find the swing bus node
+        val swinging = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (swing == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
+        if (0 == swinging.length)
+        {
+            println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
+            return ("")
+        }
+        else if (1 < swinging.length)
+            println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
+        val swing_terminal = swinging(0)
+        val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
+
         // prepare the initial graph
-        val initial = prepare (session, topologicalnodes)
+        val initial = prepare (topologicalnodes)
 
         val start = DatatypeConverter.parseDateTime (t0)
         val finish = DatatypeConverter.parseDateTime (t1)
 
-        return (make_glm (session, topologicalnodes, initial, starting_node_name, equipment, power, start, finish, with_feeder))
+        return (make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder))
     }
 
     def read_voltage_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
@@ -1030,7 +1106,6 @@ object GridLABD
 
     def main (args: Array[String])
     {
-        val gridlab = new GridLABD ()
         val filename = if (args.length > 0)
             args (0)
         else
@@ -1047,13 +1122,13 @@ object GridLABD
         val configuration = new SparkConf (false)
         configuration.setAppName ("GridLAB-D")
         configuration.setMaster ("spark://sandbox:7077")
-        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
+//        configuration.setSparkHome ("/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
-        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
+//        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         // get the necessary jar files to send to the cluster
         val s1 = jarForObject (new DefaultSource ())
-        val s2 = jarForObject (gridlab)
+        val s2 = jarForObject (new Line ())
         configuration.setJars (Array (s1, s2))
 
         // register low level classes
@@ -1072,18 +1147,25 @@ object GridLABD
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
+        val gridlab = new GridLABD (session)
 
         val files = filename.split (",")
-        val options = new HashMap[String, String] ().asInstanceOf[java.util.Map[String,String]]
+        val options = new HashMap[String, String] ()
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-        val count = elements.count
 
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        // this fails with ClassCastException:
+        //     val count = elements.count
+        // cannot assign instance of scala.collection.immutable.List$SerializationProxy
+        // to field org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1.outputTypes$2
+        // of type scala.collection.Seq in instance of org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1
+        elements.printSchema
+        elements.explain
         val read = System.nanoTime ()
 
         gridlab._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
@@ -1109,7 +1191,7 @@ object GridLABD
         // clean up this run
         hdfs.delete (new Path (gridlab._TempFilePrefix), true)
 
-        println ("" + count + " elements")
+        //println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")
         println ("read : " + (read - setup) / 1e9 + " seconds")
         println ("graph: " + (graph - read) / 1e9 + " seconds")

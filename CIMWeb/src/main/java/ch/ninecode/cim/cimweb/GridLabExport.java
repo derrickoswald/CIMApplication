@@ -20,7 +20,8 @@ import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
-import ch.ninecode.gl.GridLABD;
+
+import ch.ninecode.gl.Line;
 
 @Stateless
 @Path("/GridLabExport/{file}")
@@ -71,9 +72,9 @@ public class GridLabExport
                         input.put ("filename", full_file);
 
                         // set up the method call details for the CIMConnector
-                        GridLABD gl = new GridLABD ();
-                        input.put ("class", gl.getClass ().getName ());
-                        String jar = factory.JarPath (gl);
+                        Line line = new Line ();
+                        input.put ("class", line.getClass ().getName ());
+                        String jar = factory.JarPath (line);
                         if (null != jar)
                             input.put ("jars", jar);
                         if (null == transformer)
