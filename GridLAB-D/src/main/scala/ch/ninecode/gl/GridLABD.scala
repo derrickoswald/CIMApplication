@@ -14,6 +14,7 @@ import java.util.TimeZone
 import javax.xml.bind.DatatypeConverter
 
 import scala.collection.Map
+import scala.collection.mutable.HashSet
 import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
@@ -69,6 +70,24 @@ case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: Str
 case class PV (node: String, solar: SolarGeneratingUnit)
 case class Transformer (node: String, transformer: PowerTransformer)
 
+/**
+ * house - string, NIS Number of house being experimented on
+ * t0 - timestamp, origin for all experiments
+ * t1 - timestamp, start time for this experiment
+ * slot - number, unique experiment number (slot in windowed time)
+ * window - seconds, duration of the experiment
+ * interval - seconds, duration between steps in the experiment
+ * from - KW, starting PV power
+ * to - KW, ending PV power
+ * step - KW, KW increment (resolution of the Einspeiseleistung value)
+ */
+case class Experiment (house: String, t0: Calendar, slot: Int, window: Int, interval: Int, from: Double, to: Double, step: Double)
+{
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
+    def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+}
+
+
 // output
 case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
 case class ThreePhaseComplexVoltageDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
@@ -87,7 +106,13 @@ class GridLABD (session: SparkSession) extends Serializable
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
-    var _NextSlot = 0
+// couldn't get accumulators to work:
+//                val accumulator = session.sparkContext.longAccumulator ("Experiment_Slot")
+//                accumulator.add (1L)
+//                val next_slot = accumulator.value
+    var _Window = 15 * 60 // window size in simulated seconds per experiment
+    var _NextSlot = 0 // next window
+    var _Experiments = HashSet[Experiment]()
 
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
@@ -367,7 +392,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def ramp_by (from: Double, to: Double, step: Double, angle: Double, interval: Int, slot: Int, window: Int, t0: Calendar): String =
+    def ramp_up (exp: Experiment, angle: Double): String =
     {
         val ret = new StringBuilder ()
         def addrow (time: Calendar, power: Double, angle: Double) =
@@ -378,18 +403,15 @@ class GridLABD (session: SparkSession) extends Serializable
             ret.append ("<")
             ret.append (angle)
             ret.append ("d\n")
+            time.add (Calendar.SECOND, exp.interval)
         }
-        val time = t0.clone ().asInstanceOf[Calendar]
-        // all zero before this slot
-        time.add (Calendar.SECOND, window * slot)
-        addrow (time, 0.0, angle)
-        time.add (Calendar.SECOND, interval)
-        var power = from
-        while (power < to)
+        val time = exp.t1
+        addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+        var power = exp.from
+        while (power < exp.to)
         {
             addrow (time, power, angle)
-            time.add (Calendar.SECOND, interval)
-            power = power + step
+            power = power + exp.step
         }
         addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
 
@@ -402,20 +424,18 @@ class GridLABD (session: SparkSession) extends Serializable
         val ret =
             if (house.startsWith ("HAS"))
             {
-//                val accumulator = session.sparkContext.longAccumulator ("Experiment_Slot")
-//                accumulator.add (1L)
-//                val next_slot = accumulator.value // window in player file time series where this experiment is run
-                val next_slot = _NextSlot
+                val experiment = Experiment (house, t0, _NextSlot, _Window, 5, 0, 100000, 1000)
                 _NextSlot += 1
+                _Experiments += experiment
 
                 val r_phase = 0.0
                 val s_phase = 240.0
-                val t_phase = 120.0
-                var contents = ramp_by (0, 100000, 1000, r_phase, 5, next_slot, 15 * 60, t0)
+                val t_phase = 120.0 
+                var contents = ramp_up (experiment, r_phase)
                 Files.write (Paths.get ("generated_data/" + house + "_R.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                    contents = ramp_by (0, 100000, 1000, s_phase, 5, next_slot, 15 * 60, t0)
+                    contents = ramp_up (experiment, s_phase)
                 Files.write (Paths.get ("generated_data/" + house + "_S.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                    contents = ramp_by (0, 100000, 1000, t_phase, 5, next_slot, 15 * 60, t0)
+                    contents = ramp_up (experiment, t_phase)
                 Files.write (Paths.get ("generated_data/" + house + "_T.csv"), contents.getBytes (StandardCharsets.UTF_8))
 
                 "\n" +
@@ -514,7 +534,8 @@ class GridLABD (session: SparkSession) extends Serializable
                     case "ACLineSegment" =>
                         line.emit (edges) +
                         "\n" +
-                        "        object recorder {\n" +
+                        "        object recorder\n" +
+                        "        {\n" +
                         "            name \"" + edge.id_equ + "_current_recorder\";\n" +
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
@@ -522,7 +543,16 @@ class GridLABD (session: SparkSession) extends Serializable
                         "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
-                        trans.emit (edges)
+                        trans.emit (edges) +
+                        "\n" +
+                        "        object recorder\n" +
+                        "        {\n" +
+                        "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+                        "            parent \"" + edge.id_equ + "\";\n" +
+                        "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
+                        "            interval 5;\n" +
+                        "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
+                        "        };\n"
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
                         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
@@ -603,25 +633,34 @@ class GridLABD (session: SparkSession) extends Serializable
     // get the existing photo-voltaic installations keyed by terminal
     def getSolarInstallations (topologicalnodes: Boolean): RDD[PV] =
     {
-
-        // start with pv stations
-        val solar = get ("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
+        // note there are two independent linkages happening here through the UserAttribute class:
+        // - SolarGeneratingUnit to ServiceLocation
+        // - ServiceLocation to EnergyConsumer
 
         // link to service location ids via UserAttribute
         val attributes = get ("UserAttribute").asInstanceOf[RDD[UserAttribute]]
-        val sl = solar.keyBy (_.id).join (attributes.keyBy (_.name)).values
 
-        // link to energy consumer (house connection)
-        val hs = sl.keyBy (_._2.value).join (attributes.keyBy (_.name))
+        // user attributes link through string quantities
+        val strings = get ("StringQuantity").asInstanceOf[RDD[StringQuantity]]
 
-        // just get the house and pv
-        val ss = hs.map (x => (x._2._2.value, x._2._1._1))
+        // get solar to service linkage, e.g. ("EEA5280", "MST115133")
+        // and service to house linkage, e.g. ("MST115133", "HAS138130")
+        val pairs = attributes.keyBy (_.value).join (strings.keyBy (_.id)).values.map (x => (x._1.name, x._2.value))
+
+        // get a simple list of house to pv id pairs
+        val links = pairs.join (pairs.map (x => (x._2, x._1))).values
+
+        // get the pv stations
+        val solars = get ("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
+
+        // get a simple list of house to pv pairs
+        val house_solars = links.map (x => (x._2, x._1)).join (solars.keyBy (_.id)).values
 
         // get the terminals
-        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]]
 
-        // link to the connectivity node through the terminal
-        val t = terminals.keyBy (_.ConductingEquipment).join (ss).values.map (
+        // link to the connectivity/topological node through the terminal
+        val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
             (x) => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
         return (t)
@@ -751,7 +790,9 @@ class GridLABD (session: SparkSession) extends Serializable
         /**
          * Create the output file.
          */
-
+        // override finish time
+        val t1 = start.clone ().asInstanceOf[Calendar]
+        t1.add (Calendar.SECOND, _NextSlot * _Window)
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
             "// Einspeiseleistung\n" +
@@ -772,7 +813,7 @@ class GridLABD (session: SparkSession) extends Serializable
             "        {\n" +
             "            timezone " + (if (USE_UTC) "GMT" else "CET-2CEST") + ";\n" + // ToDo: get local time zone string
             "            starttime '" + _DateFormat.format (start.getTime ()) + "';\n" +
-            "            stoptime '" + _DateFormat.format (finish.getTime ()) + "';\n" +
+            "            stoptime '" + _DateFormat.format (t1.getTime ()) + "';\n" +
             "        };\n" +
             "\n" +
             "        class player\n" +
@@ -784,7 +825,7 @@ class GridLABD (session: SparkSession) extends Serializable
             "        {\n" +
             "            filename \"" + _TempFilePrefix + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
-            "            runtime '" + _DateFormat.format (finish.getTime ()) + "';\n" +
+            "            runtime '" + _DateFormat.format (t1.getTime ()) + "';\n" +
             "        };\n" +
             "\n"
 

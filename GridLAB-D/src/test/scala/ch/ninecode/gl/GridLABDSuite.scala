@@ -83,7 +83,7 @@ class GridLABDSuite extends FunSuite
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
-        options.put ("ch.ninecode.cim.do_join", "true")
+        options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
         val element = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
@@ -91,7 +91,7 @@ class GridLABDSuite extends FunSuite
         return (element)
     }
 
-    def store(house: String, power: Double, t1: Calendar, results: RDD[Solution]): Int =
+    def store (equipment: String, description: String, t1: Calendar, results: RDD[Solution]): Int =
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -105,7 +105,7 @@ class GridLABDSuite extends FunSuite
             // create schema
             val statement = connection.createStatement ()
             statement.executeUpdate ("drop table if exists simulation")
-            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, house text, power double, time text)")
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, equipment text, description text, time text)")
             statement.executeUpdate ("drop table if exists results")
             statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, element text, time text, real_a double, imag_a double, real_b double, imag_b double, real_c double, imag_c double, units text)")
             statement.close ()
@@ -114,8 +114,8 @@ class GridLABDSuite extends FunSuite
             val now = Calendar.getInstance ()
             val insert = connection.prepareStatement ("insert into simulation (id, house, power, time) values (?, ?, ?, ?)")
             insert.setNull (1, Types.INTEGER)
-            insert.setString (2, house)
-            insert.setDouble (3, power)
+            insert.setString (2, equipment)
+            insert.setString (3, description)
             insert.setTimestamp (4, new Timestamp (now.getTimeInMillis))
             insert.executeUpdate ()
             val resultset = statement.executeQuery ("select last_insert_rowid() id")
@@ -292,7 +292,7 @@ class GridLABDSuite extends FunSuite
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
         val equipment = "TRA5200" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
-        val power = 30000
+        val swing = "ABG20106"
 
         // val t0 = Calendar.getInstance ()
         // or
@@ -302,32 +302,36 @@ class GridLABDSuite extends FunSuite
         // 2015-11-18 12:00:00
 //        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
 //        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
-        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-25 12:00:00".replace (" ", "T"))
-        // ToDo: determine how many windows and how much time these require
-        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-26 06:00:00".replace (" ", "T"))
+        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
+        // redundant:
+        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
 
         val result = gridlabd.export (session,
             "equipment=" + equipment +
-            ",power=" + power +
             ",topologicalnodes=true" +
             ",start=" + DatatypeConverter.printDateTime (t0) +
             ",finish=" + DatatypeConverter.printDateTime (t1) +
-            ",swing=" + "ABG20106" +
+            ",swing=" + swing +
             ",feeder=false")
 
-        val process = System.nanoTime ()
+        val export = System.nanoTime ()
+        val experiments = gridlabd._Experiments
 
         val file = Paths.get (equipment + ".glm")
         Files.write (file, result.getBytes (StandardCharsets.UTF_8))
         val results = gridlabd.solve (session, equipment)
-        val id = store (equipment, power, t1, results)
+
+        val solve = System.nanoTime ()
+
+        val id = store (equipment, "Einspeiseleistung", t1, results)
         load_and_store (session, gridlabd, id)
 
-        val write = System.nanoTime ()
+        val save = System.nanoTime ()
 
         println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("process: " + (process - read) / 1e9 + " seconds")
-        println ("write: " + (write - process) / 1e9 + " seconds")
+        println ("export: " + (export - read) / 1e9 + " seconds")
+        println ("solve: " + (solve - export) / 1e9 + " seconds")
+        println ("save: " + (save - solve) / 1e9 + " seconds")
         println ()
 
         // clean up this run
