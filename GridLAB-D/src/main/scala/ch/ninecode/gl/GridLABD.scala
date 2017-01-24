@@ -85,6 +85,7 @@ case class Experiment (house: String, t0: Calendar, slot: Int, window: Int, inte
 {
     def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
     def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+    def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
 }
 
 
@@ -106,13 +107,6 @@ class GridLABD (session: SparkSession) extends Serializable
     var _ConfFileName = "lines"
     var _NodeFileName = "nodes"
     var _EdgeFileName = "edges"
-// couldn't get accumulators to work:
-//                val accumulator = session.sparkContext.longAccumulator ("Experiment_Slot")
-//                accumulator.add (1L)
-//                val next_slot = accumulator.value
-    var _Window = 15 * 60 // window size in simulated seconds per experiment
-    var _NextSlot = 0 // next window
-    var _Experiments = HashSet[Experiment]()
 
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
@@ -418,56 +412,54 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret.toString ())
     }
 
-    def generate_player_file (name: String, voltage: Double, t0: Calendar): String =
+    def generate_player_file (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
         val house = has (name)
         val ret =
-            if (house.startsWith ("HAS"))
+            experiments.find (p => p.house == house) match
             {
-                val experiment = Experiment (house, t0, _NextSlot, _Window, 5, 0, 100000, 1000)
-                _NextSlot += 1
-                _Experiments += experiment
+                case Some (experiment) =>
+                    val r_phase = 0.0
+                    val s_phase = 240.0
+                    val t_phase = 120.0
+                    var contents = ramp_up (experiment, r_phase)
+                    Files.write (Paths.get ("generated_data/" + house + "_R.csv"), contents.getBytes (StandardCharsets.UTF_8))
+                        contents = ramp_up (experiment, s_phase)
+                    Files.write (Paths.get ("generated_data/" + house + "_S.csv"), contents.getBytes (StandardCharsets.UTF_8))
+                        contents = ramp_up (experiment, t_phase)
+                    Files.write (Paths.get ("generated_data/" + house + "_T.csv"), contents.getBytes (StandardCharsets.UTF_8))
 
-                val r_phase = 0.0
-                val s_phase = 240.0
-                val t_phase = 120.0 
-                var contents = ramp_up (experiment, r_phase)
-                Files.write (Paths.get ("generated_data/" + house + "_R.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                    contents = ramp_up (experiment, s_phase)
-                Files.write (Paths.get ("generated_data/" + house + "_S.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                    contents = ramp_up (experiment, t_phase)
-                Files.write (Paths.get ("generated_data/" + house + "_T.csv"), contents.getBytes (StandardCharsets.UTF_8))
-
-                "\n" +
-                "        object load\n" +
-                "        {\n" +
-                "            name \"" + name + "_load\";\n" +
-                "            parent \"" + name + "\";\n" +
-                "            phases ABCN;\n" +
-                "            nominal_voltage " + voltage + "V;\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_power_A\";\n" +
-                "                file \"generated_data/" + house + "_R.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_power_B\";\n" +
-                "                file \"generated_data/" + house + "_S.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_power_C\";\n" +
-                "                file \"generated_data/" + house + "_T.csv\";\n" +
-                "            };\n" +
-                "        };\n"
+                    "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "            name \"" + name + "_load\";\n" +
+                    "            parent \"" + name + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            nominal_voltage " + voltage + "V;\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_A\";\n" +
+                    "                file \"generated_data/" + house + "_R.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_B\";\n" +
+                    "                file \"generated_data/" + house + "_S.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_C\";\n" +
+                    "                file \"generated_data/" + house + "_T.csv\";\n" +
+                    "            };\n" +
+                    "        };\n"
+                case None =>
+                    ""
             }
-            else
-                ""
+
         return (ret)
     }
 
-    def emit_node (name: String, voltage: Double, t0: Calendar): String =
+    def emit_node (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
         "        object meter\n" +
         "        {\n" +
@@ -477,7 +469,7 @@ class GridLABD (session: SparkSession) extends Serializable
         "            nominal_voltage " + voltage + "V;\n" +
         "        };\n" +
 //                 load_from_player_file (name, voltage) +
-                 generate_player_file (name, voltage, t0) +
+                 generate_player_file (experiments, name, voltage) +
         "\n" +
         "        object recorder\n" +
         "        {\n" +
@@ -490,7 +482,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, t0: Calendar)(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
+    def make_node (slack: String, experiments: HashSet[Experiment])(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
         val node = arg._1
         val pv = arg._2
@@ -515,7 +507,7 @@ class GridLABD (session: SparkSession) extends Serializable
             if (node.id_seq == slack)
                 emit_slack (node.id_seq, node.voltage)
             else
-                emit_node (node.id_seq, node.voltage, t0)
+                emit_node (experiments, node.id_seq, node.voltage)
 
         val ret = nod + trans + loads
 
@@ -729,7 +721,7 @@ class GridLABD (session: SparkSession) extends Serializable
         start: Calendar,
         finish: Calendar,
         swing_node: String,
-        with_feeder: Boolean): String =
+        with_feeder: Boolean): Tuple2[String,HashSet[Experiment]] =
     {
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -741,6 +733,18 @@ class GridLABD (session: SparkSession) extends Serializable
         val pn = PreNode ("", 0.0) // just to access the vertex_id function
         val start_at = Array[VertexId] (pn.vertex_id (starting_node))
         val (traced_nodes, traced_edges) = trace.run (start_at)
+
+        // make a list of houses and experiment slots
+        val houses = traced_nodes.filter (x => x.voltage < 1000.0 && x.id_seq.startsWith ("HAS")).map (_.id_seq).collect
+        var slot = 0
+        val window = 15 * 60 // window size in simulated seconds per experiment
+        val experiments = HashSet[Experiment]()
+        for (house <- houses)
+        {
+            val experiment = Experiment (has (house), start, slot, window, 5, 0, 100000, 1000)
+            slot = slot + 1
+            experiments += experiment
+        }
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy (_.key).values
@@ -774,7 +778,7 @@ class GridLABD (session: SparkSession) extends Serializable
         // get the node strings
         val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
-        val n_strings = qq.map (make_node (swing_node, start))
+        val n_strings = qq.map (make_node (swing_node, experiments))
 
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
@@ -790,9 +794,8 @@ class GridLABD (session: SparkSession) extends Serializable
         /**
          * Create the output file.
          */
-        // override finish time
         val t1 = start.clone ().asInstanceOf[Calendar]
-        t1.add (Calendar.SECOND, _NextSlot * _Window)
+        t1.add (Calendar.SECOND, slot * window)
         val prefix =
             "// $Id: " + equipment + ".glm\n" +
             "// Einspeiseleistung\n" +
@@ -836,10 +839,10 @@ class GridLABD (session: SparkSession) extends Serializable
         result.append (nodefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
         result.append (edgefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
 
-        return (result.toString ())
+        return ((result.toString (), experiments))
     }
 
-    def export (session: SparkSession, args: String): String =
+    def export (session: SparkSession, args: String): Tuple2[String,HashSet[Experiment]] =
     {
         val arguments = args.split (",").map (
             (s) =>
@@ -878,7 +881,7 @@ class GridLABD (session: SparkSession) extends Serializable
         if (0 == starting.length)
         {
             println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
-            return ("")
+            return (("", HashSet[Experiment] ()))
         }
         else if (1 < starting.length)
             println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
@@ -890,7 +893,7 @@ class GridLABD (session: SparkSession) extends Serializable
         if (0 == swinging.length)
         {
             println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
-            return ("")
+            return (("", HashSet[Experiment] ()))
         }
         else if (1 < swinging.length)
             println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
@@ -1227,7 +1230,7 @@ object GridLABD
         val result = gridlab.export (session, "equipment=" + house + ",topologicalnodes=true")
 
         val graph = System.nanoTime ()
-        Files.write (Paths.get (house + ".glm"), result.getBytes (StandardCharsets.UTF_8))
+        Files.write (Paths.get (house + ".glm"), result._1.getBytes (StandardCharsets.UTF_8))
 
         // clean up this run
         hdfs.delete (new Path (gridlab._TempFilePrefix), true)

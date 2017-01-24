@@ -9,6 +9,7 @@ import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Timestamp
 import java.sql.Types
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.HashMap
 
@@ -112,7 +113,7 @@ class GridLABDSuite extends FunSuite
 
             // insert the simulation
             val now = Calendar.getInstance ()
-            val insert = connection.prepareStatement ("insert into simulation (id, house, power, time) values (?, ?, ?, ?)")
+            val insert = connection.prepareStatement ("insert into simulation (id, equipment, description, time) values (?, ?, ?, ?)")
             insert.setNull (1, Types.INTEGER)
             insert.setString (2, equipment)
             insert.setString (3, description)
@@ -213,8 +214,10 @@ class GridLABDSuite extends FunSuite
         connection.commit ()
     }
 
-    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int)
+    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int): List[String] =
     {
+        var ret = List[String] ()
+
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
 
@@ -229,17 +232,166 @@ class GridLABDSuite extends FunSuite
                 if (x.endsWith ("_voltage.csv"))
                 {
                     val data = gridlabd.read_voltage_records (session, x)
-                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    data.setName (x.substring (x.lastIndexOf ("/") + 1))
+                    ret = ret :+ data.name
+                    data.persist (gridlabd._StorageLevel)
                     store_rdd (connection, id, data)
                 }
                 else if (x.endsWith ("_current.csv"))
                 {
                     val data = gridlabd.read_current_records (session, x)
-                    data.name = x.substring (x.lastIndexOf ("/") + 1)
+                    data.setName (x.substring (x.lastIndexOf ("/") + 1))
+                    ret = ret :+ data.name
+                    data.persist (gridlabd._StorageLevel)
                     store_rdd2 (connection, id, data)
                 }
             }
 
+        }
+        catch
+        {
+            // if the error message is "out of memory",
+            // it probably means no database file is found
+            case e: SQLException ⇒ println ("exception caught: " + e)
+        }
+        finally
+        {
+            try
+            {
+                if (connection != null)
+                    connection.close ()
+            }
+            catch
+            {
+                // connection close failed
+                case e: SQLException ⇒ println ("exception caught: " + e);
+            }
+        }
+        
+        return (ret)
+    }
+
+    def analyse_voltages (session: SparkSession, simulation: Int, experiment: Experiment, nominal: Double, tolerance: Double): Unit =
+    {
+        val fmt = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        println ("analysing " + experiment.house
+            + " for voltage in slot " + experiment.slot
+            + " from " + fmt.format (experiment.t1.getTime ())
+            + " to " + fmt.format (experiment.t2.getTime ()))
+
+        val min = nominal - (nominal * tolerance / 100.0)
+        val max = nominal + (nominal * tolerance / 100.0)
+
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+
+        var connection: Connection = null
+        try
+        {
+            // create a database connection
+            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Volts' and abs(real_a) < 1000.0 and abs(imag_a) < 1000.0 and time between ? and ? order by time, element")
+            query.setInt (1, simulation)
+            query.setString (2, experiment.t1.getTimeInMillis ().toString ())
+            query.setString (3, experiment.t2.getTimeInMillis ().toString ())
+            val result = query.executeQuery ()
+            var found = false
+            while (result.next () && !found)
+            {
+                val element = result.getString ("element")
+                val time = result.getString ("time")
+                val a = Complex (result.getDouble ("real_a"), result.getDouble ("imag_a")).abs
+                val b = Complex (result.getDouble ("real_b"), result.getDouble ("imag_b")).abs
+                val c = Complex (result.getDouble ("real_c"), result.getDouble ("imag_c")).abs
+                if ((a < min) || (a > max) || (b < min) || (b > max) || (c < min) || (c > max))
+                {
+                    val diff = (time.toLong - experiment.t1.getTimeInMillis ()) / 1000
+                    val kw = experiment.from + experiment.step * (diff / experiment.interval)
+                    println (experiment.house + " exceeds voltage tolerance with " + kw + "kW at " + element + " (" + a + "," + b + "," + c + ")")
+                    found = true
+                }
+            }
+            result.close ()
+            query.close ()
+        }
+        catch
+        {
+            // if the error message is "out of memory",
+            // it probably means no database file is found
+            case e: SQLException ⇒ println ("exception caught: " + e)
+        }
+        finally
+        {
+            try
+            {
+                if (connection != null)
+                    connection.close ()
+            }
+            catch
+            {
+                // connection close failed
+                case e: SQLException ⇒ println ("exception caught: " + e);
+            }
+        }
+    }
+
+    /**
+     * Get pairs of cable id and maximum current.
+     */
+    def getCableMaxCurrent (session: SparkSession): scala.collection.mutable.HashMap[String, Double] =
+    {
+        val ret = scala.collection.mutable.HashMap[String, Double] ()
+
+        val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
+        val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
+        val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
+        val pairs = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent)).collect
+        for (pair <- pairs)
+            ret += pair
+        return (ret)
+    }
+
+    def analyse_currents (session: SparkSession, simulation: Int, experiment: Experiment, cables: scala.collection.mutable.HashMap[String, Double]): Unit =
+    {
+        val fmt = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        println ("analysing " + experiment.house
+            + " for current in slot " + experiment.slot
+            + " from " + fmt.format (experiment.t1.getTime ())
+            + " to " + fmt.format (experiment.t2.getTime ()))
+
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+
+        var connection: Connection = null
+        try
+        {
+            // create a database connection
+            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Amps' and time between ? and ? order by time, element")
+            query.setInt (1, simulation)
+            query.setString (2, experiment.t1.getTimeInMillis ().toString ())
+            query.setString (3, experiment.t2.getTimeInMillis ().toString ())
+            val result = query.executeQuery ()
+            var found = false
+            while (result.next () && !found)
+            {
+                val element = result.getString ("element")
+                val max = if (cables.contains (element)) cables(element) else 1e6
+                    
+                val time = result.getString ("time")
+                val a = Complex (result.getDouble ("real_a"), result.getDouble ("imag_a")).abs
+                val b = Complex (result.getDouble ("real_b"), result.getDouble ("imag_b")).abs
+                val c = Complex (result.getDouble ("real_c"), result.getDouble ("imag_c")).abs
+                if (a + b + c > max)
+                {
+                    val diff = (time.toLong - experiment.t1.getTimeInMillis ()) / 1000
+                    val kw = experiment.from + experiment.step * (diff / experiment.interval)
+                    println (experiment.house + " exceeds current maximum with " + kw + "kW at " + element + " (" + a + "," + b + "," + c + ")")
+                    found = true
+                }
+            }
+            result.close ()
+            query.close ()
         }
         catch
         {
@@ -268,16 +420,11 @@ class GridLABDSuite extends FunSuite
 
         val start = System.nanoTime ()
 
+        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355"
+        //val root = "NIS_CIM_Export_sias_current_20161220_Sample4"
         val filename =
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Guemligen" + ".rdf"
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf"
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
-//            FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
-            FILE_DEPOT + "bkw_cim_export_haelig" + ".rdf"
+            FILE_DEPOT + root + ".rdf"
 
-//        "," +
-//        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
         val elements = readFile (session, filename)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
@@ -291,8 +438,13 @@ class GridLABDSuite extends FunSuite
         // clean up from any prior failed run
         FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
-        val equipment = "TRA5200" // EWS: "HAK63498" Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
+        // Hälig (STA7854)
+        val equipment = "TRA5200"
         val swing = "ABG20106"
+
+        // Häuselacker (STA2591)
+//        val equipment = "TRA3967"
+//        val swing = "ABG20106"
 
         // val t0 = Calendar.getInstance ()
         // or
@@ -303,7 +455,7 @@ class GridLABDSuite extends FunSuite
 //        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-18 12:00:00".replace (" ", "T"))
 //        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2015-11-19 12:00:00".replace (" ", "T"))
         val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
-        // redundant:
+        // ToDo: how to get the times right in the header
         val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
 
         val result = gridlabd.export (session,
@@ -315,23 +467,31 @@ class GridLABDSuite extends FunSuite
             ",feeder=false")
 
         val export = System.nanoTime ()
-        val experiments = gridlabd._Experiments
 
         val file = Paths.get (equipment + ".glm")
-        Files.write (file, result.getBytes (StandardCharsets.UTF_8))
+        Files.write (file, result._1.getBytes (StandardCharsets.UTF_8))
         val results = gridlabd.solve (session, equipment)
 
         val solve = System.nanoTime ()
 
         val id = store (equipment, "Einspeiseleistung", t1, results)
-        load_and_store (session, gridlabd, id)
+        val list = load_and_store (session, gridlabd, id)
 
         val save = System.nanoTime ()
+
+        for (experiment <- result._2)
+            analyse_voltages (session, id, experiment, 400.0, 3.0)
+        val cables = getCableMaxCurrent (session)
+        for (experiment <- result._2)
+            analyse_currents (session, id, experiment, cables)
+
+        val analyse = System.nanoTime ()
 
         println ("read : " + (read - start) / 1e9 + " seconds")
         println ("export: " + (export - read) / 1e9 + " seconds")
         println ("solve: " + (solve - export) / 1e9 + " seconds")
         println ("save: " + (save - solve) / 1e9 + " seconds")
+        println ("analyse: " + (analyse - save) / 1e9 + " seconds")
         println ()
 
         // clean up this run
