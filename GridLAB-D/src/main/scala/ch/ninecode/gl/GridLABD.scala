@@ -103,10 +103,6 @@ class GridLABD (session: SparkSession) extends Serializable
         _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
 
     var _StorageLevel = StorageLevel.MEMORY_ONLY
-    var _TempFilePrefix = "hdfs://sandbox:8020/output/"
-    var _ConfFileName = "lines"
-    var _NodeFileName = "nodes"
-    var _EdgeFileName = "edges"
 
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
@@ -788,14 +784,6 @@ class GridLABD (session: SparkSession) extends Serializable
         // get the edge strings
         val e_strings = combined_edges.map (make_link (line, trans))
 
-        c_strings.saveAsTextFile (_TempFilePrefix + _ConfFileName)
-        n_strings.saveAsTextFile (_TempFilePrefix + _NodeFileName)
-        e_strings.saveAsTextFile (_TempFilePrefix + _EdgeFileName)
-
-        val conffiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _ConfFileName)
-        val nodefiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _NodeFileName)
-        val edgefiles = session.sparkContext.wholeTextFiles (_TempFilePrefix + _EdgeFileName)
-
         /**
          * Create the output file.
          */
@@ -839,10 +827,9 @@ class GridLABD (session: SparkSession) extends Serializable
 
         val result = new StringBuilder ()
         result.append (prefix)
-
-        result.append (conffiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
-        result.append (nodefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
-        result.append (edgefiles.map ((item: Tuple2[String,String]) => item._2).fold ("")((x: String, y: String) => x + y))
+        result.append (c_strings.fold ("")((x: String, y: String) => x + y))
+        result.append (n_strings.fold ("")((x: String, y: String) => x + y))
+        result.append (e_strings.fold ("")((x: String, y: String) => x + y))
 
         return ((result.toString (), experiments))
     }
@@ -859,9 +846,6 @@ class GridLABD (session: SparkSession) extends Serializable
                         (pair(0), "")
                 }
         ).toMap
-
-        // clean up from any prior failed run
-        FileUtils.deleteDirectory (new File (_TempFilePrefix))
 
         // see if we should use topology nodes
         val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
@@ -1225,26 +1209,10 @@ object GridLABD
 
         gridlab._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        val hdfs_configuration = new Configuration ()
-        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem") // .class.getName ()
-        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        val hdfs = FileSystem.get (URI.create (gridlab._TempFilePrefix), hdfs_configuration)
-
-        val confPath = new Path (gridlab._TempFilePrefix, gridlab._ConfFileName)
-        val nodePath = new Path (gridlab._TempFilePrefix, gridlab._NodeFileName)
-        val edgePath = new Path (gridlab._TempFilePrefix, gridlab._EdgeFileName)
-
-        hdfs.delete (confPath, true)
-        hdfs.delete (nodePath, true)
-        hdfs.delete (edgePath, true)
-
         val result = gridlab.export (session, "equipment=" + house + ",topologicalnodes=true")
 
         val graph = System.nanoTime ()
         Files.write (Paths.get (house + ".glm"), result._1.getBytes (StandardCharsets.UTF_8))
-
-        // clean up this run
-        hdfs.delete (new Path (gridlab._TempFilePrefix), true)
 
         //println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")

@@ -432,11 +432,7 @@ class GridLABDSuite extends FunSuite
         // set up for execution
         val gridlabd = new GridLABD (session)
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        gridlabd._TempFilePrefix = "./output/"
         gridlabd._CSV = FILE_DEPOT + "KS_Leistungen.csv"
-
-        // clean up from any prior failed run
-        FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
 
         // Hälig (STA7854)
         val equipment = "TRA5200"
