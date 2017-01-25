@@ -81,7 +81,7 @@ case class Transformer (node: String, transformer: PowerTransformer)
  * to - KW, ending PV power
  * step - KW, KW increment (resolution of the Einspeiseleistung value)
  */
-case class Experiment (house: String, t0: Calendar, slot: Int, window: Int, interval: Int, from: Double, to: Double, step: Double)
+case class Experiment (trafo: String, house: String, t0: Calendar, slot: Int, window: Int, interval: Int, from: Double, to: Double, step: Double)
 {
     def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
     def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
@@ -337,7 +337,7 @@ class GridLABD (session: SparkSession) extends Serializable
         "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            interval 5;\n" +
-        "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
+        "            file \"results/"  + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
@@ -386,7 +386,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def ramp_up (exp: Experiment, angle: Double): String =
+    def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
     {
         val ret = new StringBuilder ()
         def addrow (time: Calendar, power: Double, angle: Double) =
@@ -409,7 +409,15 @@ class GridLABD (session: SparkSession) extends Serializable
         }
         addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
 
-        return (ret.toString ())
+        return (ret.toString ().getBytes (StandardCharsets.UTF_8))
+    }
+
+    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
+    {
+        val file = Paths.get (equipment + "/" + path)
+        // ToDo: check for IOException
+        Files.createDirectories (file.getParent ())
+        Files.write (file, bytes)
     }
 
     def generate_player_file (experiments: HashSet[Experiment], name: String, voltage: Double): String =
@@ -422,12 +430,9 @@ class GridLABD (session: SparkSession) extends Serializable
                     val r_phase = 0.0
                     val s_phase = 240.0
                     val t_phase = 120.0
-                    var contents = ramp_up (experiment, r_phase)
-                    Files.write (Paths.get ("generated_data/" + house + "_R.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                        contents = ramp_up (experiment, s_phase)
-                    Files.write (Paths.get ("generated_data/" + house + "_S.csv"), contents.getBytes (StandardCharsets.UTF_8))
-                        contents = ramp_up (experiment, t_phase)
-                    Files.write (Paths.get ("generated_data/" + house + "_T.csv"), contents.getBytes (StandardCharsets.UTF_8))
+                    writeInputFile (experiment.trafo, "generated_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
+                    writeInputFile (experiment.trafo, "generated_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
+                    writeInputFile (experiment.trafo, "generated_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
 
                     "\n" +
                     "        object load\n" +
@@ -477,7 +482,7 @@ class GridLABD (session: SparkSession) extends Serializable
         "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            interval 5;\n" +
-        "            file \"" + _TempFilePrefix + name + "_voltage.csv\";\n" +
+        "            file \"results/" + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
@@ -532,7 +537,7 @@ class GridLABD (session: SparkSession) extends Serializable
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
                         "            interval 5;\n" +
-                        "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
+                        "            file \"results/" + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
                         trans.emit (edges) +
@@ -543,7 +548,7 @@ class GridLABD (session: SparkSession) extends Serializable
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
                         "            interval 5;\n" +
-                        "            file \"" + _TempFilePrefix + edge.id_equ + "_current.csv\";\n" +
+                        "            file \"results/" + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
@@ -741,7 +746,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val experiments = HashSet[Experiment]()
         for (house <- houses)
         {
-            val experiment = Experiment (has (house), start, slot, window, 5, 0, 100000, 1000)
+            val experiment = Experiment (equipment, has (house), start, slot, window, 5, 0, 100000, 1000)
             slot = slot + 1
             experiments += experiment
         }
@@ -826,9 +831,9 @@ class GridLABD (session: SparkSession) extends Serializable
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename \"" + _TempFilePrefix + equipment + "_voltdump.csv\";\n" +
+            "            filename \"results/" + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
-            "            runtime '" + _DateFormat.format (t1.getTime ()) + "';\n" +
+            "            runtime '" + _DateFormat.format (start.getTime ()) + "';\n" +
             "        };\n" +
             "\n"
 
@@ -906,7 +911,11 @@ class GridLABD (session: SparkSession) extends Serializable
         val start = DatatypeConverter.parseDateTime (t0)
         val finish = DatatypeConverter.parseDateTime (t1)
 
-        return (make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder))
+        val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
+        writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
+        Files.createDirectories (Paths.get (equipment + "/results"))
+
+        return (result)
     }
 
     def read_voltage_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
@@ -975,7 +984,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def check (input: String): Boolean =
     {
-        if (input.contains ("WARNING") || input.contains ("ERROR") || input.contains ("FAIL"))
+        if (/*input.contains ("WARNING") ||*/ input.contains ("ERROR") || input.contains ("FAIL"))
         {
             println ("gridlabd failed, message is: " + input)
             false
@@ -1038,16 +1047,18 @@ class GridLABD (session: SparkSession) extends Serializable
                 "-c",
                 "while read line; do " +
                     "FILE=$line; " +
-                    "gridlabd $FILE 2>" + _TempFilePrefix + "${FILE%.*}.out; " +
-                    "cat " + _TempFilePrefix + "${FILE%.*}.out; " +
+                    "pushd $FILE; " +
+                    "gridlabd $FILE.glm 2>" + "$FILE.out; " +
+                    "popd;" +
+                    "cat $FILE/$FILE.out; " +
                 "done < /dev/stdin")
 
-        val files = session.sparkContext.parallelize (Array[String] (filename_root  + ".glm"))
+        val files = session.sparkContext.parallelize (Array[String] (filename_root))
         val out = files.pipe (gridlabd)
         val success = out.map (check).fold (true)(_ && _)
         val ret = if (success)
         {
-            val outputs = list_files (_TempFilePrefix)
+            val outputs = list_files (filename_root + "/results")
             for (x <- outputs)
             {
                 if (x.endsWith ("_voltage.csv"))
@@ -1063,7 +1074,7 @@ class GridLABD (session: SparkSession) extends Serializable
                     data.cache ()
                 }
             }
-            read_result (session, _TempFilePrefix + filename_root + "_voltdump.csv")
+            read_result (session, filename_root + "/results/" + filename_root + "_voltdump.csv")
         }
         else
             session.sparkContext.parallelize (Array[Solution] ())

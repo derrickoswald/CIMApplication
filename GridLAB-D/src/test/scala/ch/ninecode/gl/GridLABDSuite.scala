@@ -214,7 +214,7 @@ class GridLABDSuite extends FunSuite
         connection.commit ()
     }
 
-    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int): List[String] =
+    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int, equipment: String): List[String] =
     {
         var ret = List[String] ()
 
@@ -226,7 +226,7 @@ class GridLABDSuite extends FunSuite
         {
             // create a database connection
             connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
-            val outputs = gridlabd.list_files (gridlabd._TempFilePrefix)
+            val outputs = gridlabd.list_files (equipment + "/results")
             for (x <- outputs)
             {
                 if (x.endsWith ("_voltage.csv"))
@@ -420,8 +420,8 @@ class GridLABDSuite extends FunSuite
 
         val start = System.nanoTime ()
 
-        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355"
-        //val root = "NIS_CIM_Export_sias_current_20161220_Sample4"
+        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        //val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -444,7 +444,7 @@ class GridLABDSuite extends FunSuite
 
         // Häuselacker (STA2591)
 //        val equipment = "TRA3967"
-//        val swing = "ABG20106"
+//        val swing = "VER126123"
 
         // val t0 = Calendar.getInstance ()
         // or
@@ -468,14 +468,14 @@ class GridLABDSuite extends FunSuite
 
         val export = System.nanoTime ()
 
-        val file = Paths.get (equipment + ".glm")
-        Files.write (file, result._1.getBytes (StandardCharsets.UTF_8))
+//        val file = Paths.get (equipment + ".glm")
+//        Files.write (file, result._1.getBytes (StandardCharsets.UTF_8))
         val results = gridlabd.solve (session, equipment)
 
         val solve = System.nanoTime ()
 
         val id = store (equipment, "Einspeiseleistung", t1, results)
-        val list = load_and_store (session, gridlabd, id)
+        val list = load_and_store (session, gridlabd, id, equipment)
 
         val save = System.nanoTime ()
 
