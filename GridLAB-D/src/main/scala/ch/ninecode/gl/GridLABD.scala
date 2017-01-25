@@ -834,7 +834,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return ((result.toString (), experiments))
     }
 
-    def export (session: SparkSession, args: String): Tuple2[String,HashSet[Experiment]] =
+    def export (session: SparkSession, args: String): HashSet[Experiment] =
     {
         val arguments = args.split (",").map (
             (s) =>
@@ -870,7 +870,7 @@ class GridLABD (session: SparkSession) extends Serializable
         if (0 == starting.length)
         {
             println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
-            return (("", HashSet[Experiment] ()))
+            return (HashSet[Experiment] ())
         }
         else if (1 < starting.length)
             println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
@@ -882,7 +882,7 @@ class GridLABD (session: SparkSession) extends Serializable
         if (0 == swinging.length)
         {
             println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
-            return (("", HashSet[Experiment] ()))
+            return (HashSet[Experiment] ())
         }
         else if (1 < swinging.length)
             println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
@@ -899,7 +899,7 @@ class GridLABD (session: SparkSession) extends Serializable
         writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         Files.createDirectories (Paths.get (equipment + "/results"))
 
-        return (result)
+        return (result._2)
     }
 
     def read_voltage_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
@@ -1148,12 +1148,11 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+            "hdfs://sandbox:8020/data/" + "bkw_cim_export_haelig" + ".rdf"
 
-        val house = if (args.length > 1)
-            args (1)
-        else
-            "HAS174735" // Bubenei: "HAS97010", Brügg: "HAS76580" or "HAS6830" or "HAS78459", Gümligen: "HAS10002", Kiental: "HAS174735"
+        // Hälig (STA7854)
+        val equipment = "TRA5200"
+        val swing = "ABG20106"
 
         val start = System.nanoTime ()
 
@@ -1179,14 +1178,21 @@ object GridLABD
         // register topological classes
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (classOf[ch.ninecode.gl.PreNode], classOf[ch.ninecode.gl.PreEdge]))
+        configuration.registerKryoClasses (Array (
+            classOf[ch.ninecode.gl.ShortCircuitData],
+            classOf[ch.ninecode.gl.PreNode],
+            classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PV],
+            classOf[ch.ninecode.gl.Transformer],
+            classOf[ch.ninecode.gl.Solution],
+            classOf[ch.ninecode.gl.ThreePhaseComplexVoltageDataElement]))
 
         // make a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
-        val gridlab = new GridLABD (session)
+        val gridlabd = new GridLABD (session)
 
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
@@ -1207,18 +1213,29 @@ object GridLABD
         elements.explain
         val read = System.nanoTime ()
 
-        gridlab._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        val result = gridlab.export (session, "equipment=" + house + ",topologicalnodes=true")
+        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
+        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
+        val experiments = gridlabd.export (session,
+            "equipment=" + equipment +
+            ",topologicalnodes=true" +
+            ",start=" + DatatypeConverter.printDateTime (t0) +
+            ",finish=" + DatatypeConverter.printDateTime (t1) +
+            ",swing=" + swing +
+            ",feeder=false")
 
-        val graph = System.nanoTime ()
-        Files.write (Paths.get (house + ".glm"), result._1.getBytes (StandardCharsets.UTF_8))
+        val export = System.nanoTime ()
+
+        val results = gridlabd.solve (session, equipment)
+
+        val solve = System.nanoTime ()
 
         //println ("" + count + " elements")
         println ("setup : " + (setup - start) / 1e9 + " seconds")
         println ("read : " + (read - setup) / 1e9 + " seconds")
-        println ("graph: " + (graph - read) / 1e9 + " seconds")
-        println ("write: " + (System.nanoTime () - graph) / 1e9 + " seconds")
+        println ("export: " + (export - read) / 1e9 + " seconds")
+        println ("solve: " + (solve - export) / 1e9 + " seconds")
         println ()
     }
 }

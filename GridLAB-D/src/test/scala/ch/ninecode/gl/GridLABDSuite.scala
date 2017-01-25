@@ -454,7 +454,7 @@ class GridLABDSuite extends FunSuite
         // ToDo: how to get the times right in the header
         val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
 
-        val result = gridlabd.export (session,
+        val experiments = gridlabd.export (session,
             "equipment=" + equipment +
             ",topologicalnodes=true" +
             ",start=" + DatatypeConverter.printDateTime (t0) +
@@ -464,8 +464,6 @@ class GridLABDSuite extends FunSuite
 
         val export = System.nanoTime ()
 
-//        val file = Paths.get (equipment + ".glm")
-//        Files.write (file, result._1.getBytes (StandardCharsets.UTF_8))
         val results = gridlabd.solve (session, equipment)
 
         val solve = System.nanoTime ()
@@ -475,10 +473,10 @@ class GridLABDSuite extends FunSuite
 
         val save = System.nanoTime ()
 
-        for (experiment <- result._2)
+        for (experiment <- experiments)
             analyse_voltages (session, id, experiment, 400.0, 3.0)
         val cables = getCableMaxCurrent (session)
-        for (experiment <- result._2)
+        for (experiment <- experiments)
             analyse_currents (session, id, experiment, cables)
 
         val analyse = System.nanoTime ()
