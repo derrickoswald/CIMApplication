@@ -408,6 +408,22 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret.toString ().getBytes (StandardCharsets.UTF_8))
     }
 
+    def eraseInputFile (equipment: String)
+    {
+        if ("" == HDFS_URI)
+            FileUtils.deleteDirectory (new File (equipment + "/"))
+        else
+        {
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+            val directory = new Path ("/simulation/" + equipment + "/")
+            hdfs.delete (directory, true)
+        }
+    }
+
     def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
     {
         if ("" == HDFS_URI)
@@ -915,6 +931,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val start = DatatypeConverter.parseDateTime (t0)
         val finish = DatatypeConverter.parseDateTime (t1)
 
+        eraseInputFile (equipment)
         val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
         writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         writeInputFile (equipment, "output_data/dummy", null) // mkdir
@@ -1007,7 +1024,7 @@ class GridLABD (session: SparkSession) extends Serializable
         else
             null
     }
-    
+
     def solve (session: SparkSession, filename_root: String): RDD[ThreePhaseComplexDataElement] =
     {
         // assumes gridlabd is installed on every node:
