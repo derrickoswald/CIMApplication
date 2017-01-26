@@ -96,6 +96,8 @@ case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, 
 
 class GridLABD (session: SparkSession) extends Serializable
 {
+    var HDFS_URI = "hdfs://sandbox:8020/"
+
     val USE_UTC = false
 
     val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
@@ -333,7 +335,7 @@ class GridLABD (session: SparkSession) extends Serializable
         "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            interval 5;\n" +
-        "            file \"results/"  + name + "_voltage.csv\";\n" +
+        "            file \"output_data/"  + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
@@ -410,10 +412,30 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
     {
-        val file = Paths.get (equipment + "/" + path)
-        // ToDo: check for IOException
-        Files.createDirectories (file.getParent ())
-        Files.write (file, bytes)
+        if ("" == HDFS_URI)
+        {
+            // ToDo: check for IOException
+            val file = Paths.get (equipment + "/" + path)
+            Files.createDirectories (file.getParent ())
+            if (null != bytes)
+                Files.write (file, bytes)
+        }
+        else
+        {
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+            val file = new Path ("/simulation/" + equipment + "/" + path)
+            hdfs.mkdirs (file.getParent ())
+            if (null != bytes)
+            {
+                val out = hdfs.create (file)
+                out.write (bytes)
+                out.close ()
+            }
+        }
     }
 
     def generate_player_file (experiments: HashSet[Experiment], name: String, voltage: Double): String =
@@ -426,9 +448,9 @@ class GridLABD (session: SparkSession) extends Serializable
                     val r_phase = 0.0
                     val s_phase = 240.0
                     val t_phase = 120.0
-                    writeInputFile (experiment.trafo, "generated_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
-                    writeInputFile (experiment.trafo, "generated_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
-                    writeInputFile (experiment.trafo, "generated_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
+                    writeInputFile (experiment.trafo, "input_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
+                    writeInputFile (experiment.trafo, "input_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
+                    writeInputFile (experiment.trafo, "input_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
 
                     "\n" +
                     "        object load\n" +
@@ -440,17 +462,17 @@ class GridLABD (session: SparkSession) extends Serializable
                     "            object player\n" +
                     "            {\n" +
                     "                property \"constant_power_A\";\n" +
-                    "                file \"generated_data/" + house + "_R.csv\";\n" +
+                    "                file \"input_data/" + house + "_R.csv\";\n" +
                     "            };\n" +
                     "            object player\n" +
                     "            {\n" +
                     "                property \"constant_power_B\";\n" +
-                    "                file \"generated_data/" + house + "_S.csv\";\n" +
+                    "                file \"input_data/" + house + "_S.csv\";\n" +
                     "            };\n" +
                     "            object player\n" +
                     "            {\n" +
                     "                property \"constant_power_C\";\n" +
-                    "                file \"generated_data/" + house + "_T.csv\";\n" +
+                    "                file \"input_data/" + house + "_T.csv\";\n" +
                     "            };\n" +
                     "        };\n"
                 case None =>
@@ -478,7 +500,7 @@ class GridLABD (session: SparkSession) extends Serializable
         "            parent \"" + name + "\";\n" +
         "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
         "            interval 5;\n" +
-        "            file \"results/" + name + "_voltage.csv\";\n" +
+        "            file \"output_data/" + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
@@ -533,7 +555,7 @@ class GridLABD (session: SparkSession) extends Serializable
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
                         "            interval 5;\n" +
-                        "            file \"results/" + edge.id_equ + "_current.csv\";\n" +
+                        "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "PowerTransformer" =>
                         trans.emit (edges) +
@@ -544,7 +566,7 @@ class GridLABD (session: SparkSession) extends Serializable
                         "            parent \"" + edge.id_equ + "\";\n" +
                         "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
                         "            interval 5;\n" +
-                        "            file \"results/" + edge.id_equ + "_current.csv\";\n" +
+                        "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
                         "        };\n"
                     case "Switch" =>
                         val switch = edge.element.asInstanceOf[Switch]
@@ -819,7 +841,7 @@ class GridLABD (session: SparkSession) extends Serializable
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename \"results/" + equipment + "_voltdump.csv\";\n" +
+            "            filename \"output_data/" + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + _DateFormat.format (start.getTime ()) + "';\n" +
             "        };\n" +
@@ -897,7 +919,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
         val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
         writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
-        Files.createDirectories (Paths.get (equipment + "/results"))
+        writeInputFile (equipment, "output_data/dummy", null) // mkdir
 
         return (result._2)
     }
@@ -977,19 +999,22 @@ class GridLABD (session: SparkSession) extends Serializable
             true
     }
 
-    def list_files (directory: String): TraversableOnce[String] =
+    def list_files (equipment: String, path: String): TraversableOnce[String] =
     {
         val hdfs_configuration = new Configuration ()
         hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        val hdfs = FileSystem.get (URI.create (directory), hdfs_configuration)
-        val root = new Path (directory)
+        val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+        val root = if ("" == HDFS_URI)
+            new Path (equipment + "/" + path)
+        else
+            new Path ("/simulation/" + equipment + "/" + path)
+
         var files = Vector[String] ()
         val iterator = hdfs.listFiles (root, false) // ToDo: recursive
         while (iterator.hasNext ())
         {
-            // "LocatedFileStatus{path=hdfs://sandbox:8020/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
-            // "LocatedFileStatus{path=hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
             val fs = iterator.next ()
             val path = fs.getPath ().toString ()
             files = files :+ path
@@ -1025,24 +1050,45 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def solve (session: SparkSession, filename_root: String): RDD[Solution] =
     {
+        // assumes gridlabd is installed on every node:
+        // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
+        // convert the rpm to a deb usig alien:
+        //   sudo alien gridlabd_3.2.0-2_amd64.rpm
+        // install on every node:
+        //   sudo dpkg -i gridlabd_3.2.0-2_amd64.deb
         val gridlabd =
-            Array[String] (
-                "bash",
-                "-c",
-                "while read line; do " +
-                    "FILE=$line; " +
-                    "pushd $FILE; " +
-                    "gridlabd $FILE.glm 2>" + "$FILE.out; " +
-                    "popd;" +
-                    "cat $FILE/$FILE.out; " +
-                "done < /dev/stdin")
+            if ("" == HDFS_URI) // local
+                Array[String] (
+                    "bash",
+                    "-c",
+                    "while read line; do " +
+                        "FILE=$line; " +
+                        "pushd $FILE; " +
+                        "gridlabd $FILE.glm 2>$FILE.out; " +
+                        "popd;" +
+                        "cat $FILE/$FILE.out; " +
+                    "done < /dev/stdin")
+            else // cluster
+                Array[String] (
+                    "bash",
+                    "-c",
+                    "while read line; do " +
+                        "FILE=$line; " +
+                        "hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
+                        "pushd $FILE; " +
+                        "gridlabd $FILE.glm 2>$FILE.out; " +
+                        "popd;" +
+                        "hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
+                        "hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
+                        "cat $FILE/$FILE.out; " +
+                    "done < /dev/stdin")
 
         val files = session.sparkContext.parallelize (Array[String] (filename_root))
         val out = files.pipe (gridlabd)
         val success = out.map (check).fold (true)(_ && _)
         val ret = if (success)
         {
-            val outputs = list_files (filename_root + "/results")
+            val outputs = list_files (filename_root, "output_data")
             for (x <- outputs)
             {
                 if (x.endsWith ("_voltage.csv"))
@@ -1058,7 +1104,8 @@ class GridLABD (session: SparkSession) extends Serializable
                     data.cache ()
                 }
             }
-            read_result (session, filename_root + "/results/" + filename_root + "_voltdump.csv")
+            //read_result (session, filename_root + "/output_data/" + filename_root + "_voltdump.csv")
+            session.sparkContext.parallelize (Array[Solution] ())
         }
         else
             session.sparkContext.parallelize (Array[Solution] ())

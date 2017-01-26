@@ -101,7 +101,7 @@ class GridLABDSuite extends FunSuite
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
 
             // create schema
             val statement = connection.createStatement ()
@@ -225,8 +225,8 @@ class GridLABDSuite extends FunSuite
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
-            val outputs = gridlabd.list_files (equipment + "/results")
+            connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
+            val outputs = gridlabd.list_files (equipment, "output_data")
             for (x <- outputs)
             {
                 if (x.endsWith ("_voltage.csv"))
@@ -289,7 +289,7 @@ class GridLABDSuite extends FunSuite
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            connection = DriverManager.getConnection ("jdbc:sqlite:" + experiment.trafo + "/results.db")
             val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Volts' and abs(real_a) < 1000.0 and abs(imag_a) < 1000.0 and time between ? and ? order by time, element")
             query.setInt (1, simulation)
             query.setString (2, experiment.t1.getTimeInMillis ().toString ())
@@ -366,7 +366,7 @@ class GridLABDSuite extends FunSuite
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:results.db")
+            connection = DriverManager.getConnection ("jdbc:sqlite:" + experiment.trafo + "/results.db")
             val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Amps' and time between ? and ? order by time, element")
             query.setInt (1, simulation)
             query.setString (2, experiment.t1.getTimeInMillis ().toString ())
@@ -431,6 +431,7 @@ class GridLABDSuite extends FunSuite
 
         // set up for execution
         val gridlabd = new GridLABD (session)
+        gridlabd.HDFS_URI = "" // local
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
         gridlabd._CSV = FILE_DEPOT + "KS_Leistungen.csv"
 
@@ -440,7 +441,7 @@ class GridLABDSuite extends FunSuite
 
         // Häuselacker (STA2591)
 //        val equipment = "TRA3967"
-//        val swing = "VER126123"
+//        val swing = "SIG47079"
 
         // val t0 = Calendar.getInstance ()
         // or
