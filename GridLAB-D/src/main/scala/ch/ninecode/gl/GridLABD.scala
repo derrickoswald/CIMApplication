@@ -90,9 +90,7 @@ case class Experiment (trafo: String, house: String, t0: Calendar, slot: Int, wi
 
 
 // output
-case class Solution (node: String, voltA_mag: Double, voltA_angle: Double, voltB_mag: Double, voltB_angle: Double, voltC_mag: Double, voltC_angle: Double)
-case class ThreePhaseComplexVoltageDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
-case class ThreePhaseComplexCurrentDataElement (millis: Long, value_a: Complex, value_b: Complex, value_c: Complex)
+case class ThreePhaseComplexDataElement (element: String, millis: Long, value_a: Complex, value_b: Complex, value_c: Complex, units: String)
 
 class GridLABD (session: SparkSession) extends Serializable
 {
@@ -924,7 +922,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (result._2)
     }
 
-    def read_voltage_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexVoltageDataElement] =
+    def read_records (session: SparkSession, filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -936,12 +934,12 @@ class GridLABD (session: SparkSession) extends Serializable
             Array
             (
                 StructField ("timestamp", StringType, true),
-                StructField ("voltage_A.real", DoubleType, true),
-                StructField ("voltage_A.imag", DoubleType, true),
-                StructField ("voltage_B.real", DoubleType, true),
-                StructField ("voltage_B.imag", DoubleType, true),
-                StructField ("voltage_C.real", DoubleType, true),
-                StructField ("voltage_C.imag", DoubleType, true)
+                StructField ("A.real", DoubleType, true),
+                StructField ("A.imag", DoubleType, true),
+                StructField ("B.real", DoubleType, true),
+                StructField ("B.imag", DoubleType, true),
+                StructField ("C.real", DoubleType, true),
+                StructField ("C.imag", DoubleType, true)
             )
         )
 
@@ -953,39 +951,7 @@ class GridLABD (session: SparkSession) extends Serializable
             .csv (filename)
 
         import session.implicits._
-        df.map ( r => ThreePhaseComplexVoltageDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
-    }
-
-    def read_current_records (session: SparkSession, filename: String): RDD[ThreePhaseComplexCurrentDataElement] =
-    {
-        def toTimeStamp (string: String): Long =
-        {
-            // ToDo: unkludge this assumption of CET
-            javax.xml.bind.DatatypeConverter.parseDateTime (string.replace (" CET", "").replace (" ", "T")).getTimeInMillis ()
-        }
-
-        val customSchema = StructType (
-            Array
-            (
-                StructField ("timestamp", StringType, true),
-                StructField ("current_in_A.real", DoubleType, true),
-                StructField ("current_in_A.imag", DoubleType, true),
-                StructField ("current_in_B.real", DoubleType, true),
-                StructField ("current_in_B.imag", DoubleType, true),
-                StructField ("current_in_C.real", DoubleType, true),
-                StructField ("current_in_C.imag", DoubleType, true)
-            )
-        )
-
-        val df = session.read
-            .format ("csv")
-            .option ("header", "true")
-            .option ("comment", "#")
-            .schema (customSchema)
-            .csv (filename)
-
-        import session.implicits._
-        df.map ( r => ThreePhaseComplexCurrentDataElement (toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6))) ).rdd
+        df.map (r => ThreePhaseComplexDataElement (element, toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6)), units))
     }
 
     def check (input: String): Boolean =
@@ -1022,33 +988,27 @@ class GridLABD (session: SparkSession) extends Serializable
         files
     }
 
-    def read_result (session: SparkSession, filename: String): RDD[Solution] =
+    def read_csv (x: String): RDD[ThreePhaseComplexDataElement] =
     {
-        val customSchema = StructType (
-            Array
-            (
-                StructField ("node_name", StringType, true),
-                StructField ("voltA_mag", DoubleType, true),
-                StructField ("voltA_angle", DoubleType, true),
-                StructField ("voltB_mag", DoubleType, true),
-                StructField ("voltB_angle", DoubleType, true),
-                StructField ("voltC_mag", DoubleType, true),
-                StructField ("voltC_angle", DoubleType, true)
-            )
-        )
-
-        val df = session.read
-            .format ("csv")
-            .option ("header", "true")
-            .option ("comment", "#")
-            .schema (customSchema)
-            .csv (filename)
-
-        import session.implicits._
-        df.map ( r => Solution (r.getString (0), r.getDouble (1), r.getDouble (2), r.getDouble (3), r.getDouble (4), r.getDouble (5), r.getDouble (6)) ).rdd
+        if (x.endsWith ("_voltage.csv"))
+        {
+            val filebase = x.substring (x.lastIndexOf ("/") + 1)
+            val element = filebase.substring (0, filebase.indexOf ("_voltage.csv"))
+            val units = "Volts"
+            read_records (session, x, element, units).rdd
+        }
+        else if (x.endsWith ("_current.csv"))
+        {
+            val filebase = x.substring (x.lastIndexOf ("/") + 1)
+            val element = filebase.substring (0, filebase.indexOf ("_current.csv"))
+            val units = "Amps"
+            read_records (session, x, element, units).rdd
+        }
+        else
+            null
     }
-
-    def solve (session: SparkSession, filename_root: String): RDD[Solution] =
+    
+    def solve (session: SparkSession, filename_root: String): RDD[ThreePhaseComplexDataElement] =
     {
         // assumes gridlabd is installed on every node:
         // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
@@ -1089,77 +1049,12 @@ class GridLABD (session: SparkSession) extends Serializable
         val ret = if (success)
         {
             val outputs = list_files (filename_root, "output_data")
-            for (x <- outputs)
-            {
-                if (x.endsWith ("_voltage.csv"))
-                {
-                    val data = read_voltage_records (session, x)
-                    data.name = x.substring (x.lastIndexOf ("/") + 1)
-                    data.cache ()
-                }
-                else if (x.endsWith ("_current.csv"))
-                {
-                    val data = read_current_records (session, x)
-                    data.name = x.substring (x.lastIndexOf ("/") + 1)
-                    data.cache ()
-                }
-            }
-            //read_result (session, filename_root + "/output_data/" + filename_root + "_voltdump.csv")
-            session.sparkContext.parallelize (Array[Solution] ())
+            outputs.map (read_csv).fold (null)((x, y) => if (null == x) y else if (null == y) x else x.union (y))
         }
         else
-            session.sparkContext.parallelize (Array[Solution] ())
+            session.sparkContext.parallelize (Array[ThreePhaseComplexDataElement] (), 1)
 
         return (ret)
-    }
-
-    case class DataPoint (
-        node: String,
-        timestamp: Long,
-        r: Complex,
-        s: Complex,
-        t: Complex)
-
-    def read_datapoint (session: SparkSession, filename: String): RDD[DataPoint] =
-    {
-        def toTimeStamp (string: String): Long =
-        {
-            // ToDo: unkludge this assumption of CET
-            javax.xml.bind.DatatypeConverter.parseDateTime (string.replace (" CET", "").replace (" ", "T")).getTimeInMillis ()
-        }
-
-        val node = filename.substring (0, filename.indexOf ('.'))
-        val customSchema = StructType (
-            Array
-            (
-                // "Timestamp","R_Mod","R_Ang","S_Mod","S_Ang","T_Mod","T_Ang"
-                // "2015-11-18 12:00:00",0.198788486176047,83.4268614094015,0.194118852729444,70.3877147789223,0.420925355009587,5.30872600027156
-                // "2015-11-18 12:05:00",0.210957266522948,82.5091613689104,0.199117955836656,73.3358437157651,0.425782866971673,3.81119591963858
-                StructField ("Timestamp", StringType, true),
-                StructField ("R_Mod", DoubleType, true),
-                StructField ("R_Ang", DoubleType, true),
-                StructField ("S_Mod", DoubleType, true),
-                StructField ("S_Ang", DoubleType, true),
-                StructField ("T_Mod", DoubleType, true),
-                StructField ("T_Ang", DoubleType, true)
-            )
-        )
-
-        val df = session.read
-            .format ("csv")
-            .option ("header", "true")
-            .option ("comment", "#")
-            .schema (customSchema)
-            .csv (filename)
-
-        import session.implicits._
-        df.map ( r => DataPoint (
-            node,
-            toTimeStamp (r.getString (0)),
-            Complex.fromPolar (r.getDouble (1), r.getDouble (2), true),
-            Complex.fromPolar (r.getDouble (3), r.getDouble (4), true),
-            Complex.fromPolar (r.getDouble (5), r.getDouble (6), true)
-            ) ).rdd
     }
 }
 
@@ -1231,14 +1126,15 @@ object GridLABD
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Transformer],
-            classOf[ch.ninecode.gl.Solution],
-            classOf[ch.ninecode.gl.ThreePhaseComplexVoltageDataElement]))
+            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
 
         // make a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
+        println ("setup : " + (setup - start) / 1e9 + " seconds")
+
         val gridlabd = new GridLABD (session)
 
         val files = filename.split (",")
@@ -1256,9 +1152,11 @@ object GridLABD
         // cannot assign instance of scala.collection.immutable.List$SerializationProxy
         // to field org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1.outputTypes$2
         // of type scala.collection.Seq in instance of org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1
+        //println ("" + count + " elements")
         elements.printSchema
         elements.explain
         val read = System.nanoTime ()
+        println ("read : " + (read - setup) / 1e9 + " seconds")
 
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
@@ -1271,17 +1169,11 @@ object GridLABD
             ",finish=" + DatatypeConverter.printDateTime (t1) +
             ",swing=" + swing +
             ",feeder=false")
-
         val export = System.nanoTime ()
+        println ("export: " + (export - read) / 1e9 + " seconds")
 
         val results = gridlabd.solve (session, equipment)
-
         val solve = System.nanoTime ()
-
-        //println ("" + count + " elements")
-        println ("setup : " + (setup - start) / 1e9 + " seconds")
-        println ("read : " + (read - setup) / 1e9 + " seconds")
-        println ("export: " + (export - read) / 1e9 + " seconds")
         println ("solve: " + (solve - export) / 1e9 + " seconds")
         println ()
     }

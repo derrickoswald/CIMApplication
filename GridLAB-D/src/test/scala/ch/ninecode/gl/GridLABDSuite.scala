@@ -62,8 +62,7 @@ class GridLABDSuite extends FunSuite
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Transformer],
-            classOf[ch.ninecode.gl.Solution],
-            classOf[ch.ninecode.gl.ThreePhaseComplexVoltageDataElement]))
+            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -92,7 +91,7 @@ class GridLABDSuite extends FunSuite
         return (element)
     }
 
-    def store (equipment: String, description: String, t1: Calendar, results: RDD[Solution]): Int =
+    def store (equipment: String, description: String, t1: Calendar, results: RDD[ThreePhaseComplexDataElement]): Int =
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -102,6 +101,7 @@ class GridLABDSuite extends FunSuite
         {
             // create a database connection
             connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
+            connection.setAutoCommit (false)
 
             // create schema
             val statement = connection.createStatement ()
@@ -124,24 +124,29 @@ class GridLABDSuite extends FunSuite
             val id = resultset.getInt ("id")
 
             // insert the results
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-            for (solution ← results.collect) {
-                val a = Complex.fromPolar (solution.voltA_mag, solution.voltA_angle)
-                val b = Complex.fromPolar (solution.voltB_mag, solution.voltB_angle)
-                val c = Complex.fromPolar (solution.voltC_mag, solution.voltC_angle)
+            val records = results.collect ()
+            var datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            for (i <- 0 until records.length)
+            {
+                val solution = records(i)
+                val a = solution.value_a
+                val b = solution.value_b
+                val c = solution.value_c
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
-                datainsert.setString (3, solution.node)
-                datainsert.setTimestamp (4, new Timestamp (t1.getTimeInMillis))
+                datainsert.setString (3, solution.element)
+                datainsert.setTimestamp (4, new Timestamp (solution.millis))
                 datainsert.setDouble (5, a.re)
                 datainsert.setDouble (6, a.im)
                 datainsert.setDouble (7, b.re)
                 datainsert.setDouble (8, b.im)
                 datainsert.setDouble (9, c.re)
                 datainsert.setDouble (10, c.im)
-                datainsert.setString (11, "Volts")
+                datainsert.setString (11, solution.units)
                 datainsert.executeUpdate ()
             }
+            connection.commit ()
+
             return (id)
         }
         catch
@@ -155,7 +160,7 @@ class GridLABDSuite extends FunSuite
             try
             {
                 if (connection != null)
-                    connection.close()
+                    connection.close ()
             }
             catch {
                 // connection close failed
@@ -163,112 +168,6 @@ class GridLABDSuite extends FunSuite
             }
         }
 
-    }
-
-    def store_rdd (connection: Connection, id: Int, rdd: RDD[ThreePhaseComplexVoltageDataElement]): Unit =
-    {
-        // insert the results
-        connection.setAutoCommit (false)
-        val node = rdd.name.substring (0, rdd.name.length() - "_voltage.csv".length ())
-        val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        for (dataitem ← rdd.collect)
-        {
-            datainsert.setNull (1, Types.INTEGER)
-            datainsert.setInt (2, id)
-            datainsert.setString (3, node)
-            datainsert.setTimestamp (4, new Timestamp (dataitem.millis))
-            datainsert.setDouble (5, dataitem.value_a.re)
-            datainsert.setDouble (6, dataitem.value_a.im)
-            datainsert.setDouble (7, dataitem.value_b.re)
-            datainsert.setDouble (8, dataitem.value_b.im)
-            datainsert.setDouble (9, dataitem.value_c.re)
-            datainsert.setDouble (10, dataitem.value_c.im)
-            datainsert.setString (11, "Volts")
-            datainsert.executeUpdate ()
-        }
-        connection.commit ()
-    }
-
-    // ToDo: fix this duplication
-    def store_rdd2 (connection: Connection, id: Int, rdd: RDD[ThreePhaseComplexCurrentDataElement]): Unit =
-    {
-        // insert the results
-        connection.setAutoCommit (false)
-        val node = rdd.name.substring (0, rdd.name.length() - "_current.csv".length ())
-        val datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        for (dataitem ← rdd.collect)
-        {
-            datainsert.setNull (1, Types.INTEGER)
-            datainsert.setInt (2, id)
-            datainsert.setString (3, node)
-            datainsert.setTimestamp (4, new Timestamp (dataitem.millis))
-            datainsert.setDouble (5, dataitem.value_a.re)
-            datainsert.setDouble (6, dataitem.value_a.im)
-            datainsert.setDouble (7, dataitem.value_b.re)
-            datainsert.setDouble (8, dataitem.value_b.im)
-            datainsert.setDouble (9, dataitem.value_c.re)
-            datainsert.setDouble (10, dataitem.value_c.im)
-            datainsert.setString (11, "Amps")
-            datainsert.executeUpdate ()
-        }
-        connection.commit ()
-    }
-
-    def load_and_store (session: SparkSession, gridlabd: GridLABD, id: Int, equipment: String): List[String] =
-    {
-        var ret = List[String] ()
-
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-
-        var connection: Connection = null
-        try
-        {
-            // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
-            val outputs = gridlabd.list_files (equipment, "output_data")
-            for (x <- outputs)
-            {
-                if (x.endsWith ("_voltage.csv"))
-                {
-                    val data = gridlabd.read_voltage_records (session, x)
-                    data.setName (x.substring (x.lastIndexOf ("/") + 1))
-                    ret = ret :+ data.name
-                    data.persist (gridlabd._StorageLevel)
-                    store_rdd (connection, id, data)
-                }
-                else if (x.endsWith ("_current.csv"))
-                {
-                    val data = gridlabd.read_current_records (session, x)
-                    data.setName (x.substring (x.lastIndexOf ("/") + 1))
-                    ret = ret :+ data.name
-                    data.persist (gridlabd._StorageLevel)
-                    store_rdd2 (connection, id, data)
-                }
-            }
-
-        }
-        catch
-        {
-            // if the error message is "out of memory",
-            // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e)
-        }
-        finally
-        {
-            try
-            {
-                if (connection != null)
-                    connection.close ()
-            }
-            catch
-            {
-                // connection close failed
-                case e: SQLException ⇒ println ("exception caught: " + e);
-            }
-        }
-        
-        return (ret)
     }
 
     def analyse_voltages (session: SparkSession, simulation: Int, experiment: Experiment, nominal: Double, tolerance: Double): Unit =
@@ -428,6 +327,7 @@ class GridLABDSuite extends FunSuite
         val elements = readFile (session, filename)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
+        println ("read : " + (read - start) / 1e9 + " seconds")
 
         // set up for execution
         val gridlabd = new GridLABD (session)
@@ -462,30 +362,25 @@ class GridLABDSuite extends FunSuite
             ",finish=" + DatatypeConverter.printDateTime (t1) +
             ",swing=" + swing +
             ",feeder=false")
-
         val export = System.nanoTime ()
+        println ("export: " + (export - read) / 1e9 + " seconds")
 
         val results = gridlabd.solve (session, equipment)
-
         val solve = System.nanoTime ()
+        println ("solve: " + (solve - export) / 1e9 + " seconds")
+
+        println ("solution RDD has " + results.count() + " elements")
 
         val id = store (equipment, "Einspeiseleistung", t1, results)
-        val list = load_and_store (session, gridlabd, id, equipment)
-
         val save = System.nanoTime ()
+        println ("save: " + (save - solve) / 1e9 + " seconds")
 
         for (experiment <- experiments)
             analyse_voltages (session, id, experiment, 400.0, 3.0)
         val cables = getCableMaxCurrent (session)
         for (experiment <- experiments)
             analyse_currents (session, id, experiment, cables)
-
         val analyse = System.nanoTime ()
-
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("export: " + (export - read) / 1e9 + " seconds")
-        println ("solve: " + (solve - export) / 1e9 + " seconds")
-        println ("save: " + (save - solve) / 1e9 + " seconds")
         println ("analyse: " + (analyse - save) / 1e9 + " seconds")
         println ()
 
