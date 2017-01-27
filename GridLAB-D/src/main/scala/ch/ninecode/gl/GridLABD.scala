@@ -7,46 +7,42 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.sql.Connection
+import java.sql.DriverManager
+import java.sql.SQLException
+import java.sql.Timestamp
+import java.sql.Types
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.HashMap
 import java.util.TimeZone
-import javax.xml.bind.DatatypeConverter
 
 import scala.collection.Map
+import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
-import scala.Iterator
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
+
+import javax.xml.bind.DatatypeConverter
 
 // just to get a single copy of the vertex_id function
 trait Graphable
@@ -71,6 +67,7 @@ case class PV (node: String, solar: SolarGeneratingUnit)
 case class Transformer (node: String, transformer: PowerTransformer)
 
 /**
+ * trafo - string, NIS Number of transformer feeding house
  * house - string, NIS Number of house being experimented on
  * t0 - timestamp, origin for all experiments
  * t1 - timestamp, start time for this experiment
@@ -88,9 +85,21 @@ case class Experiment (trafo: String, house: String, t0: Calendar, slot: Int, wi
     def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
 }
 
-
-// output
+/**
+ * element - string, node or branch name (ConnectivityNode/TopologicalNode name or NIS Number of cable)
+ * millis - long, number of milliseconds since the epoc
+ * value_a - complex, phase A value
+ * value_b - complex, phase B value
+ * value_c - complex, phase C value
+ * units - string, Volts for a node, Amps for a branch
+ */
 case class ThreePhaseComplexDataElement (element: String, millis: Long, value_a: Complex, value_b: Complex, value_c: Complex, units: String)
+
+/**
+ * house - string, NIS Number of house
+ * max - Option[Double], maximum KW feed in power or None if no limit was found
+ */
+case class MaxEinspeiseleistung (house: String, max: Option[Double])
 
 class GridLABD (session: SparkSession) extends Serializable
 {
@@ -872,6 +881,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def export (session: SparkSession, args: String): HashSet[Experiment] =
     {
+        var ret = HashSet[Experiment] ()
         val arguments = args.split (",").map (
             (s) =>
                 {
@@ -904,39 +914,40 @@ class GridLABD (session: SparkSession) extends Serializable
         // find the starting node
         val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
         if (0 == starting.length)
-        {
             println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
-            return (HashSet[Experiment] ())
-        }
-        else if (1 < starting.length)
-            println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
-        val starting_terminal = starting(0)
-        val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
-
-        // find the swing bus node
-        val swinging = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (swing == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
-        if (0 == swinging.length)
+        else
         {
-            println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
-            return (HashSet[Experiment] ())
+            if (1 < starting.length)
+                println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
+            val starting_terminal = starting(0)
+            val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
+    
+            // find the swing bus node
+            val swinging = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (swing == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
+            if (0 == swinging.length)
+                println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
+            else
+            {
+                if (1 < swinging.length)
+                    println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
+                val swing_terminal = swinging(0)
+                val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
+        
+                // prepare the initial graph
+                val initial = prepare (topologicalnodes)
+        
+                val start = DatatypeConverter.parseDateTime (t0)
+                val finish = DatatypeConverter.parseDateTime (t1)
+        
+                eraseInputFile (equipment)
+                val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
+                writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
+                writeInputFile (equipment, "output_data/dummy", null) // mkdir
+                ret = result._2;
+            }
         }
-        else if (1 < swinging.length)
-            println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
-        val swing_terminal = swinging(0)
-        val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
 
-        // prepare the initial graph
-        val initial = prepare (topologicalnodes)
-
-        val start = DatatypeConverter.parseDateTime (t0)
-        val finish = DatatypeConverter.parseDateTime (t1)
-
-        eraseInputFile (equipment)
-        val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
-        writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
-        writeInputFile (equipment, "output_data/dummy", null) // mkdir
-
-        return (result._2)
+        return (ret)
     }
 
     def read_records (session: SparkSession, filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
@@ -1069,9 +1080,116 @@ class GridLABD (session: SparkSession) extends Serializable
             outputs.map (read_csv).fold (null)((x, y) => if (null == x) y else if (null == y) x else x.union (y))
         }
         else
-            session.sparkContext.parallelize (Array[ThreePhaseComplexDataElement] (), 1)
+            session.sparkContext.parallelize (Array[ThreePhaseComplexDataElement] ())
 
         return (ret)
+    }
+
+    def voltcheck (experiment: Experiment, results: RDD[ThreePhaseComplexDataElement], max: Double): MaxEinspeiseleistung =
+    {
+        val t1 = experiment.t1.getTimeInMillis ()
+        val t2 = experiment.t2.getTimeInMillis ()
+
+        def relevant (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return ((r.millis >= t1) && (r.millis <= t2) && (r.units == "Volts") && (r.value_a.abs < 1000.0)) // ToDo: remove hard-coded constraint for niederspannung
+        }
+        val allV = results.filter (relevant)
+        def bad (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+        }
+        val overV = allV.filter (bad).sortBy (_.millis, true)
+
+        // the first one (if any) in this RDD has the simulation time where voltage tolerance was exceeded
+        val kw = if (overV.isEmpty())
+            None
+        else
+            Some (experiment.from + (experiment.step * Math.round ((overV.first.millis - t1) / (experiment.interval * 1000))))
+
+        return (MaxEinspeiseleistung (experiment.house, kw))
+    }
+
+    /**
+     * Get pairs of cable id and maximum current.
+     */
+    def getCableMaxCurrent (session: SparkSession): HashMap[String, Double] =
+    {
+        val ret = HashMap[String, Double] ()
+
+        val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
+        val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
+        val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
+        val pairs = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent)).collect
+        for (pair <- pairs)
+            ret += pair
+        return (ret)
+    }
+
+    def ampcheck (experiment: Experiment, results: RDD[ThreePhaseComplexDataElement], maxes: HashMap[String, Double]): MaxEinspeiseleistung =
+    {
+        val t1 = experiment.t1.getTimeInMillis ()
+        val t2 = experiment.t2.getTimeInMillis ()
+
+        def relevant (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return ((r.millis >= t1) && (r.millis <= t2) && (r.units == "Amps"))
+        }
+        val allI = results.filter (relevant)
+        def bad (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                if (maxes.contains (r.element))
+                {
+                    val max = maxes(r.element)
+                    (r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)
+                }
+                else
+                    false)
+        }
+        val overI = allI.filter (bad).sortBy (_.millis, true)
+
+        // the first one (if any) in this RDD has the simulation time where current exceeded the rated capacity
+        val kw = if (overI.isEmpty())
+            None
+        else
+            Some (experiment.from + (experiment.step * Math.round ((overI.first.millis - t1) / (experiment.interval * 1000))))
+
+        return (MaxEinspeiseleistung (experiment.house, kw))
+    }
+
+    def worst (pair: Tuple2[MaxEinspeiseleistung, MaxEinspeiseleistung]): MaxEinspeiseleistung =
+    {
+        pair._1.max match
+        {
+            case None =>
+                pair._2
+            case Some (kw1) =>
+                pair._2.max match
+                {
+                    case None =>
+                        pair._1
+                    case Some (kw2) =>
+                        if (kw1 < kw2) pair._1 else pair._2
+                }
+        }
+    }
+
+    def analyse (session: SparkSession, experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement]): RDD[MaxEinspeiseleistung] =
+    {
+        val nominal = 400.0 // ToDo: get voltage from CIM
+        val tolerance = 3.0
+        val max = nominal + (nominal * tolerance / 100.0)
+        // could also check for under the minimum; r.value_a.abs < min
+        // val min = nominal - (nominal * tolerance / 100.0)
+
+        val v = experiments.map ((e) => voltcheck (e, results, max))
+        val i = experiments.map ((e) => ampcheck (e, results, getCableMaxCurrent (session)))
+
+        // combine the results
+        val vrdd = session.sparkContext.parallelize (v.toSeq)
+        val irdd = session.sparkContext.parallelize (i.toSeq)
+        return (vrdd.keyBy (_.house).join (irdd.keyBy (_.house)).values.map (worst))
     }
 }
 
@@ -1100,6 +1218,84 @@ object GridLABD
         }
 
         return (ret)
+    }
+
+    def store (equipment: String, description: String, t1: Calendar, results: RDD[MaxEinspeiseleistung]): Int =
+    {
+        // make the directory
+        val file = Paths.get (equipment + "/dummy")
+        Files.createDirectories (file.getParent ())
+
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+
+        var connection: Connection = null
+        try
+        {
+            // create a database connection
+            connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
+            connection.setAutoCommit (false)
+
+            // create schema
+            val statement = connection.createStatement ()
+            statement.executeUpdate ("drop table if exists simulation")
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, equipment text, description text, time text)")
+            statement.executeUpdate ("drop table if exists results")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, house text, maximum double)")
+            statement.close ()
+
+            // insert the simulation
+            val now = Calendar.getInstance ()
+            val insert = connection.prepareStatement ("insert into simulation (id, equipment, description, time) values (?, ?, ?, ?)")
+            insert.setNull (1, Types.INTEGER)
+            insert.setString (2, equipment)
+            insert.setString (3, description)
+            insert.setTimestamp (4, new Timestamp (now.getTimeInMillis))
+            insert.executeUpdate ()
+            val resultset = statement.executeQuery ("select last_insert_rowid() id")
+            resultset.next ()
+            val id = resultset.getInt ("id")
+
+            // insert the results
+            val records = results.collect ()
+            var datainsert = connection.prepareStatement ("insert into results (id, simulation, house, maximum) values (?, ?, ?, ?)")
+            for (i <- 0 until records.length)
+            {
+                datainsert.setNull (1, Types.INTEGER)
+                datainsert.setInt (2, id)
+                datainsert.setString (3, records(i).house)
+                records(i).max match
+                {
+                    case None =>
+                        datainsert.setNull (4, Types.DOUBLE)
+                    case Some (kw) =>
+                        datainsert.setDouble (4, kw)
+                }
+                datainsert.executeUpdate ()
+            }
+            connection.commit ()
+
+            return (id)
+        }
+        catch
+        {
+            // if the error message is "out of memory",
+            // it probably means no database file is found
+            case e: SQLException ⇒ println ("exception caught: " + e); return (-1)
+        }
+        finally
+        {
+            try
+            {
+                if (connection != null)
+                    connection.close ()
+            }
+            catch {
+                // connection close failed
+                case e: SQLException ⇒ println ("exception caught: " + e);
+            }
+        }
+
     }
 
     def main (args: Array[String])
@@ -1189,9 +1385,18 @@ object GridLABD
         val export = System.nanoTime ()
         println ("export: " + (export - read) / 1e9 + " seconds")
 
-        val results = gridlabd.solve (session, equipment)
+        val data = gridlabd.solve (session, equipment)
         val solve = System.nanoTime ()
         println ("solve: " + (solve - export) / 1e9 + " seconds")
+
+        val results = gridlabd.analyse (session, experiments, data)
+        val analyse = System.nanoTime ()
+        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
+
+        val id = store (equipment, "Einspeiseleistung", Calendar.getInstance (), results)
+        val save = System.nanoTime ()
+        println ("save: " + (save - analyse) / 1e9 + " seconds")
+
         println ()
     }
 }

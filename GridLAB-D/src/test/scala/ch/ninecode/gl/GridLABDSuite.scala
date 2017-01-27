@@ -1,31 +1,24 @@
 package ch.ninecode.gl
 
-import java.io.File
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Timestamp
 import java.sql.Types
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.HashMap
 
-import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
 
-import javax.xml.bind.DatatypeConverter
-
 import ch.ninecode.cim._
 import ch.ninecode.model._
+
+import javax.xml.bind.DatatypeConverter
 
 class GridLABDSuite extends FunSuite
 {
@@ -91,7 +84,7 @@ class GridLABDSuite extends FunSuite
         return (element)
     }
 
-    def store (equipment: String, description: String, t1: Calendar, results: RDD[ThreePhaseComplexDataElement]): Int =
+    def store (equipment: String, description: String, t1: Calendar, results: RDD[MaxEinspeiseleistung]): Int =
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -108,7 +101,7 @@ class GridLABDSuite extends FunSuite
             statement.executeUpdate ("drop table if exists simulation")
             statement.executeUpdate ("create table simulation (id integer primary key autoincrement, equipment text, description text, time text)")
             statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, element text, time text, real_a double, imag_a double, real_b double, imag_b double, real_c double, imag_c double, units text)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, house text, maximum double)")
             statement.close ()
 
             // insert the simulation
@@ -125,24 +118,19 @@ class GridLABDSuite extends FunSuite
 
             // insert the results
             val records = results.collect ()
-            var datainsert = connection.prepareStatement ("insert into results (id, simulation, element, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            var datainsert = connection.prepareStatement ("insert into results (id, simulation, house, maximum) values (?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
-                val solution = records(i)
-                val a = solution.value_a
-                val b = solution.value_b
-                val c = solution.value_c
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
-                datainsert.setString (3, solution.element)
-                datainsert.setTimestamp (4, new Timestamp (solution.millis))
-                datainsert.setDouble (5, a.re)
-                datainsert.setDouble (6, a.im)
-                datainsert.setDouble (7, b.re)
-                datainsert.setDouble (8, b.im)
-                datainsert.setDouble (9, c.re)
-                datainsert.setDouble (10, c.im)
-                datainsert.setString (11, solution.units)
+                datainsert.setString (3, records(i).house)
+                records(i).max match
+                {
+                    case None =>
+                        datainsert.setNull (4, Types.DOUBLE)
+                    case Some (kw) =>
+                        datainsert.setDouble (4, kw)
+                }
                 datainsert.executeUpdate ()
             }
             connection.commit ()
@@ -168,149 +156,6 @@ class GridLABDSuite extends FunSuite
             }
         }
 
-    }
-
-    def analyse_voltages (session: SparkSession, simulation: Int, experiment: Experiment, nominal: Double, tolerance: Double): Unit =
-    {
-        val fmt = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        println ("analysing " + experiment.house
-            + " for voltage in slot " + experiment.slot
-            + " from " + fmt.format (experiment.t1.getTime ())
-            + " to " + fmt.format (experiment.t2.getTime ()))
-
-        val min = nominal - (nominal * tolerance / 100.0)
-        val max = nominal + (nominal * tolerance / 100.0)
-
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-
-        var connection: Connection = null
-        try
-        {
-            // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:" + experiment.trafo + "/results.db")
-            val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Volts' and abs(real_a) < 1000.0 and abs(imag_a) < 1000.0 and time between ? and ? order by time, element")
-            query.setInt (1, simulation)
-            query.setString (2, experiment.t1.getTimeInMillis ().toString ())
-            query.setString (3, experiment.t2.getTimeInMillis ().toString ())
-            val result = query.executeQuery ()
-            var found = false
-            while (result.next () && !found)
-            {
-                val element = result.getString ("element")
-                val time = result.getString ("time")
-                val a = Complex (result.getDouble ("real_a"), result.getDouble ("imag_a")).abs
-                val b = Complex (result.getDouble ("real_b"), result.getDouble ("imag_b")).abs
-                val c = Complex (result.getDouble ("real_c"), result.getDouble ("imag_c")).abs
-                if ((a < min) || (a > max) || (b < min) || (b > max) || (c < min) || (c > max))
-                {
-                    val diff = (time.toLong - experiment.t1.getTimeInMillis ()) / 1000
-                    val kw = experiment.from + experiment.step * (diff / experiment.interval)
-                    println (experiment.house + " exceeds voltage tolerance with " + kw + "kW at " + element + " (" + a + "," + b + "," + c + ")")
-                    found = true
-                }
-            }
-            result.close ()
-            query.close ()
-        }
-        catch
-        {
-            // if the error message is "out of memory",
-            // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e)
-        }
-        finally
-        {
-            try
-            {
-                if (connection != null)
-                    connection.close ()
-            }
-            catch
-            {
-                // connection close failed
-                case e: SQLException ⇒ println ("exception caught: " + e);
-            }
-        }
-    }
-
-    /**
-     * Get pairs of cable id and maximum current.
-     */
-    def getCableMaxCurrent (session: SparkSession): scala.collection.mutable.HashMap[String, Double] =
-    {
-        val ret = scala.collection.mutable.HashMap[String, Double] ()
-
-        val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
-        val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
-        val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        val pairs = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent)).collect
-        for (pair <- pairs)
-            ret += pair
-        return (ret)
-    }
-
-    def analyse_currents (session: SparkSession, simulation: Int, experiment: Experiment, cables: scala.collection.mutable.HashMap[String, Double]): Unit =
-    {
-        val fmt = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        println ("analysing " + experiment.house
-            + " for current in slot " + experiment.slot
-            + " from " + fmt.format (experiment.t1.getTime ())
-            + " to " + fmt.format (experiment.t2.getTime ()))
-
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-
-        var connection: Connection = null
-        try
-        {
-            // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:" + experiment.trafo + "/results.db")
-            val query = connection.prepareStatement ("select * from results where simulation = ? and units = 'Amps' and time between ? and ? order by time, element")
-            query.setInt (1, simulation)
-            query.setString (2, experiment.t1.getTimeInMillis ().toString ())
-            query.setString (3, experiment.t2.getTimeInMillis ().toString ())
-            val result = query.executeQuery ()
-            var found = false
-            while (result.next () && !found)
-            {
-                val element = result.getString ("element")
-                val max = if (cables.contains (element)) cables(element) else 1e6
-                    
-                val time = result.getString ("time")
-                val a = Complex (result.getDouble ("real_a"), result.getDouble ("imag_a")).abs
-                val b = Complex (result.getDouble ("real_b"), result.getDouble ("imag_b")).abs
-                val c = Complex (result.getDouble ("real_c"), result.getDouble ("imag_c")).abs
-                if (a + b + c > max)
-                {
-                    val diff = (time.toLong - experiment.t1.getTimeInMillis ()) / 1000
-                    val kw = experiment.from + experiment.step * (diff / experiment.interval)
-                    println (experiment.house + " exceeds current maximum with " + kw + "kW at " + element + " (" + a + "," + b + "," + c + ")")
-                    found = true
-                }
-            }
-            result.close ()
-            query.close ()
-        }
-        catch
-        {
-            // if the error message is "out of memory",
-            // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e)
-        }
-        finally
-        {
-            try
-            {
-                if (connection != null)
-                    connection.close ()
-            }
-            catch
-            {
-                // connection close failed
-                case e: SQLException ⇒ println ("exception caught: " + e);
-            }
-        }
     }
 
     test ("Basic")
@@ -365,23 +210,18 @@ class GridLABDSuite extends FunSuite
         val export = System.nanoTime ()
         println ("export: " + (export - read) / 1e9 + " seconds")
 
-        val results = gridlabd.solve (session, equipment)
+        val data = gridlabd.solve (session, equipment)
         val solve = System.nanoTime ()
         println ("solve: " + (solve - export) / 1e9 + " seconds")
 
-        println ("solution RDD has " + results.count() + " elements")
-
-        val id = store (equipment, "Einspeiseleistung", t1, results)
-        val save = System.nanoTime ()
-        println ("save: " + (save - solve) / 1e9 + " seconds")
-
-        for (experiment <- experiments)
-            analyse_voltages (session, id, experiment, 400.0, 3.0)
-        val cables = getCableMaxCurrent (session)
-        for (experiment <- experiments)
-            analyse_currents (session, id, experiment, cables)
+        val results = gridlabd.analyse (session, experiments, data)
         val analyse = System.nanoTime ()
-        println ("analyse: " + (analyse - save) / 1e9 + " seconds")
+        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
+
+        val id = store (equipment, "Einspeiseleistung", Calendar.getInstance (), results)
+        val save = System.nanoTime ()
+        println ("save: " + (save - analyse) / 1e9 + " seconds")
+
         println ()
 
         // clean up this run
