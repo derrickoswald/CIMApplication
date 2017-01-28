@@ -921,7 +921,7 @@ class GridLABD (session: SparkSession) extends Serializable
                 println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
             val starting_terminal = starting(0)
             val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
-    
+
             // find the swing bus node
             val swinging = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (swing == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
             if (0 == swinging.length)
@@ -932,10 +932,10 @@ class GridLABD (session: SparkSession) extends Serializable
                     println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
                 val swing_terminal = swinging(0)
                 val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
-        
+
                 // prepare the initial graph
                 val initial = prepare (topologicalnodes)
-        
+
                 val start = DatatypeConverter.parseDateTime (t0)
                 val finish = DatatypeConverter.parseDateTime (t1)
         
@@ -1085,31 +1085,6 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def voltcheck (experiment: Experiment, results: RDD[ThreePhaseComplexDataElement], max: Double): MaxEinspeiseleistung =
-    {
-        val t1 = experiment.t1.getTimeInMillis ()
-        val t2 = experiment.t2.getTimeInMillis ()
-
-        def relevant (r: ThreePhaseComplexDataElement): Boolean =
-        {
-            return ((r.millis >= t1) && (r.millis <= t2) && (r.units == "Volts") && (r.value_a.abs < 1000.0)) // ToDo: remove hard-coded constraint for niederspannung
-        }
-        val allV = results.filter (relevant)
-        def bad (r: ThreePhaseComplexDataElement): Boolean =
-        {
-            return ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
-        }
-        val overV = allV.filter (bad).sortBy (_.millis, true)
-
-        // the first one (if any) in this RDD has the simulation time where voltage tolerance was exceeded
-        val kw = if (overV.isEmpty())
-            None
-        else
-            Some (experiment.from + (experiment.step * Math.round ((overV.first.millis - t1) / (experiment.interval * 1000))))
-
-        return (MaxEinspeiseleistung (experiment.house, kw))
-    }
-
     /**
      * Get pairs of cable id and maximum current.
      */
@@ -1126,53 +1101,107 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def ampcheck (experiment: Experiment, results: RDD[ThreePhaseComplexDataElement], maxes: HashMap[String, Double]): MaxEinspeiseleistung =
+    /**
+     * Find the minimum value solution from a collection
+     * NOTE: we don't have to sort by time, since the power is monotonically increasing,
+     * just by selecting the minimum power solution we've chosen the first measurement over the limit
+     */
+    def finder (arg: Tuple2[String, Iterable[Tuple2[Experiment, ThreePhaseComplexDataElement]]]): MaxEinspeiseleistung =
     {
-        val t1 = experiment.t1.getTimeInMillis ()
-        val t2 = experiment.t2.getTimeInMillis ()
-
-        def relevant (r: ThreePhaseComplexDataElement): Boolean =
+        val house = arg._1
+        val values = arg._2
+        def seqop (current: MaxEinspeiseleistung, arg: Tuple2[Experiment, ThreePhaseComplexDataElement]) : MaxEinspeiseleistung =
         {
-            return ((r.millis >= t1) && (r.millis <= t2) && (r.units == "Amps"))
+            val experiment = arg._1
+            val data = arg._2
+            val steps = Math.round ((data.millis - experiment.t1.getTimeInMillis ()) / (experiment.interval * 1000))
+            val kw = experiment.from + (experiment.step * steps)
+            current.max match
+            {
+                case None =>
+                    MaxEinspeiseleistung (experiment.house, Some (kw))
+                case Some (kw1) =>
+                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.house, Some (kw))
+            }
         }
-        val allI = results.filter (relevant)
-        def bad (r: ThreePhaseComplexDataElement): Boolean =
+        def combop (a: MaxEinspeiseleistung, b: MaxEinspeiseleistung) : MaxEinspeiseleistung =
         {
-            return (
-                if (maxes.contains (r.element))
-                {
-                    val max = maxes(r.element)
-                    (r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)
-                }
-                else
-                    false)
+            a.max match
+            {
+                case None =>
+                    b
+                case Some (kw1) =>
+                    b.max match
+                    {
+                        case None =>
+                            a
+                        case Some (kw2) =>
+                            if (kw1 < kw2) a else b
+                    }
+            }
         }
-        val overI = allI.filter (bad).sortBy (_.millis, true)
-
-        // the first one (if any) in this RDD has the simulation time where current exceeded the rated capacity
-        val kw = if (overI.isEmpty())
-            None
-        else
-            Some (experiment.from + (experiment.step * Math.round ((overI.first.millis - t1) / (experiment.interval * 1000))))
-
-        return (MaxEinspeiseleistung (experiment.house, kw))
+        values.aggregate (MaxEinspeiseleistung (house, None))(seqop, combop)
     }
 
-    def worst (pair: Tuple2[MaxEinspeiseleistung, MaxEinspeiseleistung]): MaxEinspeiseleistung =
+    def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
     {
-        pair._1.max match
+        // eliminate current measurements and measurements within tolerance
+        def interesting (r: ThreePhaseComplexDataElement): Boolean =
         {
-            case None =>
-                pair._2
-            case Some (kw1) =>
-                pair._2.max match
-                {
-                    case None =>
-                        pair._1
-                    case Some (kw2) =>
-                        if (kw1 < kw2) pair._1 else pair._2
-                }
+            return (
+                (r.units == "Volts") &&
+                (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+            )
         }
+
+        val overV = results.filter (interesting)
+
+        // assign an experiment to each measurement
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        {
+            for (e <- experiments)
+            {
+                if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
+                    return (List ((e, r)))
+            }
+            List()
+        }
+
+        return (overV.flatMap (assign (experiments)))
+    }
+
+    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cablemap: HashMap[String, Double]): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+    {
+        // eliminate voltage measurements and measurements below capacity
+        def interesting (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                if (cablemap.contains (r.element))
+                {
+                    val max = cablemap(r.element)
+                    ((r.units == "Amps") &&
+                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+                }
+                else
+                    false
+            )
+        }
+
+        val overI = results.filter (interesting)
+
+        // assign an experiment to each measurement
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        {
+            for (e <- experiments)
+            {
+                if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
+                    return (List ((e, r)))
+            }
+            List ()
+        }
+
+        return (overI.flatMap (assign (experiments)))
     }
 
     def analyse (session: SparkSession, experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement]): RDD[MaxEinspeiseleistung] =
@@ -1181,15 +1210,30 @@ class GridLABD (session: SparkSession) extends Serializable
         val tolerance = 3.0
         val max = nominal + (nominal * tolerance / 100.0)
         // could also check for under the minimum; r.value_a.abs < min
-        // val min = nominal - (nominal * tolerance / 100.0)
+        // where val min = nominal - (nominal * tolerance / 100.0)
+        val cablemap = getCableMaxCurrent (session)
 
-        val v = experiments.map ((e) => voltcheck (e, results, max))
-        val i = experiments.map ((e) => ampcheck (e, results, getCableMaxCurrent (session)))
+        val v = voltcheck (experiments, results, max)
+        val i = ampcheck (experiments, results, cablemap)
 
-        // combine the results
-        val vrdd = session.sparkContext.parallelize (v.toSeq)
-        val irdd = session.sparkContext.parallelize (i.toSeq)
-        return (vrdd.keyBy (_.house).join (irdd.keyBy (_.house)).values.map (worst))
+        if (!v.isEmpty())
+        {
+            val ss = v.take (5)
+            println (ss(0)._1)
+            for (i <- 0 until ss.length)
+                println ("v" + i + ": " + ss(i)._2)
+        }
+        if (!i.isEmpty())
+        {
+            val tt = i.take (5)
+            println (tt(0)._1)
+            for (i <- 0 until tt.length)
+                println ("i" + i + ": " + tt(i)._2)
+        }
+        // combine the results, groupby experiment and find the minimum power
+        val ret = v.union (i).groupBy (_._1.house).map (finder)
+
+        return (ret)
     }
 }
 
