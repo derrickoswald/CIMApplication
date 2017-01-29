@@ -105,6 +105,10 @@ class GridLABD (session: SparkSession) extends Serializable
 {
     var HDFS_URI = "hdfs://sandbox:8020/"
 
+    // choosing false here means the cluster needs the same timezone as the driver
+    // this can be set with:
+    //    dpkg-reconfigure tzdata
+    // then choose Europe and then choose Zürich.
     val USE_UTC = false
 
     val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
