@@ -120,17 +120,6 @@ class GridLABD (session: SparkSession) extends Serializable
 
     var _StorageLevel = StorageLevel.MEMORY_ONLY
 
-    // name of file containing short circuit Ikw and Sk values for medium voltage transformers
-    // e.g.
-    //
-    // "","Fehlerort","Un","Ikw...RST.","Sk..RST.","Beschreibung..SAP.Nr..","Abgang","NIS.ID","NIS.Name"
-    // "1","Scheidbach Turbach",16,-37.34,89.733,20444,"SAA Lauenen","STA2040","Scheidbach"
-    // "2","Bachegg",16,-36.22,83.805,20468,"SAA Lauenen","STA9390","Bachegg"
-    //
-    // this should only be needed until the medium voltage network is fully described and  calculations can
-    // be done from the high voltage network "slack bus" connections
-    var _CSV = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
-
     def get (name: String): RDD[Element] =
     {
         val rdds = session.sparkContext.getPersistentRDDs
@@ -787,8 +776,7 @@ class GridLABD (session: SparkSession) extends Serializable
         equipment: String,
         start: Calendar,
         finish: Calendar,
-        swing_node: String,
-        with_feeder: Boolean): Tuple2[String,HashSet[Experiment]] =
+        swing_node: String): Tuple2[String,HashSet[Experiment]] =
     {
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -827,10 +815,10 @@ class GridLABD (session: SparkSession) extends Serializable
         // get a map of voltages
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
-        // get the transformer configuration using short circuit data to model the upstream connection
-        val _transformers = new Transformers (if (with_feeder) _CSV else null)
+        // get the transformer configuration
+        val _transformers = new Transformers ()
         val _td = _transformers.getTransformerData (session)
-        val trans = new Trans (_td, ends, voltages, with_feeder)
+        val trans = new Trans (_td, ends, voltages)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
@@ -929,9 +917,6 @@ class GridLABD (session: SparkSession) extends Serializable
         // get the name of the swing bus equipment
         val swing = arguments.getOrElse ("swing", "")
 
-        // get the flag for adding a medium voltage feeder
-        val with_feeder = arguments.getOrElse ("feeder", "false").toBoolean
-
         // find the starting node
         val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
         if (0 == starting.length)
@@ -961,7 +946,7 @@ class GridLABD (session: SparkSession) extends Serializable
                 val finish = DatatypeConverter.parseDateTime (t1)
         
                 eraseInputFile (equipment)
-                val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name, with_feeder)
+                val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name)
                 writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
                 writeInputFile (equipment, "output_data/dummy", null) // mkdir
                 ret = result._2;
@@ -974,7 +959,7 @@ class GridLABD (session: SparkSession) extends Serializable
     def read_records (session: SparkSession, filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
     {
         val USE_UTC = false
-    
+
         val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
         if (USE_UTC)
             _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
@@ -1390,7 +1375,6 @@ object GridLABD
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes
         configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.gl.ShortCircuitData],
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
@@ -1436,8 +1420,7 @@ object GridLABD
             ",topologicalnodes=true" +
             ",start=" + DatatypeConverter.printDateTime (t0) +
             ",finish=" + DatatypeConverter.printDateTime (t1) +
-            ",swing=" + swing +
-            ",feeder=false")
+            ",swing=" + swing)
         val export = System.nanoTime ()
         println ("export: " + (export - read) / 1e9 + " seconds")
 

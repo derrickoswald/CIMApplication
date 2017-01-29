@@ -13,12 +13,17 @@ import org.apache.spark.sql.types.StructType
 
 import ch.ninecode.model._
 
-// create a holder for pre-computed transformer power availability
-case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
+/**
+ * transformer - PowerTransformer, the transformer element
+ * station - Substation, the station where the transformer is located
+ * voltages - Array[Double], the voltage for each transformer end
+ * ends - Array[PowerTransformerEnd], the transformer end elements
+ * terminals - Array[Terminal], the terminal elements
+ * Note: element 0 of the arrays corresponds to the primary
+ */
+case class TData (transformer: PowerTransformer, station: Substation, voltages: Array[Double], ends: Array[PowerTransformerEnd], terminals: Array[Terminal])
 
-case class TData (transformer: PowerTransformer, station: Substation, voltages: Array[Double], ends: Array[PowerTransformerEnd], terminals: Array[Terminal], short: ShortCircuitData)
-
-class Transformers (csv: String = null) extends Serializable
+class Transformers () extends Serializable
 {
     def get (name: String, session: SparkSession): RDD[Element] =
     {
@@ -30,33 +35,6 @@ class Transformers (csv: String = null) extends Serializable
                 return (rdd.asInstanceOf[RDD[Element]])
         }
         return (null)
-    }
-
-    def read_csv (session: SparkSession): RDD[ShortCircuitData] =
-    {
-        val customSchema = StructType (
-            Array
-            (
-                StructField ("id", StringType, true),
-                StructField ("Fehlerort", StringType, true),
-                StructField ("Un", DoubleType, true),
-                StructField ("Ikw...RST.", DoubleType, true),
-                StructField ("Sk..RST.", DoubleType, true),
-                StructField ("Beschreibung..SAP.Nr..", StringType, true),
-                StructField ("Abgang", StringType, true),
-                StructField ("NIS.ID", StringType, true),
-                StructField ("NIS.Name", StringType, true)
-            )
-        )
-
-        val df = session.read
-            .format ("csv")
-            .option ("header", "true")
-            .schema (customSchema)
-            .csv (csv)
-
-        import session.implicits._
-        df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
     }
 
     def getTransformerData (session: SparkSession): RDD[TData] =
@@ -129,46 +107,21 @@ class Transformers (csv: String = null) extends Serializable
                     )
             )
 
-        def transformer_fn (voltages: Map[String, Double]) (x: Tuple2[Tuple4 [PowerTransformer, Substation, Array[PowerTransformerEnd], Array[Terminal]], Option[ShortCircuitData]]): TData =
+        def transformer_fn (voltages: Map[String, Double]) (x: Tuple4 [PowerTransformer, Substation, Array[PowerTransformerEnd], Array[Terminal]]): TData =
         {
-            val transformer = x._1._1
-            val station = x._1._2
-            val ends = x._1._3
-            val terminals = x._1._4
-            val short = x._2
+            val transformer = x._1
+            val station = x._2
+            val ends = x._3
+            val terminals = x._4
             val v = ends.map ((x) => voltages.getOrElse (x.TransformerEnd.BaseVoltage, 0.0))
-            short match
-            {
-                case Some (scdata) =>
-                {
-                    TData (transformer, station, v, ends, terminals, scdata)
-                }
-                case None =>
-                {
-                    // Sk = 100 MVA
-                    // Ikw= -61°
-                    TData (transformer, station, v, ends, terminals, ShortCircuitData (station.id, 100.0, -61.0, false))
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
-            }
+            TData (transformer, station, v, ends, terminals)
         }
 
         // get a map of voltages
         val voltages = get ("BaseVoltage", session).asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
-        val transformer_data = if (null != csv)
-        {
-            // join with short circuit data if available
-            val short_circuit = read_csv (session)
-            transformers_stations_plus_ends_plus_terminals.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).values.map (transformer_fn (voltages))
-        }
-        else
-            transformers_stations_plus_ends_plus_terminals.map ((x) => (x, None)).map (transformer_fn (voltages))
+        val transformer_data = transformers_stations_plus_ends_plus_terminals.map (transformer_fn (voltages))
 
         return (transformer_data)
     }
-
 }

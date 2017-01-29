@@ -50,7 +50,6 @@ class GridLABDSuite extends FunSuite
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes
         configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.gl.ShortCircuitData],
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
@@ -178,7 +177,6 @@ class GridLABDSuite extends FunSuite
         val gridlabd = new GridLABD (session)
         gridlabd.HDFS_URI = "" // local
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        gridlabd._CSV = FILE_DEPOT + "KS_Leistungen.csv"
 
         // Hälig (STA7854)
         val equipment = "TRA5200"
@@ -205,8 +203,7 @@ class GridLABDSuite extends FunSuite
             ",topologicalnodes=true" +
             ",start=" + DatatypeConverter.printDateTime (t0) +
             ",finish=" + DatatypeConverter.printDateTime (t1) +
-            ",swing=" + swing +
-            ",feeder=false")
+            ",swing=" + swing)
         val export = System.nanoTime ()
         println ("export: " + (export - read) / 1e9 + " seconds")
 

@@ -11,8 +11,7 @@ import ch.ninecode.model._
 class Trans (
     transformers: RDD[TData],
     ends: RDD[(String, Iterable[PowerTransformerEnd])],
-    voltages: scala.collection.Map[String, Double],
-    with_feeder: Boolean) extends Serializable
+    voltages: scala.collection.Map[String, Double]) extends Serializable
 {
     // make a valid configuration name
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
@@ -79,15 +78,14 @@ class Trans (
         val config: String = configurationName (edges)
         val transformer = edges.head.element.asInstanceOf[PowerTransformer]
         val power = transformer_power (transformer)
-        val sc_data = s._1._2.short
+        val ends = s._2
         val ret =
-            s._2 match
+            ends match
             {
                 case None =>
                     ""
-                case Some (a: Any) =>
+                case Some (iter: Iterable[PowerTransformerEnd]) =>
                     // sort ends by sequence number
-                    val iter = a.asInstanceOf[Iterable[PowerTransformerEnd]]
                     val ends = iter.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
                     var temp = ""
                     for (i <- 1 until ends.length)
@@ -111,13 +109,6 @@ class Trans (
                             x = par._2
                         }
 
-                        // compute the fake line impedance from the middle voltage supply to the transformer
-                        // Z = c * V^2 / (Sk x 1e6)     e.g. 0.90 * 16000 * 16000 / -82e6  = -2.8097
-                        // r = Z * sin(Ikw)
-                        // x = Z * cos(Ikw)
-                        val c = 0.9
-                        val z = c * v0 * v0 / (Math.abs (sc_data.Sk) * 1e6)
-                        val diag = "" + z + (if (0 <= sc_data.Ikw) "+" else "") + sc_data.Ikw + "d Ohm/km"
                         temp +=
                             "        object transformer_configuration\n" +
                             "        {\n" +
@@ -130,23 +121,6 @@ class Trans (
                             "            resistance " + r + ";\n" +
                             "            reactance " + x + ";\n" +
                             "        };\n"
-                        if (with_feeder)
-                            temp +=
-                                "\n" +
-                                // make a feeder line configuration
-                                "        object line_configuration\n" +
-                                "        {\n" +
-                                "            name \"" + config + "_fake_line_configuration\";\n" +
-                                "            z11 " + diag + ";\n" +
-                                "            z12 0.0+0.0d Ohm/km;\n" +
-                                "            z13 0.0+0.0d Ohm/km;\n" +
-                                "            z21 0.0+0.0d Ohm/km;\n" +
-                                "            z22 " + diag + ";\n" +
-                                "            z23 0.0+0.0d Ohm/km;\n" +
-                                "            z31 0.0+0.0d Ohm/km;\n" +
-                                "            z32 0.0+0.0d Ohm/km;\n" +
-                                "            z33 " + diag + ";\n" +
-                                "        };\n"
                     }
                     temp
             }
@@ -199,57 +173,14 @@ class Trans (
         else
         {
             var config = configurationName (edges)
-            var ret =
-                "        object transformer\n" +
-                "        {\n" +
-                "            name \"" + edge.id_equ + "\";\n" +
-                "            phases ABCN;\n" +
-                "            from \"" + edge.id_cn_1 + "\";\n" +
-                "            to \"" + edge.id_cn_2 + "\";\n" +
-                "            configuration \"" + config + "\";\n" +
-                "        };\n"
-            if (with_feeder)
-                ret +=
-                    "\n" +
-                    // make a slack bus
-                    "        object node\n" +
-                    "        {\n" +
-                    "            name \"" + edge.id_equ + "_swing_bus\";\n" +
-                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-                    "            bustype SWING;\n" +
-                    "            nominal_voltage " + edge.v1 + " V;\n" +
-                    "            voltage_A " + edge.v1 + "+30.0d V;\n" +
-                    "            voltage_B " + edge.v1 + "-90.0d V;\n" +
-                    "            voltage_C " + edge.v1 + "+150.0d V;\n" +
-                    "        };\n" +
-                    "\n" +
-                    // make a fake cable joining the slack bus to the transformer
-                    "        object underground_line\n" +
-                    "        {\n" +
-                    "            name \"" + edge.id_equ + "_feeder\";\n" +
-                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-                    "            from \"" + edge.id_equ + "_swing_bus\";\n" +
-                    "            to \"" + edge.id_cn_1 + "\";\n" +
-                    "            length 1000 m;\n" +
-                    "            configuration \"" + config + "_fake_line_configuration\";\n" +
-                    "        };\n"
-//            else
-//                ret +=
-//                    "\n" +
-//                    // make a slack bus
-//                    "        object node\n" +
-//                    "        {\n" +
-//                    "            name \"" + edge.id_equ + "_swing_bus\";\n" +
-//                    "            parent \"" + edge.id_cn_1 + "\";\n" +
-//                    "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-//                    "            bustype SWING;\n" +
-//                    "            nominal_voltage " + edge.v1 + " V;\n" +
-//                    "            voltage_A " + edge.v1 + "+30.0d V;\n" +
-//                    "            voltage_B " + edge.v1 + "-90.0d V;\n" +
-//                    "            voltage_C " + edge.v1 + "+150.0d V;\n" +
-//                    "        };\n" +
-//                    "\n"
-            ret
+            "        object transformer\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "\";\n" +
+            "            phases ABCN;\n" +
+            "            from \"" + edge.id_cn_1 + "\";\n" +
+            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "            configuration \"" + config + "\";\n" +
+            "        };\n"
         }
     }
 }
