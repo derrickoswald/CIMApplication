@@ -60,6 +60,7 @@ class Line extends Serializable
         val z11 = diag.toString () + " Ohm/km"
         val z12 = off.toString () + " Ohm/km"
         ret =
+            "\n" +
             "        object line_configuration\n" +
             "        {\n" +
             "            name \"" + config + "\";\n" +
@@ -151,6 +152,7 @@ class Line extends Serializable
         else
             "overhead_line"
         val config = configurationName (edges)
+        "\n" +
         "        object " + typ + "\n" +
         "        {\n" +
         "            name \"" + edge.id_equ + "\";\n" +

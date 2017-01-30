@@ -305,6 +305,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def emit_slack (name: String, voltage: Double): String =
     {
+        "\n" +
         "        object meter\n" +
         "        {\n" +
         "            name \"" + name + "\";\n" +
@@ -508,6 +509,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def emit_node (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
+        "\n" +
         "        object meter\n" +
         "        {\n" +
         "            name \"" + name + "\";\n" +
@@ -808,17 +810,10 @@ class GridLABD (session: SparkSession) extends Serializable
         val line = new Line ()
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
-        // get the transformer ends keyed by transformer
-        // ToDo: avoid this duplication
-        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
-
-        // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
-
         // get the transformer configuration
         val _transformers = new Transformers ()
         val _td = _transformers.getTransformerData (session)
-        val trans = new Trans (_td, ends, voltages)
+        val trans = new Trans (_td)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
@@ -876,8 +871,7 @@ class GridLABD (session: SparkSession) extends Serializable
             "            filename \"output_data/" + equipment + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + _DateFormat.format (start.getTime ()) + "';\n" +
-            "        };\n" +
-            "\n"
+            "        };\n"
 
         val result = new StringBuilder ()
         result.append (prefix)
