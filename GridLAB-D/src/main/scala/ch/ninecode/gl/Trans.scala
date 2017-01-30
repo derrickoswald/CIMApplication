@@ -145,6 +145,7 @@ class Trans (transformers: RDD[TData]) extends Serializable
         val power = transformer_power (transformer)
         // for power transformers without a configuration, just emit a link
         if ("unknown" == power)
+            "\n" +
             "        object link\n" +
             "        {\n" +
             "            name \"" + edge.id_equ + "\";\n" +
@@ -155,6 +156,7 @@ class Trans (transformers: RDD[TData]) extends Serializable
         else
         {
             var config = configurationName (edges)
+            "\n" +
             "        object transformer\n" +
             "        {\n" +
             "            name \"" + edge.id_equ + "\";\n" +

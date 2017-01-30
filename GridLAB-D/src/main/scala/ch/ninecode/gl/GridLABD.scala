@@ -96,13 +96,15 @@ case class Experiment (trafo: String, house: String, t0: Calendar, slot: Int, wi
 case class ThreePhaseComplexDataElement (element: String, millis: Long, value_a: Complex, value_b: Complex, value_c: Complex, units: String)
 
 /**
+ * trafo - string, NIS Number of transformer feeding house
  * house - string, NIS Number of house
  * max - Option[Double], maximum KW feed in power or None if no limit was found
  */
-case class MaxEinspeiseleistung (house: String, max: Option[Double])
+case class MaxEinspeiseleistung (trafo: String, house: String, max: Option[Double])
 
 class GridLABD (session: SparkSession) extends Serializable
 {
+    var topologicalnodes = true
     var HDFS_URI = "hdfs://sandbox:8020/"
 
     // for dates without time zones, the timezone of the machine is used:
@@ -440,7 +442,7 @@ class GridLABD (session: SparkSession) extends Serializable
         if ("" == HDFS_URI)
         {
             // ToDo: check for IOException
-            val file = Paths.get (equipment + "/" + path)
+            val file = Paths.get ("simulation/" + equipment + "/" + path)
             Files.createDirectories (file.getParent ())
             if (null != bytes)
                 Files.write (file, bytes)
@@ -707,7 +709,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (t)
     }
 
-    def prepare (topologicalnodes: Boolean): Graph[PreNode, PreEdge]  =
+    def prepare (): Graph[PreNode, PreEdge]  =
     {
         // get a map of voltages
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
@@ -772,8 +774,8 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     def make_glm (
-        topologicalnodes: Boolean,
         initial: Graph[PreNode, PreEdge],
+        tdata: RDD[TData],
         starting_node: String,
         equipment: String,
         start: Calendar,
@@ -811,9 +813,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
         // get the transformer configuration
-        val _transformers = new Transformers ()
-        val _td = _transformers.getTransformerData (session)
-        val trans = new Trans (_td)
+        val trans = new Trans (tdata)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
@@ -882,65 +882,30 @@ class GridLABD (session: SparkSession) extends Serializable
         return ((result.toString (), experiments))
     }
 
-    def export (session: SparkSession, args: String): HashSet[Experiment] =
+    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], equipment: String): HashSet[Experiment] =
     {
         var ret = HashSet[Experiment] ()
-        val arguments = args.split (",").map (
-            (s) =>
-                {
-                    val pair = s.split ("=")
-                    if (2 == pair.length)
-                        (pair(0), pair(1))
-                    else
-                        (pair(0), "")
-                }
-        ).toMap
 
-        // see if we should use topology nodes
-        val topologicalnodes = arguments.getOrElse ("topologicalnodes", "false").toBoolean
+        val start = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
+        val finish = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
 
-        // get the name of the equipment of interest
-        val equipment = arguments.getOrElse ("equipment", "")
-
-        // get the starting and finishing time
-        val t0 = arguments.getOrElse ("start", DatatypeConverter.printDateTime (Calendar.getInstance ()))
-        val t0plus = DatatypeConverter.parseDateTime (t0)
-        t0plus.add (Calendar.MINUTE, 1)
-        val t1 = arguments.getOrElse ("finish", DatatypeConverter.printDateTime (t0plus))
-
-        // get the name of the swing bus equipment
-        val swing = arguments.getOrElse ("swing", "")
-
-        // find the starting node
-        val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
+        // find the starting and swing node
+        val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, true).collect ()
         if (0 == starting.length)
             println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
         else
         {
-            if (1 < starting.length)
-                println ("More than one terminal for " + equipment + " - choosing highest sequence number\n") // ToDo: proper logging
-            val starting_terminal = starting(0)
-            val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
-
-            // find the swing bus node
-            val swinging = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (swing == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, false).collect ()
-            if (0 == swinging.length)
-                println ("No equipment matched id " + swing + "\n") // ToDo: proper logging
+            if (2 > starting.length)
+                println ("Only one terminal for " + equipment + "\n") // ToDo: proper logging
             else
             {
-                if (1 < swinging.length)
-                    println ("More than one terminal for " + swing + " - choosing highest sequence number\n") // ToDo: proper logging
-                val swing_terminal = swinging(0)
+                val swing_terminal = starting (0)
+                val starting_terminal = starting(1)
                 val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
+                val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
 
-                // prepare the initial graph
-                val initial = prepare (topologicalnodes)
-
-                val start = DatatypeConverter.parseDateTime (t0)
-                val finish = DatatypeConverter.parseDateTime (t1)
-        
                 eraseInputFile (equipment)
-                val result = make_glm (topologicalnodes, initial, starting_node_name, equipment, start, finish, swing_terminal_name)
+                val result = make_glm (initial, tdata, starting_node_name, equipment, start, finish, swing_terminal_name)
                 writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
                 writeInputFile (equipment, "output_data/dummy", null) // mkdir
                 ret = result._2;
@@ -1006,7 +971,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
 
         val root = if ("" == HDFS_URI)
-            new Path (equipment + "/" + path)
+            new Path ("simulation/" + equipment + "/" + path)
         else
             new Path ("/simulation/" + equipment + "/" + path)
 
@@ -1041,7 +1006,7 @@ class GridLABD (session: SparkSession) extends Serializable
             null
     }
 
-    def solve (session: SparkSession, filename_root: String): RDD[ThreePhaseComplexDataElement] =
+    def solve (filename_root: String): RDD[ThreePhaseComplexDataElement] =
     {
         // assumes gridlabd is installed on every node:
         // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
@@ -1056,10 +1021,10 @@ class GridLABD (session: SparkSession) extends Serializable
                     "-c",
                     "while read line; do " +
                         "FILE=$line; " +
-                        "pushd $FILE; " +
+                        "pushd simulation/$FILE; " +
                         "gridlabd $FILE.glm 2>$FILE.out; " +
                         "popd;" +
-                        "cat $FILE/$FILE.out; " +
+                        "cat simulation/$FILE/$FILE.out; " +
                     "done < /dev/stdin")
             else // cluster
                 Array[String] (
@@ -1111,10 +1076,8 @@ class GridLABD (session: SparkSession) extends Serializable
      * NOTE: we don't have to sort by time, since the power is monotonically increasing,
      * just by selecting the minimum power solution we've chosen the first measurement over the limit
      */
-    def finder (arg: Tuple2[String, Iterable[Tuple2[Experiment, ThreePhaseComplexDataElement]]]): MaxEinspeiseleistung =
+    def finder (values: Iterable[Tuple2[Experiment, ThreePhaseComplexDataElement]]): MaxEinspeiseleistung =
     {
-        val house = arg._1
-        val values = arg._2
         def seqop (current: MaxEinspeiseleistung, arg: Tuple2[Experiment, ThreePhaseComplexDataElement]) : MaxEinspeiseleistung =
         {
             val experiment = arg._1
@@ -1124,9 +1087,9 @@ class GridLABD (session: SparkSession) extends Serializable
             current.max match
             {
                 case None =>
-                    MaxEinspeiseleistung (experiment.house, Some (kw))
+                    MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw))
                 case Some (kw1) =>
-                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.house, Some (kw))
+                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw))
             }
         }
         def combop (a: MaxEinspeiseleistung, b: MaxEinspeiseleistung) : MaxEinspeiseleistung =
@@ -1145,7 +1108,9 @@ class GridLABD (session: SparkSession) extends Serializable
                     }
             }
         }
-        values.aggregate (MaxEinspeiseleistung (house, None))(seqop, combop)
+        val trafo = values.head._1.trafo
+        val house = values.head._1.house
+        values.aggregate (MaxEinspeiseleistung (trafo, house, None))(seqop, combop)
     }
 
     def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
@@ -1209,7 +1174,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def analyse (session: SparkSession, experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement]): RDD[MaxEinspeiseleistung] =
+    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement]): RDD[MaxEinspeiseleistung] =
     {
         val nominal = 400.0 // ToDo: get voltage from CIM
         val tolerance = 3.0
@@ -1222,7 +1187,32 @@ class GridLABD (session: SparkSession) extends Serializable
         val i = ampcheck (experiments, results, cablemap)
 
         // combine the results, group by experiment and find the minimum power
-        val ret = v.union (i).groupBy (_._1.house).map (finder)
+        val ret = v.union (i).groupBy (_._1.house).values.map (finder)
+
+        return (ret)
+    }
+
+    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData]) (equipment: String): RDD[MaxEinspeiseleistung] =
+    {
+        val start = System.nanoTime ()
+
+        val experiments = export (initial, tdata, equipment)
+        val write = System.nanoTime ()
+        println (equipment + " export: " + (write - start) / 1e9 + " seconds")
+
+        val data = solve (equipment)
+        val gridlabd = System.nanoTime ()
+        println (equipment + " solve: " + (gridlabd - write) / 1e9 + " seconds")
+
+        val ret = if (null != data)
+            analyse (experiments, data)
+        else
+        {
+            println ("solve failed for " + equipment)
+            session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+        }
+        val finish = System.nanoTime ()
+        println (equipment + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
 
         return (ret)
     }
@@ -1255,10 +1245,10 @@ object GridLABD
         return (ret)
     }
 
-    def store (equipment: String, description: String, t1: Calendar, results: RDD[MaxEinspeiseleistung]): Int =
+    def store (description: String, t1: Calendar, results: RDD[MaxEinspeiseleistung]): Int =
     {
         // make the directory
-        val file = Paths.get (equipment + "/dummy")
+        val file = Paths.get ("simulation/dummy")
         Files.createDirectories (file.getParent ())
 
         // load the sqlite-JDBC driver using the current class loader
@@ -1268,24 +1258,23 @@ object GridLABD
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:" + equipment + "/results.db")
+            connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
             connection.setAutoCommit (false)
 
             // create schema
             val statement = connection.createStatement ()
             statement.executeUpdate ("drop table if exists simulation")
-            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, equipment text, description text, time text)")
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, description text, time text)")
             statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, house text, maximum double)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double)")
             statement.close ()
 
             // insert the simulation
             val now = Calendar.getInstance ()
-            val insert = connection.prepareStatement ("insert into simulation (id, equipment, description, time) values (?, ?, ?, ?)")
+            val insert = connection.prepareStatement ("insert into simulation (id, description, time) values (?, ?, ?)")
             insert.setNull (1, Types.INTEGER)
-            insert.setString (2, equipment)
-            insert.setString (3, description)
-            insert.setTimestamp (4, new Timestamp (now.getTimeInMillis))
+            insert.setString (2, description)
+            insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
             insert.executeUpdate ()
             val resultset = statement.executeQuery ("select last_insert_rowid() id")
             resultset.next ()
@@ -1293,18 +1282,19 @@ object GridLABD
 
             // insert the results
             val records = results.collect ()
-            var datainsert = connection.prepareStatement ("insert into results (id, simulation, house, maximum) values (?, ?, ?, ?)")
+            var datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
-                datainsert.setString (3, records(i).house)
+                datainsert.setString (3, records(i).trafo)
+                datainsert.setString (4, records(i).house)
                 records(i).max match
                 {
                     case None =>
-                        datainsert.setNull (4, Types.DOUBLE)
+                        datainsert.setNull (5, Types.DOUBLE)
                     case Some (kw) =>
-                        datainsert.setDouble (4, kw)
+                        datainsert.setDouble (5, kw)
                 }
                 datainsert.executeUpdate ()
             }
@@ -1340,11 +1330,7 @@ object GridLABD
         else
             "hdfs://sandbox:8020/data/" + "bkw_cim_export_haelig" + ".rdf"
 
-        // Hälig (STA7854)
-        val equipment = "TRA5200"
-        val swing = "ABG20106"
-
-        val start = System.nanoTime ()
+        val begin = System.nanoTime ()
 
         // create the configuration
         val configuration = new SparkConf (false)
@@ -1380,7 +1366,7 @@ object GridLABD
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
-        println ("setup : " + (setup - start) / 1e9 + " seconds")
+        println ("setup : " + (setup - begin) / 1e9 + " seconds")
 
         val gridlabd = new GridLABD (session)
 
@@ -1407,28 +1393,38 @@ object GridLABD
 
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
-        val t1 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
-        val experiments = gridlabd.export (session,
-            "equipment=" + equipment +
-            ",topologicalnodes=true" +
-            ",start=" + DatatypeConverter.printDateTime (t0) +
-            ",finish=" + DatatypeConverter.printDateTime (t1) +
-            ",swing=" + swing)
-        val export = System.nanoTime ()
-        println ("export: " + (export - read) / 1e9 + " seconds")
+        // prepare the initial graph
+        val initial = gridlabd.prepare ()
 
-        val data = gridlabd.solve (session, equipment)
-        val solve = System.nanoTime ()
-        println ("solve: " + (solve - export) / 1e9 + " seconds")
+        val _transformers = new Transformers ()
+        val tdata = _transformers.getTransformerData (session)
+        tdata.persist (gridlabd._StorageLevel)
+        val transformers = tdata.map ((t) => t.transformer.id).collect
 
-        val results = gridlabd.analyse (session, experiments, data)
-        val analyse = System.nanoTime ()
-        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
+        val prepare = System.nanoTime ()
+        println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val id = store (equipment, "Einspeiseleistung", Calendar.getInstance (), results)
+        val init = session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+        val results = transformers.map (gridlabd.einspeiseleistung (initial, tdata)).aggregate (init)(_.union (_), _.union (_))
+
+//        val experiments = gridlabd.export (initial, tdata, equipment)
+//        val export = System.nanoTime ()
+//        println ("export: " + (export - read) / 1e9 + " seconds")
+//
+//        val data = gridlabd.solve (equipment)
+//        val solve = System.nanoTime ()
+//        println ("solve: " + (solve - export) / 1e9 + " seconds")
+//
+//        val results = gridlabd.analyse (experiments, data)
+//        val analyse = System.nanoTime ()
+//        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
+
+        val calculate = System.nanoTime ()
+        println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
+        
+        val id = store ("Einspeiseleistung", Calendar.getInstance (), results)
         val save = System.nanoTime ()
-        println ("save: " + (save - analyse) / 1e9 + " seconds")
+        println ("save: " + (save - calculate) / 1e9 + " seconds")
 
         println ()
     }
