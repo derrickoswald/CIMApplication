@@ -318,30 +318,6 @@ class GridLABD (session: SparkSession) extends Serializable
         "            voltage_A " + voltage + "+30.0d;\n" +
         "            voltage_B " + voltage + "-90.0d;\n" +
         "            voltage_C " + voltage + "+150.0d;\n" +
-// or we could use player files from meter measurements
-//        "            object player\n" +
-//        "            {\n" +
-//        "                property \"voltage_A\";\n" +
-//        "                file \"meter_data/TRA16716_R.csv\";\n" +
-//        "            };\n" +
-//        "            object player\n" +
-//        "            {\n" +
-//        "                property \"voltage_B\";\n" +
-//        "                file \"meter_data/TRA16716_S.csv\";\n" +
-//        "            };\n" +
-//        "            object player\n" +
-//        "            {\n" +
-//        "                property \"voltage_C\";\n" +
-//        "                file \"meter_data/TRA16716_T.csv\";\n" +
-//        "            };\n" +
-        "        };\n" +
-        "\n" +
-        "        object recorder {\n" +
-        "            name \"" + has (name) + "_voltage_recorder\";\n" +
-        "            parent \"" + name + "\";\n" +
-        "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-        "            interval 5;\n" +
-        "            file \"output_data/"  + name + "_voltage.csv\";\n" +
         "        };\n"
     }
 
@@ -351,52 +327,47 @@ class GridLABD (session: SparkSession) extends Serializable
         f.exists
     }
 
-    def load_from_player_file (name: String, voltage: Double): String =
-    {
-        // assumes meter data files exist
-        // from Yamshid,
-        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
-        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
-        val house = has (name)
-        // by supplying player files for only EnergyConsumer objects
-        // this existence test picks only HASXXXX nodes (i.e. not ABGXXXX or PINXXXX)
-        val ret =
-            if (exists ("meter_data/" + house + "_R.csv"))
-                "\n" +
-                "        object load\n" +
-                "        {\n" +
-                "            name \"" + name + "_load\";\n" +
-                "            parent \"" + name + "\";\n" +
-                "            phases ABCN;\n" +
-                "            nominal_voltage " + voltage + "V;\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_A\";\n" +
-                "                file \"meter_data/" + house + "_R.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_B\";\n" +
-                "                file \"meter_data/" + house + "_S.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_C\";\n" +
-                "                file \"meter_data/" + house + "_T.csv\";\n" +
-                "            };\n" +
-                "        };\n"
-            else
-                ""
-        return (ret)
-    }
+//    def load_from_player_file (name: String, voltage: Double): String =
+//    {
+//        // assumes meter data files exist
+//        // from Yamshid,
+//        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
+//        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
+//        val house = has (name)
+//        // by supplying player files for only EnergyConsumer objects
+//        // this existence test picks only HASXXXX nodes (i.e. not ABGXXXX or PINXXXX)
+//        val ret =
+//            if (exists ("meter_data/" + house + "_R.csv"))
+//                "\n" +
+//                "        object load\n" +
+//                "        {\n" +
+//                "            name \"" + name + "_load\";\n" +
+//                "            parent \"" + name + "\";\n" +
+//                "            phases ABCN;\n" +
+//                "            nominal_voltage " + voltage + "V;\n" +
+//                "            object player\n" +
+//                "            {\n" +
+//                "                property \"constant_current_A\";\n" +
+//                "                file \"meter_data/" + house + "_R.csv\";\n" +
+//                "            };\n" +
+//                "            object player\n" +
+//                "            {\n" +
+//                "                property \"constant_current_B\";\n" +
+//                "                file \"meter_data/" + house + "_S.csv\";\n" +
+//                "            };\n" +
+//                "            object player\n" +
+//                "            {\n" +
+//                "                property \"constant_current_C\";\n" +
+//                "                file \"meter_data/" + house + "_T.csv\";\n" +
+//                "            };\n" +
+//                "        };\n"
+//            else
+//                ""
+//        return (ret)
+//    }
 
     def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
     {
-        val USE_UTC = false
-        val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        if (USE_UTC)
-            _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
-
         val ret = new StringBuilder ()
         def addrow (time: Calendar, power: Double, angle: Double) =
         {
@@ -511,25 +482,31 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def emit_node (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + name + "\";\n" +
-        "            phases ABCN;\n" +
-        "            bustype PQ;\n" +
-        "            nominal_voltage " + voltage + "V;\n" +
-        "        };\n" +
-//                 load_from_player_file (name, voltage) +
-                 generate_player_file (experiments, name, voltage) +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + has (name) + "_voltage_recorder\";\n" +
-        "            parent \"" + name + "\";\n" +
-        "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-        "            interval 5;\n" +
-        "            file \"output_data/" + name + "_voltage.csv\";\n" +
-        "        };\n"
+        val meter =
+            "\n" +
+            "        object meter\n" +
+            "        {\n" +
+            "            name \"" + name + "\";\n" +
+            "            phases ABCN;\n" +
+            "            bustype PQ;\n" +
+            "            nominal_voltage " + voltage + "V;\n" +
+            "        };\n"
+
+        //           load_from_player_file (name, voltage)
+        val player = generate_player_file (experiments, name, voltage)
+
+        val recorder =
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + has (name) + "_voltage_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + name + "_voltage.csv\";\n" +
+            "        };\n"
+        
+        return (meter + (if ("" == player) "" else (player + recorder)))
     }
 
     // emit one GridLAB-D node
@@ -917,12 +894,6 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def read_records (session: SparkSession, filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
     {
-        val USE_UTC = false
-
-        val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        if (USE_UTC)
-            _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
-
         def toTimeStamp (string: String): Long =
         {
             _DateFormat.parse (string).getTime ()
@@ -1328,7 +1299,8 @@ object GridLABD
         val filename = if (args.length > 0)
             args (0)
         else
-            "hdfs://sandbox:8020/data/" + "bkw_cim_export_haelig" + ".rdf"
+            //"hdfs://sandbox:8020/data/" + "bkw_cim_export_haelig.rdf"
+            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20161220_Sample4.rdf"
 
         val begin = System.nanoTime ()
 
@@ -1399,7 +1371,10 @@ object GridLABD
         val _transformers = new Transformers ()
         val tdata = _transformers.getTransformerData (session)
         tdata.persist (gridlabd._StorageLevel)
-        val transformers = tdata.map ((t) => t.transformer.id).collect
+        // ToDo: fix this 1kV multiplier on the voltages
+        val niederspannug = tdata.filter ((td) => td.voltages (0) != 0.4 && td.voltages (1) == 0.4)
+        val transformers = niederspannug.map ((t) => t.transformer.id).collect
+        println (transformers.mkString ("\n"))
 
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")

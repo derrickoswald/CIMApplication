@@ -170,7 +170,6 @@ class GridLABDSuite extends FunSuite
 
         //val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
-        //val root = "NIS_CIM_Export_sias_current_20160816_Bubenei_V9"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -186,8 +185,6 @@ class GridLABDSuite extends FunSuite
 
         // prepare the initial graph
         val initial = gridlabd.prepare ()
-        val prepare = System.nanoTime ()
-        println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
         // get a list of transformers
 //        val transformers = initial.edges.filter (_.attr.id_equ.startsWith ("TRA")).map (_.attr.id_equ).collect
@@ -202,6 +199,9 @@ class GridLABDSuite extends FunSuite
         val niederspannug = tdata.filter ((td) => td.voltages (0) != 0.4 && td.voltages (1) == 0.4)
         val transformers = niederspannug.map ((t) => t.transformer.id).collect
         println (transformers.mkString ("\n"))
+
+        val prepare = System.nanoTime ()
+        println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
         val init = session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
         val results = transformers.map (gridlabd.einspeiseleistung (initial, tdata)).aggregate (init)(_.union (_), _.union (_))
@@ -219,9 +219,12 @@ class GridLABDSuite extends FunSuite
 //        val analyse = System.nanoTime ()
 //        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
 
+        val calculate = System.nanoTime ()
+        println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
+
         val id = store ("Einspeiseleistung", Calendar.getInstance (), results)
         val save = System.nanoTime ()
-        println ("save: " + (save - prepare) / 1e9 + " seconds")
+        println ("save: " + (save - calculate) / 1e9 + " seconds")
 
         println ()
 
