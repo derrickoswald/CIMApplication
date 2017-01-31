@@ -85,8 +85,25 @@ class GridLABDSuite extends FunSuite
         return (element)
     }
 
+    def makeSchema (connection: Connection)
+    {
+        val statement = connection.createStatement ()
+        val resultset1 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'simulation'")
+        val exists1 = resultset1.next ()
+        resultset1.close ()
+        if (!exists1)
+            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, description text, time text)")
+        val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'results'")
+        val exists2 = resultset2.next ()
+        resultset2.close ()
+        if (!exists2)
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double)")
+        statement.close ()
+    }
+
     def store (description: String, t1: Calendar, results: RDD[MaxEinspeiseleistung]): Int =
     {
+        // make the directory
         val file = Paths.get ("simulation/dummy")
         Files.createDirectories (file.getParent ())
 
@@ -101,12 +118,7 @@ class GridLABDSuite extends FunSuite
             connection.setAutoCommit (false)
 
             // create schema
-            val statement = connection.createStatement ()
-            statement.executeUpdate ("drop table if exists simulation")
-            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, description text, time text)")
-            statement.executeUpdate ("drop table if exists results")
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double)")
-            statement.close ()
+            makeSchema (connection)
 
             // insert the simulation
             val now = Calendar.getInstance ()
@@ -115,13 +127,16 @@ class GridLABDSuite extends FunSuite
             insert.setString (2, description)
             insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
             insert.executeUpdate ()
+            val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select last_insert_rowid() id")
             resultset.next ()
             val id = resultset.getInt ("id")
+            resultset.close
+            statement.close
 
             // insert the results
             val records = results.collect ()
-            var datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
                 datainsert.setNull (1, Types.INTEGER)
@@ -137,7 +152,8 @@ class GridLABDSuite extends FunSuite
                 }
                 datainsert.executeUpdate ()
             }
-            connection.commit ()
+            datainsert.close
+            connection.commit
 
             return (id)
         }
@@ -154,7 +170,8 @@ class GridLABDSuite extends FunSuite
                 if (connection != null)
                     connection.close ()
             }
-            catch {
+            catch
+            {
                 // connection close failed
                 case e: SQLException ⇒ println ("exception caught: " + e);
             }
@@ -168,8 +185,8 @@ class GridLABDSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        //val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
-        val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
+        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        //val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -186,12 +203,6 @@ class GridLABDSuite extends FunSuite
         // prepare the initial graph
         val initial = gridlabd.prepare ()
 
-        // get a list of transformers
-//        val transformers = initial.edges.filter (_.attr.id_equ.startsWith ("TRA")).map (_.attr.id_equ).collect
-//
-//        val init = session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
-//        val results = transformers.map (gridlabd.einspeiseleistung (initial)).aggregate (init)(_.union (_), _.union (_))
-
         val _transformers = new Transformers ()
         val tdata = _transformers.getTransformerData (session)
         tdata.persist (gridlabd._StorageLevel)
@@ -203,33 +214,13 @@ class GridLABDSuite extends FunSuite
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val init = session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
-        val results = transformers.map (gridlabd.einspeiseleistung (initial, tdata)).aggregate (init)(_.union (_), _.union (_))
-
-//        val equipment = "TRA15896"
-//        val experiments = gridlabd.export (initial, tdata, equipment)
-//        val export = System.nanoTime ()
-//        println ("export: " + (export - prepare) / 1e9 + " seconds")
-//
-//        val data = gridlabd.solve (equipment)
-//        val solve = System.nanoTime ()
-//        println ("solve: " + (solve - export) / 1e9 + " seconds")
-//
-//        val results = gridlabd.analyse (experiments, data)
-//        val analyse = System.nanoTime ()
-//        println ("analyse: " + (analyse - solve) / 1e9 + " seconds")
+        val fn = gridlabd.einspeiseleistung (initial, tdata)_
+        val results = transformers.map ((s) => store ("Einspeiseleistung", Calendar.getInstance (), fn (s)))
 
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
-        val id = store ("Einspeiseleistung", Calendar.getInstance (), results)
-        val save = System.nanoTime ()
-        println ("save: " + (save - calculate) / 1e9 + " seconds")
-
         println ()
-
-        // clean up this run
-        // FileUtils.deleteDirectory (new File (gridlabd._TempFilePrefix))
     }
 
 }
