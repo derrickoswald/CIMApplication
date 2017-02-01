@@ -1314,7 +1314,7 @@ object GridLABD
      * Build jar with dependencies (target/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
      */
     def main (args: Array[String])
     {
@@ -1329,15 +1329,21 @@ object GridLABD
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("GridLAB-D")
-        configuration.setMaster ("spark://sandbox:7077")
-//        configuration.setSparkHome ("/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "4g")
-//        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
+        if (args.length == 0)
+        {
+            // for unit tests, set the master and memory
+            configuration.setMaster ("spark://sandbox:7077")
+            configuration.set ("spark.driver.memory", "2g")
+            configuration.set ("spark.executor.memory", "4g")
+        }
+
         // get the necessary jar files to send to the cluster
         val s1 = jarForObject (new DefaultSource ())
         val s2 = jarForObject (new Line ())
-        configuration.setJars (Array (s1, s2))
+        if (s1 != s2)
+            configuration.setJars (Array (s1, s2))
+        else
+            configuration.setJars (Array (s1))
 
         // register low level classes
         configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
