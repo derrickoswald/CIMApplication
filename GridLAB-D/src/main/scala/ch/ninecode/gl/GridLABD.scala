@@ -1311,8 +1311,10 @@ object GridLABD
     }
 
     /**
+     * Build jar with dependencies (target/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar):
+     *     mvn package
      * Invoke (on the cluster) with:
-     * spark-submit --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     *     spark-submit --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
      */
     def main (args: Array[String])
     {
