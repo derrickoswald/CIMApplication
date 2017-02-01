@@ -29,8 +29,8 @@ class Line extends Serializable
     def sequence2z (z0: Complex, z1: Complex): Tuple2[Complex, Complex] =
     {
         val Z1, Z2 = z1
-        val r0rl: Double = z0.re / z1.re
-        val x0xl: Double = z0.im / z1.im
+        val r0rl = z0.re / z1.re
+        val x0xl = z0.im / z1.im
         val Z0 = Complex (z1.re * r0rl, z1.im * x0xl)
         val diag = (Z0 + Z1 + Z2) / 3
         val x1 = Z1 * Complex (-0.5, sqrt (3.0) / 2.0)

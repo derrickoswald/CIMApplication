@@ -917,7 +917,7 @@ class GridLABD (session: SparkSession) extends Serializable
             .option ("header", "true")
             .option ("comment", "#")
             .schema (customSchema)
-            .csv (filename)
+            .load (filename)
 
         import session.implicits._
         df.map (r => ThreePhaseComplexDataElement (element, toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6)), units))
@@ -1310,6 +1310,10 @@ object GridLABD
 
     }
 
+    /**
+     * Invoke (on the cluster) with:
+     * spark-submit --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     */
     def main (args: Array[String])
     {
         val filename = if (args.length > 0)
@@ -1350,7 +1354,7 @@ object GridLABD
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
 
         // make a Spark session
-        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        val session = SparkSession.builder ().config (configuration).getOrCreate ()
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val setup = System.nanoTime ()
