@@ -1221,6 +1221,8 @@ object GridLABD
      *     mvn package
      * Invoke (on the cluster) with:
      *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --class ch.ninecode.gl.GridLABD /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     * or on AWS:
+     *     /opt/spark/bin/spark-submit --master yarn --class ch.ninecode.gl.GridLABD /disktemp/transfer/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
     def main (args: Array[String])
     {
@@ -1241,6 +1243,13 @@ object GridLABD
             configuration.setMaster ("spark://sandbox:7077")
             configuration.set ("spark.driver.memory", "2g")
             configuration.set ("spark.executor.memory", "4g")
+        }
+        val hdfsuri = if (args.length == 0)
+            "hdfs://sandbox:8020/"
+        else
+        {
+            val uri = new URI (args (0))
+            uri.getScheme + "://" + uri.getAuthority + "/"
         }
 
         // get the necessary jar files to send to the cluster
@@ -1274,8 +1283,6 @@ object GridLABD
         val setup = System.nanoTime ()
         println ("setup : " + (setup - begin) / 1e9 + " seconds")
 
-        val gridlabd = new GridLABD (session)
-
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
         options.put ("path", filename)
@@ -1297,6 +1304,8 @@ object GridLABD
         val read = System.nanoTime ()
         println ("read : " + (read - setup) / 1e9 + " seconds")
 
+        val gridlabd = new GridLABD (session)
+        gridlabd.HDFS_URI = hdfsuri
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
