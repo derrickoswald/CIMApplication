@@ -26,27 +26,27 @@ class Line extends Serializable
         s.replace (".", "d")
     }
 
-    def sequence2z (z0: Complex, z1: Complex): Tuple2[Complex, Complex] =
-    {
-        val Z1, Z2 = z1
-        val r0rl = z0.re / z1.re
-        val x0xl = z0.im / z1.im
-        val Z0 = Complex (z1.re * r0rl, z1.im * x0xl)
-        val diag = (Z0 + Z1 + Z2) / 3
-        val x1 = Z1 * Complex (-0.5, sqrt (3.0) / 2.0)
-        val x2 = Z2 * Complex (-0.5, sqrt (3.0) / -2.0)
-        val off = (Z0 + x1 + x2) / 3.0
-        (diag, off)
-    }
+//    def sequence2z (z0: Complex, z1: Complex): Tuple3[Complex, Complex, Boolean] =
+//    {
+//        val Z1, Z2 = z1
+//        val r0rl = z0.re / z1.re
+//        val x0xl = z0.im / z1.im
+//        val Z0 = Complex (z1.re * r0rl, z1.im * x0xl)
+//        val diag = (Z0 + Z1 + Z2) / 3
+//        val x1 = Z1 * Complex (-0.5, sqrt (3.0) / 2.0)
+//        val x2 = Z2 * Complex (-0.5, sqrt (3.0) / -2.0)
+//        val off = (Z0 + x1 + x2) / 3.0
+//        (diag, off, false)
+//    }
 
     // convert the 0/1 sequence values from the CIM format into a Z matrix
-    def zMatrixValues (line: ACLineSegment): Tuple2[Complex, Complex] =
+    def zMatrixValues (line: ACLineSegment): Tuple3[Complex, Complex, Boolean] =
     {
         val ret =
-            if ((0 != line.r) && (0 != line.x))
-                sequence2z (Complex (line.r0, line.x0), Complex (line.r, line.x))
+            if ((0.0 != line.r) && (0.0 != line.x))
+                (Complex (line.r, line.x), Complex (0.0, 0.0), false)
             else
-                (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0))
+                (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0), true)
 
         return (ret)
     }
@@ -56,11 +56,12 @@ class Line extends Serializable
     {
         var ret = ""
 
-        val (diag, off) = zMatrixValues (line)
+        val (diag, off, default) = zMatrixValues (line)
         val z11 = diag.toString () + " Ohm/km"
         val z12 = off.toString () + " Ohm/km"
         ret =
             "\n" +
+            (if (default) "#warning WARNING: using default line_configuration for " + config else "") +
             "        object line_configuration\n" +
             "        {\n" +
             "            name \"" + config + "\";\n" +
