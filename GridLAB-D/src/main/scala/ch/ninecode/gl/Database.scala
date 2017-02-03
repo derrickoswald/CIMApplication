@@ -28,7 +28,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar) (results: RDD[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar) (equipment: String, results: RDD[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -63,10 +63,7 @@ object Database
 
             // insert the results
             val records = results.collect ()
-            if (0 == records.length)
-                println ("0 records")
-            else
-                println (records(0).trafo + " " + records.length + " records")
+            println (equipment + " " + records.length + " records")
             val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {

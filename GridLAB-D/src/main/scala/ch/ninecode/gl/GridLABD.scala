@@ -107,6 +107,7 @@ class GridLABD (session: SparkSession) extends Serializable
 {
     var topologicalnodes = true
     var HDFS_URI = "hdfs://sandbox:8020/"
+    var DELETE_INTERMEDIATE_FILES = false
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -1188,6 +1189,35 @@ class GridLABD (session: SparkSession) extends Serializable
 
         return (ret)
     }
+
+    def cleanup (equipment: String): Unit =
+    {
+        if (DELETE_INTERMEDIATE_FILES)
+        {
+            val rm =
+                if ("" == HDFS_URI) // local
+                    Array[String] (
+                        "bash",
+                        "-c",
+                        "while read line; do " +
+                            "FILE=$line; " +
+                            "rm -rf simulation/$FILE; " +
+                        "done < /dev/stdin")
+                else // cluster
+                    Array[String] (
+                        "bash",
+                        "-c",
+                        "while read line; do " +
+                            "FILE=$line; " +
+                            "rm -rf $FILE; " +
+                        "done < /dev/stdin")
+            val files = session.sparkContext.parallelize (Array[String] (equipment))
+            val del = files.pipe (rm)
+            val result = del.collect.mkString ("\n")
+            if ("" != result)
+                println (result)
+        }
+    }
 }
 
 object GridLABD
@@ -1323,9 +1353,13 @@ object GridLABD
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val fn1 = gridlabd.einspeiseleistung (initial, tdata)_
-        val fn2 = Database.store ("Einspeiseleistung", Calendar.getInstance ())_
-        val results = transformers.par.map ((s) => fn2 (fn1 (s)))
+        val results = transformers.par.map ((s) =>
+        {
+            val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (s, rdd)
+            gridlabd.cleanup (s)
+            id
+        })
 
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")

@@ -116,9 +116,13 @@ class GridLABDSuite extends FunSuite
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val fn1 = gridlabd.einspeiseleistung (initial, tdata)_
-        val fn2 = Database.store ("Einspeiseleistung", Calendar.getInstance ())_
-        val results = transformers.par.map ((s) => fn2 (fn1 (s)))
+        val results = transformers.par.map ((s) =>
+        {
+            val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (s, rdd)
+            gridlabd.cleanup (s)
+            id
+        })
 
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
