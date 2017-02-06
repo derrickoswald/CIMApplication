@@ -25,6 +25,7 @@
         <version.dependency.spark>2.0.2</version.dependency.spark>
         <version.dependency.cimscala>2.11-2.0.1-1.8.1</version.dependency.cimscala>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
+        <version.dependency.scopt>3.5.0</version.dependency.scopt>
     </properties>
 
     <dependencies>
@@ -91,6 +92,11 @@
             <version>${version.dependency.sqlite}</version>
         </dependency>
 
+		<dependency>
+		    <groupId>com.github.scopt</groupId>
+		    <artifactId>scopt_2.11</artifactId>
+		    <version>${version.dependency.scopt}</version>
+		</dependency>
     </dependencies>
 
     <build>
