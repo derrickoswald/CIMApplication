@@ -6,7 +6,7 @@ import org.apache.spark.rdd.RDD
 
 import ch.ninecode.model._
 
-class Line extends Serializable
+class Line (one_phase: Boolean) extends Serializable
 {
     final val DEFAULT_R = 0.225
     final val DEFAULT_X = 0.068
@@ -153,15 +153,48 @@ class Line extends Serializable
         else
             "overhead_line"
         val config = configurationName (edges)
-        "\n" +
-        "        object " + typ + "\n" +
-        "        {\n" +
-        "            name \"" + edge.id_equ + "\";\n" +
-        "            phases ABCN;\n" +
-        "            from \"" + edge.id_cn_1 + "\";\n" +
-        "            to \"" + edge.id_cn_2 + "\";\n" +
-        "            length " + line.Conductor.len + "m;\n" +
-        "            configuration \"" + config + "\";\n" +
-        "        };\n"
+        val obj = if (one_phase)
+            "\n" +
+            "        object " + typ + "\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "\";\n" +
+            "            phases AN;\n" +
+            "            from \"" + edge.id_cn_1 + "\";\n" +
+            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "            length " + line.Conductor.len + "m;\n" +
+            "            configuration \"" + config + "\";\n" +
+            "        };\n"
+        else
+            "\n" +
+            "        object " + typ + "\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "\";\n" +
+            "            phases ABCN;\n" +
+            "            from \"" + edge.id_cn_1 + "\";\n" +
+            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "            length " + line.Conductor.len + "m;\n" +
+            "            configuration \"" + config + "\";\n" +
+            "        };\n"
+        val rec = if (one_phase)
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+            "            parent \"" + edge.id_equ + "\";\n" +
+            "            property current_in_A.real,current_in_A.imag;\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "        };\n"
+        else
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+            "            parent \"" + edge.id_equ + "\";\n" +
+            "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "        };\n"
+        return (obj + rec)
     }
 }

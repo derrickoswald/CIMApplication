@@ -72,7 +72,7 @@ public class GridLabExport
                         input.put ("filename", full_file);
 
                         // set up the method call details for the CIMConnector
-                        Line line = new Line ();
+                        Line line = new Line (false);
                         input.put ("class", line.getClass ().getName ());
                         String jar = factory.JarPath (line);
                         if (null != jar)

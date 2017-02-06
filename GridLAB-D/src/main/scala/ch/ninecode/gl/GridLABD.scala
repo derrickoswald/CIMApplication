@@ -105,9 +105,10 @@ case class MaxEinspeiseleistung (trafo: String, house: String, max: Option[Doubl
 
 class GridLABD (session: SparkSession) extends Serializable
 {
-    var topologicalnodes = true
+    var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
     var DELETE_INTERMEDIATE_FILES = false
+    var USE_ONE_PHASE = true
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -258,22 +259,37 @@ class GridLABD (session: SparkSession) extends Serializable
         for (solargeneratingunit <- solargeneratingunits)
         {
             val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-            val power3 = power / 3 // per phase
             if (power > 0)
             {
-                load +=
-                    "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "             name \"" + parent + "_pv_" + index + "\";\n" +
-                    "             parent \"" + parent + "\";\n" +
-                    "             phases ABCN;\n" +
-                    "             constant_power_A -" + power3 + ";\n" +
-                    "             constant_power_B -" + power3 + ";\n" +
-                    "             constant_power_C -" + power3 + ";\n" +
-                    "             nominal_voltage " + voltage + "V;\n" +
-                    "             load_class R;\n" +
-                    "        }\n"
+                if (USE_ONE_PHASE)
+                    load +=
+                        "\n" +
+                        "        object load\n" +
+                        "        {\n" +
+                        "             name \"" + parent + "_pv_" + index + "\";\n" +
+                        "             parent \"" + parent + "\";\n" +
+                        "             phases AN;\n" +
+                        "             constant_power_A -" + power + ";\n" +
+                        "             nominal_voltage " + voltage + "V;\n" +
+                        "             load_class R;\n" +
+                        "        }\n"
+                else
+                {
+                    val power3 = power / 3 // per phase
+                    load +=
+                        "\n" +
+                        "        object load\n" +
+                        "        {\n" +
+                        "             name \"" + parent + "_pv_" + index + "\";\n" +
+                        "             parent \"" + parent + "\";\n" +
+                        "             phases ABCN;\n" +
+                        "             constant_power_A -" + power3 + ";\n" +
+                        "             constant_power_B -" + power3 + ";\n" +
+                        "             constant_power_C -" + power3 + ";\n" +
+                        "             nominal_voltage " + voltage + "V;\n" +
+                        "             load_class R;\n" +
+                        "        }\n"
+                }
                 index += 1
             }
         }
@@ -282,24 +298,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def emit_primary_node (transformers: List[PowerTransformer], name: String): String =
     {
-        var trafo = ""
-//        for (transformer <- transformers)
-//        {
-//            val id = transformer.id
-//            val voltage = "16000" // ToDo: don't cheat here
-//            trafo +=
-//                "        object node\n" +
-//                "        {\n" +
-//                "            name \"" + name + "\";\n" + // ToDo: handle multiple transformers
-//                "            phases ABCD;\n" + // ToDo: check if it's delta connected or not
-//                "            bustype SWING;\n" +
-//                "            nominal_voltage " + voltage + " V;\n" +
-//                "            voltage_A " + voltage + "+30.0d V;\n" +
-//                "            voltage_B " + voltage + "-90.0d V;\n" +
-//                "            voltage_C " + voltage + "+150.0d V;\n" +
-//                "        };\n"
-//        }
-        trafo
+        ""
     }
 
     def has (string: String): String =
@@ -309,24 +308,79 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def emit_slack (name: String, voltage: Double): String =
     {
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + name + "\";\n" +
-        "            phases ABCN;\n" +
-        "            bustype SWING;\n" +
-        "            nominal_voltage " + voltage + "V;\n" +
-// the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-        "            voltage_A " + voltage + "+30.0d;\n" +
-        "            voltage_B " + voltage + "-90.0d;\n" +
-        "            voltage_C " + voltage + "+150.0d;\n" +
-        "        };\n"
+        if (USE_ONE_PHASE)
+            "\n" +
+            "        object meter\n" +
+            "        {\n" +
+            "            name \"" + name + "\";\n" +
+            "            phases AN;\n" +
+            "            bustype SWING;\n" +
+            "            nominal_voltage " + voltage + "V;\n" +
+            "            voltage_A " + voltage + ";\n" +
+            "        };\n"
+        else
+            "\n" +
+            "        object meter\n" +
+            "        {\n" +
+            "            name \"" + name + "\";\n" +
+            "            phases ABCN;\n" +
+            "            bustype SWING;\n" +
+            "            nominal_voltage " + voltage + "V;\n" +
+            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+            "            voltage_A " + voltage + "+30.0d;\n" +
+            "            voltage_B " + voltage + "-90.0d;\n" +
+            "            voltage_C " + voltage + "+150.0d;\n" +
+            "        };\n"
     }
 
     def exists (filename: String): Boolean =
     {
         val f = new File (filename)
         f.exists
+    }
+
+    def eraseInputFile (equipment: String)
+    {
+        if ("" == HDFS_URI)
+            FileUtils.deleteDirectory (new File (equipment + "/"))
+        else
+        {
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+            val directory = new Path ("/simulation/" + equipment + "/")
+            hdfs.delete (directory, true)
+        }
+    }
+
+    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
+    {
+        if ("" == HDFS_URI)
+        {
+            // ToDo: check for IOException
+            val file = Paths.get ("simulation/" + equipment + "/" + path)
+            Files.createDirectories (file.getParent ())
+            if (null != bytes)
+                Files.write (file, bytes)
+        }
+        else
+        {
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+            val file = new Path ("/simulation/" + equipment + "/" + path)
+            hdfs.mkdirs (file.getParent ())
+            if (null != bytes)
+            {
+                val out = hdfs.create (file)
+                out.write (bytes)
+                out.close ()
+            }
+        }
     }
 
 //    def load_from_player_file (name: String, voltage: Double): String =
@@ -375,10 +429,18 @@ class GridLABD (session: SparkSession) extends Serializable
         {
             ret.append (_DateFormat.format (time.getTime ()))
             ret.append (",")
-            ret.append (- power / 3) // negative load injects power, 1/3 per phase
-            ret.append ("<")
-            ret.append (angle)
-            ret.append ("d\n")
+            if (USE_ONE_PHASE)
+            {
+                ret.append (- power)
+                ret.append ("\n")
+            }
+            else
+            {
+                ret.append (- power / 3) // negative load injects power, 1/3 per phase
+                ret.append ("<")
+                ret.append (angle)
+                ret.append ("d\n")
+            }
             time.add (Calendar.SECOND, exp.interval)
         }
         val time = exp.t1
@@ -394,50 +456,6 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret.toString ().getBytes (StandardCharsets.UTF_8))
     }
 
-    def eraseInputFile (equipment: String)
-    {
-        if ("" == HDFS_URI)
-            FileUtils.deleteDirectory (new File (equipment + "/"))
-        else
-        {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
-
-            val directory = new Path ("/simulation/" + equipment + "/")
-            hdfs.delete (directory, true)
-        }
-    }
-
-    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
-    {
-        if ("" == HDFS_URI)
-        {
-            // ToDo: check for IOException
-            val file = Paths.get ("simulation/" + equipment + "/" + path)
-            Files.createDirectories (file.getParent ())
-            if (null != bytes)
-                Files.write (file, bytes)
-        }
-        else
-        {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
-
-            val file = new Path ("/simulation/" + equipment + "/" + path)
-            hdfs.mkdirs (file.getParent ())
-            if (null != bytes)
-            {
-                val out = hdfs.create (file)
-                out.write (bytes)
-                out.close ()
-            }
-        }
-    }
-
     def generate_player_file (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
         val house = has (name)
@@ -445,36 +463,55 @@ class GridLABD (session: SparkSession) extends Serializable
             experiments.find (p => p.house == house) match
             {
                 case Some (experiment) =>
-                    val r_phase = 0.0
-                    val s_phase = 240.0
-                    val t_phase = 120.0
-                    writeInputFile (experiment.trafo, "input_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
-                    writeInputFile (experiment.trafo, "input_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
-                    writeInputFile (experiment.trafo, "input_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
-
-                    "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "            name \"" + name + "_load\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_A\";\n" +
-                    "                file \"input_data/" + house + "_R.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_B\";\n" +
-                    "                file \"input_data/" + house + "_S.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_C\";\n" +
-                    "                file \"input_data/" + house + "_T.csv\";\n" +
-                    "            };\n" +
-                    "        };\n"
+                    if (USE_ONE_PHASE)
+                    {
+                        writeInputFile (experiment.trafo, "input_data/" + house + ".csv", ramp_up (experiment, 0.0))
+                        "\n" +
+                        "        object load\n" +
+                        "        {\n" +
+                        "            name \"" + name + "_load\";\n" +
+                        "            parent \"" + name + "\";\n" +
+                        "            phases AN;\n" +
+                        "            nominal_voltage " + voltage + "V;\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_power_A\";\n" +
+                        "                file \"input_data/" + house + ".csv\";\n" +
+                        "            };\n" +
+                        "        };\n"
+                    }
+                    else
+                    {
+                        val r_phase = 0.0
+                        val s_phase = 240.0
+                        val t_phase = 120.0
+                        writeInputFile (experiment.trafo, "input_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
+                        writeInputFile (experiment.trafo, "input_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
+                        writeInputFile (experiment.trafo, "input_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
+                        "\n" +
+                        "        object load\n" +
+                        "        {\n" +
+                        "            name \"" + name + "_load\";\n" +
+                        "            parent \"" + name + "\";\n" +
+                        "            phases ABCN;\n" +
+                        "            nominal_voltage " + voltage + "V;\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_power_A\";\n" +
+                        "                file \"input_data/" + house + "_R.csv\";\n" +
+                        "            };\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_power_B\";\n" +
+                        "                file \"input_data/" + house + "_S.csv\";\n" +
+                        "            };\n" +
+                        "            object player\n" +
+                        "            {\n" +
+                        "                property \"constant_power_C\";\n" +
+                        "                file \"input_data/" + house + "_T.csv\";\n" +
+                        "            };\n" +
+                        "        };\n"
+                    }
                 case None =>
                     ""
             }
@@ -485,28 +522,49 @@ class GridLABD (session: SparkSession) extends Serializable
     def emit_node (experiments: HashSet[Experiment], name: String, voltage: Double): String =
     {
         val meter =
-            "\n" +
-            "        object meter\n" +
-            "        {\n" +
-            "            name \"" + name + "\";\n" +
-            "            phases ABCN;\n" +
-            "            bustype PQ;\n" +
-            "            nominal_voltage " + voltage + "V;\n" +
-            "        };\n"
+            if (USE_ONE_PHASE)
+                "\n" +
+                "        object meter\n" +
+                "        {\n" +
+                "            name \"" + name + "\";\n" +
+                "            phases AN;\n" +
+                "            bustype PQ;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "        };\n"
+            else
+                "\n" +
+                "        object meter\n" +
+                "        {\n" +
+                "            name \"" + name + "\";\n" +
+                "            phases ABCN;\n" +
+                "            bustype PQ;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "        };\n"
 
         //           load_from_player_file (name, voltage)
         val player = generate_player_file (experiments, name, voltage)
 
         val recorder =
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + has (name) + "_voltage_recorder\";\n" +
-            "            parent \"" + name + "\";\n" +
-            "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + name + "_voltage.csv\";\n" +
-            "        };\n"
+            if (USE_ONE_PHASE)
+                "\n" +
+                "        object recorder\n" +
+                "        {\n" +
+                "            name \"" + has (name) + "_voltage_recorder\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            property voltage_A.real,voltage_A.imag;\n" +
+                "            interval 5;\n" +
+                "            file \"output_data/" + name + "_voltage.csv\";\n" +
+                "        };\n"
+            else
+                "\n" +
+                "        object recorder\n" +
+                "        {\n" +
+                "            name \"" + has (name) + "_voltage_recorder\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
+                "            interval 5;\n" +
+                "            file \"output_data/" + name + "_voltage.csv\";\n" +
+                "        };\n"
         
         return (meter + (if ("" == player) "" else (player + recorder)))
     }
@@ -545,100 +603,52 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D edge
-    def make_link (line: Line, trans: Trans) (edges: Iterable[PreEdge]): String =
+    def make_link (line: Line, trans: Trans, switch: SwitchDevice) (edges: Iterable[PreEdge]): String =
     {
         val edge = edges.head
         val cls = edge.element.getClass.getName
         val clazz = cls.substring (cls.lastIndexOf (".") + 1)
-        val ret =
-                clazz match
-                {
-                    case "ACLineSegment" =>
-                        line.emit (edges) +
-                        "\n" +
-                        "        object recorder\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-                        "            parent \"" + edge.id_equ + "\";\n" +
-                        "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
-                        "            interval 5;\n" +
-                        "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-                        "        };\n"
-                    case "PowerTransformer" =>
-                        trans.emit (edges) +
-                        "\n" +
-                        "        object recorder\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-                        "            parent \"" + edge.id_equ + "\";\n" +
-                        "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
-                        "            interval 5;\n" +
-                        "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-                        "        };\n"
-                    case "Switch" =>
-                        val switch = edge.element.asInstanceOf[Switch]
-                        val status = if (switch.normalOpen) "OPEN" else "CLOSED"
-                        "        object switch\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "            status \"" + status + "\";\n" +
-                        "        };\n"
-                    case "Cut" |
-                         "Disconnector" |
-                         "GroundDisconnector" |
-                         "Jumper" |
-                         "ProtectedSwitch" |
-                         "Sectionaliser" =>
-                        val switch = edge.element.sup.asInstanceOf[Switch]
-                        val status = if (switch.normalOpen) "OPEN" else "CLOSED"
-                        "        object switch\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "            status \"" + status + "\";\n" +
-                        "        };\n"
-                    case "Breaker" |
-                         "LoadBreakSwitch" |
-                         "Recloser" =>
-                        val switch = edge.element.sup.sup.asInstanceOf[Switch]
-                        val status = if (switch.normalOpen) "OPEN" else "CLOSED"
-                        "        object switch\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "            status \"" + status + "\";\n" +
-                        "        };\n"
-                    case "Fuse" =>
-                        val fuse = edge.element.asInstanceOf[Fuse]
-                        val current = fuse.Switch.ratedCurrent
-                        "        object fuse\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "            mean_replacement_time 3600.0;\n" + // sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
-                        (if (current <= 0)
-                            "            current_limit 9999.0A;\n" // ensure it doesn't trip
-                        else
-                            "            current_limit " + current + "A;\n") +
-                        "        };\n"
-                    case _ =>
-                        "        object link\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "        };\n"
-                }
+        val ret = clazz match
+        {
+            case "ACLineSegment" =>
+                line.emit (edges)
+            case "PowerTransformer" =>
+                trans.emit (edges)
+            case "Switch" =>
+                switch.emit (edge, edge.element.asInstanceOf[Switch])
+            case "Cut" |
+                 "Disconnector" |
+                 "GroundDisconnector" |
+                 "Jumper" |
+                 "ProtectedSwitch" |
+                 "Sectionaliser" =>
+                switch.emit (edge, edge.element.sup.asInstanceOf[Switch])
+            case "Breaker" |
+                 "LoadBreakSwitch" |
+                 "Recloser" =>
+                switch.emit (edge, edge.element.sup.sup.asInstanceOf[Switch])
+            case "Fuse" =>
+                switch.emit (edge, edge.element.sup.asInstanceOf[Switch], true)
+            case _ =>
+                if (switch.one_phase) // borrow the phasing from switch
+                    "\n" +
+                    "        object link\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            phases AN;\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "        };\n"
+                else
+                    "\n" +
+                    "        object link\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "        };\n"
+        }
         return (ret)
     }
 
@@ -709,7 +719,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
 
         // map the terminal 'pairs' to edges
-        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages, topologicalnodes)).values
+        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages, USE_TOPOLOGICAL_NODES)).values
 
         // eliminate edges with only one connectivity node, or the same connectivity node
         val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
@@ -718,7 +728,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
         // get the nodes RDD
-        val nodes = if (topologicalnodes)
+        val nodes = if (USE_TOPOLOGICAL_NODES)
         {
             // get the topological nodes RDD
             val tnodes = get ("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
@@ -788,18 +798,18 @@ class GridLABD (session: SparkSession) extends Serializable
         val combined_edges = traced_edges.groupBy (_.key).values
 
         // get one of each type of ACLineSegment and emit a configuration for each of them
-        val line = new Line ()
+        val line = new Line (USE_ONE_PHASE)
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
         // get the transformer configuration
-        val trans = new Trans (tdata)
+        val trans = new Trans (tdata, USE_ONE_PHASE)
         val t_strings = trans.getTransformerConfigurations (combined_edges)
 
         // get the combined configuration strings
         val c_strings = l_strings.union (t_strings)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (topologicalnodes)
+        val solars = getSolarInstallations (USE_TOPOLOGICAL_NODES)
 
         // get the transformers keyed by primary terminal
         val transformers = trans.getTransformers (combined_edges)
@@ -810,7 +820,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val n_strings = qq.map (make_node (swing_node, experiments))
 
         // get the edge strings
-        val e_strings = combined_edges.map (make_link (line, trans))
+        val e_strings = combined_edges.map (make_link (line, trans, new SwitchDevice (USE_ONE_PHASE)))
 
         /**
          * Create the output file.
@@ -880,8 +890,8 @@ class GridLABD (session: SparkSession) extends Serializable
             {
                 val swing_terminal = starting (0)
                 val starting_terminal = starting(1)
-                val swing_terminal_name = if (topologicalnodes) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
-                val starting_node_name = if (topologicalnodes) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
+                val swing_terminal_name = if (USE_TOPOLOGICAL_NODES) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
+                val starting_node_name = if (USE_TOPOLOGICAL_NODES) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
 
                 eraseInputFile (equipment)
                 val result = make_glm (initial, tdata, starting_node_name, equipment, start, finish, swing_terminal_name)
@@ -901,18 +911,28 @@ class GridLABD (session: SparkSession) extends Serializable
             _DateFormat.parse (string).getTime ()
         }
 
-        val customSchema = StructType (
-            Array
-            (
-                StructField ("timestamp", StringType, true),
-                StructField ("A.real", DoubleType, true),
-                StructField ("A.imag", DoubleType, true),
-                StructField ("B.real", DoubleType, true),
-                StructField ("B.imag", DoubleType, true),
-                StructField ("C.real", DoubleType, true),
-                StructField ("C.imag", DoubleType, true)
+        val customSchema = if (USE_ONE_PHASE)
+            StructType (
+                Array
+                (
+                    StructField ("timestamp", StringType, true),
+                    StructField ("A.real", DoubleType, true),
+                    StructField ("A.imag", DoubleType, true)
+                )
             )
-        )
+        else
+            StructType (
+                Array
+                (
+                    StructField ("timestamp", StringType, true),
+                    StructField ("A.real", DoubleType, true),
+                    StructField ("A.imag", DoubleType, true),
+                    StructField ("B.real", DoubleType, true),
+                    StructField ("B.imag", DoubleType, true),
+                    StructField ("C.real", DoubleType, true),
+                    StructField ("C.imag", DoubleType, true)
+                )
+            )
 
         val df = session.read
             .format ("csv")
@@ -922,7 +942,13 @@ class GridLABD (session: SparkSession) extends Serializable
             .load (filename)
 
         import session.implicits._
-        df.map (r => ThreePhaseComplexDataElement (element, toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6)), units))
+        df.map ((r) =>
+        {
+            if (USE_ONE_PHASE)
+                ThreePhaseComplexDataElement (element, toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (0.0, 0.0), Complex (0.0, 0.0), units)
+            else
+                ThreePhaseComplexDataElement (element, toTimeStamp (r.getString (0)), Complex (r.getDouble (1), r.getDouble (2)), Complex (r.getDouble (3), r.getDouble (4)), Complex (r.getDouble (5), r.getDouble (6)), units)
+        })
     }
 
     def check (input: String): Boolean =
@@ -1089,7 +1115,15 @@ class GridLABD (session: SparkSession) extends Serializable
     def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
     {
         // eliminate current measurements and measurements within tolerance
-        def interesting (r: ThreePhaseComplexDataElement): Boolean =
+        def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                (r.units == "Volts") &&
+                (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                (r.value_a.abs > max)
+            )
+        }
+        def interesting3ph (r: ThreePhaseComplexDataElement): Boolean =
         {
             return (
                 (r.units == "Volts") &&
@@ -1098,7 +1132,7 @@ class GridLABD (session: SparkSession) extends Serializable
             )
         }
 
-        val overV = results.filter (interesting)
+        val overV = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
         def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
@@ -1117,7 +1151,20 @@ class GridLABD (session: SparkSession) extends Serializable
     def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cablemap: HashMap[String, Double]): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
     {
         // eliminate voltage measurements and measurements below capacity
-        def interesting (r: ThreePhaseComplexDataElement): Boolean =
+        def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                if (cablemap.contains (r.element))
+                {
+                    val max = cablemap(r.element)
+                    ((r.units == "Amps") &&
+                    (r.value_a.abs > max))
+                }
+                else
+                    false
+            )
+        }
+        def interesting3ph (r: ThreePhaseComplexDataElement): Boolean =
         {
             return (
                 if (cablemap.contains (r.element))
@@ -1131,7 +1178,7 @@ class GridLABD (session: SparkSession) extends Serializable
             )
         }
 
-        val overI = results.filter (interesting)
+        val overI = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
         def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
@@ -1153,7 +1200,6 @@ class GridLABD (session: SparkSession) extends Serializable
         val tolerance = 3.0
         val max = nominal + (nominal * tolerance / 100.0)
         // could also check for under the minimum; r.value_a.abs < min
-        // where val min = nominal - (nominal * tolerance / 100.0)
         val cablemap = getCableMaxCurrent (session)
 
         val v = voltcheck (experiments, results, max)
@@ -1285,7 +1331,7 @@ object GridLABD
 
         // get the necessary jar files to send to the cluster
         val s1 = jarForObject (new DefaultSource ())
-        val s2 = jarForObject (new Line ())
+        val s2 = jarForObject (new Complex (0.0, 0.0))
         if (s1 != s2)
             configuration.setJars (Array (s1, s2))
         else

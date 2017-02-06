@@ -8,7 +8,7 @@ import ch.ninecode.model._
  * @param transformers the RDD of transformers
  * @param voltages a map of voltage mRID to floating point voltages
  */
-class Trans (transformers: RDD[TData]) extends Serializable
+class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
 {
     // make a valid configuration name
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
@@ -97,7 +97,7 @@ class Trans (transformers: RDD[TData]) extends Serializable
                 "        object transformer_configuration\n" +
                 "        {\n" +
                 "            name \"" + config + "\";\n" +
-                "            connect_type DELTA_GWYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
+                "            connect_type WYE_WYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
                 "            install_type PADMOUNT;\n" +
                 "            power_rating " + (base_va / 1000.0) + ";\n" +
                 "            primary_voltage " + v0 + ";\n" +
@@ -143,28 +143,50 @@ class Trans (transformers: RDD[TData]) extends Serializable
         val edge = edges.head
         val transformer = edge.element.asInstanceOf[PowerTransformer]
         val power = transformer_power (transformer)
+        val config = configurationName (edges)
         // for power transformers without a configuration, just emit a link
-        if ("unknown" == power)
+        val typ = if ("unknown" == power) "link" else "transformer"
+        val con = if ("unknown" == power) "" else "            configuration \"" + config + "\";\n"
+        val obj = if (one_phase)
             "\n" +
-            "        object link\n" +
+            "        object " + typ + "\n" +
             "        {\n" +
             "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
+            "            phases AN;\n" +
             "            from \"" + edge.id_cn_1 + "\";\n" +
             "            to \"" + edge.id_cn_2 + "\";\n" +
+            con +
             "        };\n"
         else
-        {
-            var config = configurationName (edges)
             "\n" +
-            "        object transformer\n" +
+            "        object " + typ + "\n" +
             "        {\n" +
             "            name \"" + edge.id_equ + "\";\n" +
             "            phases ABCN;\n" +
             "            from \"" + edge.id_cn_1 + "\";\n" +
             "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            configuration \"" + config + "\";\n" +
+            con +
             "        };\n"
-        }
+        val rec = if (one_phase)
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+            "            parent \"" + edge.id_equ + "\";\n" +
+            "            property current_out_A.real,current_out_A.imag;\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "        };\n"
+        else
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+            "            parent \"" + edge.id_equ + "\";\n" +
+            "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "        };\n"
+        return (obj + rec)
     }
 }
