@@ -1031,13 +1031,14 @@ class GridLABD (session: SparkSession) extends Serializable
                     "-c",
                     "while read line; do " +
                         "FILE=$line; " +
-                        "hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
+                        "$HADOOP_HDFS_HOME/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>$FILE.out; " +
                         "popd; " +
-                        "hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
-                        "hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
+                        "$HADOOP_HDFS_HOME/bin/hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
+                        "$HADOOP_HDFS_HOME/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
                         "cat $FILE/$FILE.out; " +
+                        "rm -rf $FILE; " +
                     "done < /dev/stdin")
 
         val files = session.sparkContext.parallelize (Array[String] (filename_root))
