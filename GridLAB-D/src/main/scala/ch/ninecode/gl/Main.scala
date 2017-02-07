@@ -6,6 +6,7 @@ import java.net.URLDecoder
 import java.util.Calendar
 
 import scala.collection.mutable.HashMap
+import scala.io.Source
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -46,6 +47,7 @@ object Main
         master: String = "local[*]",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
+        trafos: String = "",
         clean: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         files: Seq[String] = Seq()
@@ -66,6 +68,10 @@ object Main
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
+
+        opt[String]('t', "trafos").valueName ("<TRA file>").
+            action ((x, c) => c.copy (trafos = x)).
+            text ("file of transformer names (one per line) to process")
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
@@ -205,9 +211,15 @@ object Main
                 val _transformers = new Transformers ()
                 val tdata = _transformers.getTransformerData (session)
                 tdata.persist (gridlabd._StorageLevel)
-                // ToDo: fix this 1kV multiplier on the voltages
-                val niederspannug = tdata.filter ((td) => td.voltages (0) != 0.4 && td.voltages (1) == 0.4)
-                val transformers = niederspannug.map ((t) => t.transformer.id).collect
+
+                val transformers = if ("" == arguments.trafos)
+                {
+                    // ToDo: fix this 1kV multiplier on the voltages
+                    val niederspannug = tdata.filter ((td) => td.voltages (0) != 0.4 && td.voltages (1) == 0.4)
+                    niederspannug.map ((t) => t.transformer.id).collect
+                }
+                else
+                    Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
                 println (transformers.mkString ("\n"))
 
                 val prepare = System.nanoTime ()

@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import java.io.File
+import java.io.FileNotFoundException
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -970,14 +971,25 @@ class GridLABD (session: SparkSession) extends Serializable
             new Path ("/simulation/" + equipment + "/" + path)
 
         var files = Vector[String] ()
-        val iterator = hdfs.listFiles (root, false) // ToDo: recursive
-        while (iterator.hasNext ())
+        try
         {
-            val fs = iterator.next ()
-            val path = fs.getPath ().toString ()
-            files = files :+ path
+            val iterator = hdfs.listFiles (root, false) // ToDo: recursive
+            while (iterator.hasNext ())
+            {
+                val fs = iterator.next ()
+                val path = fs.getPath ().toString ()
+                files = files :+ path
+            }
         }
-        files
+        catch
+        {
+            case fnf: FileNotFoundException =>
+            {
+                // just return 0 files
+            }
+        }
+
+        return (files)
     }
 
     def read_csv (x: String): RDD[ThreePhaseComplexDataElement] =
