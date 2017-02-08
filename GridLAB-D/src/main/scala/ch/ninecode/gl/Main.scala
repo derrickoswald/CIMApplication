@@ -1,5 +1,6 @@
 package ch.ninecode.gl
 
+import java.nio.charset.StandardCharsets
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
@@ -13,6 +14,9 @@ import scala.util.Random
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.rdd.RDD
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.Graph
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
@@ -47,6 +51,7 @@ object Main
         master: String = "local[*]",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
+        precalculation: Boolean = false,
         trafos: String = "",
         clean: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
@@ -68,6 +73,10 @@ object Main
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
+            
+        opt[Unit]('p', "precalculation").
+            action ((_, c) => c.copy (precalculation = true)).
+            text ("calculates threshold and if EEA exists for all HAS")
 
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
@@ -114,6 +123,42 @@ object Main
         return (ret)
     }
 
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[String], gridlabd: GridLABD) 
+    {
+      val use_topological_nodes: Boolean = true
+      val solars = gridlabd.getSolarInstallations (use_topological_nodes)
+      val power_feeding = new PowerFeeding(initial)
+      val pn = PreNode ("", 0.0) // just to access the vertex_id function
+      
+      val trafo_with_eaa = transformers.par.map(trafo => 
+            {
+              val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => terminal.ConductingEquipment == trafo).first
+              val start_id = Array[VertexId] (pn.vertex_id (if (use_topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
+              val (traced_nodes, traced_edges) = power_feeding.trace(start_id, trafo)
+              val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
+              val traced_house_nodes_EEA = power_feeding.has_eea(house_nodes, solars)
+                              
+              val has = traced_house_nodes_EEA.map(node => 
+                {
+                  val result = node._2 match
+                  {
+                    case Some (eea) => 
+                      node._1.copy(has_eea = true)
+                    case None => 
+                      node._1
+                  }
+                  result
+                }).distinct
+              
+              Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (trafo, has)
+              
+              (trafo, has.filter(_.has_eea).count > 0)
+            })
+            
+        val trafo_string = trafo_with_eaa.filter(_._2).map(_._1).distinct.toArray.mkString("\n")
+        gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8))  
+    }
+    
     /**
      * Build jar with dependencies (target/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar):
      *     mvn package
@@ -220,23 +265,29 @@ object Main
                 }
                 else
                     Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-                println (transformers.mkString ("\n"))
 
                 val prepare = System.nanoTime ()
                 println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-                val results = transformers.par.map ((s) =>
+                if (arguments.precalculation)
                 {
-                    val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
-                    val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (s, rdd)
-                    gridlabd.cleanup (s)
-                    id
-                })
+                  threshold_calculation (initial, transformers, gridlabd) 
+                }
+                else 
+                {
+                  val results = transformers.par.map ((s) =>
+                  {
+                      val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+                      val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (s, rdd)
+                      gridlabd.cleanup (s)
+                      id
+                  })
+                }
 
                 val calculate = System.nanoTime ()
                 println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
-                println ()
+                println ("total: " + (calculate - begin) / 1e9 + " seconds")
 
                 sys.exit (0)
             case None =>
