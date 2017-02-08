@@ -34,7 +34,7 @@ A CIM file is in RDF XML format. It includes electrical modeling parameters, suc
 impedance, rated maximums, nominal power, etc.
 For example, a typical cable element is shown below.
 
-'''
+```XML
         <cim:ACLineSegment rdf:ID="KLE243310">
                 <cim:IdentifiedObject.name>TT-CLT 4x50</cim:IdentifiedObject.name>
                 <cim:IdentifiedObject.aliasName>204282032:nis_el_cable</cim:IdentifiedObject.aliasName>
@@ -55,7 +55,7 @@ For example, a typical cable element is shown below.
                 <cim:ACLineSegment.x0>0.336</cim:ACLineSegment.x0>
                 <cim:ACLineSegment.x>0.084</cim:ACLineSegment.x>
         </cim:ACLineSegment>
-'''
+```
 
 This 47.5m underground cable, of 4 conductors of 50 sq. mm. each, has a positive sequence impedance of 0.519+0.084jΩ
 per kilometer and is in service at 400 volts. Not shown is that topologically, it is connected to a house and
