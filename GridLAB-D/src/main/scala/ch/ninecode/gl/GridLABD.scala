@@ -24,6 +24,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
@@ -653,9 +654,9 @@ class GridLABD (session: SparkSession) extends Serializable
         (v.vertex_id (v.id_seq), v)
     }
 
-    def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
+    def make_graph_edges (e: PreEdge): Edge[PreEdge] =
     {
-        org.apache.spark.graphx.Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
+        Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
     }
 
     // get the existing photo-voltaic installations keyed by terminal

@@ -43,7 +43,7 @@ class GridLABDSuite extends FunSuite
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
         // register topological classes
         configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
         // register GridLAB-D classes

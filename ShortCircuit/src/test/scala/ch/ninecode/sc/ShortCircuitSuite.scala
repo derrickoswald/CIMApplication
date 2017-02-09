@@ -36,7 +36,7 @@ class ShortCircuitSuite extends FunSuite
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
         // register short circuit classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
         // register short circuit inner classes

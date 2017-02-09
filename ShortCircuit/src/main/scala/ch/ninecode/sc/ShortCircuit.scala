@@ -13,6 +13,7 @@ import scala.util.Random
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.annotation.DeveloperApi
+import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -293,14 +294,14 @@ class ShortCircuit extends Serializable
         vertices.persist (_StorageLevel)
     }
 
-    def get_edges (context: SparkContext): RDD[org.apache.spark.graphx.Edge[EdgePlus]] =
+    def get_edges (context: SparkContext): RDD[Edge[EdgePlus]] =
     {
-        val cim_edges = get ("Edges", context).asInstanceOf[RDD[ch.ninecode.cim.Edge]]
+        val cim_edges = get ("Edges", context).asInstanceOf[RDD[PostEdge]]
 //        cim_edges.count
 //        cim_edges.first
 
         // keep only non-self connected and non-singly connected edges
-        val someedges =  cim_edges.filter ((e: ch.ninecode.cim.Edge) => { (e.id_seq_1 != e.id_seq_2) && e.id_seq_1 != null && e.id_seq_2 != null && e.id_seq_1 != "" && e.id_seq_2 != "" })
+        val someedges =  cim_edges.filter ((e: PostEdge) => { (e.id_seq_1 != e.id_seq_2) && e.id_seq_1 != null && e.id_seq_2 != null && e.id_seq_1 != "" && e.id_seq_2 != "" })
 //        someedges.count
 //        someedges.first
 
@@ -313,7 +314,7 @@ class ShortCircuit extends Serializable
         {
             val ep = x match
             {
-                case (key: String, (e: ch.ninecode.cim.Edge, Some(wire: ACLineSegment))) =>
+                case (key: String, (e: PostEdge, Some(wire: ACLineSegment))) =>
                 {
                     // default line impedance: R=0.124 Ohms/km, R0=0.372 Ohms/km, X=0.61 Ohms/km, X0=0.204 Ohms/km
                     if (0.0 != wire.r)
@@ -321,7 +322,7 @@ class ShortCircuit extends Serializable
                     else
                         EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.124, 0.61, 0.372, 0.204, false)
                 }
-                case (key: String, (e: ch.ninecode.cim.Edge, None)) =>
+                case (key: String, (e: PostEdge, None)) =>
                 {
                     EdgePlus (e.id_seq_1, e.id_seq_2, e.id_equ, e.clazz, e.name, e.aliasName, e.container, e.length, e.voltage, e.normalOpen, e.ratedCurrent, e.x1, e.y1, e.x2, e.y2, 0.0, 0.0, 0.0, 0.0, false)
                 }
@@ -330,7 +331,7 @@ class ShortCircuit extends Serializable
                     throw new Exception ("this should never happen -- default case")
                 }
             }
-            org.apache.spark.graphx.Edge (vertex_id (ep.id_seq_1), vertex_id (ep.id_seq_2), ep)
+            Edge (vertex_id (ep.id_seq_1), vertex_id (ep.id_seq_2), ep)
         }
 
         // convert CIM edges into GraphX edges
@@ -643,7 +644,7 @@ object ShortCircuit
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
         // register short circuit classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
         // register short circuit inner classes

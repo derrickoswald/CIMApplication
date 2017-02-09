@@ -40,7 +40,7 @@ class SpatialSuite extends FunSuite
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN

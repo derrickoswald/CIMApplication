@@ -2,6 +2,7 @@ package ch.ninecode.gl
 
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -23,9 +24,9 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
         (v.vertex_id (v.id_seq), node)
     }
 
-  def make_graph_edges (e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
+  def make_graph_edges (e: PreEdge): Edge[PreEdge] =
   {
-      org.apache.spark.graphx.Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
+      Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
   }
   
   def shouldContinue (element: Element): Boolean =

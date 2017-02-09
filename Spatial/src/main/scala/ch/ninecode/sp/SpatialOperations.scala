@@ -285,7 +285,7 @@ object SpatialOperations
         // register CIM case classes
         CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
         // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[ch.ninecode.cim.Edge]))
+        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
 
         // make a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture

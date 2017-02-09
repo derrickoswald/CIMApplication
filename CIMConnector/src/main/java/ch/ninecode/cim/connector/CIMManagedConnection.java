@@ -364,7 +364,7 @@ public class CIMManagedConnection implements ManagedConnection
         // register edge related classes
         if (configuration.getBoolean ("ch.ninecode.cim.make_edges", false))
         {
-            Class<?>[] classes = { PreEdge.class, Extremum.class, Edge.class };
+            Class<?>[] classes = { PreEdge.class, Extremum.class, PostEdge.class };
             configuration.registerKryoClasses (classes);
         }
 

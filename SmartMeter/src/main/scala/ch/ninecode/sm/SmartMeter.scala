@@ -10,6 +10,7 @@ import scala.util.Random
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
@@ -158,9 +159,9 @@ class SmartMeter extends Serializable
     }
 
   // copied from GridLAB-D
-  def make_graph_edges(e: PreEdge): org.apache.spark.graphx.Edge[PreEdge] =
+  def make_graph_edges(e: PreEdge): Edge[PreEdge] =
     {
-      org.apache.spark.graphx.Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
+      Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
     }
 
   // copied from GridLAB-D
