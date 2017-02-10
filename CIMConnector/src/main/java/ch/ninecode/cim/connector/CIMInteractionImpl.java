@@ -359,6 +359,7 @@ public class CIMInteractionImpl implements Interaction
                                                 System.out.println (method + " (sc, sql, \"" + args + "\")");
                                                 Object o = _method.invoke (_obj, sc, sql, args);
                                                 System.out.println ("got a result");
+                                                @SuppressWarnings ("unchecked")
                                                 Dataset<Row> result = (Dataset<Row>)o;
                                                 System.out.println ("it's a DataFrame with " + result.count () + " rows");
                                                 ret = new CIMResultSet (result.schema (), result.collectAsList ());;
