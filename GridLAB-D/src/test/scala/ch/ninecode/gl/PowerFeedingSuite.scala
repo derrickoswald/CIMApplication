@@ -111,18 +111,19 @@ class PowerFeedingSuite extends FunSuite
         // prepare the initial graph
         val initial = gridlabd.prepare ()
         
-        val _transformers = new Transformers ()
-        val tdata = _transformers.getTransformerData (session)
+        val _transformers = new Transformers (session, gridlabd._StorageLevel)
+        val tdata = _transformers.getTransformerData ()
         tdata.persist (gridlabd._StorageLevel)
         // ToDo: fix this 1kV multiplier on the voltages
-        val niederspannug = tdata.filter ((td) => td.voltages (0) != 0.4 && td.voltages (1) == 0.4)
-        val transformers = niederspannug.map ((t) => t.transformer.id).collect
+        val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+        val tx = transformers.flatMap (_.map (_.transformer.id)).collect
         
         val pn = PreNode ("", 0.0) // just to access the vertex_id function
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         val power_feeding = new PowerFeeding(initial)
 
-        val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => transformers.contains(terminal.ConductingEquipment))
+        val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => tx.contains (terminal.ConductingEquipment))
         val start_ids = terminal.map(t => (pn.vertex_id (if (use_topological_nodes) t.TopologicalNode else t.ConnectivityNode), t.ConductingEquipment)).collect
         val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
         val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))

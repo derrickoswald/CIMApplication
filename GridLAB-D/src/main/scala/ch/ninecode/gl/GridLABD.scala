@@ -36,6 +36,7 @@ import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
@@ -62,7 +63,7 @@ case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: Str
     }
 }
 case class PV (node: String, solar: SolarGeneratingUnit)
-case class Transformer (node: String, transformer: PowerTransformer)
+case class Transformer (node: String, transformer: List[TData])
 
 /**
  * trafo - string, NIS Number of transformer feeding house
@@ -102,6 +103,8 @@ case class MaxEinspeiseleistung (trafo: String, house: String, max: Option[Doubl
 
 class GridLABD (session: SparkSession) extends Serializable
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
     var DELETE_INTERMEDIATE_FILES = false
@@ -190,7 +193,7 @@ class GridLABD (session: SparkSession) extends Serializable
                     case 1 =>
                         ret :+
                             new PreEdge (
-                                terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                terminals(0).ACDCTerminal.id,
                                 node_name (terminals(0)),
                                 volts(0),
                                 "",
@@ -204,10 +207,10 @@ class GridLABD (session: SparkSession) extends Serializable
                             for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                             {
                                 ret = ret :+ new PreEdge (
-                                        terminals(0).ACDCTerminal.IdentifiedObject.mRID,
+                                        terminals(0).ACDCTerminal.id,
                                         node_name (terminals(0)),
                                         volts(0),
-                                        terminals(i).ACDCTerminal.IdentifiedObject.mRID,
+                                        terminals(i).ACDCTerminal.id,
                                         node_name (terminals(i)),
                                         volts(i),
                                         terminals(0).ConductingEquipment,
@@ -293,7 +296,7 @@ class GridLABD (session: SparkSession) extends Serializable
         load
     }
 
-    def emit_primary_node (transformers: List[PowerTransformer], name: String): String =
+    def emit_primary_node (transformers: List[TData], name: String): String =
     {
         ""
     }
@@ -583,7 +586,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val trans = transformer match
         {
             case Some (trafos) =>
-                val transformers = trafos.map ((x) => { x.transformer }).toList
+                val transformers = trafos.flatMap ((x) => { x.transformer }).toList
                 emit_primary_node (transformers, node.id_seq)
             case None =>
                 ""
@@ -600,7 +603,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D edge
-    def make_link (line: Line, trans: Trans, switch: SwitchDevice) (edges: Iterable[PreEdge]): String =
+    def make_link (switch: SwitchDevice) (edges: Iterable[PreEdge]): String =
     {
         val edge = edges.head
         val cls = edge.element.getClass.getName
@@ -608,9 +611,9 @@ class GridLABD (session: SparkSession) extends Serializable
         val ret = clazz match
         {
             case "ACLineSegment" =>
-                line.emit (edges)
+                "" // handled specially
             case "PowerTransformer" =>
-                trans.emit (edges)
+                "" // handled specially
             case "Switch" =>
                 switch.emit (edge, edge.element.asInstanceOf[Switch])
             case "Cut" |
@@ -763,7 +766,7 @@ class GridLABD (session: SparkSession) extends Serializable
         initial: Graph[PreNode, PreEdge],
         tdata: RDD[TData],
         starting_node: String,
-        equipment: String,
+        simulation: String,
         start: Calendar,
         finish: Calendar,
         swing_node: String): Tuple2[String,HashSet[Experiment]] =
@@ -786,7 +789,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val experiments = HashSet[Experiment]()
         for (house <- houses)
         {
-            val experiment = Experiment (equipment, has (house), start, slot, window, 5, 0, 100000, 1000)
+            val experiment = Experiment (simulation, has (house), start, slot, window, 5, 0, 100000, 1000)
             slot = slot + 1
             experiments += experiment
         }
@@ -798,9 +801,12 @@ class GridLABD (session: SparkSession) extends Serializable
         val line = new Line (USE_ONE_PHASE)
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
+        // join edges with transformer data
+        val transformer_edges = traced_edges.keyBy (_.element.id).join (tdata.keyBy (_.transformer.id)).values.groupBy (_._1.key ()).values
+
         // get the transformer configuration
         val trans = new Trans (tdata, USE_ONE_PHASE)
-        val t_strings = trans.getTransformerConfigurations (combined_edges)
+        val t_strings = trans.getTransformerConfigurations (transformer_edges)
 
         // get the combined configuration strings
         val c_strings = l_strings.union (t_strings)
@@ -809,7 +815,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val solars = getSolarInstallations (USE_TOPOLOGICAL_NODES)
 
         // get the transformers keyed by primary terminal
-        val transformers = trans.getTransformers (combined_edges)
+        val transformers = trans.getTransformers (transformer_edges)
 
         // get the node strings
         val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
@@ -817,7 +823,10 @@ class GridLABD (session: SparkSession) extends Serializable
         val n_strings = qq.map (make_node (swing_node, experiments))
 
         // get the edge strings
-        val e_strings = combined_edges.map (make_link (line, trans, new SwitchDevice (USE_ONE_PHASE)))
+        val t_edges = transformer_edges.map (trans.emit)
+        val l_edges = combined_edges.map (line.emit)
+        val s_edges = combined_edges.map (make_link (new SwitchDevice (USE_ONE_PHASE)))
+        val e_strings = t_edges.union (l_edges).union (s_edges)
 
         /**
          * Create the output file.
@@ -825,7 +834,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val t1 = start.clone ().asInstanceOf[Calendar]
         t1.add (Calendar.SECOND, slot * window)
         val prefix =
-            "// $Id: " + equipment + ".glm\n" +
+            "// $Id: " + simulation + ".glm\n" +
             "// Einspeiseleistung\n" +
             "//*********************************************\n" +
             "\n" +
@@ -854,7 +863,7 @@ class GridLABD (session: SparkSession) extends Serializable
             "\n" +
             "        object voltdump\n" +
             "        {\n" +
-            "            filename \"output_data/" + equipment + "_voltdump.csv\";\n" +
+            "            filename \"output_data/" + simulation + "_voltdump.csv\";\n" +
             "            mode polar;\n" +
             "            runtime '" + _DateFormat.format (start.getTime ()) + "';\n" +
             "        };\n"
@@ -868,40 +877,47 @@ class GridLABD (session: SparkSession) extends Serializable
         return ((result.toString (), experiments))
     }
 
-    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], equipment: String): HashSet[Experiment] =
+    def trafokreis (transformers: Array[TData]): String =
+    {
+        transformers.map (_.transformer.id).mkString ("_")
+    }
+   
+    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], transformers: Array[TData]): HashSet[Experiment] =
     {
         var ret = HashSet[Experiment] ()
 
         val start = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
         val finish = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
+        val simulation = trafokreis (transformers)
 
         // find the starting and swing node
-        val starting = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (t => ((null != t.ConnectivityNode) && (equipment == t.ConductingEquipment))).sortBy (t => t.ACDCTerminal.sequenceNumber, true).collect ()
-        if (0 == starting.length)
-            println ("No equipment matched id " + equipment + "\n") // ToDo: proper logging
-        else
-        {
-            if (2 > starting.length)
-                println ("Only one terminal for " + equipment + "\n") // ToDo: proper logging
-            else
+        def node (t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
+        val starting =
+            transformers.size match
             {
-                val swing_terminal = starting (0)
-                val starting_terminal = starting(1)
-                val swing_terminal_name = if (USE_TOPOLOGICAL_NODES) swing_terminal.TopologicalNode else swing_terminal.ConnectivityNode
-                val starting_node_name = if (USE_TOPOLOGICAL_NODES) starting_terminal.TopologicalNode else starting_terminal.ConnectivityNode
-
-                eraseInputFile (equipment)
-                val result = make_glm (initial, tdata, starting_node_name, equipment, start, finish, swing_terminal_name)
-                writeInputFile (equipment, equipment + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
-                writeInputFile (equipment, "output_data/dummy", null) // mkdir
-                ret = result._2;
+                case 0 =>
+                    throw new IllegalStateException ("no transformers in TData array")
+                case 1 =>
+                    (node (transformers(0).terminal0), node (transformers(0).terminal1))
+                case _ =>
+                    val s = (node (transformers(0).terminal0), node (transformers(0).terminal1))
+                    if (!transformers.forall ((x) => (node (x.terminal0) == s._1)))
+                        log.error ("transformer group " + simulation + " has different nodes on terminal 0 " + transformers.map ((x) => node (x.terminal0)).mkString (" "))
+                    if (!transformers.forall ((x) => (node (x.terminal1) == s._2)))
+                        log.error ("transformer group " + simulation + " has different nodes on terminal 1 " + transformers.map ((x) => node (x.terminal1)).mkString (" "))
+                    s
             }
-        }
+
+        eraseInputFile (simulation)
+        val result = make_glm (initial, tdata, starting._2, simulation, start, finish, starting._1)
+        writeInputFile (simulation, simulation + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
+        writeInputFile (simulation, "output_data/dummy", null) // mkdir
+        ret = result._2;
 
         return (ret)
     }
 
-    def read_records (session: SparkSession, filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
+    def read_records (filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
     {
         def toTimeStamp (string: String): Long =
         {
@@ -1000,14 +1016,14 @@ class GridLABD (session: SparkSession) extends Serializable
             val filebase = x.substring (x.lastIndexOf ("/") + 1)
             val element = filebase.substring (0, filebase.indexOf ("_voltage.csv"))
             val units = "Volts"
-            read_records (session, x, element, units).rdd
+            read_records (x, element, units).rdd
         }
         else if (x.endsWith ("_current.csv"))
         {
             val filebase = x.substring (x.lastIndexOf ("/") + 1)
             val element = filebase.substring (0, filebase.indexOf ("_current.csv"))
             val units = "Amps"
-            read_records (session, x, element, units).rdd
+            read_records (x, element, units).rdd
         }
         else
             null
@@ -1067,7 +1083,7 @@ class GridLABD (session: SparkSession) extends Serializable
     /**
      * Get pairs of cable id and maximum current.
      */
-    def getCableMaxCurrent (session: SparkSession): HashMap[String, Double] =
+    def getCableMaxCurrent (): HashMap[String, Double] =
     {
         val ret = HashMap[String, Double] ()
 
@@ -1210,7 +1226,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val tolerance = 3.0
         val max = nominal + (nominal * tolerance / 100.0)
         // could also check for under the minimum; r.value_a.abs < min
-        val cablemap = getCableMaxCurrent (session)
+        val cablemap = getCableMaxCurrent ()
 
         val v = voltcheck (experiments, results, max)
         val i = ampcheck (experiments, results, cablemap)
@@ -1221,27 +1237,28 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData]) (equipment: String): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
+        val simulation = trafokreis (transformers)
 
-        val experiments = export (initial, tdata, equipment)
+        val experiments = export (initial, tdata, transformers)
         val write = System.nanoTime ()
-        println (equipment + " export: " + (write - start) / 1e9 + " seconds")
+        println (simulation + " export: " + (write - start) / 1e9 + " seconds")
 
-        val data = solve (equipment)
+        val data = solve (simulation)
         val gridlabd = System.nanoTime ()
-        println (equipment + " solve: " + (gridlabd - write) / 1e9 + " seconds")
+        println (simulation + " solve: " + (gridlabd - write) / 1e9 + " seconds")
 
         val ret = if (null != data)
             analyse (experiments, data)
         else
         {
-            println ("solve failed for " + equipment)
+            println ("solve failed for " + simulation)
             session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
         }
         val finish = System.nanoTime ()
-        println (equipment + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
+        println (simulation + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
 
         return (ret)
     }
