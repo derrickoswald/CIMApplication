@@ -70,13 +70,14 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
       if (message.sum_r > v.sum_r) message else v
   }
   
-  def sendMessage (starting_id: Array[VertexId], trafo: String) (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
+  def sendMessage (starting_id: Array[(VertexId, String)]) (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
   {
       var ret:Iterator[(VertexId, PowerFeedingNode)] = Iterator.empty
 
-      if (triplet.dstAttr != null && triplet.dstAttr.id_seq != null && starting_id.contains(triplet.dstId) && triplet.dstAttr.source_obj == "")
+      val start = starting_id.find(s => s._1 == triplet.dstId)
+      if (triplet.dstAttr != null && triplet.dstAttr.id_seq != null && !start.isEmpty && triplet.dstAttr.source_obj == "")
       {
-        ret = Iterator((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, trafo, 0.0, 0.0)))
+        ret = Iterator((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, start.get._2, 0.0, 0.0)))
       } else 
       {
         if (shouldContinue (triplet.attr.element))
@@ -115,7 +116,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
     if (a.sum_r > b.sum_r) a else b
   }
   
-  def trace (starting_nodes: Array[VertexId], trafo: String): (VertexRDD[PowerFeedingNode], EdgeRDD[PreEdge]) = 
+  def trace (starting_nodes: Array[(VertexId, String)]): (VertexRDD[PowerFeedingNode], EdgeRDD[PreEdge]) = 
   {
     val transformer_circle = initial.vertices.id
     val graph = initial.mapVertices((id, v) => PowerFeedingNode(v.id_seq, v.voltage, "", Double.NegativeInfinity, Double.NegativeInfinity))
@@ -124,7 +125,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
     
     val feeding_power = graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
             vertexProgram,
-            sendMessage (starting_nodes, trafo),
+            sendMessage (starting_nodes),
             mergeMessage
         )
         
@@ -152,7 +153,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
     houses.map(calc_max_feeding_power)
   }
   
-  def has_eea (house_nodes: RDD[MaxPowerFeedingNodeEEA], solars: RDD[PV]): RDD[(MaxPowerFeedingNodeEEA, Option[SolarGeneratingUnit])] =
+  def join_eea (house_nodes: RDD[MaxPowerFeedingNodeEEA], solars: RDD[PV]): RDD[(MaxPowerFeedingNodeEEA, Option[SolarGeneratingUnit])] =
   {
     val keyed_solar = solars.map(s => (has(s.node), s.solar))
     house_nodes.keyBy(_.has_id).leftOuterJoin(keyed_solar).values

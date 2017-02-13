@@ -108,7 +108,7 @@ object Database
 
     }
     
-    def store_precalculation (description: String, t1: Calendar) (equipment: String, results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -143,7 +143,7 @@ object Database
 
             // insert the results
             val records = results.collect ()
-            println (equipment + " " + records.length + " records")
+
             val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, has_eea) values (?, ?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {

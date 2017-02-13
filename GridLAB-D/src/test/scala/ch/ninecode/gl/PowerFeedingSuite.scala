@@ -121,33 +121,29 @@ class PowerFeedingSuite extends FunSuite
         val pn = PreNode ("", 0.0) // just to access the vertex_id function
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         val power_feeding = new PowerFeeding(initial)
-        val trafo_with_eaa = transformers.par.map(trafo => 
-              {
-                val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => terminal.ConductingEquipment == trafo).first
-                val start_id = Array[VertexId] (pn.vertex_id (if (use_topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
-                val (traced_nodes, traced_edges) = power_feeding.trace(start_id, trafo)
-                val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
-                val traced_house_nodes_EEA = power_feeding.has_eea(house_nodes, solars)
-                                
-                val has = traced_house_nodes_EEA.map(node => 
-                  {
-                    val result = node._2 match
-                    {
-                      case Some (eea) => 
-                        node._1.copy(has_eea = true)
-                      case None => 
-                        node._1
-                    }
-                    result
-                  }).distinct
-                
-                Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (trafo, has)
-                
-                (trafo, has.filter(_.has_eea).count > 0)
-              })
-            
-        val trafo_string = trafo_with_eaa.filter(_._2).map(_._1).distinct.toArray.mkString("\n")
-        gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8))  
+
+        val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => transformers.contains(terminal.ConductingEquipment))
+        val start_ids = terminal.map(t => (pn.vertex_id (if (use_topological_nodes) t.TopologicalNode else t.ConnectivityNode), t.ConductingEquipment)).collect
+        val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
+        val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
+        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
+                        
+        val has = traced_house_nodes_EEA.map(node => 
+          {
+            val result = node._2 match
+            {
+              case Some (eea) => 
+                node._1.copy(has_eea = true)
+              case None => 
+                node._1
+            }
+            result
+          }).distinct
+        
+        Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+              
+        val trafo_string = has.filter(_.has_eea).map(_.source_obj).distinct.collect.mkString("\n")
+        gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8)) 
     }
 
 }
