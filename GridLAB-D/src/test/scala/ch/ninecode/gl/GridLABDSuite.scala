@@ -87,8 +87,9 @@ class GridLABDSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         //val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
+        //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V9_assets_preview" // Brügg
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -102,16 +103,27 @@ class GridLABDSuite extends FunSuite
         gridlabd.HDFS_URI = "" // local
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-        // prepare the initial graph
-        val initial = gridlabd.prepare ()
-
         val _transformers = new Transformers (session, gridlabd._StorageLevel)
         val tdata = _transformers.getTransformerData ()
         tdata.persist (gridlabd._StorageLevel)
-        // ToDo: fix this 1kV multiplier on the voltages
-        val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+
+        val transformers = if (false)
+        {
+            // do transformers specified in the database under the given simulation
+            val trafos = Database.fetchTransformersWithEEA (2)
+            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+        }
+        else
+        {
+            // ToDo: fix this 1kV multiplier on the voltages
+            val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+        }
         println (transformers.map ((x) => x.map (_.transformer.id).mkString ("&")).mkString ("\n"))
+
+        // prepare the initial graph
+        val initial = gridlabd.prepare ()
 
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")

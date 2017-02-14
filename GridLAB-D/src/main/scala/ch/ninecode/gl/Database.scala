@@ -9,9 +9,13 @@ import java.sql.Timestamp
 import java.sql.Types
 import java.util.Calendar
 import org.apache.spark.rdd.RDD
+import org.slf4j.LoggerFactory
+import scala.collection.mutable.ArrayBuffer
 
 object Database
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     def makeSchema (connection: Connection)
     {
         val statement = connection.createStatement ()
@@ -63,7 +67,7 @@ object Database
 
             // insert the results
             val records = results.collect ()
-            println (equipment + " " + records.length + " records")
+            log.info (equipment + " " + records.length + " records")
             val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
@@ -89,7 +93,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e);
+            case e: SQLException ⇒ log.error ("exception caught: " + e);
             return (-1)
         }
         finally
@@ -102,7 +106,7 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException ⇒ println ("exception caught: " + e);
+                case e: SQLException ⇒ log.error ("exception caught: " + e);
             }
         }
 
@@ -164,7 +168,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ println ("exception caught: " + e);
+            case e: SQLException ⇒ log.error ("exception caught: " + e);
             return (-1)
         }
         finally
@@ -177,9 +181,57 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException ⇒ println ("exception caught: " + e);
+                case e: SQLException ⇒ log.error ("exception caught: " + e);
             }
         }
+    }
 
+    def fetchTransformersWithEEA (simulation: Int): Array[String] =
+    {
+        var ret = new ArrayBuffer[String] ()
+
+        // check if the directory exists
+        val file = Paths.get ("simulation/results.db")
+        if (!Files.exists (file))
+            log.error ("database file " + file + " does not exist")
+        else
+        {
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+
+            var connection: Connection = null
+            try
+            {
+                // create a database connection
+                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+                val statement = connection.prepareStatement ("select distinct(trafo) from results where simulation=? and has_eea")
+                statement.setInt (1, simulation)
+                val resultset = statement.executeQuery ()
+                while (resultset.next ())
+                    ret += resultset.getString (1)
+                resultset.close ()
+            }
+            catch
+            {
+                // if the error message is "out of memory",
+                // it probably means no database file is found
+                case e: SQLException ⇒ log.error ("exception caught: " + e);
+            }
+            finally
+            {
+                try
+                {
+                    if (connection != null)
+                        connection.close ()
+                }
+                catch
+                {
+                    // connection close failed
+                    case e: SQLException ⇒ log.error ("exception caught: " + e);
+                }
+            }
+        }
+        ret.toArray
     }
 }

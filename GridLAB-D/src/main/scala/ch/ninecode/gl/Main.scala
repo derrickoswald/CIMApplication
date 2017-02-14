@@ -17,12 +17,15 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.graphx.Graph
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
 object Main
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     val APPLICATION_NAME = "GridLAB-D"
     val APPLICATION_VERSION = "2.0-SNAPSHOT"
 
@@ -53,6 +56,7 @@ object Main
         three: Boolean = false,
         precalculation: Boolean = false,
         trafos: String = "",
+        simulation: Int = -1,
         clean: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         files: Seq[String] = Seq()
@@ -81,6 +85,10 @@ object Main
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
+
+        opt[Int]('s', "simulation").valueName ("precalculation simulation number").
+            action ((x, c) => c.copy (simulation = x)).
+            text ("primary database key for precalculated simulation values")
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
@@ -210,7 +218,7 @@ object Main
                 session.sparkContext.setLogLevel (arguments.log_level.toString ())
 
                 val setup = System.nanoTime ()
-                println ("setup : " + (setup - begin) / 1e9 + " seconds")
+                log.info ("setup : " + (setup - begin) / 1e9 + " seconds")
 
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
@@ -230,11 +238,12 @@ object Main
                 elements.printSchema
                 elements.explain
                 val read = System.nanoTime ()
-                println ("read : " + (read - setup) / 1e9 + " seconds")
+                log.info ("read : " + (read - setup) / 1e9 + " seconds")
 
                 val hdfsuri =
                 {
-                    val uri = new URI (arguments.files (0))
+                    val name = arguments.files (0).replace (" ", "%20")
+                    val uri = new URI (name)
                     uri.getScheme + "://" + uri.getAuthority + "/"
                 }
 
@@ -250,21 +259,30 @@ object Main
                 val _transformers = new Transformers (session, gridlabd._StorageLevel)
                 val tdata = _transformers.getTransformerData ()
 
-                val transformers = if ("" == arguments.trafos)
+                val transformers = if ("" != arguments.trafos)
                 {
-                    // ToDo: fix this 1kV multiplier on the voltages
-                    val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
-                else
-                {
+                    // do all transformers listed in the file
                     val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
                     val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
                     selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
+                else if (-1 != arguments.simulation)
+                {
+                    // do transformers specified in the database under the given simulation
+                    val trafos = Database.fetchTransformersWithEEA (arguments.simulation)
+                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
+                else
+                {
+                    // do all low voltage power transformers
+                    // ToDo: fix this 1kV multiplier on the voltages
+                    val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
 
                 val prepare = System.nanoTime ()
-                println ("prepare: " + (prepare - read) / 1e9 + " seconds")
+                log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
                 if (arguments.precalculation)
                 {
@@ -285,9 +303,9 @@ object Main
                 }
 
                 val calculate = System.nanoTime ()
-                println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
+                log.info ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
-                println ("total: " + (calculate - begin) / 1e9 + " seconds")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds")
 
                 sys.exit (0)
             case None =>
