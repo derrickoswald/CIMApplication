@@ -290,10 +290,11 @@ object Main
                 }
                 else 
                 {
+                    val cdata = gridlabd.getCableMaxCurrent ()
                     val results = transformers.par.map (
                         (s) =>
                         {
-                            val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+                            val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata) (s)
                             val simulation = gridlabd.trafokreis (s)
                             val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
                             gridlabd.cleanup (simulation)

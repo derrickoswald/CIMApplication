@@ -128,13 +128,12 @@ class GridLABDSuite extends FunSuite
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
+        val cdata = gridlabd.getCableMaxCurrent ()
         val results = transformers.par.map (
             (s) =>
             {
-                val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
-                println (rdd.count)
+                val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata) (s)
                 val simulation = gridlabd.trafokreis (s)
-                println (simulation)
                 val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
                 gridlabd.cleanup (simulation)
                 id

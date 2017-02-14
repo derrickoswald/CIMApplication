@@ -1082,17 +1082,12 @@ class GridLABD (session: SparkSession) extends Serializable
     /**
      * Get pairs of cable id and maximum current.
      */
-    def getCableMaxCurrent (): HashMap[String, Double] =
+    def getCableMaxCurrent (): RDD[Tuple2[String, Double]] =
     {
-        val ret = HashMap[String, Double] ()
-
         val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
         val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        val pairs = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent)).collect
-        for (pair <- pairs)
-            ret += pair
-        return (ret)
+        keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
     }
 
     /**
@@ -1181,8 +1176,8 @@ class GridLABD (session: SparkSession) extends Serializable
             return (
                 if (cablemap.contains (r.element))
                 {
-                    val max = cablemap(r.element)
-                    ((r.units == "Amps") &&
+                    val max = cablemap (r.element)
+                    ((r.units == "Amps") && // redundant
                     (r.value_a.abs > max))
                 }
                 else
@@ -1194,8 +1189,8 @@ class GridLABD (session: SparkSession) extends Serializable
             return (
                 if (cablemap.contains (r.element))
                 {
-                    val max = cablemap(r.element)
-                    ((r.units == "Amps") &&
+                    val max = cablemap (r.element)
+                    ((r.units == "Amps") && // redundant
                     ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
                 }
                 else
@@ -1219,13 +1214,18 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement]): RDD[MaxEinspeiseleistung] =
+    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]): RDD[MaxEinspeiseleistung] =
     {
         val nominal = 400.0 // ToDo: get voltage from CIM
         val tolerance = 3.0
         val max = nominal + (nominal * tolerance / 100.0)
         // could also check for under the minimum; r.value_a.abs < min
-        val cablemap = getCableMaxCurrent ()
+
+        // get the maximum cable currents for the cables in this simulation
+        val cables = results.filter (_.units == "Amps").map (_.element).collect
+        val cablemap = HashMap[String, Double] ()
+        for (pair <- cdata.filter ((x) => cables.contains (x._1)).collect)
+            cablemap += pair
 
         val v = voltcheck (experiments, results, max)
         val i = ampcheck (experiments, results, cablemap)
@@ -1236,7 +1236,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
@@ -1250,7 +1250,7 @@ class GridLABD (session: SparkSession) extends Serializable
         println (simulation + " solve: " + (gridlabd - write) / 1e9 + " seconds")
 
         val ret = if (null != data)
-            analyse (experiments, data)
+            analyse (experiments, data, cdata)
         else
         {
             println ("solve failed for " + simulation)

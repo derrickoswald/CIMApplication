@@ -123,13 +123,14 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
     def emit (edges: Iterable[Tuple2[PreEdge,TData]]): String =
     {
         val config = configurationName (edges)
+        val name = edges.map (_._1.element.id).map (x => valid_config_name (x)).mkString ("_")
         // get an edge, they all have the same connectivity nodes
         val edge = edges.head._1
         val obj = if (one_phase)
             "\n" +
             "        object transformer\n" +
             "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
+            "            name \"" + name + "\";\n" +
             "            phases AN;\n" +
             "            from \"" + edge.id_cn_1 + "\";\n" +
             "            to \"" + edge.id_cn_2 + "\";\n" +
@@ -139,7 +140,7 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             "\n" +
             "        object transformer\n" +
             "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
+            "            name \"" + name + "\";\n" +
             "            phases ABCN;\n" +
             "            from \"" + edge.id_cn_1 + "\";\n" +
             "            to \"" + edge.id_cn_2 + "\";\n" +
@@ -149,21 +150,21 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             "\n" +
             "        object recorder\n" +
             "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
+            "            name \"" + name + "_current_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
             "            property current_out_A.real,current_out_A.imag;\n" +
             "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "            file \"output_data/" + name + "_current.csv\";\n" +
             "        };\n"
         else
             "\n" +
             "        object recorder\n" +
             "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
+            "            name \"" + name + "_current_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
             "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
             "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+            "            file \"output_data/" + name + "_current.csv\";\n" +
             "        };\n"
         return (obj + rec)
     }
