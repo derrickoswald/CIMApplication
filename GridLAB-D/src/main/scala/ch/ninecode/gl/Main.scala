@@ -123,14 +123,14 @@ object Main
         return (ret)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: RDD[Array[TData]], gridlabd: GridLABD) 
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD)
     {
       val use_topological_nodes: Boolean = true
       val solars = gridlabd.getSolarInstallations (use_topological_nodes)
       val power_feeding = new PowerFeeding(initial)
       val pn = PreNode ("", 0.0) // just to access the vertex_id function
       def node (t: Terminal): VertexId = pn.vertex_id (if (use_topological_nodes) t.TopologicalNode else t.ConnectivityNode)
-      val start_ids = transformers.map ((x) => (node (x(0).terminal1), x.map (_.transformer.id).mkString ("&"))).collect
+      val start_ids = transformers.map ((x) => (node (x(0).terminal1), x.map (_.transformer.id).mkString ("&")))
       val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
       val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
       val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
@@ -254,13 +254,13 @@ object Main
                 {
                     // ToDo: fix this 1kV multiplier on the voltages
                     val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
                 else
                 {
                     val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
                     val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
 
                 val prepare = System.nanoTime ()
@@ -272,14 +272,16 @@ object Main
                 }
                 else 
                 {
-                    val results = transformers.map ((s) =>
-                    {
-                        val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
-                        val simulation = gridlabd.trafokreis (s)
-                        val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-                        gridlabd.cleanup (simulation)
-                        id
-                    })
+                    val results = transformers.par.map (
+                        (s) =>
+                        {
+                            val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+                            val simulation = gridlabd.trafokreis (s)
+                            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
+                            gridlabd.cleanup (simulation)
+                            id
+                        }
+                    )
                 }
 
                 val calculate = System.nanoTime ()

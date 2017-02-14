@@ -603,7 +603,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D edge
-    def make_link (switch: SwitchDevice) (edges: Iterable[PreEdge]): String =
+    def make_link (line: Line, switch: SwitchDevice) (edges: Iterable[PreEdge]): String =
     {
         val edge = edges.head
         val cls = edge.element.getClass.getName
@@ -611,7 +611,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val ret = clazz match
         {
             case "ACLineSegment" =>
-                "" // handled specially
+                line.emit (edges)
             case "PowerTransformer" =>
                 "" // handled specially
             case "Switch" =>
@@ -824,9 +824,8 @@ class GridLABD (session: SparkSession) extends Serializable
 
         // get the edge strings
         val t_edges = transformer_edges.map (trans.emit)
-        val l_edges = combined_edges.map (line.emit)
-        val s_edges = combined_edges.map (make_link (new SwitchDevice (USE_ONE_PHASE)))
-        val e_strings = t_edges.union (l_edges).union (s_edges)
+        val l_edges = combined_edges.map (make_link (line, new SwitchDevice (USE_ONE_PHASE)))
+        val e_strings = t_edges.union (l_edges)
 
         /**
          * Create the output file.

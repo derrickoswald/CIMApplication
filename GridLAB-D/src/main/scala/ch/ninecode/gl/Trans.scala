@@ -67,8 +67,8 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             {
                 val base_va = edge._2.end1.ratedS
                 // equivalent per unit values
-                val base_amps = base_va / edge._2.voltage1 / Math.sqrt (3)
-                val base_ohms = edge._2.voltage1 / base_amps / Math.sqrt (3)
+                val base_amps = base_va / v1 / Math.sqrt (3)
+                val base_ohms = v1 / base_amps / Math.sqrt (3)
                 // this end's impedance
                 val r = edge._2.end1.r / base_ohms
                 val x = edge._2.end1.x / base_ohms

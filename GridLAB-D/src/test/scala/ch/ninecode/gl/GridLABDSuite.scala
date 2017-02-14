@@ -72,7 +72,7 @@ class GridLABDSuite extends FunSuite
         val options = new HashMap[String, String] ()
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        options.put ("ch.ninecode.cim.make_edges", "true")
+        options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")
@@ -110,21 +110,24 @@ class GridLABDSuite extends FunSuite
         tdata.persist (gridlabd._StorageLevel)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
-        transformers.map ((x) => x.map (_.transformer.id).mkString ("&")).collect.mkString ("\n")
+        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+        println (transformers.map ((x) => x.map (_.transformer.id).mkString ("&")).mkString ("\n"))
 
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val results = transformers.map ((s) =>
-        {
-            val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
-            val simulation = gridlabd.trafokreis (s)
-            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-            gridlabd.cleanup (simulation)
-            id
-        })
-
+        val results = transformers.par.map (
+            (s) =>
+            {
+                val rdd = gridlabd.einspeiseleistung (initial, tdata) (s)
+                println (rdd.count)
+                val simulation = gridlabd.trafokreis (s)
+                println (simulation)
+                val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
+                gridlabd.cleanup (simulation)
+                id
+            }
+        )
 
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
