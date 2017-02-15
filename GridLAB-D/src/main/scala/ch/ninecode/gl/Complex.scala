@@ -4,38 +4,43 @@ import scala.math._
 import scala.language.implicitConversions
 
 // from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
-case class Complex (re: Double, im: Double) extends Ordered[Complex]
+case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
 {
     private val modulus = sqrt (pow (re, 2) + pow (im, 2))
 
     // Constructors
-    def this (re: Double) = this (re, 0)
+    //def this (re: Double) = this (re, 0.0)
 
     // Unary operators
     def unary_+ = this
-    def unary_- = new Complex (-re, -im)
-    def unary_~ = new Complex (re, -im) // conjugate
+    def unary_- = Complex (-re, -im)
+    def unary_~ = Complex (re, -im) // conjugate
     def unary_! = modulus
 
     // Comparison
     def compare (that: Complex) = !this compare !that
 
     // Arithmetic operations
-    def + (c: Complex) = new Complex (re + c.re, im + c.im)
+    def + (c: Complex) = Complex (re + c.re, im + c.im)
     def - (c: Complex) = this + -c
-    def * (c: Complex) = new Complex (re * c.re - im * c.im, im * c.re + re * c.im)
+    def * (c: Complex) = Complex (re * c.re - im * c.im, im * c.re + re * c.im)
     def / (c: Complex) =
     {
-        require (c.re != 0 || c.im != 0)
+        require (c.re != 0.0 || c.im != 0.0)
         val d = pow (c.re, 2) + pow (c.im, 2)
-        new Complex ((re * c.re + im * c.im) / d, (im * c.re - re * c.im) / d)
+        Complex ((re * c.re + im * c.im) / d, (im * c.re - re * c.im) / d)
     }
     def / (that : Double) =
     {
         require (that != 0)
-        new Complex (re / that, im / that)
+        Complex (re / that, im / that)
     }
     def abs = sqrt (re * re + im * im)
+    def reciprocal = // https://en.wikipedia.org/wiki/Complex_number#Reciprocal
+    {
+        val d = re * re + im * im
+        Complex (re / d, -im / d)
+    }
 
     // string representation
     private def round (value: Double, digits: Int): Double =
@@ -60,7 +65,7 @@ case class Complex (re: Double, im: Double) extends Ordered[Complex]
 object Complex
 {
     // constants
-    val j = new Complex (0, 1)
+    val j = Complex (0, 1)
 
     // factory methods
     def apply (re: Double) = new Complex (re)

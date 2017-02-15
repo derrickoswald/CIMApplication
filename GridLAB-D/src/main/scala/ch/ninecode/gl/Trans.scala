@@ -32,18 +32,6 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
         iter.map (_._1.element.id).map (x => valid_config_name (x)).mkString ("||") + "_configuration"
     }
 
-    // handle parallel impedance
-    def parallel (r1: Double, x1: Double, r2: Double, x2: Double): Tuple2[Double, Double] =
-    {
-        val rs = r1 + r2
-        val xs = x1 + x2
-        val rp = r1 * r2
-        val xp = x1 * x2
-        val r = (((rp - xp) * rs) + (((x1 * r2) + (x2 * r1)) * xs)) / ((rs * rs) + (xs * xs))
-        val x = ((((x1 * r2) + (x2 * r1)) * rs) - ((rp - xp) * xs)) / ((rs * rs) + (xs * xs))
-        return (new Tuple2 (r, x))
-    }
-
     /**
      * Make one or more transformer configurations.
      * Most transformers have only two ends, so this should normally make one configurations
@@ -61,24 +49,22 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             log.error ("transformer group " + config + " has different voltages on terminal 1 " + edges.map ((x) => x._2.voltage1).mkString (" "))
         // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
         val power_rating = edges.foldLeft (0.0)((sum, edge) => edge._2.end1.ratedS)
-        // calculate the impedance
-        val (r, x) = edges.foldLeft (null.asInstanceOf[Tuple2[Double, Double]]) (
-            (impedance, edge) =>
+        // calculate the impedance as 1 / sum (1/Zi)
+        val impedances = edges.map (
+            (edge) =>
             {
+                val sqrt3 = Math.sqrt (3)
                 val base_va = edge._2.end1.ratedS
                 // equivalent per unit values
-                val base_amps = base_va / v1 / Math.sqrt (3)
-                val base_ohms = v1 / base_amps / Math.sqrt (3)
+                val base_amps = base_va / v1 / sqrt3
+                val base_ohms = v1 / base_amps / sqrt3
                 // this end's impedance
                 val r = edge._2.end1.r / base_ohms
                 val x = edge._2.end1.x / base_ohms
-                // parallel rule if more than one end
-                if (null == impedance)
-                    (r,x)
-                else
-                    parallel (impedance._1, impedance._2, r, x)
+                Complex (r, x)
             }
         )
+        val total_impedance = impedances.map (_.reciprocal).foldLeft (Complex (0.0, 0.0))(_.+(_)).reciprocal
 
         val ret =
             "\n" +
@@ -90,10 +76,9 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             "            power_rating " + (power_rating / 1000.0) + ";\n" +
             "            primary_voltage " + v0 + ";\n" +
             "            secondary_voltage " + v1 + ";\n" +
-            "            resistance " + r + ";\n" +
-            "            reactance " + x + ";\n" +
+            "            resistance " + total_impedance.re + ";\n" +
+            "            reactance " + total_impedance.im + ";\n" +
             "        };\n"
-
 
         return (ret)
     }

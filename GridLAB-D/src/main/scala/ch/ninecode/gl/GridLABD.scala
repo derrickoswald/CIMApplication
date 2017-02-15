@@ -1214,7 +1214,51 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]): RDD[MaxEinspeiseleistung] =
+    def powercheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], power: Double, trafo_name: String): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+    {
+        // eliminate voltage measurements and measurements below capacity
+        def interesting1ph (i: Double) (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                if ((r.element == trafo_name) &&
+                    (r.units == "Amps") && // redundant
+                    (r.value_a.abs > i))
+                    true
+                else
+                    false
+            )
+        }
+        def interesting3ph (i: Double) (r: ThreePhaseComplexDataElement): Boolean =
+        {
+            return (
+                if ((r.element == trafo_name) &&
+                    (r.units == "Amps") && // redundant
+                    ((r.value_a.abs > i) || (r.value_b.abs > i) || (r.value_c.abs > i)))
+                    true
+                else
+                    false
+            )
+        }
+
+        // P = VI
+        val i = power / 400.0
+        val overI = results.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
+
+        // assign an experiment to each measurement
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        {
+            for (e <- experiments)
+            {
+                if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
+                    return (List ((e, r)))
+            }
+            List ()
+        }
+
+        return (overI.flatMap (assign (experiments)))
+    }
+
+    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val nominal = 400.0 // ToDo: get voltage from CIM
         val tolerance = 3.0
@@ -1227,11 +1271,17 @@ class GridLABD (session: SparkSession) extends Serializable
         for (pair <- cdata.filter ((x) => cables.contains (x._1)).collect)
             cablemap += pair
 
+        // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
+        val trafo_power = transformers.map ((x) => x.end1.ratedS).sum
+        // get the name of the transformer recorder (matches Trans.emit)
+        val trafo_name = transformers.map ((x) => x.transformer.id).mkString ("_")
+        
         val v = voltcheck (experiments, results, max)
         val i = ampcheck (experiments, results, cablemap)
+        val p = powercheck (experiments, results, trafo_power, trafo_name)
 
         // combine the results, group by experiment and find the minimum power
-        val ret = v.union (i).groupBy (_._1.house).values.map (finder)
+        val ret = v.union (i).union (p).groupBy (_._1.house).values.map (finder)
 
         return (ret)
     }
@@ -1250,7 +1300,7 @@ class GridLABD (session: SparkSession) extends Serializable
         println (simulation + " solve: " + (gridlabd - write) / 1e9 + " seconds")
 
         val ret = if (null != data)
-            analyse (experiments, data, cdata)
+            analyse (experiments, data, cdata) (transformers)
         else
         {
             println ("solve failed for " + simulation)

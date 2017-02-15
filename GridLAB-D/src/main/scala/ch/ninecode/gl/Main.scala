@@ -17,15 +17,12 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.graphx.Graph
-import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
 object Main
 {
-    val log = LoggerFactory.getLogger (getClass)
-
     val APPLICATION_NAME = "GridLAB-D"
     val APPLICATION_VERSION = "2.0-SNAPSHOT"
 
@@ -218,7 +215,7 @@ object Main
                 session.sparkContext.setLogLevel (arguments.log_level.toString ())
 
                 val setup = System.nanoTime ()
-                log.info ("setup : " + (setup - begin) / 1e9 + " seconds")
+                println ("setup : " + (setup - begin) / 1e9 + " seconds")
 
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
@@ -226,7 +223,7 @@ object Main
                 options.put ("ch.ninecode.cim.make_edges", "false")
                 options.put ("ch.ninecode.cim.do_join", "false")
                 options.put ("ch.ninecode.cim.do_topo", "true")
-                options.put ("ch.ninecode.cim.do_topo_islands", "true")
+                options.put ("ch.ninecode.cim.do_topo_islands", "false")
 
                 val elements = session.read.format ("ch.ninecode.cim").options (options).load (arguments.files:_*)
                 // this fails with ClassCastException:
@@ -238,7 +235,7 @@ object Main
                 elements.printSchema
                 elements.explain
                 val read = System.nanoTime ()
-                log.info ("read : " + (read - setup) / 1e9 + " seconds")
+                println ("read : " + (read - setup) / 1e9 + " seconds")
 
                 val hdfsuri =
                 {
@@ -282,7 +279,7 @@ object Main
                 }
 
                 val prepare = System.nanoTime ()
-                log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
+                println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
                 if (arguments.precalculation)
                 {
@@ -304,9 +301,9 @@ object Main
                 }
 
                 val calculate = System.nanoTime ()
-                log.info ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
+                println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds")
+                println ("total: " + (calculate - begin) / 1e9 + " seconds")
 
                 sys.exit (0)
             case None =>

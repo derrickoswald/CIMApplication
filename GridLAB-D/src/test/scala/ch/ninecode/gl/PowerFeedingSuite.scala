@@ -81,7 +81,7 @@ class PowerFeedingSuite extends FunSuite
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
-        options.put ("ch.ninecode.cim.do_topo_islands", "true")
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val element = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
 
         return (element)
