@@ -48,7 +48,7 @@ object Main
     )
 
     case class Arguments (
-        master: String = "local[*]",
+        master: String = "",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
         precalculation: Boolean = false,
