@@ -54,7 +54,7 @@ trait Graphable
 
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable
-case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Graphable with Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, ratedCurrent: Double, equipment: ConductingEquipment, element: Element) extends Graphable with Serializable
 {
     // provide a key on the two connections, independent of to-from from-to ordering
     def key (): String =
@@ -150,7 +150,7 @@ class GridLABD (session: SparkSession) extends Serializable
                 "_" + string
     }
 
-    def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[(Element, Double), Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge] ()
         def node_name (t: Terminal): String =
@@ -158,7 +158,8 @@ class GridLABD (session: SparkSession) extends Serializable
             return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
         }
 
-        val e = arg._1._1
+        val e = arg._1._1._1
+        val ratedCurrent = arg._1._1._2
         val pte_op = arg._1._2
         val t_it = arg._2
         // get the ConductingEquipment
@@ -200,6 +201,7 @@ class GridLABD (session: SparkSession) extends Serializable
                                 "",
                                 volts(0),
                                 terminals(0).ConductingEquipment,
+                                ratedCurrent,
                                 equipment,
                                 e)
                     case _ =>
@@ -214,6 +216,7 @@ class GridLABD (session: SparkSession) extends Serializable
                                         node_name (terminals(i)),
                                         volts(i),
                                         terminals(0).ConductingEquipment,
+                                        ratedCurrent,
                                         equipment,
                                         e)
                             }
@@ -712,11 +715,25 @@ class GridLABD (session: SparkSession) extends Serializable
         // get all elements
         val elements = get ("Elements").asInstanceOf[RDD[Element]]
 
+        // join with WireInfo to get ratedCurrent (only for ACLineSegments)        
+        val cableMaxCurrent = getCableMaxCurrent()
+        val joined_elements = elements.keyBy(_.id).leftOuterJoin(cableMaxCurrent).map(e => 
+          {
+            val ele = e._2._1
+            val wire = e._2._2
+            val wireinfo = wire match 
+            {
+              case Some(maxCurrent) => maxCurrent
+              case None => Double.PositiveInfinity
+            }
+            (ele.id, (ele, wireinfo))
+          })
+        
         // get the transformer ends keyed by transformer
         val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
-        val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
+        val elementsplus = joined_elements.leftOuterJoin (ends)
 
         // map the terminal 'pairs' to edges
         val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages, USE_TOPOLOGICAL_NODES)).values

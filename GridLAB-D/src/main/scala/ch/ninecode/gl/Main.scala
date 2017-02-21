@@ -127,17 +127,32 @@ object Main
 
         return (ret)
     }
+    
+    def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos = 
+    {
+      val pn = PreNode ("", 0.0)
+      val vertexId = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
+      val ratedS = tdata(0).end1.ratedS
+      val id = tdata.map (_.transformer.id).mkString ("&")
+      var r = tdata(0).end1.r
+      if (tdata.length > 1)
+      {
+        val r1 = tdata(0).end1.r
+        val r2 = tdata(1).end1.r
+        r = (r1 + r2) / (r1 * r2)
+      }
+      StartingTrafos(vertexId, id, r, ratedS)
+    }
 
     def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD)
     {
       val use_topological_nodes: Boolean = true
       val solars = gridlabd.getSolarInstallations (use_topological_nodes)
       val power_feeding = new PowerFeeding(initial)
-      val pn = PreNode ("", 0.0) // just to access the vertex_id function
-      def node (t: Terminal): VertexId = pn.vertex_id (if (use_topological_nodes) t.TopologicalNode else t.ConnectivityNode)
-      val start_ids = transformers.map ((x) => (node (x(0).terminal1), x.map (_.transformer.id).mkString ("&")))
+      val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
+      
       val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
-      val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
+      val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != null))
       val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
                       
       val has = traced_house_nodes_EEA.map(node => 
