@@ -5,11 +5,14 @@ import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
 
 class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     def vertexProgram (starting_nodes: Array[VertexId]) (id: VertexId, v: Boolean, message: Boolean): Boolean =
     {
         if (message)
@@ -20,53 +23,16 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
             starting_nodes.contains (id)
     }
 
-    // function to see if the Pregel algorithm should continue tracing or not
-    def shouldContinue (element: Element): Boolean =
-    {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        val ret = cls match
-        {
-            case "Switch" =>
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" =>
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" =>
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" =>
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" =>
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" =>
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "ProtectedSwitch" =>
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" =>
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "Breaker" =>
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" =>
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" =>
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "PowerTransformer" =>
-                false
-            case _ =>
-                true
-        }
-        return (ret)
-    }
-
     def sendMessage (triplet: EdgeTriplet[Boolean, PreEdge]): Iterator[(VertexId, Boolean)] =
     {
         var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
 
         if (triplet.srcAttr && !triplet.dstAttr) // see if a message is needed
-            if (shouldContinue (triplet.attr.element))
+            if (triplet.attr.connected)
                 ret = Iterator ((triplet.dstId, true))
 
         if (!triplet.srcAttr && triplet.dstAttr) // see if a message is needed in reverse
-            if (shouldContinue (triplet.attr.element))
+            if (triplet.attr.connected)
                 ret = Iterator ((triplet.srcId, true))
 
         return (ret)
@@ -94,6 +60,9 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     // trace the graph with the Pregel algorithm
     def run (starting_nodes: Array[VertexId]) =
     {
+        log.info ("trace([" + starting_nodes.mkString (",") +"]) begin")
+        val begin = System.nanoTime ()
+
         // make a similar graph with boolean values as vertex data (false = not traced, true = traced)
         val binary = initial.mapVertices { case (_, _) => false }
 
@@ -138,7 +107,9 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
         // create a more complete list of traced nodes using the edge list
         val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (initial.vertices.values.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
 
+        val read = System.nanoTime ()
+        log.info ("trace([" + starting_nodes.mkString (",") +"]) end " + ((read - begin) / 1e9) + " seconds")
+
         (all_traced_nodes, traced_edges)
     }
-
 }

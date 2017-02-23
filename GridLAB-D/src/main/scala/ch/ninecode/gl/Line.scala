@@ -89,8 +89,19 @@ class Line (one_phase: Boolean) extends Serializable
     // get the configuration name (of the parallel lines)
     def configurationName (iter: Iterable[PreEdge]): String =
     {
-        iter.map (_.equipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-        .map (x => valid_config_name (x)).mkString ("||")
+        val n = iter.map (_.equipment.Equipment.PowerSystemResource.IdentifiedObject.name)
+        .map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||")
+        // limit to 64 bytes with null:
+        // typedef struct s_objecttree {
+        //     char name[64];
+        //     OBJECT *obj;
+        //     struct s_objecttree *before, *after;
+        //     int balance; /* unused */
+        // } OBJECTTREE;
+        if (n.getBytes.length > 63)
+            "_" + Math.abs (n.hashCode())
+        else
+            n
     }
 
     // see http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html

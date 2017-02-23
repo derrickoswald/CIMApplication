@@ -55,7 +55,9 @@ object Main
         trafos: String = "",
         simulation: Int = -1,
         clean: Boolean = false,
+        erase: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
+        checkpoint_dir: String = "",
         files: Seq[String] = Seq()
     )
 
@@ -89,11 +91,19 @@ object Main
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
-            text ("clean up (delete) intermediate HDFS files")
+            text ("clean up (delete) simulation local files")
+
+        opt[Unit]('e', "erase").
+            action ((_, c) => c.copy (erase = true)).
+            text ("clean up (delete) simulation HDFS files")
 
         opt[LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
+
+        opt[String]('k', "checkpointdir").valueName ("HDFS://...").
+            action ((x, c) => c.copy (checkpoint_dir = x)).
+            text ("checkpoint directory on HDFS")
 
         help ("help").text ("prints this usage text")
 
@@ -213,6 +223,8 @@ object Main
                 // make a Spark session
                 val session = SparkSession.builder ().config (configuration).getOrCreate ()
                 session.sparkContext.setLogLevel (arguments.log_level.toString ())
+                if ("" != arguments.checkpoint_dir)
+                    session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
 
                 val setup = System.nanoTime ()
                 println ("setup : " + (setup - begin) / 1e9 + " seconds")
@@ -247,14 +259,29 @@ object Main
                 val gridlabd = new GridLABD (session)
                 gridlabd.HDFS_URI = hdfsuri
                 gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
+                gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
                 gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
-                // prepare the initial graph
-                val initial = gridlabd.prepare ()
+                // prepare the initial graph edges and nodes
+                val (xedges, xnodes) = gridlabd.prepare ()
+//
+// java.lang.ClassCastException: org.apache.spark.graphx.impl.ShippableVertexPartition cannot be cast to scala.Product2
+// https://issues.apache.org/jira/browse/SPARK-14804 Graph vertexRDD/EdgeRDD checkpoint results ClassCastException: 
+// Fix Version/s: 2.0.3, 2.1.1, 2.2.0
+//                session.sparkContext.getCheckpointDir match
+//                {
+//                    case Some (dir) => initial.checkpoint ()
+//                    case None =>
+//                }
 
                 val _transformers = new Transformers (session, gridlabd._StorageLevel)
                 val tdata = _transformers.getTransformerData ()
+                session.sparkContext.getCheckpointDir match
+                {
+                    case Some (dir) => tdata.checkpoint ()
+                    case None =>
+                }
 
                 val transformers = if ("" != arguments.trafos)
                 {
@@ -277,22 +304,32 @@ object Main
                     val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
                     niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
+                val cdata = gridlabd.getCableMaxCurrent ()
+                session.sparkContext.getCheckpointDir match
+                {
+                    case Some (dir) => cdata.checkpoint ()
+                    case None =>
+                }
 
                 val prepare = System.nanoTime ()
                 println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
                 if (arguments.precalculation)
                 {
+                    // construct the initial graph from the real edges and nodes
+                    val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
                     threshold_calculation (initial, transformers, gridlabd) 
                 }
                 else 
                 {
-                    val cdata = gridlabd.getCableMaxCurrent ()
                     val results = transformers.par.map (
                         (s) =>
                         {
-                            val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata) (s)
                             val simulation = gridlabd.trafokreis (s)
+                            val hdata = if (-1 != arguments.simulation) Database.fetchHouseMaximumsForTransformer (arguments.simulation, simulation) else Array[Tuple2[String,Double]]()
+                            // construct the initial graph from the real edges and nodes
+                            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+                            val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata, hdata) (s)
                             val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
                             gridlabd.cleanup (simulation)
                             id

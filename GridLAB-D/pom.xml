@@ -97,6 +97,7 @@
 		    <artifactId>scopt_2.11</artifactId>
 		    <version>${version.dependency.scopt}</version>
 		</dependency>
+
     </dependencies>
 
     <build>

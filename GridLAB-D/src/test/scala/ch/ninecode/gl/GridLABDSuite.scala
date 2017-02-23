@@ -92,6 +92,7 @@ class GridLABDSuite extends FunSuite
         //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V9_assets_preview" // Brügg
         val filename =
             FILE_DEPOT + root + ".rdf"
+        val sim = -1
 
         val elements = readFile (session, filename)
         println (elements.count () + " elements")
@@ -107,10 +108,10 @@ class GridLABDSuite extends FunSuite
         val tdata = _transformers.getTransformerData ()
         tdata.persist (gridlabd._StorageLevel)
 
-        val transformers = if (false)
+        val transformers = if (-1 != sim)
         {
             // do transformers specified in the database under the given simulation
-            val trafos = Database.fetchTransformersWithEEA (2)
+            val trafos = Database.fetchTransformersWithEEA (sim)
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
             selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
@@ -123,7 +124,7 @@ class GridLABDSuite extends FunSuite
         println (transformers.map ((x) => x.map (_.transformer.id).mkString ("&")).mkString ("\n"))
 
         // prepare the initial graph
-        val initial = gridlabd.prepare ()
+        val (xedges, xnodes) = gridlabd.prepare ()
 
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
@@ -132,8 +133,11 @@ class GridLABDSuite extends FunSuite
         val results = transformers.par.map (
             (s) =>
             {
-                val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata) (s)
                 val simulation = gridlabd.trafokreis (s)
+                val hdata = if (-1 != sim) Database.fetchHouseMaximumsForTransformer (sim, simulation) else Array[Tuple2[String,Double]]()
+                // construct the initial graph from the real edges and nodes
+                val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+                val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata, hdata) (s)
                 val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
                 gridlabd.cleanup (simulation)
                 id

@@ -29,7 +29,7 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
     // get the configuration name (of the parallel transformers)
     def configurationName (iter: Iterable[Tuple2[PreEdge,TData]]): String =
     {
-        iter.map (_._1.element.id).map (x => valid_config_name (x)).mkString ("||") + "_configuration"
+        iter.map (_._1.element.id).map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
     }
 
     /**

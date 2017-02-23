@@ -54,7 +54,17 @@ trait Graphable
 
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable
-case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element) extends Graphable with Serializable
+case class PreEdge (
+    id_seq_1: String,
+    id_cn_1: String,
+    v1: Double,
+    id_seq_2: String,
+    id_cn_2: String,
+    v2: Double,
+    id_equ: String,
+    equipment: ConductingEquipment,
+    element: Element,
+    connected: Boolean) extends Graphable with Serializable
 {
     // provide a key on the two connections, independent of to-from from-to ordering
     def key (): String =
@@ -107,7 +117,8 @@ class GridLABD (session: SparkSession) extends Serializable
 
     var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
-    var DELETE_INTERMEDIATE_FILES = false
+    var DELETE_INTERMEDIATE_FILES = true
+    var DELETE_SIMULATION_FILES = true
     var USE_ONE_PHASE = true
 
     // for dates without time zones, the timezone of the machine is used:
@@ -148,6 +159,45 @@ class GridLABD (session: SparkSession) extends Serializable
                 string
             else
                 "_" + string
+    }
+
+    // function to see if the Pregel algorithm should continue tracing or not
+    def shouldContinue (element: Element): Boolean =
+    {
+        val clazz = element.getClass.getName
+        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
+        cls match
+        {
+            case "Switch" =>
+                !element.asInstanceOf[Switch].normalOpen
+            case "Cut" =>
+                !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" =>
+                !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" =>
+                !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" =>
+                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" =>
+                !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "ProtectedSwitch" =>
+                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Sectionaliser" =>
+                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+            case "Breaker" =>
+                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" =>
+                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" =>
+                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "ACLineSegment" =>
+                true
+            case "PowerTransformer" =>
+                false
+            case _ =>
+                log.error ("trace setup encountered edge " + element.id + " with unhandled class '" + cls +"', assumed not conducting")
+                false
+        }
     }
 
     def edge_operator (voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element,Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
@@ -201,7 +251,8 @@ class GridLABD (session: SparkSession) extends Serializable
                                 volts(0),
                                 terminals(0).ConductingEquipment,
                                 equipment,
-                                e)
+                                e,
+                                false)
                     case _ =>
                         {
                             for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
@@ -215,7 +266,8 @@ class GridLABD (session: SparkSession) extends Serializable
                                         volts(i),
                                         terminals(0).ConductingEquipment,
                                         equipment,
-                                        e)
+                                        e,
+                                        shouldContinue (e))
                             }
                             ret
                         }
@@ -303,7 +355,11 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def has (string: String): String =
     {
-        string.substring (0, string.indexOf ("_"))
+        val n = string.indexOf ("_")
+        if (0 < n)
+            string.substring (0, n)
+        else
+            string
     }
 
     def emit_slack (name: String, voltage: Double): String =
@@ -698,8 +754,11 @@ class GridLABD (session: SparkSession) extends Serializable
         return (t)
     }
 
-    def prepare (): Graph[PreNode, PreEdge]  =
+    // Note: we return a bogus value just so there is a time sequential dependence on this by later code
+    def prepare (): Tuple2[RDD[Edge[PreEdge]],RDD[(VertexId, PreNode)]]  =
     {
+        log.warn ("prepare() begin")
+
         // get a map of voltages
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
@@ -746,11 +805,25 @@ class GridLABD (session: SparkSession) extends Serializable
         }
 
         // persist edges and nodes to avoid recompute
-        real_edges.persist (_StorageLevel)
-        nodes.persist (_StorageLevel)
+        val xedges = real_edges.map (make_graph_edges)
+        val xnodes = nodes.map (make_graph_vertices)
+        val e = xedges.count
+        xedges.name = "xedges"
+        xedges.persist (_StorageLevel)
+        val n = xnodes.count
+        xnodes.name = "xnodes"
+        xnodes.persist (_StorageLevel)
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (dir) => xedges.checkpoint (); xnodes.checkpoint ()
+            case None =>
+        }
 
-        // construct the initial graph from the real edges and nodes
-        return (Graph.apply[PreNode, PreEdge] (nodes.map (make_graph_vertices), real_edges.map (make_graph_edges), PreNode ("", 0.0), _StorageLevel, _StorageLevel))
+        log.warn ("prepare() end")
+        val _xedges = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xedges").head._2.asInstanceOf[RDD[Edge[PreEdge]]]
+        val _xnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xnodes").head._2.asInstanceOf[RDD[(VertexId, PreNode)]]
+
+        (_xedges, _xnodes)
     }
 
     def tzString: String =
@@ -769,7 +842,8 @@ class GridLABD (session: SparkSession) extends Serializable
         simulation: String,
         start: Calendar,
         finish: Calendar,
-        swing_node: String): Tuple2[String,HashSet[Experiment]] =
+        swing_node: String,
+        hdata:Array[Tuple2[String,Double]]): Tuple2[String,HashSet[Experiment]] =
     {
         /*
          * Use GraphX to export only the nodes and edges in the trafo-kreise.
@@ -787,9 +861,17 @@ class GridLABD (session: SparkSession) extends Serializable
         var slot = 0
         val window = 15 * 60 // window size in simulated seconds per experiment
         val experiments = HashSet[Experiment]()
-        for (house <- houses)
+        // limit as ceiling(d+10%) thousands
+        def limit (d: Double) = math.ceil (d * 1.1 / 1000.0) * 1000.0
+        for (node <- houses)
         {
-            val experiment = Experiment (simulation, has (house), start, slot, window, 5, 0, 100000, 1000)
+            val house = has (node)
+            val max = hdata.find (house == _._1) match
+            {
+                case Some(m) => limit (m._2)
+                case None => 100000
+            }
+            val experiment = Experiment (simulation, has (house), start, slot, window, 5, 0, max, 1000)
             slot = slot + 1
             experiments += experiment
         }
@@ -881,7 +963,7 @@ class GridLABD (session: SparkSession) extends Serializable
         transformers.map (_.transformer.id).mkString ("_")
     }
    
-    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], transformers: Array[TData]): HashSet[Experiment] =
+    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], hdata:Array[Tuple2[String,Double]], transformers: Array[TData]): HashSet[Experiment] =
     {
         var ret = HashSet[Experiment] ()
 
@@ -908,7 +990,7 @@ class GridLABD (session: SparkSession) extends Serializable
             }
 
         eraseInputFile (simulation)
-        val result = make_glm (initial, tdata, starting._2, simulation, start, finish, starting._1)
+        val result = make_glm (initial, tdata, starting._2, simulation, start, finish, starting._1, hdata)
         writeInputFile (simulation, simulation + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         writeInputFile (simulation, "output_data/dummy", null) // mkdir
         ret = result._2;
@@ -1049,12 +1131,45 @@ class GridLABD (session: SparkSession) extends Serializable
                         "cat simulation/$FILE/$FILE.out; " +
                     "done < /dev/stdin")
             else // cluster
+            {
+                if (session.sparkContext.master == "yarn")
+                    Array[String] (
+                        "bash",
+                        "-c",
+                        "while read line; do " +
+                            "FILE=$line; " +
+                            "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                            "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
+                            "pushd $FILE; " +
+                            "gridlabd $FILE.glm 2>$FILE.out; " +
+                            "popd; " +
+                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
+                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
+                            "cat $FILE/$FILE.out; " +
+                            "rm -rf $FILE; " +
+                        "done < /dev/stdin")
+                else
                 Array[String] (
                     "bash",
                     "-c",
                     "while read line; do " +
-                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                         "FILE=$line; " +
+                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        "export HADOOP_HOME=/opt/hadoop; " +
+                        "export HDFS_DIR=/opt/hadoop; " + // "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        "export HADOOP_COMMON_LIB_NATIVE_DIR=/opt/hadoop/lib/native; " +
+                        "export HADOOP_HDFS_HOME=/opt/hadoop; " +
+                        "export HADOOP_COMMON_HOME=/opt/hadoop; " +
+                        "export HADOOP_INSTALL=$HADOOP_HOME; " +
+                        "export HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop; " +
+                        "export HADOOP_OPTS=-Djava.library.path=/opt/hadoop/lib/native; " +
+                        "export HADOOP_MAPRED_HOME=/opt/hadoop; " +
+                        "export HADOOP_CLASSPATH=$HADOOP_CONF_DIR:$HADOOP_HOME/share/hadoop/common/lib/*:$HADOOP_HOME/share/hadoop/common/*:$HADOOP_HOME/share/hadoop/hdfs:$HADOOP_HOME/share/hadoop/hdfs/lib*:$HADOOP_HOME/share/hadoop/hdfs/*:/opt/hadoop-2.7.2/share/hadoop/yarn/lib/*:/opt/hadoop-2.7.2/share/hadoop/yarn/*:/opt/hadoop/share/hadoop/mapreduce/lib/*:/opt/hadoop/share/hadoop/mapreduce/*:/opt/hadoop/contrib/capacity-scheduler/*.jar; " +
+                        "export JAVA_HOME=/usr/lib/jvm/java-8-oracle; " +
+                        "echo $FILE >> /tmp/environment.log; " +
+                        "env >> /tmp/environment.log; " +
+                        "echo hadoop classpath >> /tmp/environment.log; " +
+                        "hadoop classpath >> /tmp/environment.log; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>$FILE.out; " +
@@ -1064,6 +1179,8 @@ class GridLABD (session: SparkSession) extends Serializable
                         "cat $FILE/$FILE.out; " +
                         "rm -rf $FILE; " +
                     "done < /dev/stdin")
+
+            }
 
         val files = session.sparkContext.parallelize (Array[String] (filename_root))
         val out = files.pipe (gridlabd)
@@ -1240,8 +1357,8 @@ class GridLABD (session: SparkSession) extends Serializable
             )
         }
 
-        // P = VI
-        val i = power / 400.0
+        // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
+        val i = if (USE_ONE_PHASE) math.sqrt (3) * power / 400.0 else power / (400.0 * math.sqrt (3))
         val overI = results.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
 
         // assign an experiment to each measurement
@@ -1275,23 +1392,23 @@ class GridLABD (session: SparkSession) extends Serializable
         val trafo_power = transformers.map ((x) => x.end1.ratedS).sum
         // get the name of the transformer recorder (matches Trans.emit)
         val trafo_name = transformers.map ((x) => x.transformer.id).mkString ("_")
-        
+
         val v = voltcheck (experiments, results, max)
         val i = ampcheck (experiments, results, cablemap)
-        val p = powercheck (experiments, results, trafo_power, trafo_name)
+        // val p = powercheck (experiments, results, trafo_power, trafo_name)
 
         // combine the results, group by experiment and find the minimum power
-        val ret = v.union (i).union (p).groupBy (_._1.house).values.map (finder)
+        val ret = /*p.union*/v.union (i).groupBy (_._1.house).values.map (finder)
 
         return (ret)
     }
 
-    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]], hdata:Array[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
 
-        val experiments = export (initial, tdata, transformers)
+        val experiments = export (initial, tdata, hdata, transformers)
         val write = System.nanoTime ()
         println (simulation + " export: " + (write - start) / 1e9 + " seconds")
 
@@ -1339,6 +1456,8 @@ class GridLABD (session: SparkSession) extends Serializable
             if ("" != result)
                 println (result)
         }
+        if (DELETE_SIMULATION_FILES)
+            eraseInputFile (equipment)
     }
 }
 

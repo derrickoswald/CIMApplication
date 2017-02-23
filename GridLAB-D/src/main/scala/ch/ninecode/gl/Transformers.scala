@@ -83,10 +83,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         {
             val v0 = voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
             if (0.0 == v0)
-                log.error ("no voltage for " + ends(0).TransformerEnd.BaseVoltage)
+                log.error ("no voltage for " + ends(0).TransformerEnd.BaseVoltage + " " + x._1)
             val v1 = voltages.getOrElse (ends(1).TransformerEnd.BaseVoltage, 0.0)
             if (0.0 == v1)
-                log.error ("no voltage for " + ends(1).TransformerEnd.BaseVoltage)
+                log.error ("no voltage for " + ends(1).TransformerEnd.BaseVoltage + " " + x._1)
             List((x._1, (x._2._1._1, x._2._1._2, (ends(0), v0), (ends(1), v1))))
         }
         ret

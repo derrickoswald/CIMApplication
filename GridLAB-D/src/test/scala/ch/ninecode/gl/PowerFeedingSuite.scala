@@ -11,6 +11,7 @@ import java.sql.Types
 import java.util.Calendar
 import java.util.HashMap
 
+import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
@@ -94,7 +95,7 @@ class PowerFeedingSuite extends FunSuite
         val begin = System.nanoTime ()
 
         val use_topological_nodes = true
-        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig*/
+        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig*/
         
         val filename = FILE_DEPOT + root + ".rdf"
 
@@ -109,7 +110,7 @@ class PowerFeedingSuite extends FunSuite
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
-        val initial = gridlabd.prepare ()
+        val (xedges, xnodes) = gridlabd.prepare ()
         
         val _transformers = new Transformers (session, gridlabd._StorageLevel)
         val tdata = _transformers.getTransformerData ()
@@ -121,6 +122,8 @@ class PowerFeedingSuite extends FunSuite
         
         val pn = PreNode ("", 0.0) // just to access the vertex_id function
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
+        // construct the initial graph from the real edges and nodes
+        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
         val power_feeding = new PowerFeeding(initial)
 
         val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => tx.contains (terminal.ConductingEquipment))
@@ -141,7 +144,8 @@ class PowerFeedingSuite extends FunSuite
             result
           }).distinct
         
-        Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+        println ("the simulation number is " + simulation)
               
         val trafo_string = has.filter(_.has_eea).map(_.source_obj).distinct.collect.mkString("\n")
         gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8)) 
