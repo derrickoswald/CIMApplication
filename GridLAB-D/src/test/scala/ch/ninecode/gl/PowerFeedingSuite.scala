@@ -117,19 +117,32 @@ class PowerFeedingSuite extends FunSuite
         tdata.persist (gridlabd._StorageLevel)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
-        val tx = transformers.flatMap (_.map (_.transformer.id)).collect
+        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+
+        def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos = 
+        {
+          val pn = PreNode ("", 0.0)
+          val vertexId = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
+          val ratedS = tdata(0).end1.ratedS
+          val id = tdata.map (_.transformer.id).mkString ("&")
+          var r = tdata(0).end1.r
+          if (tdata.length > 1)
+          {
+            val r1 = tdata(0).end1.r
+            val r2 = tdata(1).end1.r
+            r = (r1 + r2) / (r1 * r2)
+          }
+          StartingTrafos(vertexId, id, r, ratedS)
+        }
         
-        val pn = PreNode ("", 0.0) // just to access the vertex_id function
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
         val power_feeding = new PowerFeeding(initial)
 
-        val terminal = gridlabd.get ("Terminal").asInstanceOf[RDD[Terminal]].filter ((terminal) => tx.contains (terminal.ConductingEquipment))
-        val start_ids = terminal.map(t => (pn.vertex_id (if (use_topological_nodes) t.TopologicalNode else t.ConnectivityNode), t.ConductingEquipment)).collect
+        val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
         val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
-        val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != ""))
+        val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != null))
         val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
                         
         val has = traced_house_nodes_EEA.map(node => 
