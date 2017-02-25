@@ -110,7 +110,7 @@ case class ThreePhaseComplexDataElement (element: String, millis: Long, value_a:
  * house - string, NIS Number of house
  * max - Option[Double], maximum KW feed in power or None if no limit was found
  */
-case class MaxEinspeiseleistung (trafo: String, house: String, max: Option[Double])
+case class MaxEinspeiseleistung (trafo: String, house: String, max: Option[Double], reason: String, details: String)
 
 class GridLABD (session: SparkSession) extends Serializable
 {
@@ -1230,9 +1230,9 @@ class GridLABD (session: SparkSession) extends Serializable
      * NOTE: we don't have to sort by time, since the power is monotonically increasing,
      * just by selecting the minimum power solution we've chosen the first measurement over the limit
      */
-    def finder (values: Iterable[Tuple2[Experiment, ThreePhaseComplexDataElement]]): MaxEinspeiseleistung =
+    def finder (values: Iterable[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]]): MaxEinspeiseleistung =
     {
-        def seqop (current: MaxEinspeiseleistung, arg: Tuple2[Experiment, ThreePhaseComplexDataElement]) : MaxEinspeiseleistung =
+        def seqop (current: MaxEinspeiseleistung, arg: Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]) : MaxEinspeiseleistung =
         {
             val experiment = arg._1
             val data = arg._2
@@ -1241,9 +1241,9 @@ class GridLABD (session: SparkSession) extends Serializable
             current.max match
             {
                 case None =>
-                    MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw))
+                    MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw), arg._3, arg._4)
                 case Some (kw1) =>
-                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw))
+                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw), arg._3, arg._4)
             }
         }
         def combop (a: MaxEinspeiseleistung, b: MaxEinspeiseleistung) : MaxEinspeiseleistung =
@@ -1264,11 +1264,13 @@ class GridLABD (session: SparkSession) extends Serializable
         }
         val trafo = values.head._1.trafo
         val house = values.head._1.house
-        values.aggregate (MaxEinspeiseleistung (trafo, house, None))(seqop, combop)
+        values.aggregate (MaxEinspeiseleistung (trafo, house, None, "unknown", ""))(seqop, combop)
     }
 
-    def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+    def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
+        val limit = "voltage limit"
+
         // eliminate current measurements and measurements within tolerance
         def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
         {
@@ -1290,12 +1292,12 @@ class GridLABD (session: SparkSession) extends Serializable
         val overV = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             for (e <- experiments)
             {
                 if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
-                    return (List ((e, r)))
+                    return (List ((e, r, limit, has (r.element) + " > " + max + " Volts")))
             }
             List()
         }
@@ -1303,8 +1305,10 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overV.flatMap (assign (experiments)))
     }
 
-    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cablemap: HashMap[String, Double]): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cablemap: HashMap[String, Double]): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
+        val limit = "current limit"
+
         // eliminate voltage measurements and measurements below capacity
         def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
         {
@@ -1336,12 +1340,12 @@ class GridLABD (session: SparkSession) extends Serializable
         val overI = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             for (e <- experiments)
             {
                 if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
-                    return (List ((e, r)))
+                    return (List ((e, r, limit, r.element + " > " + cablemap (r.element) + " Amps")))
             }
             List ()
         }
@@ -1349,8 +1353,10 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def powercheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], power: Double, trafo_name: String): RDD[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+    def powercheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], power: Double, trafo_name: String): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
+        val limit = "transformer limit"
+
         // eliminate voltage measurements and measurements below capacity
         def interesting1ph (i: Double) (r: ThreePhaseComplexDataElement): Boolean =
         {
@@ -1380,12 +1386,12 @@ class GridLABD (session: SparkSession) extends Serializable
         val overI = results.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple2[Experiment, ThreePhaseComplexDataElement]] =
+        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             for (e <- experiments)
             {
                 if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
-                    return (List ((e, r)))
+                    return (List ((e, r, limit, r.element + " > " + power + " Watts")))
             }
             List ()
         }
@@ -1413,10 +1419,26 @@ class GridLABD (session: SparkSession) extends Serializable
 
         val v = voltcheck (experiments, results, max)
         val i = ampcheck (experiments, results, cablemap)
-        // val p = powercheck (experiments, results, trafo_power, trafo_name)
+        val p = powercheck (experiments, results, trafo_power, trafo_name)
+
+        // establish a "no limit found" default
+        val s = session.sparkContext.parallelize (
+            experiments.toArray.map
+            (
+                (x) =>
+                {
+                    (
+                        x,
+                        ThreePhaseComplexDataElement (x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                        "no limit",
+                        ""
+                    )
+                }
+            )
+        )
 
         // combine the results, group by experiment and find the minimum power
-        val ret = /*p.union*/v.union (i).groupBy (_._1.house).values.map (finder)
+        val ret = p.union (v).union (i).union (s).groupBy (_._1.house).values.map (finder)
 
         return (ret)
     }

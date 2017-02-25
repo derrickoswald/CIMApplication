@@ -103,6 +103,8 @@ class GridLABDSuite extends FunSuite
         val gridlabd = new GridLABD (session)
         gridlabd.HDFS_URI = "" // local
         gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        gridlabd.DELETE_SIMULATION_FILES = false
+        gridlabd.DELETE_INTERMEDIATE_FILES = false
 
         val _transformers = new Transformers (session, gridlabd._StorageLevel)
         val tdata = _transformers.getTransformerData ()

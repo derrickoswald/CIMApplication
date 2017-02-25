@@ -13,7 +13,7 @@ import org.apache.spark.graphx.VertexId
 import ch.ninecode.model._
 
 case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double) extends Serializable
-case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: String, max_power_feeding: Double, has_eea: Boolean) extends Serializable
+case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: String, max_power_feeding: Double, has_eea: Boolean, reason: String, details: String) extends Serializable
 case class StartingTrafos(vertexId: VertexId, trafo_id: String, r: Double, ratedS: Double) extends Serializable
 
 class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
@@ -138,9 +138,15 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
 
         val p_max_u = math.sqrt(3) * 1.03 * 0.03 * v * v / r_summe
         val p_max_i = math.sqrt(3) * min_ir * (v + r_summe * min_ir)
-        val p_max = math.min(math.min(p_max_u, p_max_i), trafo_ratedS)
+        val (p_max, reason, details) =
+            if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
+                (trafo_ratedS, "transformer limit", "assuming no EEA")
+            else if (p_max_u < p_max_i)
+                (p_max_u, "voltage limit", "assuming no EEA")
+            else
+                (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA(has_id, trafo_id, p_max, false)
+        MaxPowerFeedingNodeEEA(has_id, trafo_id, p_max, false, reason, details)
     }
 
     def has(string: String): String =

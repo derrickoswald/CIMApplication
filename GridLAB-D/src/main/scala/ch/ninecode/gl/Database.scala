@@ -28,7 +28,7 @@ object Database
         val exists2 = resultset2.next ()
         resultset2.close ()
         if (!exists2)
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, has_eea boolean)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, has_eea boolean, reason text, details text)")
         statement.close ()
     }
 
@@ -68,7 +68,7 @@ object Database
             // insert the results
             val records = results.collect ()
             println (equipment + " " + records.length + " records")
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum) values (?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
                 datainsert.setNull (1, Types.INTEGER)
@@ -82,6 +82,8 @@ object Database
                     case Some (kw) =>
                         datainsert.setDouble (5, kw)
                 }
+                datainsert.setString (6, records(i).reason)
+                datainsert.setString (7, records(i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close
@@ -148,7 +150,7 @@ object Database
             // insert the results
             val records = results.collect ()
 
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, has_eea) values (?, ?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, has_eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
                 datainsert.setNull (1, Types.INTEGER)
@@ -157,6 +159,8 @@ object Database
                 datainsert.setString (4, records(i).has_id)
                 datainsert.setDouble (5, records(i).max_power_feeding)
                 datainsert.setBoolean(6, records(i).has_eea)
+                datainsert.setString (7, records(i).reason)
+                datainsert.setString (8, records(i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close
@@ -284,5 +288,4 @@ object Database
         }
         ret.toArray
     }
-
 }
