@@ -8,7 +8,7 @@
     <parent>
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
-        <version>2.0-SNAPSHOT</version>
+        <version>2.0.0</version>
     </parent>
     <artifactId>CIMWeb</artifactId>
     <packaging>war</packaging>
@@ -17,6 +17,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- project dependencies -->
+        <version.dependency.project>2.0.0</version.dependency.project>
 
         <!-- plugins versions -->
         <version.plugin.compiler>3.5.1</version.plugin.compiler>
@@ -32,47 +35,12 @@
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
     </properties>
 
-    <build>
-        <defaultGoal>package</defaultGoal>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${version.plugin.compiler}</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>${version.plugin.war}</version>
-                <configuration>
-                    <archive>
-                        <addMavenDescriptor>false</addMavenDescriptor>
-                    </archive>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.19.1</version>
-                <configuration>
-                    <systemPropertyVariables>
-                      <tomee.classifier>${tomee.classifier}</tomee.classifier>
-                      <tomee.version>${version.dependency.tomee}</tomee.version>
-                    </systemPropertyVariables>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
     <dependencies>
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMConnector</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <classifier>lib</classifier>
             <scope>provided</scope>
         </dependency>
@@ -80,35 +48,35 @@
         <dependency>
             <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.geo</groupId>
             <artifactId>GeoVis</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.sm</groupId>
             <artifactId>SmartMeter</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>${version.dependency.project}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -157,6 +125,41 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <defaultGoal>package</defaultGoal>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.plugin.compiler}</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>${version.plugin.war}</version>
+                <configuration>
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.19.1</version>
+                <configuration>
+                    <systemPropertyVariables>
+                      <tomee.classifier>${tomee.classifier}</tomee.classifier>
+                      <tomee.version>${version.dependency.tomee}</tomee.version>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
 

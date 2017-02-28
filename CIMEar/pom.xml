@@ -8,7 +8,7 @@
     <parent>
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
-        <version>2.0-SNAPSHOT</version>
+        <version>2.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>CIMEar</artifactId>
@@ -19,7 +19,64 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <version.ear.plugin>2.6</version.ear.plugin>
+
+        <!-- project dependencies -->
+        <version.dependency.project>2.0.0</version.dependency.project>
     </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMConnector</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>rar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMWeb</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>war</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.sc</groupId>
+            <artifactId>ShortCircuit</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.gl</groupId>
+            <artifactId>GridLAB-D</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.sp</groupId>
+            <artifactId>Spatial</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.geo</groupId>
+            <artifactId>GeoVis</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.sm</groupId>
+            <artifactId>SmartMeter</artifactId>
+            <version>${version.dependency.project}</version>
+            <type>jar</type>
+        </dependency>
+
+    </dependencies>
+
     <build>
         <defaultGoal>install</defaultGoal>
         <plugins>
@@ -47,27 +104,27 @@
                         <jarModule>
                             <groupId>ch.ninecode.gl</groupId>
                             <artifactId>GridLAB-D</artifactId>
-                            <bundleFileName>GridLAB-D-2.0-SNAPSHOT.jar</bundleFileName>
+                            <bundleFileName>GridLAB-D-${version.dependency.project}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sc</groupId>
                             <artifactId>ShortCircuit</artifactId>
-                            <bundleFileName>ShortCircuit-2.0-SNAPSHOT.jar</bundleFileName>
+                            <bundleFileName>ShortCircuit-${version.dependency.project}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sp</groupId>
                             <artifactId>Spatial</artifactId>
-                            <bundleFileName>Spatial-2.0-SNAPSHOT.jar</bundleFileName>
+                            <bundleFileName>Spatial-${version.dependency.project}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.geo</groupId>
                             <artifactId>GeoVis</artifactId>
-                            <bundleFileName>GeoVis-2.0-SNAPSHOT.jar</bundleFileName>
+                            <bundleFileName>GeoVis-${version.dependency.project}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sm</groupId>
                             <artifactId>SmartMeter</artifactId>
-                            <bundleFileName>SmartMeter-2.0-SNAPSHOT.jar</bundleFileName>
+                            <bundleFileName>SmartMeter-${version.dependency.project}.jar</bundleFileName>
                         </jarModule>
                     </modules>
                 </configuration>
@@ -75,56 +132,4 @@
         </plugins>
     </build>
   
-    <dependencies>
-
-        <dependency>
-            <groupId>ch.ninecode.cim</groupId>
-            <artifactId>CIMConnector</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>rar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.cim</groupId>
-            <artifactId>CIMWeb</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>war</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.sc</groupId>
-            <artifactId>ShortCircuit</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.gl</groupId>
-            <artifactId>GridLAB-D</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.sp</groupId>
-            <artifactId>Spatial</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.geo</groupId>
-            <artifactId>GeoVis</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.sm</groupId>
-            <artifactId>SmartMeter</artifactId>
-            <version>2.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>
-
-    </dependencies>
 </project>
