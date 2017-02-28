@@ -54,6 +54,7 @@ object Main
         precalculation: Boolean = false,
         trafos: String = "",
         simulation: Int = -1,
+        all: Boolean = false,
         clean: Boolean = false,
         erase: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
@@ -79,15 +80,19 @@ object Main
             
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
-            text ("calculates threshold and if EEA exists for all HAS")
+            text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
 
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt[Int]('s', "simulation").valueName ("precalculation simulation number").
+        opt[Int]('s', "simulation").valueName ("N").
             action ((x, c) => c.copy (simulation = x)).
-            text ("primary database key for precalculated simulation values")
+            text ("simulation number (database key) from precalculation to select transformers to process")
+
+        opt[Unit]('a', "all").
+            action ((_, c) => c.copy (all = true)).
+            text ("process all transformers (no pre-caclulation)")
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
@@ -101,9 +106,9 @@ object Main
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
 
-        opt[String]('k', "checkpointdir").valueName ("HDFS://...").
+        opt[String]('k', "checkpointdir").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
-            text ("checkpoint directory on HDFS")
+            text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
         help ("help").text ("prints this usage text")
 
@@ -154,7 +159,7 @@ object Main
       StartingTrafos(vertexId, id, r, ratedS)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD)
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD): Int =
     {
       val use_topological_nodes: Boolean = true
       val solars = gridlabd.getSolarInstallations (use_topological_nodes)
@@ -177,10 +182,13 @@ object Main
           result
         }).distinct
       
-      Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+      val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+      println ("the simulation number is " + simulation)
             
       val trafo_string = has.filter(_.has_eea).map(_.source_obj).distinct.collect.mkString("\n")
-      gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8))  
+      gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8))
+
+      simulation
     }
     
     /**
@@ -234,6 +242,7 @@ object Main
                     classOf[ch.ninecode.gl.PV],
                     classOf[ch.ninecode.gl.Transformer],
                     classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                configuration.set ("spark.ui.showConsoleProgress", "false")
 
                 // make a Spark session
                 val session = SparkSession.builder ().config (configuration).getOrCreate ()
@@ -298,27 +307,6 @@ object Main
                     case None =>
                 }
 
-                val transformers = if ("" != arguments.trafos)
-                {
-                    // do all transformers listed in the file
-                    val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
-                else if (-1 != arguments.simulation)
-                {
-                    // do transformers specified in the database under the given simulation
-                    val trafos = Database.fetchTransformersWithEEA (arguments.simulation)
-                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
-                else
-                {
-                    // do all low voltage power transformers
-                    // ToDo: fix this 1kV multiplier on the voltages
-                    val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
                 val cdata = gridlabd.getCableMaxCurrent ()
                 session.sparkContext.getCheckpointDir match
                 {
@@ -329,13 +317,43 @@ object Main
                 val prepare = System.nanoTime ()
                 println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-                if (arguments.precalculation)
+                // determine the set of transformers to work on
+                var transformers = if ("" != arguments.trafos)
+                {
+                    // do all transformers listed in the file
+                    val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
+                else
+                {
+                    // do all low voltage power transformers
+                    // ToDo: fix this 1kV multiplier on the voltages
+                    val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+                    niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
+
+                // do the pre-calculation
+                val simulation = if (arguments.precalculation || ((-1 == arguments.simulation) && !arguments.all))
                 {
                     // construct the initial graph from the real edges and nodes
                     val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-                    threshold_calculation (initial, transformers, gridlabd) 
+                    threshold_calculation (initial, transformers, gridlabd)
                 }
-                else 
+                else
+                    arguments.simulation
+
+                // update the transformers based on the simulation
+                if (-1 != simulation)
+                {
+                    // do transformers specified in the database under the given simulation
+                    val trafos = Database.fetchTransformersWithEEA (simulation)
+                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+                    transformers = selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
+
+                // do gridlab simulation if not only pre-calculation
+                if (!arguments.precalculation)
                 {
                     val results = transformers.par.map (
                         (s) =>

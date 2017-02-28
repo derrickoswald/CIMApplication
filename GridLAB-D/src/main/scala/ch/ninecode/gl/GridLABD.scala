@@ -1150,44 +1150,13 @@ class GridLABD (session: SparkSession) extends Serializable
                     "done < /dev/stdin")
             else // cluster
             {
-                if (session.sparkContext.master == "yarn")
-                    Array[String] (
-                        "bash",
-                        "-c",
-                        "while read line; do " +
-                            "FILE=$line; " +
-                            "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
-                            "pushd $FILE; " +
-                            "gridlabd $FILE.glm 2>$FILE.out; " +
-                            "popd; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
-                            "cat $FILE/$FILE.out; " +
-                            "rm -rf $FILE; " +
-                        "done < /dev/stdin")
-                else
                 Array[String] (
                     "bash",
                     "-c",
                     "while read line; do " +
                         "FILE=$line; " +
+                        "env >> /tmp/$FILE.environment.log; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
-                        "export HADOOP_HOME=/opt/hadoop; " +
-                        "export HDFS_DIR=/opt/hadoop; " + // "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
-                        "export HADOOP_COMMON_LIB_NATIVE_DIR=/opt/hadoop/lib/native; " +
-                        "export HADOOP_HDFS_HOME=/opt/hadoop; " +
-                        "export HADOOP_COMMON_HOME=/opt/hadoop; " +
-                        "export HADOOP_INSTALL=$HADOOP_HOME; " +
-                        "export HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop; " +
-                        "export HADOOP_OPTS=-Djava.library.path=/opt/hadoop/lib/native; " +
-                        "export HADOOP_MAPRED_HOME=/opt/hadoop; " +
-                        "export HADOOP_CLASSPATH=$HADOOP_CONF_DIR:$HADOOP_HOME/share/hadoop/common/lib/*:$HADOOP_HOME/share/hadoop/common/*:$HADOOP_HOME/share/hadoop/hdfs:$HADOOP_HOME/share/hadoop/hdfs/lib*:$HADOOP_HOME/share/hadoop/hdfs/*:/opt/hadoop-2.7.2/share/hadoop/yarn/lib/*:/opt/hadoop-2.7.2/share/hadoop/yarn/*:/opt/hadoop/share/hadoop/mapreduce/lib/*:/opt/hadoop/share/hadoop/mapreduce/*:/opt/hadoop/contrib/capacity-scheduler/*.jar; " +
-                        "export JAVA_HOME=/usr/lib/jvm/java-8-oracle; " +
-                        "echo $FILE >> /tmp/environment.log; " +
-                        "env >> /tmp/environment.log; " +
-                        "echo hadoop classpath >> /tmp/environment.log; " +
-                        "hadoop classpath >> /tmp/environment.log; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>$FILE.out; " +
@@ -1197,7 +1166,6 @@ class GridLABD (session: SparkSession) extends Serializable
                         "cat $FILE/$FILE.out; " +
                         "rm -rf $FILE; " +
                     "done < /dev/stdin")
-
             }
 
         val files = session.sparkContext.parallelize (Array[String] (filename_root))
