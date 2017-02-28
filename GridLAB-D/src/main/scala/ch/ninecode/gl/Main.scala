@@ -24,7 +24,7 @@ import ch.ninecode.model._
 object Main
 {
     val APPLICATION_NAME = "GridLAB-D"
-    val APPLICATION_VERSION = "2.0-SNAPSHOT"
+    val APPLICATION_VERSION = "2.0.0"
 
     object LogLevels extends Enumeration
     {
@@ -92,7 +92,7 @@ object Main
 
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
-            text ("process all transformers (no pre-caclulation)")
+            text ("process all transformers (no pre-calculation)")
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
@@ -192,12 +192,12 @@ object Main
     }
     
     /**
-     * Build jar with dependencies (target/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/GridLAB-D-2.0.0-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --class ch.ninecode.gl.Main /opt/code/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn --class ch.ninecode.gl.Main /disktemp/transfer/GridLAB-D-2.0-SNAPSHOT-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/GridLAB-D-2.0.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
     def main (args: Array[String])
     {
