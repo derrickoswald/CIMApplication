@@ -79,7 +79,7 @@ hdfs dfs -mkdir /data
 hdfs dfs -put NIS_CIM_Export_sias_current_20161220.rdf /data
 ```
 
-The directory for GridLAB files files needs to be created and given write access permissions for the user executing the program. At the moment this is hard-coded as `/simulation` In the absence of specific user information, all write rights can be given:
+The directory for GridLAB files needs to be created and given write access permissions for the user executing the program. At the moment this is hard-coded as `/simulation` In the absence of specific user information, all write rights can be given:
 ```
 hdfs dfs -mkdir /simulation
 hdfs dfs -chmod a+w /simulation

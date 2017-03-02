@@ -1,9 +1,11 @@
 package ch.ninecode.gl
 
-import java.nio.charset.StandardCharsets
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.Calendar
 
 import scala.collection.mutable.HashMap
@@ -15,7 +17,9 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.rdd.RDD
+import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.VertexRDD
 import org.apache.spark.graphx.Graph
 
 import ch.ninecode.cim._
@@ -52,8 +56,6 @@ object Main
         opts: Map[String,String] = Map(),
         three: Boolean = false,
         precalculation: Boolean = false,
-        trafos: String = "",
-        simulation: Int = -1,
         all: Boolean = false,
         clean: Boolean = false,
         erase: Boolean = false,
@@ -81,14 +83,6 @@ object Main
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
             text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
-
-        opt[String]('t', "trafos").valueName ("<TRA file>").
-            action ((x, c) => c.copy (trafos = x)).
-            text ("file of transformer names (one per line) to process")
-
-        opt[Int]('s', "simulation").valueName ("N").
-            action ((x, c) => c.copy (simulation = x)).
-            text ("simulation number (database key) from precalculation to select transformers to process")
 
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
@@ -143,54 +137,6 @@ object Main
         return (ret)
     }
 
-    def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos =
-    {
-      val pn = PreNode ("", 0.0)
-      val vertexId = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
-      val ratedS = tdata(0).end1.ratedS
-      val id = tdata.map (_.transformer.id).mkString ("&")
-      var r = tdata(0).end1.r
-      if (tdata.length > 1)
-      {
-        val r1 = tdata(0).end1.r
-        val r2 = tdata(1).end1.r
-        r = (r1 + r2) / (r1 * r2)
-      }
-      StartingTrafos(vertexId, id, r, ratedS)
-    }
-
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD): Int =
-    {
-      val use_topological_nodes: Boolean = true
-      val solars = gridlabd.getSolarInstallations (use_topological_nodes)
-      val power_feeding = new PowerFeeding(initial)
-      val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
-
-      val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
-      val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != null))
-      val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
-                      
-      val has = traced_house_nodes_EEA.map(node => 
-        {
-          val result = node._2 match
-          {
-            case Some (eea) => 
-              node._1.copy(has_eea = true)
-            case None => 
-              node._1
-          }
-          result
-        }).distinct
-      
-      val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
-      println ("the simulation number is " + simulation)
-            
-      val trafo_string = has.filter(_.has_eea).map(_.source_obj).distinct.collect.mkString("\n")
-      gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8))
-
-      simulation
-    }
-    
     /**
      * Build jar with dependencies (target/GridLAB-D-2.0.0-jar-with-dependencies.jar):
      *     mvn package
@@ -318,15 +264,7 @@ object Main
                 println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
                 // determine the set of transformers to work on
-                var transformers = if ("" != arguments.trafos)
-                {
-                    // do all transformers listed in the file
-                    val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
-                else
-                {
+                var transformers = {
                     // do all low voltage power transformers
                     // ToDo: fix this 1kV multiplier on the voltages
                     val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
@@ -334,40 +272,29 @@ object Main
                 }
 
                 // do the pre-calculation
-                val simulation = if (arguments.precalculation || ((-1 == arguments.simulation) && !arguments.all))
+                val precalc_results =
                 {
                     // construct the initial graph from the real edges and nodes
                     val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-                    threshold_calculation (initial, transformers, gridlabd)
+                    PowerFeeding.threshold_calculation (initial, transformers, gridlabd)
                 }
-                else
-                    arguments.simulation
 
-                // update the transformers based on the simulation
-                if (-1 != simulation)
-                {
-                    // do transformers specified in the database under the given simulation
-                    val trafos = Database.fetchTransformersWithEEA (simulation)
-                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-                    transformers = selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-                }
+                val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
+                println ("" + trafo.length + " transformers to process:")
+                println (trafo.map (a => gridlabd.trafokreis(a)).mkString ("\n"))
 
                 // do gridlab simulation if not only pre-calculation
                 if (!arguments.precalculation)
                 {
-                    val results = transformers.par.map (
-                        (s) =>
-                        {
-                            val simulation = gridlabd.trafokreis (s)
-                            val hdata = if (-1 != arguments.simulation) Database.fetchHouseMaximumsForTransformer (arguments.simulation, simulation) else Array[Tuple2[String,Double]]()
-                            // construct the initial graph from the real edges and nodes
-                            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-                            val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata, hdata) (s)
-                            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-                            gridlabd.cleanup (simulation)
-                            id
-                        }
-                    )
+                    def do_one_trafofreis (s: Array[TData]): Int =
+                    {
+                        val simulation = gridlabd.trafokreis (s)
+                        val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, cdata) (s)
+                        val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
+                        gridlabd.cleanup (simulation)
+                        id
+                    }
+                    val results = trafo.par.map (do_one_trafofreis)
                 }
 
                 val calculate = System.nanoTime ()

@@ -109,21 +109,16 @@ class GridLABDSuite extends FunSuite
         val _transformers = new Transformers (session, gridlabd._StorageLevel)
         val tdata = _transformers.getTransformerData ()
         tdata.persist (gridlabd._StorageLevel)
+        val cdata = gridlabd.getCableMaxCurrent ()
+        cdata.persist (gridlabd._StorageLevel)
 
-        val transformers = if (-1 != sim)
-        {
-            // do transformers specified in the database under the given simulation
-            val trafos = Database.fetchTransformersWithEEA (sim)
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
-        }
-        else
-        {
+        // determine the set of transformers to work on
+        var transformers = {
+            // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
-        println (transformers.map ((x) => x.map (_.transformer.id).mkString ("&")).mkString ("\n"))
 
         // prepare the initial graph
         val (xedges, xnodes) = gridlabd.prepare ()
@@ -131,20 +126,30 @@ class GridLABDSuite extends FunSuite
         val prepare = System.nanoTime ()
         println ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
-        val cdata = gridlabd.getCableMaxCurrent ()
-        val results = transformers.par.map (
-            (s) =>
-            {
-                val simulation = gridlabd.trafokreis (s)
-                val hdata = if (-1 != sim) Database.fetchHouseMaximumsForTransformer (sim, simulation) else Array[Tuple2[String,Double]]()
-                // construct the initial graph from the real edges and nodes
-                val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-                val rdd = gridlabd.einspeiseleistung (initial, tdata, cdata, hdata) (s)
-                val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-                gridlabd.cleanup (simulation)
-                id
-            }
-        )
+        // do the pre-calculation
+        val precalc_results =
+        {
+            // construct the initial graph from the real edges and nodes
+            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+            PowerFeeding.threshold_calculation (initial, transformers, gridlabd)
+        }
+
+        val precalc = System.nanoTime ()
+        println ("precalc: " + (precalc - prepare) / 1e9 + " seconds")
+
+        val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
+        println ("" + trafo.length + " transformers to process:")
+        println (trafo.map (a => gridlabd.trafokreis(a)).mkString ("\n"))
+
+        def do_one_trafofreis (s: Array[TData]): Int =
+        {
+            val simulation = gridlabd.trafokreis (s)
+            val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, cdata) (s)
+            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
+            gridlabd.cleanup (simulation)
+            id
+        }
+        val results = trafo.par.map (do_one_trafofreis)
 
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")

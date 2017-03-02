@@ -1,5 +1,10 @@
 package ch.ninecode.gl
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.Calendar
+
 import org.apache.spark.rdd.RDD
 
 import org.apache.spark.graphx.Edge
@@ -13,22 +18,13 @@ import org.apache.spark.graphx.VertexId
 import ch.ninecode.model._
 
 case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double) extends Serializable
-case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: String, max_power_feeding: Double, has_eea: Boolean, reason: String, details: String) extends Serializable
-case class StartingTrafos(vertexId: VertexId, trafo_id: String, r: Double, ratedS: Double) extends Serializable
+case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: Array[TData], max_power_feeding: Double, has_eea: Boolean, reason: String, details: String) extends Serializable
+case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
+case class PreCalculationResults (simulation: Int, has: RDD[MaxPowerFeedingNodeEEA], graph: Graph[PowerFeedingNode, PreEdge])
 
-class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
-
-    def make_graph_vertices(v: PreNode): Tuple2[VertexId, PowerFeedingNode] =
-    {
-        val node = PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
-        (v.vertex_id (v.id_seq), node)
-    }
-
-    def make_graph_edges(e: PreEdge): Edge[PreEdge] =
-    {
-        Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
-    }
-
+class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
+{
+    // check if mesages should pass through and edge
     def shouldContinue(element: Element): Boolean =
     {
         val clazz = element.getClass.getName
@@ -64,44 +60,57 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
         return (ret)
     }
 
-    def vertexProgram(id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
+    // return length, resistance and maximum curret for an edge
+    def line_details (edge: PreEdge): Tuple3[Double, Double, Double] =
+    {
+        if (edge.element.isInstanceOf[ACLineSegment])
+            (
+                edge.element.asInstanceOf[ACLineSegment].Conductor.len / 1000.0,
+                edge.element.asInstanceOf[ACLineSegment].r,
+                edge.ratedCurrent
+            )
+        else
+            (0.0, 0.0, Double.PositiveInfinity)
+    }
+
+    def vertexProgram (id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
     {
         if (message.sum_r > v.sum_r || message.min_ir < v.min_ir) message else v
     }
 
-    def sendMessage(starting_id: Array[StartingTrafos])(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
+    def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
     {
-        var ret: Iterator[(VertexId, PowerFeedingNode)] = Iterator.empty
-
-        val start = starting_id.find(s ⇒ s.vertexId == triplet.dstId)
-        if (triplet.dstAttr != null && triplet.dstAttr.id_seq != null && !start.isEmpty && triplet.dstAttr.source_obj == null) {
-            ret = Iterator((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, start.get, 0.0, Double.PositiveInfinity)))
+        if (triplet.attr.v1 != triplet.attr.v2) // handle transformers specially
+        {
+            if (triplet.dstAttr.sum_r == Double.NegativeInfinity) // only send a message once
+                // send a message to the NSPin
+                Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.dstAttr.source_obj, 0.0, Double.PositiveInfinity)))
+            else
+                Iterator.empty
         }
-        else {
-            if (shouldContinue (triplet.attr.element)) {
-                var dist_km = 0.0
-                var r = 0.0
-                var ir = Double.PositiveInfinity
-                if (triplet.attr.element.isInstanceOf[ACLineSegment]) {
-                    r = triplet.attr.element.asInstanceOf[ACLineSegment].r
-                    dist_km = triplet.attr.element.asInstanceOf[ACLineSegment].Conductor.len / 1000.0
-                    ir = triplet.attr.ratedCurrent
-                }
-
-                if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null) {
-                    val sum_r = triplet.srcAttr.sum_r + r * dist_km
-                    val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                    ret = Iterator((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir)))
-                }
-                else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null) {
-                    val sum_r = triplet.dstAttr.sum_r + r * dist_km
-                    val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                    ret = Iterator((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir)))
-                }
-            }
-        }
-
-        return (ret)
+        else
+            if (triplet.srcAttr.source_obj != null || triplet.dstAttr.source_obj != null) // ignore the initial message
+                if (shouldContinue (triplet.attr.element))
+                    if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
+                    {
+                        val (dist_km, r, ir) = line_details (triplet.attr)
+                        val sum_r = triplet.srcAttr.sum_r + r * dist_km
+                        val min_ir = math.min(triplet.srcAttr.min_ir, ir)
+                        Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir)))
+                    }
+                    else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
+                    {
+                        val (dist_km, r, ir) = line_details (triplet.attr)
+                        val sum_r = triplet.dstAttr.sum_r + r * dist_km
+                        val min_ir = math.min(triplet.dstAttr.min_ir, ir)
+                        Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir)))
+                    }
+                    else
+                        Iterator.empty
+                else
+                    Iterator.empty
+            else
+                Iterator.empty
     }
 
     def mergeMessage(a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
@@ -109,20 +118,34 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
         if (a.sum_r > b.sum_r) a else b
     }
 
-    def trace(starting_nodes: Array[StartingTrafos]): (VertexRDD[PowerFeedingNode], EdgeRDD[PreEdge]) =
+    def trace(starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
     {
-        val transformer_circle = initial.vertices.id
-        val graph = initial.mapVertices((id, v) ⇒ PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity))
+        // create the initial Graph with PowerFeedingNode vertecies
+        def starting_map (id: VertexId, v: PreNode): PowerFeedingNode =
+        {
+            starting_nodes.find (s ⇒ s.osPin == id) match
+            {
+                case Some (node) =>
+                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
+                case None =>
+                    starting_nodes.find (s ⇒ s.nsPin == id) match
+                    {
+                        case Some (node) =>
+                            PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
+                        case None =>
+                            PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
+                    }
+            }
+        }
+        val graph = initial.mapVertices (starting_map)
 
+        // run Pregel
         val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
-
-        val feeding_power = graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
+        graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
             vertexProgram,
-            sendMessage (starting_nodes),
+            sendMessage,
             mergeMessage
         )
-
-        (feeding_power.vertices, feeding_power.edges)
     }
 
     def calc_max_feeding_power(node: PowerFeedingNode): MaxPowerFeedingNodeEEA =
@@ -164,5 +187,63 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable {
     {
         val keyed_solar = solars.map(s ⇒ (has(s.node), s.solar))
         house_nodes.keyBy(_.has_id).leftOuterJoin(keyed_solar).values
+    }
+}
+
+object PowerFeeding
+{
+    def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos =
+    {
+      val pn = PreNode ("", 0.0)
+      val v0 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal0.TopologicalNode else tdata(0).terminal0.ConnectivityNode)
+      val v1 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
+      val ratedS = tdata(0).end1.ratedS
+      val r = if (tdata.length > 1)
+      {
+          // ToDo: handle 3 or more transformers ganged together
+          val r1 = tdata(0).end1.r
+          val r2 = tdata(1).end1.r
+          (r1 + r2) / (r1 * r2)
+      }
+      else
+          tdata(0).end1.r
+      StartingTrafos (v0, v1, tdata, r, ratedS)
+    }
+
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
+    {
+
+        val use_topological_nodes: Boolean = true
+        val solars = gridlabd.getSolarInstallations (use_topological_nodes)
+        val power_feeding = new PowerFeeding(initial)
+        val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
+
+        val graph = power_feeding.trace (start_ids)
+        val house_nodes = power_feeding.get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
+        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
+
+        val has = traced_house_nodes_EEA.map(node =>
+        {
+            node._2 match
+            {
+                case Some (eea) =>
+                    node._1.copy(has_eea = true)
+                case None =>
+                    node._1
+            }
+        }).distinct
+
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+        println ("the simulation number is " + simulation)
+
+        // make the directory
+        val file = Paths.get ("simulation/dummy")
+        Files.createDirectories (file.getParent ())
+
+        // write the file
+        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.mkString("\n")
+        Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
+
+        PreCalculationResults (simulation, has, graph)
     }
 }

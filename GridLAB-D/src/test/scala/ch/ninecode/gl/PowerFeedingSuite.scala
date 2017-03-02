@@ -119,30 +119,14 @@ class PowerFeedingSuite extends FunSuite
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
-        def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos = 
-        {
-          val pn = PreNode ("", 0.0)
-          val vertexId = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
-          val ratedS = tdata(0).end1.ratedS
-          val id = tdata.map (_.transformer.id).mkString ("&")
-          var r = tdata(0).end1.r
-          if (tdata.length > 1)
-          {
-            val r1 = tdata(0).end1.r
-            val r2 = tdata(1).end1.r
-            r = (r1 + r2) / (r1 * r2)
-          }
-          StartingTrafos(vertexId, id, r, ratedS)
-        }
-        
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
         val power_feeding = new PowerFeeding(initial)
 
-        val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
-        val (traced_nodes, traced_edges) = power_feeding.trace(start_ids)
-        val house_nodes = power_feeding.get_treshold_per_has(traced_nodes.values.filter(_.source_obj != null))
+        val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))
+        val graph = power_feeding.trace(start_ids)
+        val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
         val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
                         
         val has = traced_house_nodes_EEA.map(node => 
@@ -159,9 +143,9 @@ class PowerFeedingSuite extends FunSuite
         
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         println ("the simulation number is " + simulation)
-              
-        val trafo_string = has.filter(_.has_eea).map(_.source_obj).distinct.collect.mkString("\n")
-        gridlabd.writeInputFile("trafos_with_eea", "trafos.txt", trafo_string.getBytes (StandardCharsets.UTF_8)) 
+
+        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.mkString("\n")
+        Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
     }
 
 }

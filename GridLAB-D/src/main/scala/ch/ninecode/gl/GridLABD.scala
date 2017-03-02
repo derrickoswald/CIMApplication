@@ -27,6 +27,8 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.VertexRDD
+import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.Dataset
@@ -630,7 +632,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, experiments: HashSet[Experiment])(arg: Tuple3[PreNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
+    def make_node (slack: String, experiments: HashSet[Experiment])(arg: Tuple3[PowerFeedingNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
         val node = arg._1
         val pv = arg._2
@@ -854,42 +856,47 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     def make_glm (
-        initial: Graph[PreNode, PreEdge],
+        precalc_results: PreCalculationResults,
         tdata: RDD[TData],
+        starting_transformers: Array[TData],
         starting_node: String,
         simulation: String,
         start: Calendar,
         finish: Calendar,
-        swing_node: String,
-        hdata:Array[Tuple2[String,Double]]): Tuple2[String,HashSet[Experiment]] =
+        swing_node: String): Tuple2[String,HashSet[Experiment]] =
     {
-        /*
-         * Use GraphX to export only the nodes and edges in the trafo-kreise.
-         * That is, emit all objects connected to the equipment,
-         * isolated from the entire network by transformer(s)
-         * i.e. include everything in a "trace all", but stop at transfomers
-         */
-        val trace = new Trace (initial)
-        val pn = PreNode ("", 0.0) // just to access the vertex_id function
-        val start_at = Array[VertexId] (pn.vertex_id (starting_node))
-        val (traced_nodes, traced_edges) = trace.run (start_at)
-
-        // make a list of houses and experiment slots
-        val houses = traced_nodes.filter (x => x.voltage < 1000.0 && x.id_seq.startsWith ("HAS")).map (_.id_seq).collect
         var slot = 0
         val window = 15 * 60 // window size in simulated seconds per experiment
         val experiments = HashSet[Experiment]()
+
         // limit as ceiling(d+10%) thousands
         def limit (d: Double) = math.ceil (d * 1.1 / 1000.0) * 1000.0
+
+        def tdata_compare(t1: Array[TData], t2: Array[TData]): Boolean =
+        {
+            (t1.length == t2.length) && (trafokreis(t1) == trafokreis(t2))
+        }
+
+        def vdata_compare(v: Tuple2[VertexId, PowerFeedingNode], t2: Array[TData]): Boolean =
+        {
+            val node = v._2
+            val source = node.source_obj
+            val ret = if (null == source)
+                false
+            else
+                tdata_compare (source.trafo_id, t2)
+            ret
+        }
+
+        val traced_nodes = precalc_results.graph.vertices.filter(v => vdata_compare (v, starting_transformers))
+        val vids = traced_nodes.keys.collect
+        val traced_edges = precalc_results.graph.edges.filter (x => (vids.contains (x.dstId) && vids.contains (x.srcId))).map(_.attr)
+        val houses = precalc_results.has.filter(h => tdata_compare(h.source_obj, starting_transformers)).map(x => (x.has_id, x.max_power_feeding)).collect
         for (node <- houses)
         {
-            val house = has (node)
-            val max = hdata.find (house == _._1) match
-            {
-                case Some(m) => limit (m._2)
-                case None => 100000
-            }
-            val experiment = Experiment (simulation, has (house), start, slot, window, 5, 0, max, 1000)
+            val house = node._1
+            val max = limit (node._2)
+            val experiment = Experiment (simulation, house, start, slot, window, 5, 0, max, 1000)
             slot = slot + 1
             experiments += experiment
         }
@@ -918,7 +925,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val transformers = trans.getTransformers (transformer_edges)
 
         // get the node strings
-        val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
+        val dd = traced_nodes.values.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
         val n_strings = qq.map (make_node (swing_node, experiments))
 
@@ -981,7 +988,7 @@ class GridLABD (session: SparkSession) extends Serializable
         transformers.map (_.transformer.id).mkString ("_")
     }
    
-    def export (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], hdata:Array[Tuple2[String,Double]], transformers: Array[TData]): HashSet[Experiment] =
+    def export (precalc_results: PreCalculationResults, tdata: RDD[TData], transformers: Array[TData]): HashSet[Experiment] =
     {
         var ret = HashSet[Experiment] ()
 
@@ -1008,7 +1015,7 @@ class GridLABD (session: SparkSession) extends Serializable
             }
 
         eraseInputFile (simulation)
-        val result = make_glm (initial, tdata, starting._2, simulation, start, finish, starting._1, hdata)
+        val result = make_glm (precalc_results, tdata, transformers, starting._2, simulation, start, finish, starting._1)
         writeInputFile (simulation, simulation + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         writeInputFile (simulation, "output_data/dummy", null) // mkdir
         ret = result._2;
@@ -1411,12 +1418,12 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def einspeiseleistung (initial: Graph[PreNode, PreEdge], tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]], hdata:Array[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (precalc_results: PreCalculationResults, tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
 
-        val experiments = export (initial, tdata, hdata, transformers)
+        val experiments = export (precalc_results, tdata, transformers)
         val write = System.nanoTime ()
         println (simulation + " export: " + (write - start) / 1e9 + " seconds")
 
