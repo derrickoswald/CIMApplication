@@ -1288,11 +1288,14 @@ class GridLABD (session: SparkSession) extends Serializable
         def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
         {
             return (
-                if (cablemap.contains (r.element))
+                if (r.units == "Amps")
                 {
-                    val max = cablemap (r.element)
-                    ((r.units == "Amps") && // redundant
-                    (r.value_a.abs > max))
+                    val entry = cablemap.get (r.element)
+                    entry match
+                    {
+                        case Some (max) => (r.value_a.abs / Math.sqrt (3) > max)
+                        case None => false
+                    }
                 }
                 else
                     false
@@ -1301,11 +1304,14 @@ class GridLABD (session: SparkSession) extends Serializable
         def interesting3ph (r: ThreePhaseComplexDataElement): Boolean =
         {
             return (
-                if (cablemap.contains (r.element))
+                if (r.units == "Amps")
                 {
-                    val max = cablemap (r.element)
-                    ((r.units == "Amps") && // redundant
-                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+                    val entry = cablemap.get (r.element)
+                    entry match
+                    {
+                        case Some (max) => ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+                        case None => false
+                    }
                 }
                 else
                     false
