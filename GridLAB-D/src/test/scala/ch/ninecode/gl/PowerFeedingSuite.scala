@@ -73,7 +73,7 @@ class PowerFeedingSuite extends FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    def readFile (session: SparkSession, filename: String): DataFrame =
+    def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
@@ -83,9 +83,10 @@ class PowerFeedingSuite extends FunSuite
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val element = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-
-        return (element)
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        println (elements.count () + " elements")
+        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+        ntp.process (false)
     }
 
     test ("Basic")
@@ -95,12 +96,10 @@ class PowerFeedingSuite extends FunSuite
         val begin = System.nanoTime ()
 
         val use_topological_nodes = true
-        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig*/
-        
+        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         val filename = FILE_DEPOT + root + ".rdf"
-
         val elements = readFile (session, filename)
-        println (elements.count () + " elements")
+
         val read = System.nanoTime ()
         println ("read : " + (read - begin) / 1e9 + " seconds")
 

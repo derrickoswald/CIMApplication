@@ -23,6 +23,7 @@ import scala.collection.mutable.HashSet
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.FileUtil
 import org.apache.hadoop.fs.Path
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
@@ -123,6 +124,7 @@ class GridLABD (session: SparkSession) extends Serializable
     var DELETE_INTERMEDIATE_FILES = true
     var DELETE_SIMULATION_FILES = true
     var USE_ONE_PHASE = true
+    var FOLD_IN_MEMORY = false
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -872,6 +874,46 @@ class GridLABD (session: SparkSession) extends Serializable
         tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis)/60/60/1000) + tz.getDisplayName (true, TimeZone.SHORT)
     }
 
+    def gather (rdd: RDD[String], equipment: String, uniqe_name: String): String =
+    {
+        if (("" == HDFS_URI) || FOLD_IN_MEMORY)
+            rdd.fold ("")((x: String, y: String) => if ("" == x) y else x + y)
+        else
+        {
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
+
+            // write partitions to hdfs
+            val dir = "/simulation/" + equipment + "/"
+            val tmpname = dir + "tmp/" + uniqe_name
+            Files.createDirectories (Paths.get (tmpname).getParent ())
+            rdd.saveAsTextFile (tmpname)
+
+            // merge into one file
+            val dstname = dir + uniqe_name
+            FileUtil.copyMerge (hdfs, new Path (tmpname), hdfs, new Path (dstname), false, hdfs_configuration, null)
+            FileUtil.fullyDelete (new File (tmpname))
+
+            // read the file contents
+            val in = hdfs.open (new Path (dstname))
+            val buffer = new Array[Byte] (in.available ());
+            in.readFully (0, buffer)
+            in.close ()
+
+            // return the file contents as a String
+            val text = new org.apache.hadoop.io.Text ()
+            text.append (buffer, 0, buffer.length)
+            val ret = text.toString ()
+
+            // clean up
+            hdfs.delete (new Path (dstname), true)
+
+            ret
+        }
+    }
+
     def make_glm (
         precalc_results: PreCalculationResults,
         tdata: RDD[TData],
@@ -993,9 +1035,9 @@ class GridLABD (session: SparkSession) extends Serializable
 
         val result = new StringBuilder ()
         result.append (prefix)
-        result.append (c_strings.fold ("")((x: String, y: String) => x + y))
-        result.append (n_strings.fold ("")((x: String, y: String) => x + y))
-        result.append (e_strings.fold ("")((x: String, y: String) => x + y))
+        result.append (gather (c_strings, simulation, "configurations"))
+        result.append (gather (n_strings, simulation, "nodes"))
+        result.append (gather (e_strings, simulation, "edges"))
 
         return ((result.toString (), experiments))
     }

@@ -146,8 +146,8 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>GridLABDSuite.txt</filereports>
-                    <suites>ch.ninecode.gl.GridLABDSuite</suites>
+                    <filereports>TestSuite.txt</filereports>
+                    <suites>ch.ninecode.gl.TestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

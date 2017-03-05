@@ -55,6 +55,7 @@ object Main
         master: String = "",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
+        fold_in_memory: Boolean = false,
         precalculation: Boolean = false,
         all: Boolean = false,
         clean: Boolean = false,
@@ -80,6 +81,10 @@ object Main
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
             
+        opt[Unit]('f', "fold_in_memory").
+            action ((_, c) => c.copy (fold_in_memory = true)).
+            text ("perform glm coalesce in memory")
+
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
             text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
@@ -204,18 +209,14 @@ object Main
                 options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
                 options.put ("ch.ninecode.cim.make_edges", "false")
                 options.put ("ch.ninecode.cim.do_join", "false")
-                options.put ("ch.ninecode.cim.do_topo", "true")
+                options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
                 options.put ("ch.ninecode.cim.do_topo_islands", "false")
 
                 val elements = session.read.format ("ch.ninecode.cim").options (options).load (arguments.files:_*)
-                // this fails with ClassCastException:
-                //     val count = elements.count
-                // cannot assign instance of scala.collection.immutable.List$SerializationProxy
-                // to field org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1.outputTypes$2
-                // of type scala.collection.Seq in instance of org.apache.spark.sql.execution.RDDConversions$$anonfun$rowToRowRdd$1
-                //println ("" + count + " elements")
-                elements.printSchema
-                elements.explain
+                println (elements.count () + " elements")
+                val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                ntp.process (false)
+
                 val read = System.nanoTime ()
                 println ("read : " + (read - setup) / 1e9 + " seconds")
 
@@ -231,6 +232,7 @@ object Main
                 gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
+                gridlabd.FOLD_IN_MEMORY = arguments.fold_in_memory
                 gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
                 // prepare the initial graph edges and nodes

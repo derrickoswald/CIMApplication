@@ -67,7 +67,7 @@ class GridLABDSuite extends FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    def readFile (session: SparkSession, filename: String): DataFrame =
+    def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")
         val options = new HashMap[String, String] ()
@@ -77,9 +77,10 @@ class GridLABDSuite extends FunSuite
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "true")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val element = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-
-        return (element)
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        println (elements.count () + " elements")
+        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+        ntp.process (false)
     }
 
     test ("Basic")
@@ -89,14 +90,11 @@ class GridLABDSuite extends FunSuite
         val begin = System.nanoTime ()
 
         val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
-        //val root = "NIS_CIM_Export_sias_current_20161220_Sample4" // Häuselacker
-        //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V9_assets_preview" // Brügg
+        //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11_assets_preview" // Brügg
         val filename =
             FILE_DEPOT + root + ".rdf"
-        val sim = -1
-
         val elements = readFile (session, filename)
-        println (elements.count () + " elements")
+
         val read = System.nanoTime ()
         println ("read : " + (read - begin) / 1e9 + " seconds")
 
