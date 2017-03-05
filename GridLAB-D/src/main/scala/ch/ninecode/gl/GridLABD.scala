@@ -125,6 +125,7 @@ class GridLABD (session: SparkSession) extends Serializable
     var DELETE_SIMULATION_FILES = true
     var USE_ONE_PHASE = true
     var FOLD_IN_MEMORY = false
+    var EXPORT_ONLY = false
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -874,7 +875,7 @@ class GridLABD (session: SparkSession) extends Serializable
         tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis)/60/60/1000) + tz.getDisplayName (true, TimeZone.SHORT)
     }
 
-    def gather (rdd: RDD[String], equipment: String, uniqe_name: String): String =
+    def gather (rdd: RDD[String], equipment: String, unique_name: String): String =
     {
         if (("" == HDFS_URI) || FOLD_IN_MEMORY)
             rdd.fold ("")((x: String, y: String) => if ("" == x) y else x + y)
@@ -887,14 +888,15 @@ class GridLABD (session: SparkSession) extends Serializable
 
             // write partitions to hdfs
             val dir = "/simulation/" + equipment + "/"
-            val tmpname = dir + "tmp/" + uniqe_name
-            Files.createDirectories (Paths.get (tmpname).getParent ())
-            rdd.saveAsTextFile (tmpname)
+            val tmpname = dir + unique_name + "tmp"
+            val tmp = new Path (tmpname)
+            rdd.saveAsTextFile (hdfs.makeQualified (tmp).toString)
 
             // merge into one file
-            val dstname = dir + uniqe_name
-            FileUtil.copyMerge (hdfs, new Path (tmpname), hdfs, new Path (dstname), false, hdfs_configuration, null)
-            FileUtil.fullyDelete (new File (tmpname))
+            val dstname = dir + unique_name
+            val dst = new Path (dstname)
+            FileUtil.copyMerge (hdfs, tmp, hdfs, dst, false, hdfs_configuration, null)
+            hdfs.delete (tmp, true)
 
             // read the file contents
             val in = hdfs.open (new Path (dstname))
@@ -908,7 +910,7 @@ class GridLABD (session: SparkSession) extends Serializable
             val ret = text.toString ()
 
             // clean up
-            hdfs.delete (new Path (dstname), true)
+            hdfs.delete (dst, true)
 
             ret
         }
@@ -1469,19 +1471,27 @@ class GridLABD (session: SparkSession) extends Serializable
         val write = System.nanoTime ()
         println (simulation + " export: " + (write - start) / 1e9 + " seconds")
 
-        val data = solve (simulation)
-        val gridlabd = System.nanoTime ()
-        println (simulation + " solve: " + (gridlabd - write) / 1e9 + " seconds")
-
-        val ret = if (null != data)
-            analyse (experiments, data, cdata) (transformers)
-        else
+        val ret = if (!EXPORT_ONLY)
         {
-            println ("solve failed for " + simulation)
-            session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+            val data = solve (simulation)
+            val gridlabd = System.nanoTime ()
+            println (simulation + " solve: " + (gridlabd - write) / 1e9 + " seconds")
+
+            if (null != data)
+            {
+                val r = analyse (experiments, data, cdata) (transformers)
+                val finish = System.nanoTime ()
+                println (simulation + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
+                r
+            }
+            else
+            {
+                println ("solve failed for " + simulation)
+                session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+            }
         }
-        val finish = System.nanoTime ()
-        println (simulation + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
+        else
+            session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
 
         return (ret)
     }

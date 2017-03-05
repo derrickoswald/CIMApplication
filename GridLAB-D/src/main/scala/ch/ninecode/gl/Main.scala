@@ -57,6 +57,7 @@ object Main
         three: Boolean = false,
         fold_in_memory: Boolean = false,
         precalculation: Boolean = false,
+        export_only: Boolean = false,
         all: Boolean = false,
         clean: Boolean = false,
         erase: Boolean = false,
@@ -80,7 +81,7 @@ object Main
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
-            
+
         opt[Unit]('f', "fold_in_memory").
             action ((_, c) => c.copy (fold_in_memory = true)).
             text ("perform glm coalesce in memory")
@@ -88,6 +89,10 @@ object Main
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
             text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
+
+        opt[Unit]('x', "export_only").
+            action ((_, c) => c.copy (export_only = true)).
+            text ("generates glm files only - no solve or analyse operations")
 
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
@@ -204,6 +209,7 @@ object Main
                 val setup = System.nanoTime ()
                 println ("setup : " + (setup - begin) / 1e9 + " seconds")
 
+                // read the file
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
                 options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
@@ -211,28 +217,36 @@ object Main
                 options.put ("ch.ninecode.cim.do_join", "false")
                 options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
                 options.put ("ch.ninecode.cim.do_topo_islands", "false")
-
                 val elements = session.read.format ("ch.ninecode.cim").options (options).load (arguments.files:_*)
-                println (elements.count () + " elements")
-                val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-                ntp.process (false)
+                if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
+                    elements.explain
+                else
+                    println (elements.count () + " elements")
 
                 val read = System.nanoTime ()
                 println ("read : " + (read - setup) / 1e9 + " seconds")
 
-                val hdfsuri =
+                // identify topological nodes
+                val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                val ele = ntp.process (false)
+                println (ele.count () + " elements")
+
+                val topo = System.nanoTime ()
+                println ("topology : " + (topo - read) / 1e9 + " seconds")
+
+                // prepare for precalculation
+                val gridlabd = new GridLABD (session)
+                gridlabd.HDFS_URI =
                 {
                     val name = arguments.files (0).replace (" ", "%20")
                     val uri = new URI (name)
                     uri.getScheme + "://" + uri.getAuthority + "/"
                 }
-
-                val gridlabd = new GridLABD (session)
-                gridlabd.HDFS_URI = hdfsuri
                 gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
                 gridlabd.FOLD_IN_MEMORY = arguments.fold_in_memory
+                gridlabd.EXPORT_ONLY = arguments.export_only
                 gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 
                 // prepare the initial graph edges and nodes
@@ -262,16 +276,17 @@ object Main
                     case None =>
                 }
 
-                val prepare = System.nanoTime ()
-                println ("prepare: " + (prepare - read) / 1e9 + " seconds")
-
                 // determine the set of transformers to work on
-                var transformers = {
+                var transformers =
+                {
                     // do all low voltage power transformers
                     // ToDo: fix this 1kV multiplier on the voltages
                     val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
                     niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
+
+                val prepare = System.nanoTime ()
+                println ("prepare: " + (prepare - topo) / 1e9 + " seconds")
 
                 // do the pre-calculation
                 val precalc_results =
@@ -283,6 +298,9 @@ object Main
 
                 val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
                 println ("" + trafo.length + " transformers to process")
+
+                val precalc = System.nanoTime ()
+                println ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
                 // do gridlab simulation if not only pre-calculation
                 if (!arguments.precalculation)
@@ -302,7 +320,7 @@ object Main
                 }
 
                 val calculate = System.nanoTime ()
-                println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
+                println ("calculate: " + (calculate - precalc) / 1e9 + " seconds")
 
                 println ("total: " + (calculate - begin) / 1e9 + " seconds")
 

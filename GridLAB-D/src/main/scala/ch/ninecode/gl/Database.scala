@@ -51,45 +51,50 @@ object Database
             // create schema
             makeSchema (connection)
 
-            // insert the simulation
-            val now = Calendar.getInstance ()
-            val insert = connection.prepareStatement ("insert into simulation (id, description, time) values (?, ?, ?)")
-            insert.setNull (1, Types.INTEGER)
-            insert.setString (2, description)
-            insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
-            insert.executeUpdate ()
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select last_insert_rowid() id")
-            resultset.next ()
-            val id = resultset.getInt ("id")
-            resultset.close
-            statement.close
-
-            // insert the results
             val records = results.collect ()
-            println (equipment + " " + records.length + " records")
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?)")
-            for (i <- 0 until records.length)
+            if (0 != records.length)
             {
-                datainsert.setNull (1, Types.INTEGER)
-                datainsert.setInt (2, id)
-                datainsert.setString (3, records(i).trafo)
-                datainsert.setString (4, records(i).house)
-                records(i).max match
-                {
-                    case None =>
-                        datainsert.setNull (5, Types.DOUBLE)
-                    case Some (kw) =>
-                        datainsert.setDouble (5, kw)
-                }
-                datainsert.setString (6, records(i).reason)
-                datainsert.setString (7, records(i).details)
-                datainsert.executeUpdate ()
-            }
-            datainsert.close
-            connection.commit
+                // insert the simulation
+                val now = Calendar.getInstance ()
+                val insert = connection.prepareStatement ("insert into simulation (id, description, time) values (?, ?, ?)")
+                insert.setNull (1, Types.INTEGER)
+                insert.setString (2, description)
+                insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
+                insert.executeUpdate ()
+                val statement = connection.createStatement ()
+                val resultset = statement.executeQuery ("select last_insert_rowid() id")
+                resultset.next ()
+                val id = resultset.getInt ("id")
+                resultset.close
+                statement.close
 
-            return (id)
+                // insert the results
+                val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?)")
+                for (i <- 0 until records.length)
+                {
+                    datainsert.setNull (1, Types.INTEGER)
+                    datainsert.setInt (2, id)
+                    datainsert.setString (3, records(i).trafo)
+                    datainsert.setString (4, records(i).house)
+                    records(i).max match
+                    {
+                        case None =>
+                            datainsert.setNull (5, Types.DOUBLE)
+                        case Some (kw) =>
+                            datainsert.setDouble (5, kw)
+                    }
+                    datainsert.setString (6, records(i).reason)
+                    datainsert.setString (7, records(i).details)
+                    datainsert.executeUpdate ()
+                }
+                datainsert.close
+                connection.commit
+
+                println (equipment + " " + records.length + " records")
+                return (id)
+            }
+            else
+                return (0)
         }
         catch
         {
@@ -113,7 +118,7 @@ object Database
         }
 
     }
-    
+
     def store_precalculation (description: String, t1: Calendar) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
