@@ -280,18 +280,20 @@ object Main
                 }
 
                 val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
-                println ("" + trafo.length + " transformers to process:")
-                println (trafo.map (a => gridlabd.trafokreis(a)).mkString ("\n"))
+                println ("" + trafo.length + " transformers to process")
 
                 // do gridlab simulation if not only pre-calculation
                 if (!arguments.precalculation)
                 {
                     def do_one_trafofreis (s: Array[TData]): Int =
                     {
+                        val start = System.nanoTime ()
                         val simulation = gridlabd.trafokreis (s)
                         val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, cdata) (s)
                         val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
                         gridlabd.cleanup (simulation)
+                        val finish = System.nanoTime ()
+                        println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
                         id
                     }
                     val results = trafo.par.map (do_one_trafofreis)

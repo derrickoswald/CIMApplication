@@ -139,17 +139,34 @@ class GridLABD (session: SparkSession) extends Serializable
 
     var _StorageLevel = StorageLevel.MEMORY_ONLY
 
-    def get (name: String): RDD[Element] =
+    def get (name: String, retry: Int): RDD[Element] =
     {
-        val rdds = session.sparkContext.getPersistentRDDs
-        for (key <- rdds.keys)
-        {
-            val rdd = rdds (key)
-            if (rdd.name == name)
-                return (rdd.asInstanceOf[RDD[Element]])
-        }
-        return (null)
+        val rdds = session.sparkContext.getPersistentRDDs.filter (_._2.name == name)
+        if (0 < rdds.size)
+            rdds.head._2.asInstanceOf[RDD[Element]]
+        else
+            if (0 < retry)
+            {
+                val continue = try
+                {
+                    log.error ("get on RDD " + name + " failed, retry " + retry)
+                    Thread.sleep (2000L)
+                    true
+                }
+                catch
+                {
+                    case _ : Throwable => false
+                }
+                if (continue)
+                    get (name, retry - 1)
+                else
+                    null
+            }
+            else
+                null
     }
+
+    def get (name: String): RDD[Element] = get (name, 10)
 
     // make a valid configuration name
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
@@ -1280,53 +1297,36 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overV.flatMap (assign (experiments)))
     }
 
-    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cablemap: HashMap[String, Double]): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
         val limit = "current limit"
 
-        // eliminate voltage measurements and measurements below capacity
-        def interesting1ph (r: ThreePhaseComplexDataElement): Boolean =
+        // eliminate measurements below capacity
+        def interesting1ph (arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
         {
-            return (
-                if (r.units == "Amps")
-                {
-                    val entry = cablemap.get (r.element)
-                    entry match
-                    {
-                        case Some (max) => (r.value_a.abs / Math.sqrt (3) > max)
-                        case None => false
-                    }
-                }
-                else
-                    false
-            )
+            val r = arg._1
+            val max = arg._2
+            r.value_a.abs / Math.sqrt (3) > max
         }
-        def interesting3ph (r: ThreePhaseComplexDataElement): Boolean =
+        def interesting3ph (arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
         {
-            return (
-                if (r.units == "Amps")
-                {
-                    val entry = cablemap.get (r.element)
-                    entry match
-                    {
-                        case Some (max) => ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
-                        case None => false
-                    }
-                }
-                else
-                    false
-            )
+            val r = arg._1
+            val max = arg._2
+            ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
         }
 
-        val overI = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+        val results_and_cables = results.keyBy (_.element).join (cdata).values
+        val overI = results_and_cables.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+        def assign (experiments: HashSet[Experiment]) (arg: Tuple2[ThreePhaseComplexDataElement, Double]): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
+            val r = arg._1
+            val max = arg._2
             for (e <- experiments)
             {
                 if ((e.t1.getTimeInMillis () <= r.millis) && (e.t2.getTimeInMillis () >= r.millis))
-                    return (List ((e, r, limit, r.element + " > " + cablemap (r.element) + " Amps")))
+                    return (List ((e, r, limit, r.element + " > " + max + " Amps")))
             }
             List ()
         }
@@ -1387,19 +1387,13 @@ class GridLABD (session: SparkSession) extends Serializable
         val max = nominal + (nominal * tolerance / 100.0)
         // could also check for under the minimum; r.value_a.abs < min
 
-        // get the maximum cable currents for the cables in this simulation
-        val cables = results.filter (_.units == "Amps").map (_.element).collect
-        val cablemap = HashMap[String, Double] ()
-        for (pair <- cdata.filter ((x) => cables.contains (x._1)).collect)
-            cablemap += pair
-
         // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
         val trafo_power = transformers.map ((x) => x.end1.ratedS).sum
         // get the name of the transformer recorder (matches Trans.emit)
         val trafo_name = transformers.map ((x) => x.transformer.id).mkString ("_")
 
         val v = voltcheck (experiments, results, max)
-        val i = ampcheck (experiments, results, cablemap)
+        val i = ampcheck (experiments, results, cdata)
         val p = powercheck (experiments, results, trafo_power, trafo_name)
 
         // establish a "no limit found" default

@@ -42,7 +42,6 @@ class PowerFeedingSuite extends FunSuite
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
-        //configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
         // register low level classes
@@ -60,6 +59,7 @@ class PowerFeedingSuite extends FunSuite
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Transformer],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN

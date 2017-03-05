@@ -53,6 +53,7 @@ class GridLABDSuite extends FunSuite
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Transformer],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
