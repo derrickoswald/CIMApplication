@@ -19,6 +19,7 @@
 
 # Maven files #
 data/
+private_data/
 target/
 pom.xml.tag
 pom.xml.releaseBackup

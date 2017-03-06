@@ -20,7 +20,7 @@ import javax.xml.bind.DatatypeConverter
 
 class GridLABDSuite extends FunSuite
 {
-    val FILE_DEPOT = "src/test/resources/"
+    val FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
