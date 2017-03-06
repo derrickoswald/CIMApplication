@@ -183,9 +183,9 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
         houses.map(calc_max_feeding_power)
     }
 
-    def join_eea(house_nodes: RDD[MaxPowerFeedingNodeEEA], solars: RDD[PV]): RDD[(MaxPowerFeedingNodeEEA, Option[SolarGeneratingUnit])] =
+    def join_eea(house_nodes: RDD[MaxPowerFeedingNodeEEA], solars: RDD[Tuple2[String,Iterable[PV]]]): RDD[(MaxPowerFeedingNodeEEA, Option[SolarGeneratingUnit])] =
     {
-        val keyed_solar = solars.map(s ⇒ (has(s.node), s.solar))
+        val keyed_solar = solars.map(s ⇒ (has(s._1), s._2.head.solar))
         house_nodes.keyBy(_.has_id).leftOuterJoin(keyed_solar).values
     }
 }
@@ -210,17 +210,16 @@ object PowerFeeding
       StartingTrafos (v0, v1, tdata, r, ratedS)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
     {
 
         val use_topological_nodes: Boolean = true
-        val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         val power_feeding = new PowerFeeding(initial)
         val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
 
         val graph = power_feeding.trace (start_ids)
         val house_nodes = power_feeding.get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
-        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
+        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, sdata)
 
         val has = traced_house_nodes_EEA.map(node =>
         {

@@ -57,6 +57,7 @@ object Main
         three: Boolean = false,
         fold_in_memory: Boolean = false,
         precalculation: Boolean = false,
+        trafos: String = "",
         export_only: Boolean = false,
         all: Boolean = false,
         clean: Boolean = false,
@@ -89,6 +90,10 @@ object Main
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
             text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
+
+        opt[String]('t', "trafos").valueName ("<TRA file>").
+            action ((x, c) => c.copy (trafos = x)).
+            text ("file of transformer names (one per line) to process")
 
         opt[Unit]('x', "export_only").
             action ((_, c) => c.copy (export_only = true)).
@@ -269,6 +274,7 @@ object Main
                     case None =>
                 }
 
+                // get the rated current for every cable
                 val cdata = gridlabd.getCableMaxCurrent ()
                 session.sparkContext.getCheckpointDir match
                 {
@@ -276,8 +282,23 @@ object Main
                     case None =>
                 }
 
+                // get the existing photo-voltaic installations keyed by terminal
+                val sdata = gridlabd.getSolarInstallations (true)
+                session.sparkContext.getCheckpointDir match
+                {
+                    case Some (dir) => sdata.checkpoint ()
+                    case None =>
+                }
+
                 // determine the set of transformers to work on
-                var transformers =
+                val transformers = if ("" != arguments.trafos)
+                {
+                    // do all transformers listed in the file
+                    val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+                    val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+                    selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+                }
+                else
                 {
                     // do all low voltage power transformers
                     // ToDo: fix this 1kV multiplier on the voltages
@@ -293,7 +314,7 @@ object Main
                 {
                     // construct the initial graph from the real edges and nodes
                     val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-                    PowerFeeding.threshold_calculation (initial, transformers, gridlabd)
+                    PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
                 }
 
                 val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
@@ -305,18 +326,23 @@ object Main
                 // do gridlab simulation if not only pre-calculation
                 if (!arguments.precalculation)
                 {
-                    def do_one_trafofreis (s: Array[TData]): Int =
+                    def do_one_trafofreis (export_only: Boolean) (s: Array[TData]): Int =
                     {
                         val start = System.nanoTime ()
                         val simulation = gridlabd.trafokreis (s)
-                        val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, cdata) (s)
-                        val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-                        gridlabd.cleanup (simulation)
-                        val finish = System.nanoTime ()
-                        println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
-                        id
+                        val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, sdata, cdata) (s)
+                        if (export_only)
+                            0
+                        else
+                        {
+                            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
+                            gridlabd.cleanup (simulation)
+                            val finish = System.nanoTime ()
+                            println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
+                            id
+                        }
                     }
-                    val results = trafo.par.map (do_one_trafofreis)
+                    val results = trafo.par.map (do_one_trafofreis (arguments.export_only))
                 }
 
                 val calculate = System.nanoTime ()

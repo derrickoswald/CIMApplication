@@ -744,7 +744,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations (topologicalnodes: Boolean): RDD[PV] =
+    def getSolarInstallations (topologicalnodes: Boolean): RDD[Tuple2[String,Iterable[PV]]] =
     {
         // note there are two independent linkages happening here through the UserAttribute class:
         // - SolarGeneratingUnit to ServiceLocation
@@ -776,7 +776,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
             (x) => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-        return (t)
+        t.groupBy (_.node)
     }
 
     // Note: we return a bogus value just so there is a time sequential dependence on this by later code
@@ -918,6 +918,7 @@ class GridLABD (session: SparkSession) extends Serializable
     def make_glm (
         precalc_results: PreCalculationResults,
         tdata: RDD[TData],
+        sdata: RDD[Tuple2[String,Iterable[PV]]],
         starting_transformers: Array[TData],
         starting_node: String,
         simulation: String,
@@ -975,14 +976,11 @@ class GridLABD (session: SparkSession) extends Serializable
         // get the combined configuration strings
         val c_strings = l_strings.union (t_strings)
 
-        // get the existing photo-voltaic installations keyed by terminal
-        val solars = getSolarInstallations (USE_TOPOLOGICAL_NODES)
-
         // get the transformers keyed by primary terminal
         val transformers = trans.getTransformers (transformer_edges)
 
         // get the node strings
-        val dd = traced_nodes.values.keyBy (_.id_seq).leftOuterJoin (solars.groupBy (_.node))
+        val dd = traced_nodes.values.keyBy (_.id_seq).leftOuterJoin (sdata)
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
         val n_strings = qq.map (make_node (swing_node, experiments))
 
@@ -1045,7 +1043,7 @@ class GridLABD (session: SparkSession) extends Serializable
         transformers.map (_.transformer.id).mkString ("_")
     }
    
-    def export (precalc_results: PreCalculationResults, tdata: RDD[TData], transformers: Array[TData]): Array[Experiment] =
+    def export (precalc_results: PreCalculationResults, tdata: RDD[TData], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[TData]): Array[Experiment] =
     {
         val start = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
         val finish = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
@@ -1070,7 +1068,7 @@ class GridLABD (session: SparkSession) extends Serializable
             }
 
         eraseInputFile (simulation)
-        val result = make_glm (precalc_results, tdata, transformers, starting._2, simulation, start, finish, starting._1)
+        val result = make_glm (precalc_results, tdata, sdata, transformers, starting._2, simulation, start, finish, starting._1)
         writeInputFile (simulation, simulation + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         writeInputFile (simulation, "output_data/dummy", null) // mkdir
 
@@ -1452,12 +1450,12 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def einspeiseleistung (precalc_results: PreCalculationResults, tdata: RDD[TData], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (precalc_results: PreCalculationResults, tdata: RDD[TData], sdata: RDD[Tuple2[String,Iterable[PV]]], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
 
-        val experiments = export (precalc_results, tdata, transformers)
+        val experiments = export (precalc_results, tdata, sdata, transformers)
         val write = System.nanoTime ()
         println (simulation + " export: " + (write - start) / 1e9 + " seconds")
 

@@ -110,6 +110,8 @@ class GridLABDSuite extends FunSuite
         tdata.persist (gridlabd._StorageLevel)
         val cdata = gridlabd.getCableMaxCurrent ()
         cdata.persist (gridlabd._StorageLevel)
+        val sdata = gridlabd.getSolarInstallations (true)
+        sdata.persist (gridlabd._StorageLevel)
 
         // determine the set of transformers to work on
         var transformers = {
@@ -130,7 +132,7 @@ class GridLABDSuite extends FunSuite
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
-            PowerFeeding.threshold_calculation (initial, transformers, gridlabd)
+            PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
         }
 
         val precalc = System.nanoTime ()
@@ -143,7 +145,7 @@ class GridLABDSuite extends FunSuite
         def do_one_trafofreis (s: Array[TData]): Int =
         {
             val simulation = gridlabd.trafokreis (s)
-            val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, cdata) (s)
+            val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, sdata, cdata) (s)
             val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
             gridlabd.cleanup (simulation)
             id
