@@ -89,7 +89,9 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
                 Iterator.empty
         }
         else
-            if (triplet.srcAttr.source_obj != null || triplet.dstAttr.source_obj != null) // ignore the initial message
+             // ignore the initial message, be careful with the OSPin
+            if ((triplet.srcAttr.source_obj != null && (triplet.srcAttr.sum_r != Double.NegativeInfinity || triplet.srcAttr.min_ir != Double.PositiveInfinity))
+              ||(triplet.dstAttr.source_obj != null && (triplet.dstAttr.sum_r != Double.NegativeInfinity || triplet.dstAttr.min_ir != Double.PositiveInfinity)))
                 if (shouldContinue (triplet.attr.element))
                     if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
                     {
@@ -126,7 +128,7 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
             starting_nodes.find (s ⇒ s.osPin == id) match
             {
                 case Some (node) =>
-                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
+                    PowerFeedingNode (v.id_seq, v.voltage, node, Double.NegativeInfinity, Double.PositiveInfinity)
                 case None =>
                     starting_nodes.find (s ⇒ s.nsPin == id) match
                     {

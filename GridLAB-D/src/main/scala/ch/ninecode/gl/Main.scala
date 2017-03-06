@@ -317,7 +317,11 @@ object Main
                     PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
                 }
 
-                val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
+                val pre = if (arguments.all)
+                    precalc_results.has
+                else
+                    precalc_results.has.filter(_.has_eea)
+                val trafo = pre.keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
                 println ("" + trafo.length + " transformers to process")
 
                 val precalc = System.nanoTime ()

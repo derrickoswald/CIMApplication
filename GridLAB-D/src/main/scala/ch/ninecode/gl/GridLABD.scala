@@ -213,6 +213,8 @@ class GridLABD (session: SparkSession) extends Serializable
                 !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
             case "Recloser" =>
                 !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Conductor" =>
+                true
             case "ACLineSegment" =>
                 true
             case "PowerTransformer" =>
@@ -344,12 +346,12 @@ class GridLABD (session: SparkSession) extends Serializable
                         "\n" +
                         "        object load\n" +
                         "        {\n" +
-                        "             name \"" + parent + "_pv_" + index + "\";\n" +
-                        "             parent \"" + parent + "\";\n" +
-                        "             phases AN;\n" +
-                        "             constant_power_A -" + power + ";\n" +
-                        "             nominal_voltage " + voltage + "V;\n" +
-                        "             load_class R;\n" +
+                        "            name \"" + parent + "_pv_" + index + "\";\n" +
+                        "            parent \"" + parent + "\";\n" +
+                        "            phases AN;\n" +
+                        "            constant_power_A -" + power + ";\n" +
+                        "            nominal_voltage " + voltage + "V;\n" +
+                        "            load_class R;\n" +
                         "        }\n"
                 else
                 {
@@ -358,14 +360,14 @@ class GridLABD (session: SparkSession) extends Serializable
                         "\n" +
                         "        object load\n" +
                         "        {\n" +
-                        "             name \"" + parent + "_pv_" + index + "\";\n" +
-                        "             parent \"" + parent + "\";\n" +
-                        "             phases ABCN;\n" +
-                        "             constant_power_A -" + power3 + ";\n" +
-                        "             constant_power_B -" + power3 + ";\n" +
-                        "             constant_power_C -" + power3 + ";\n" +
-                        "             nominal_voltage " + voltage + "V;\n" +
-                        "             load_class R;\n" +
+                        "            name \"" + parent + "_pv_" + index + "\";\n" +
+                        "            parent \"" + parent + "\";\n" +
+                        "            phases ABCN;\n" +
+                        "            constant_power_A -" + power3 + ";\n" +
+                        "            constant_power_B -" + power3 + ";\n" +
+                        "            constant_power_C -" + power3 + ";\n" +
+                        "            nominal_voltage " + voltage + "V;\n" +
+                        "            load_class R;\n" +
                         "        }\n"
                 }
                 index += 1
@@ -968,6 +970,8 @@ class GridLABD (session: SparkSession) extends Serializable
 
         // join edges with transformer data
         val transformer_edges = traced_edges.keyBy (_.element.id).join (tdata.keyBy (_.transformer.id)).values.groupBy (_._1.key ()).values
+        if (transformer_edges.count == 0)
+            log.error ("edge(s) for " + trafokreis (starting_transformers) + " not found")
 
         // get the transformer configuration
         val trans = new Trans (tdata, USE_ONE_PHASE)
