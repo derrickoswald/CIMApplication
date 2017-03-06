@@ -538,70 +538,69 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret.toString ().getBytes (StandardCharsets.UTF_8))
     }
 
-    def generate_player_file (experiments: HashSet[Experiment], name: String, voltage: Double): String =
+    def generate_player_file (experiments: Array[Experiment], name: String, voltage: Double): String =
     {
         val house = has (name)
-        val ret =
-            experiments.find (p => p.house == house) match
-            {
-                case Some (experiment) =>
-                    if (USE_ONE_PHASE)
-                    {
-                        writeInputFile (experiment.trafo, "input_data/" + house + ".csv", ramp_up (experiment, 0.0))
-                        "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + name + "_load\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            phases AN;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_A\";\n" +
-                        "                file \"input_data/" + house + ".csv\";\n" +
-                        "            };\n" +
-                        "        };\n"
-                    }
-                    else
-                    {
-                        val r_phase = 0.0
-                        val s_phase = 240.0
-                        val t_phase = 120.0
-                        writeInputFile (experiment.trafo, "input_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
-                        writeInputFile (experiment.trafo, "input_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
-                        writeInputFile (experiment.trafo, "input_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
-                        "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + name + "_load\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_A\";\n" +
-                        "                file \"input_data/" + house + "_R.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_B\";\n" +
-                        "                file \"input_data/" + house + "_S.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_C\";\n" +
-                        "                file \"input_data/" + house + "_T.csv\";\n" +
-                        "            };\n" +
-                        "        };\n"
-                    }
-                case None =>
-                    ""
-            }
+        val filtered = experiments.filter (p => p.house == house)
+        val experiment = if (0 != filtered.length) filtered(0) else null
 
-        return (ret)
+        if (null != experiment)
+        {
+            if (USE_ONE_PHASE)
+            {
+                writeInputFile (experiment.trafo, "input_data/" + house + ".csv", ramp_up (experiment, 0.0))
+                "\n" +
+                "        object load\n" +
+                "        {\n" +
+                "            name \"" + name + "_load\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            phases AN;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_A\";\n" +
+                "                file \"input_data/" + house + ".csv\";\n" +
+                "            };\n" +
+                "        };\n"
+            }
+            else
+            {
+                val r_phase = 0.0
+                val s_phase = 240.0
+                val t_phase = 120.0
+                writeInputFile (experiment.trafo, "input_data/" + house + "_R.csv", ramp_up (experiment, r_phase))
+                writeInputFile (experiment.trafo, "input_data/" + house + "_S.csv", ramp_up (experiment, s_phase))
+                writeInputFile (experiment.trafo, "input_data/" + house + "_T.csv", ramp_up (experiment, t_phase))
+                "\n" +
+                "        object load\n" +
+                "        {\n" +
+                "            name \"" + name + "_load\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            phases ABCN;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_A\";\n" +
+                "                file \"input_data/" + house + "_R.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_B\";\n" +
+                "                file \"input_data/" + house + "_S.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_C\";\n" +
+                "                file \"input_data/" + house + "_T.csv\";\n" +
+                "            };\n" +
+                "        };\n"
+            }
+        }
+        else
+            ""
     }
 
-    def emit_node (experiments: HashSet[Experiment], name: String, voltage: Double): String =
+    def emit_node (experiments: Array[Experiment], name: String, voltage: Double): String =
     {
         val meter =
             if (USE_ONE_PHASE)
@@ -652,7 +651,7 @@ class GridLABD (session: SparkSession) extends Serializable
     }
 
     // emit one GridLAB-D node
-    def make_node (slack: String, experiments: HashSet[Experiment])(arg: Tuple3[PowerFeedingNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
+    def make_node (slack: String, experiments: Array[Experiment])(arg: Tuple3[PowerFeedingNode,Option[Iterable[PV]],Option[Iterable[Transformer]]]): String =
     {
         val node = arg._1
         val pv = arg._2
@@ -924,15 +923,8 @@ class GridLABD (session: SparkSession) extends Serializable
         simulation: String,
         start: Calendar,
         finish: Calendar,
-        swing_node: String): Tuple2[String,HashSet[Experiment]] =
+        swing_node: String): Tuple2[String,Array[Experiment]] =
     {
-        var slot = 0
-        val window = 15 * 60 // window size in simulated seconds per experiment
-        val experiments = HashSet[Experiment]()
-
-        // limit as ceiling(d+10%) thousands
-        def limit (d: Double) = math.ceil (d * 1.1 / 1000.0) * 1000.0
-
         def tdata_compare(t1: Array[TData], t2: Array[TData]): Boolean =
         {
             (t1.length == t2.length) && (trafokreis(t1) == trafokreis(t2))
@@ -952,15 +944,19 @@ class GridLABD (session: SparkSession) extends Serializable
         val traced_nodes = precalc_results.graph.vertices.filter(v => vdata_compare (v, starting_transformers))
         val vids = traced_nodes.keys.collect
         val traced_edges = precalc_results.graph.edges.filter (x => (vids.contains (x.dstId) && vids.contains (x.srcId))).map(_.attr)
-        val houses = precalc_results.has.filter(h => tdata_compare(h.source_obj, starting_transformers)).map(x => (x.has_id, x.max_power_feeding)).collect
-        for (node <- houses)
+
+        // generate experiments
+
+        val houses = precalc_results.has.filter(h => tdata_compare(h.source_obj, starting_transformers)).map(x => (x.has_id, x.max_power_feeding))
+        val window = 15 * 60 // window size in simulated seconds per experiment
+        val experiments = houses.zipWithIndex.map ((arg: Tuple2[Tuple2[String, Double],Long]) =>
         {
-            val house = node._1
-            val max = limit (node._2)
-            val experiment = Experiment (simulation, house, start, slot, window, 5, 0, max, 1000)
-            slot = slot + 1
-            experiments += experiment
-        }
+            // (has: Tuple2[String, Double], index: Long)
+            def limit (d: Double) = math.ceil (d * 1.1 / 1000.0) * 1000.0 // limit as ceiling(d+10%) thousands
+            val house = arg._1._1
+            val max = limit (arg._1._2)
+            Experiment (simulation, house, start, arg._2.toInt, window, 5, 0, max, 1000)
+        }).collect
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy (_.key).values
@@ -999,7 +995,7 @@ class GridLABD (session: SparkSession) extends Serializable
          * Create the output file.
          */
         val t1 = start.clone ().asInstanceOf[Calendar]
-        t1.add (Calendar.SECOND, slot * window)
+        t1.add (Calendar.SECOND, experiments.length * window)
         val prefix =
             "// $Id: " + simulation + ".glm\n" +
             "// Einspeiseleistung\n" +
@@ -1049,10 +1045,8 @@ class GridLABD (session: SparkSession) extends Serializable
         transformers.map (_.transformer.id).mkString ("_")
     }
    
-    def export (precalc_results: PreCalculationResults, tdata: RDD[TData], transformers: Array[TData]): HashSet[Experiment] =
+    def export (precalc_results: PreCalculationResults, tdata: RDD[TData], transformers: Array[TData]): Array[Experiment] =
     {
-        var ret = HashSet[Experiment] ()
-
         val start = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
         val finish = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 14:00:00".replace (" ", "T"))
         val simulation = trafokreis (transformers)
@@ -1079,9 +1073,8 @@ class GridLABD (session: SparkSession) extends Serializable
         val result = make_glm (precalc_results, tdata, transformers, starting._2, simulation, start, finish, starting._1)
         writeInputFile (simulation, simulation + ".glm", result._1.getBytes (StandardCharsets.UTF_8))
         writeInputFile (simulation, "output_data/dummy", null) // mkdir
-        ret = result._2;
 
-        return (ret)
+        result._2
     }
 
     def read_records (filename: String, element: String, units: String): Dataset[ThreePhaseComplexDataElement] =
@@ -1303,7 +1296,7 @@ class GridLABD (session: SparkSession) extends Serializable
         values.aggregate (MaxEinspeiseleistung (trafo, house, None, "unknown", ""))(seqop, combop)
     }
 
-    def voltcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+    def voltcheck (experiments: Array[Experiment], results: RDD[ThreePhaseComplexDataElement], max: Double): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
         val limit = "voltage limit"
 
@@ -1328,7 +1321,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val overV = results.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+        def assign (experiments: Array[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             for (e <- experiments)
             {
@@ -1341,7 +1334,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overV.flatMap (assign (experiments)))
     }
 
-    def ampcheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+    def ampcheck (experiments: Array[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
         val limit = "current limit"
 
@@ -1363,7 +1356,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val overI = results_and_cables.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (arg: Tuple2[ThreePhaseComplexDataElement, Double]): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+        def assign (experiments: Array[Experiment]) (arg: Tuple2[ThreePhaseComplexDataElement, Double]): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             val r = arg._1
             val max = arg._2
@@ -1378,7 +1371,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def powercheck (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], power: Double, trafo_name: String): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+    def powercheck (experiments: Array[Experiment], results: RDD[ThreePhaseComplexDataElement], power: Double, trafo_name: String): RDD[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
     {
         val limit = "transformer limit"
 
@@ -1411,7 +1404,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val overI = results.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
 
         // assign an experiment to each measurement
-        def assign (experiments: HashSet[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
+        def assign (experiments: Array[Experiment]) (r: ThreePhaseComplexDataElement): List[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]] =
         {
             for (e <- experiments)
             {
@@ -1424,7 +1417,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (overI.flatMap (assign (experiments)))
     }
 
-    def analyse (experiments: HashSet[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def analyse (experiments: Array[Experiment], results: RDD[ThreePhaseComplexDataElement], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
     {
         val nominal = 400.0 // ToDo: get voltage from CIM
         val tolerance = 3.0
@@ -1441,20 +1434,17 @@ class GridLABD (session: SparkSession) extends Serializable
         val p = powercheck (experiments, results, trafo_power, trafo_name)
 
         // establish a "no limit found" default
-        val s = session.sparkContext.parallelize (
-            experiments.toArray.map
-            (
-                (x) =>
-                {
-                    (
-                        x,
-                        ThreePhaseComplexDataElement (x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                        "no limit",
-                        ""
-                    )
-                }
-            )
-        )
+        val s = session.sparkContext.parallelize (experiments.map (
+            (x) =>
+            {
+                (
+                    x,
+                    ThreePhaseComplexDataElement (x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                    "no limit",
+                    ""
+                )
+            }
+        ))
 
         // combine the results, group by experiment and find the minimum power
         val ret = p.union (v).union (i).union (s).groupBy (_._1.house).values.map (finder)
