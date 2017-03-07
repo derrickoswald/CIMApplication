@@ -106,28 +106,28 @@ class PowerFeedingSuite extends FunSuite
         // set up for execution
         val gridlabd = new GridLABD (session)
         gridlabd.HDFS_URI = "" // local
-        gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
         val (xedges, xnodes) = gridlabd.prepare ()
-        
-        val _transformers = new Transformers (session, gridlabd._StorageLevel)
+
+        val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
         val tdata = _transformers.getTransformerData ()
-        tdata.persist (gridlabd._StorageLevel)
+        tdata.persist (gridlabd.STORAGE_LEVEL)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
         val solars = gridlabd.getSolarInstallations (use_topological_nodes)
         // construct the initial graph from the real edges and nodes
-        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
         val power_feeding = new PowerFeeding(initial)
 
         val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))
         val graph = power_feeding.trace(start_ids)
         val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
         val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
-                        
+
         val has = traced_house_nodes_EEA.map(node => 
           {
             val result = node._2 match
@@ -139,7 +139,7 @@ class PowerFeedingSuite extends FunSuite
             }
             result
           }).distinct
-        
+
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         println ("the simulation number is " + simulation)
 

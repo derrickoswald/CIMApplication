@@ -124,8 +124,9 @@ class GridLABD (session: SparkSession) extends Serializable
     var DELETE_INTERMEDIATE_FILES = true
     var DELETE_SIMULATION_FILES = true
     var USE_ONE_PHASE = true
-    var FOLD_IN_MEMORY = false
+    var FOLD_ON_DISK = false
     var EXPORT_ONLY = false
+    var STORAGE_LEVEL = StorageLevel.MEMORY_ONLY
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -139,8 +140,6 @@ class GridLABD (session: SparkSession) extends Serializable
     val _DateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z", EN_US_LOCALE)
     if (USE_UTC)
         _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
-
-    var _StorageLevel = StorageLevel.MEMORY_ONLY
 
     def get (name: String, retry: Int): RDD[Element] =
     {
@@ -850,10 +849,10 @@ class GridLABD (session: SparkSession) extends Serializable
         val xnodes = nodes.map (make_graph_vertices)
         val e = xedges.count
         xedges.name = "xedges"
-        xedges.persist (_StorageLevel)
+        xedges.persist (STORAGE_LEVEL)
         val n = xnodes.count
         xnodes.name = "xnodes"
-        xnodes.persist (_StorageLevel)
+        xnodes.persist (STORAGE_LEVEL)
         session.sparkContext.getCheckpointDir match
         {
             case Some (dir) => xedges.checkpoint (); xnodes.checkpoint ()
@@ -878,7 +877,7 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def gather (rdd: RDD[String], equipment: String, unique_name: String): String =
     {
-        if (("" == HDFS_URI) || FOLD_IN_MEMORY)
+        if (("" == HDFS_URI) || !FOLD_ON_DISK)
             rdd.fold ("")((x: String, y: String) => if ("" == x) y else x + y)
         else
         {

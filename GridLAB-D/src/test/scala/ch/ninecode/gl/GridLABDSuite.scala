@@ -101,17 +101,17 @@ class GridLABDSuite extends FunSuite
         // set up for execution
         val gridlabd = new GridLABD (session)
         gridlabd.HDFS_URI = "" // local
-        gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+        gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
         gridlabd.DELETE_SIMULATION_FILES = false
         gridlabd.DELETE_INTERMEDIATE_FILES = false
 
-        val _transformers = new Transformers (session, gridlabd._StorageLevel)
+        val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
         val tdata = _transformers.getTransformerData ()
-        tdata.persist (gridlabd._StorageLevel)
+        tdata.persist (gridlabd.STORAGE_LEVEL)
         val cdata = gridlabd.getCableMaxCurrent ()
-        cdata.persist (gridlabd._StorageLevel)
+        cdata.persist (gridlabd.STORAGE_LEVEL)
         val sdata = gridlabd.getSolarInstallations (true)
-        sdata.persist (gridlabd._StorageLevel)
+        sdata.persist (gridlabd.STORAGE_LEVEL)
 
         // determine the set of transformers to work on
         var transformers = {
@@ -131,7 +131,7 @@ class GridLABDSuite extends FunSuite
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
             PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
         }
 

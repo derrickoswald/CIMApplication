@@ -55,7 +55,7 @@ object Main
         master: String = "",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
-        fold_in_memory: Boolean = false,
+        fold_on_disk: Boolean = false,
         precalculation: Boolean = false,
         trafos: String = "",
         export_only: Boolean = false,
@@ -83,9 +83,9 @@ object Main
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
 
-        opt[Unit]('f', "fold_in_memory").
-            action ((_, c) => c.copy (fold_in_memory = true)).
-            text ("perform glm coalesce in memory")
+        opt[Unit]('f', "fold_on_disk").
+            action ((_, c) => c.copy (fold_on_disk = true)).
+            text ("perform glm strings coalesce on HDFS")
 
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
@@ -101,7 +101,7 @@ object Main
 
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
-            text ("process all transformers (no pre-calculation)")
+            text ("process all transformers (not just those with EEA)")
 
         opt[Unit]('c', "clean").
             action ((_, c) => c.copy (clean = true)).
@@ -250,9 +250,9 @@ object Main
                 gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
-                gridlabd.FOLD_IN_MEMORY = arguments.fold_in_memory
+                gridlabd.FOLD_ON_DISK = arguments.fold_on_disk
                 gridlabd.EXPORT_ONLY = arguments.export_only
-                gridlabd._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
+                gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
 
                 // prepare the initial graph edges and nodes
                 val (xedges, xnodes) = gridlabd.prepare ()
@@ -266,7 +266,7 @@ object Main
 //                    case None =>
 //                }
 
-                val _transformers = new Transformers (session, gridlabd._StorageLevel)
+                val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
                 val tdata = _transformers.getTransformerData ()
                 session.sparkContext.getCheckpointDir match
                 {
@@ -313,7 +313,7 @@ object Main
                 val precalc_results =
                 {
                     // construct the initial graph from the real edges and nodes
-                    val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd._StorageLevel, gridlabd._StorageLevel)
+                    val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
                     PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
                 }
 
