@@ -933,18 +933,26 @@ class GridLABD (session: SparkSession) extends Serializable
             (t1.length == t2.length) && (trafokreis(t1) == trafokreis(t2))
         }
 
-        def vdata_compare(v: Tuple2[VertexId, PowerFeedingNode], t2: Array[TData]): Boolean =
+        def vdata_compare(v: Tuple2[VertexId, PowerFeedingNode], t2: Array[TData], ospin: String): Boolean =
         {
             val node = v._2
-            val source = node.source_obj
-            val ret = if (null == source)
-                false
+            val id = node.id_seq
+            if (id == ospin)
+                true
             else
-                tdata_compare (source.trafo_id, t2)
-            ret
+            {
+                val source = node.source_obj
+                if (null == source)
+                    false
+                else
+                    tdata_compare (source.trafo_id, t2)
+            }
         }
 
-        val traced_nodes = precalc_results.graph.vertices.filter(v => vdata_compare (v, starting_transformers))
+        val osterm = starting_transformers(0).terminal0
+        val ospin = if (USE_TOPOLOGICAL_NODES) osterm.TopologicalNode else osterm.ConnectivityNode
+
+        val traced_nodes = precalc_results.graph.vertices.filter(v => vdata_compare (v, starting_transformers, ospin))
         val vids = traced_nodes.keys.collect
         val traced_edges = precalc_results.graph.edges.filter (x => (vids.contains (x.dstId) && vids.contains (x.srcId))).map(_.attr)
 

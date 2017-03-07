@@ -80,39 +80,28 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
     {
-        if (triplet.attr.v1 != triplet.attr.v2) // handle transformers specially
-        {
-            if (triplet.dstAttr.sum_r == Double.NegativeInfinity) // only send a message once
-                // send a message to the NSPin
-                Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.dstAttr.source_obj, 0.0, Double.PositiveInfinity)))
-            else
-                Iterator.empty
-        }
-        else
-             // ignore the initial message, be careful with the OSPin
-            if ((triplet.srcAttr.source_obj != null && (triplet.srcAttr.sum_r != Double.NegativeInfinity || triplet.srcAttr.min_ir != Double.PositiveInfinity))
-              ||(triplet.dstAttr.source_obj != null && (triplet.dstAttr.sum_r != Double.NegativeInfinity || triplet.dstAttr.min_ir != Double.PositiveInfinity)))
-                if (shouldContinue (triplet.attr.element))
-                    if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
-                    {
-                        val (dist_km, r, ir) = line_details (triplet.attr)
-                        val sum_r = triplet.srcAttr.sum_r + r * dist_km
-                        val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                        Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir)))
-                    }
-                    else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
-                    {
-                        val (dist_km, r, ir) = line_details (triplet.attr)
-                        val sum_r = triplet.dstAttr.sum_r + r * dist_km
-                        val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                        Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir)))
-                    }
-                    else
-                        Iterator.empty
+        if ((null != triplet.srcAttr.source_obj) || (null != triplet.dstAttr.source_obj))
+            if (shouldContinue (triplet.attr.element))
+                if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
+                {
+                    val (dist_km, r, ir) = line_details (triplet.attr)
+                    val sum_r = triplet.srcAttr.sum_r + r * dist_km
+                    val min_ir = math.min(triplet.srcAttr.min_ir, ir)
+                    Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir)))
+                }
+                else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
+                {
+                    val (dist_km, r, ir) = line_details (triplet.attr)
+                    val sum_r = triplet.dstAttr.sum_r + r * dist_km
+                    val min_ir = math.min(triplet.dstAttr.min_ir, ir)
+                    Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir)))
+                }
                 else
                     Iterator.empty
             else
                 Iterator.empty
+        else
+            Iterator.empty
     }
 
     def mergeMessage(a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
@@ -125,18 +114,12 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
         // create the initial Graph with PowerFeedingNode vertecies
         def starting_map (id: VertexId, v: PreNode): PowerFeedingNode =
         {
-            starting_nodes.find (s ⇒ s.osPin == id) match
+            starting_nodes.find (s ⇒ s.nsPin == id) match
             {
                 case Some (node) =>
-                    PowerFeedingNode (v.id_seq, v.voltage, node, Double.NegativeInfinity, Double.PositiveInfinity)
+                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
                 case None =>
-                    starting_nodes.find (s ⇒ s.nsPin == id) match
-                    {
-                        case Some (node) =>
-                            PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
-                        case None =>
-                            PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
-                    }
+                    PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
             }
         }
         val graph = initial.mapVertices (starting_map)
