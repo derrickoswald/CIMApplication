@@ -1051,9 +1051,9 @@ class GridLABD (session: SparkSession) extends Serializable
 
     def trafokreis (transformers: Array[TData]): String =
     {
-        transformers.map (_.transformer.id).mkString ("_")
+        transformers.map (_.transformer.id).sortWith (_ < _).mkString ("_")
     }
-   
+
     def export (precalc_results: PreCalculationResults, tdata: RDD[TData], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[TData]): Array[Experiment] =
     {
         val start = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-01-24 12:00:00".replace (" ", "T"))
@@ -1524,6 +1524,11 @@ class GridLABD (session: SparkSession) extends Serializable
         }
         if (DELETE_SIMULATION_FILES)
             eraseInputFile (equipment)
+        else
+        {
+            eraseInputFile (equipment + "/output_data")
+            writeInputFile (equipment, "output_data/dummy", null) // mkdir
+        }
     }
 }
 
