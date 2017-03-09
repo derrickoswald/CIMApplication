@@ -245,4 +245,53 @@ object Database
         }
         ret.toArray
     }
+
+    def fetchTransformersWithEEA (simulation: Int): Array[String] =
+    {
+        var ret = new ArrayBuffer[String] ()
+
+        // check if the directory exists
+        val file = Paths.get ("simulation/results.db")
+        if (!Files.exists (file))
+            log.error ("database file " + file + " does not exist")
+        else
+        {
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+
+            var connection: Connection = null
+            try
+            {
+                // create a database connection
+                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+                val statement = connection.prepareStatement ("select distinct(trafo) from results where has_eea and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
+                statement.setInt (1, simulation)
+                val resultset = statement.executeQuery ()
+                while (resultset.next ())
+                    ret += resultset.getString (1)
+                resultset.close ()
+            }
+            catch
+            {
+                // if the error message is "out of memory",
+                // it probably means no database file is found
+                case e: SQLException ⇒ log.error ("exception caught: " + e);
+            }
+            finally
+            {
+                try
+                {
+                    if (connection != null)
+                        connection.close ()
+                }
+                catch
+                {
+                    // connection close failed
+                    case e: SQLException ⇒ log.error ("exception caught: " + e);
+                }
+            }
+        }
+        ret.toArray
+    }
 }

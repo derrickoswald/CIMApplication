@@ -197,7 +197,6 @@ object PowerFeeding
 
     def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
     {
-
         val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
         val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
@@ -215,7 +214,7 @@ object PowerFeeding
                 case None =>
                     node._1
             }
-        }).distinct
+        })
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         println ("the simulation number is " + simulation)

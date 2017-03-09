@@ -51,7 +51,10 @@ trait Graphable
 {
     def vertex_id (string: String): VertexId =
     {
-        string.hashCode.asInstanceOf[VertexId]
+        var h = 2166136261l;
+        for (c <- string)
+            h = (h * 16777619) ^ c
+        h.asInstanceOf[VertexId]
     }
 }
 

@@ -64,6 +64,8 @@ object Main
         erase: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
+        simulation: Int = -1,
+        number: Int = -1,
         files: Seq[String] = Seq()
     )
 
@@ -118,6 +120,14 @@ object Main
         opt[String]('k', "checkpointdir").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
+
+        opt[Int]('s', "simulation").valueName ("N").
+            action ((x, c) => c.copy (simulation = x)).
+            text ("simulation number (precalc) to use for transformer list")
+
+        opt[Int]('n', "number").valueName ("N").
+            action ((x, c) => c.copy (number = x)).
+            text ("number of transformers to process")
 
         help ("help").text ("prints this usage text")
 
@@ -214,6 +224,21 @@ object Main
                 val setup = System.nanoTime ()
                 println ("setup : " + (setup - begin) / 1e9 + " seconds")
 
+                // determine transformer list if any
+                val trafos = if ("" != arguments.trafos)
+                    // do all transformers listed in the file
+                    Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+                else if (-1 != arguments.simulation)
+                    // do all transformers with EEA which are not yet processed
+                    Database.fetchTransformersWithEEA (arguments.simulation)
+                else
+                    null
+                if ((null != trafos) && (0 == trafos.length))
+                {
+                    println ("no transformers to process")
+                    sys.exit (1)
+                }
+
                 // read the file
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
@@ -291,10 +316,8 @@ object Main
                 }
 
                 // determine the set of transformers to work on
-                val transformers = if ("" != arguments.trafos)
+                val transformers = if (null != trafos)
                 {
-                    // do all transformers listed in the file
-                    val trafos = Source.fromFile (arguments.trafos, "UTF-8").getLines ().filter (_ != "").toArray
                     val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
                     selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
                 }
@@ -346,7 +369,12 @@ object Main
                             id
                         }
                     }
-                    val results = trafo.par.map (do_one_trafofreis (arguments.export_only))
+                    val temp = if (-1 != arguments.number)
+                        trafo.slice (0, Math.min (arguments.number, trafo.length))
+                    else
+                        trafo
+                    val results = temp.par.map (do_one_trafofreis (arguments.export_only))
+                    println ("finished " + results.length + " trafokreis")
                 }
 
                 val calculate = System.nanoTime ()
