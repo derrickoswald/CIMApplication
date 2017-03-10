@@ -132,7 +132,7 @@ class GridLABDSuite extends FunSuite
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
-            PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
+            PowerFeeding.threshold_calculation (session, initial, sdata, transformers, gridlabd)
         }
 
         val precalc = System.nanoTime ()

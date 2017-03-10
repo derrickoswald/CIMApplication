@@ -197,6 +197,11 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
             )
 
         transformer_data.persist (storage_level)
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (dir) => transformer_data.checkpoint ()
+            case None =>
+        }
 
         return (transformer_data)
     }

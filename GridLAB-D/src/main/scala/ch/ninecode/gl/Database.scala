@@ -32,7 +32,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar) (equipment: String, results: RDD[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar) (equipment: String, records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -51,7 +51,6 @@ object Database
             // create schema
             makeSchema (connection)
 
-            val records = results.collect ()
             if (0 != records.length)
             {
                 // insert the simulation

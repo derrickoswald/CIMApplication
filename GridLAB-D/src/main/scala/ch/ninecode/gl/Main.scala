@@ -162,6 +162,34 @@ object Main
         return (ret)
     }
 
+    def you_had_one_job (
+        gridlabd: GridLABD,
+        precalculation_results: PreCalculationResults,
+        tdata: RDD[TData],
+        sdata: RDD[Tuple2[String,Iterable[PV]]],
+        cdata: RDD[Tuple2[String,Double]],
+        export_only: Boolean) (transformers: Array[TData]): Int =
+    {
+        val start = System.nanoTime ()
+
+        val simulation = gridlabd.trafokreis (transformers)
+        val records = gridlabd.einspeiseleistung (precalculation_results, tdata, sdata, cdata) (transformers)
+        gridlabd.cleanup (simulation)
+        val ret = if (0 != records.length)
+        {
+            val simulation = records(0).trafo
+            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, records)
+            id
+        }
+        else
+            0
+
+        val finish = System.nanoTime ()
+        println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
+
+        ret
+    }
+
     /**
      * Build jar with dependencies (target/GridLAB-D-2.0.0-jar-with-dependencies.jar):
      *     mvn package
@@ -293,27 +321,12 @@ object Main
 
                 val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
                 val tdata = _transformers.getTransformerData ()
-                session.sparkContext.getCheckpointDir match
-                {
-                    case Some (dir) => tdata.checkpoint ()
-                    case None =>
-                }
 
                 // get the rated current for every cable
                 val cdata = gridlabd.getCableMaxCurrent ()
-                session.sparkContext.getCheckpointDir match
-                {
-                    case Some (dir) => cdata.checkpoint ()
-                    case None =>
-                }
 
                 // get the existing photo-voltaic installations keyed by terminal
                 val sdata = gridlabd.getSolarInstallations (true)
-                session.sparkContext.getCheckpointDir match
-                {
-                    case Some (dir) => sdata.checkpoint ()
-                    case None =>
-                }
 
                 // determine the set of transformers to work on
                 val transformers = if (null != trafos)
@@ -337,43 +350,33 @@ object Main
                 {
                     // construct the initial graph from the real edges and nodes
                     val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
-                    PowerFeeding.threshold_calculation (initial, sdata, transformers, gridlabd)
+                    PowerFeeding.threshold_calculation (session, initial, sdata, transformers, gridlabd)
                 }
 
-                val pre = if (arguments.all)
+                val houses = if (arguments.all)
                     precalc_results.has
                 else
                     precalc_results.has.filter(_.has_eea)
-                val trafo = pre.keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
+                val trafo = houses.keyBy (a => gridlabd.trafokreis (a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
                 println ("" + trafo.length + " transformers to process")
 
                 val precalc = System.nanoTime ()
                 println ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
-                // do gridlab simulation if not only pre-calculation
+                // do gridlab simulation if not just pre-calculation
                 if (!arguments.precalculation)
                 {
-                    def do_one_trafofreis (export_only: Boolean) (s: Array[TData]): Int =
-                    {
-                        val start = System.nanoTime ()
-                        val simulation = gridlabd.trafokreis (s)
-                        val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, sdata, cdata) (s)
-                        if (export_only)
-                            0
-                        else
-                        {
-                            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-                            gridlabd.cleanup (simulation)
-                            val finish = System.nanoTime ()
-                            println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
-                            id
-                        }
-                    }
                     val temp = if (-1 != arguments.number)
                         trafo.slice (0, Math.min (arguments.number, trafo.length))
                     else
                         trafo
-                    val results = temp.par.map (do_one_trafofreis (arguments.export_only))
+                    val results = temp.par.map (
+                        (x) =>
+                        {
+                            val y = x.clone
+                            you_had_one_job (gridlabd, precalc_results, tdata, sdata, cdata, arguments.export_only) (y)
+                        }
+                    )
                     println ("finished " + results.length + " trafokreis")
                 }
 

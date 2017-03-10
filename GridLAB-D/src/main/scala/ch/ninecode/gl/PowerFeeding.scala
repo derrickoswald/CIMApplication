@@ -6,6 +6,7 @@ import java.nio.file.Paths
 import java.util.Calendar
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
 
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
@@ -20,11 +21,15 @@ import ch.ninecode.model._
 case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double) extends Serializable
 case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: Array[TData], max_power_feeding: Double, has_eea: Boolean, reason: String, details: String) extends Serializable
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
-case class PreCalculationResults (simulation: Int, has: RDD[MaxPowerFeedingNodeEEA], graph: Graph[PowerFeedingNode, PreEdge])
+case class PreCalculationResults (
+    simulation: Int,
+    has: RDD[MaxPowerFeedingNodeEEA],
+    vertices: RDD[PowerFeedingNode],
+    edges: RDD[Tuple3[VertexId, VertexId, PreEdge]])
 
 class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 {
-    // check if mesages should pass through and edge
+    // check if messages should pass through and edge
     def shouldContinue(element: Element): Boolean =
     {
         val clazz = element.getClass.getName
@@ -195,7 +200,7 @@ object PowerFeeding
       StartingTrafos (v0, v1, tdata, r, ratedS)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
+    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
     {
         val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
@@ -223,10 +228,22 @@ object PowerFeeding
         val file = Paths.get ("simulation/dummy")
         Files.createDirectories (file.getParent ())
 
-        // write the file
+        // write the file of transformers needing analysis
         val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.mkString("\n")
         Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
 
-        PreCalculationResults (simulation, has, graph)
+        val vertices = graph.vertices.map (_._2)
+        val edges = graph.edges.map ((x) => (x.srcId, x.dstId, x.attr))
+
+        has.persist (gridlabd.STORAGE_LEVEL)
+        vertices.persist (gridlabd.STORAGE_LEVEL)
+        edges.persist (gridlabd.STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
+            case None =>
+        }
+
+        PreCalculationResults (simulation, has, vertices, edges)
     }
 }

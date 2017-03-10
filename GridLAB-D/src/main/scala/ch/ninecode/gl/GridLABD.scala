@@ -780,13 +780,22 @@ class GridLABD (session: SparkSession) extends Serializable
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
             (x) => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-        t.groupBy (_.node)
+        val pv = t.groupBy (_.node)
+
+        pv.persist (STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (dir) => pv.checkpoint ()
+            case None =>
+        }
+
+        pv
     }
 
     // Note: we return a bogus value just so there is a time sequential dependence on this by later code
     def prepare (): Tuple2[RDD[Edge[PreEdge]],RDD[(VertexId, PreNode)]]  =
     {
-        log.warn ("prepare() begin")
+        log.info ("prepare() begin")
 
         // get a map of voltages
         val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
@@ -862,7 +871,7 @@ class GridLABD (session: SparkSession) extends Serializable
             case None =>
         }
 
-        log.warn ("prepare() end")
+        log.info ("prepare() end")
         val _xedges = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xedges").head._2.asInstanceOf[RDD[Edge[PreEdge]]]
         val _xnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xnodes").head._2.asInstanceOf[RDD[(VertexId, PreNode)]]
 
@@ -935,9 +944,8 @@ class GridLABD (session: SparkSession) extends Serializable
             (t1.length == t2.length) && (trafokreis(t1) == trafokreis(t2))
         }
 
-        def vdata_compare(v: Tuple2[VertexId, PowerFeedingNode], t2: Array[TData], ospin: String): Boolean =
+        def vdata_compare (node: PowerFeedingNode, t2: Array[TData], ospin: String): Boolean =
         {
-            val node = v._2
             val id = node.id_seq
             if (id == ospin)
                 true
@@ -954,9 +962,10 @@ class GridLABD (session: SparkSession) extends Serializable
         val osterm = starting_transformers(0).terminal0
         val ospin = if (USE_TOPOLOGICAL_NODES) osterm.TopologicalNode else osterm.ConnectivityNode
 
-        val traced_nodes = precalc_results.graph.vertices.filter(v => vdata_compare (v, starting_transformers, ospin))
-        val vids = traced_nodes.keys.collect
-        val traced_edges = precalc_results.graph.edges.filter (x => (vids.contains (x.dstId) && vids.contains (x.srcId))).map(_.attr)
+        val traced_nodes = precalc_results.vertices.filter(v => vdata_compare (v, starting_transformers, ospin))
+        val n = new PreNode ("", 0.0)
+        val vids = traced_nodes.map ((x) => n.vertex_id (x.id_seq)).collect
+        val traced_edges = precalc_results.edges.filter (x => (vids.contains (x._1) && vids.contains (x._2))).map(_._3)
 
         // generate experiments
 
@@ -994,7 +1003,7 @@ class GridLABD (session: SparkSession) extends Serializable
         val transformers = trans.getTransformers (transformer_edges)
 
         // get the node strings
-        val dd = traced_nodes.values.keyBy (_.id_seq).leftOuterJoin (sdata)
+        val dd = traced_nodes.keyBy (_.id_seq).leftOuterJoin (sdata)
         val qq = dd.leftOuterJoin (transformers.groupBy (_.node)).values.map ((x) => (x._1._1, x._1._2, x._2))
         val n_strings = qq.map (make_node (swing_node, experiments))
 
@@ -1228,7 +1237,6 @@ class GridLABD (session: SparkSession) extends Serializable
                     "-c",
                     "while read line; do " +
                         "FILE=$line; " +
-                        "env >> /tmp/$FILE.environment.log; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                         "pushd $FILE; " +
@@ -1263,7 +1271,16 @@ class GridLABD (session: SparkSession) extends Serializable
         val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
         val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
+        val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
+
+        cables.persist (STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (dir) => cables.checkpoint ()
+            case None =>
+        }
+
+        cables
     }
 
     /**
@@ -1464,7 +1481,7 @@ class GridLABD (session: SparkSession) extends Serializable
         return (ret)
     }
 
-    def einspeiseleistung (precalc_results: PreCalculationResults, tdata: RDD[TData], sdata: RDD[Tuple2[String,Iterable[PV]]], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung (precalc_results: PreCalculationResults, tdata: RDD[TData], sdata: RDD[Tuple2[String,Iterable[PV]]], cdata: RDD[Tuple2[String,Double]]) (transformers: Array[TData]): Array[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
@@ -1484,16 +1501,16 @@ class GridLABD (session: SparkSession) extends Serializable
                 val r = analyse (experiments, data, cdata) (transformers)
                 val finish = System.nanoTime ()
                 println (simulation + " analyse: " + (finish - gridlabd) / 1e9 + " seconds")
-                r
+                r.collect
             }
             else
             {
                 println ("solve failed for " + simulation)
-                session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+                Array[MaxEinspeiseleistung] ()
             }
         }
         else
-            session.sparkContext.parallelize (Array[MaxEinspeiseleistung] ())
+            Array[MaxEinspeiseleistung] ()
 
         return (ret)
     }
