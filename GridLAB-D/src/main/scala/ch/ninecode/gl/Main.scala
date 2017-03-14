@@ -65,6 +65,8 @@ object Main
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
         simulation: Int = -1,
+        reference: Int = -1,
+        delta: Double = 1e-6,
         number: Int = -1,
         files: Seq[String] = Seq()
     )
@@ -124,6 +126,14 @@ object Main
         opt[Int]('s', "simulation").valueName ("N").
             action ((x, c) => c.copy (simulation = x)).
             text ("simulation number (precalc) to use for transformer list")
+
+        opt[Int]('r', "reference").valueName ("N").
+            action ((x, c) => c.copy (reference = x)).
+            text ("simulation number (precalc) to use as reference for transformer list")
+
+        opt[Int]('d', "delta").valueName ("D").
+            action ((x, c) => c.copy (delta = x)).
+            text ("delta power difference threshold for reference comparison")
 
         opt[Int]('n', "number").valueName ("N").
             action ((x, c) => c.copy (number = x)).
@@ -350,6 +360,11 @@ object Main
 
                 val houses = if (arguments.all)
                     precalc_results.has
+                else if (-1 != arguments.reference)
+                {
+                    val changed = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, arguments.reference, arguments.delta)
+                    precalc_results.has.filter ((x) => changed.contains (x.has_id))
+                }
                 else
                     precalc_results.has.filter(_.has_eea)
                 val trafo = houses.keyBy (a => gridlabd.trafokreis (a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
