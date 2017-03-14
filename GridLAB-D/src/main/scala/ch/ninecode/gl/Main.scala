@@ -168,7 +168,7 @@ object Main
         tdata: RDD[TData],
         sdata: RDD[Tuple2[String,Iterable[PV]]],
         cdata: RDD[Tuple2[String,Double]],
-        export_only: Boolean) (transformers: Array[TData]): Int =
+        export_only: Boolean) (transformers: Array[TData]): Unit =
     {
         val start = System.nanoTime ()
 
@@ -178,16 +178,11 @@ object Main
         val ret = if (0 != records.length)
         {
             val simulation = records(0).trafo
-            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, records)
-            id
+            Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, records)
         }
-        else
-            0
 
         val finish = System.nanoTime ()
         println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
-
-        ret
     }
 
     /**
@@ -370,14 +365,14 @@ object Main
                         trafo.slice (0, Math.min (arguments.number, trafo.length))
                     else
                         trafo
-                    val results = temp.par.map (
+                    temp.par.map (
                         (x) =>
                         {
                             val y = x.clone
                             you_had_one_job (gridlabd, precalc_results, tdata, sdata, cdata, arguments.export_only) (y)
                         }
                     )
-                    println ("finished " + results.length + " trafokreis")
+                    println ("finished " + temp.length + " trafokreis")
                 }
 
                 val calculate = System.nanoTime ()
