@@ -313,7 +313,7 @@ object Database
                 // create a database connection
                 connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
-                val statement = connection.prepareStatement ("select distinct(current.trafo) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.has_eea != reference.has_eea) or (abs(current.maximum - reference.maximum) > ?))")
+                val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.has_eea != reference.has_eea) or (abs(current.maximum - reference.maximum) > ?))")
                 statement.setInt (1, simulation)
                 statement.setInt (2, reference)
                 statement.setDouble (3, delta)
