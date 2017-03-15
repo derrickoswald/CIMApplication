@@ -1,0 +1,54 @@
+# Spark local cluster using Docker
+#
+# Note: from GridLAB-D directory run with:
+#       docker-compose --file src/test/resources/sandbox.yaml up&
+# stop with:
+#       docker-compose --file src/test/resources/sandbox.yaml down
+#
+# Note: for more worker nodes use:
+#       docker-compose --file src/test/resources/sandbox.yaml scale worker=2
+#
+# Note: to start a shell on the cluster use:
+#       docker exec --interactive --tty resources_sandbox_1 bash
+# or    docker exec --interactive --tty resources_worker_1 bash
+#
+
+version: "2" # Docker Engine (version > 1.10.0) and Docker Compose (version >= 1.6.0)
+
+services:
+  sandbox:
+    image: derrickoswald/spark
+    command: start-spark master
+    environment:
+      HDFS_USER: ${USER} # use value of environment variable "USER" as Spark owner/operator 
+    hostname: sandbox
+    ports: # not sure how many of these are really needed:
+      - "4040:4040"
+      - "6066:6066"
+      - "7070:7070"
+      - "7077:7077" # Spark standalone port, as in master = spark://sandbox:7077
+      - "8020:8020" # hdfs port, as in: hdfs dfs -fs hdfs://sandbox:8020 -ls
+      - "8032:8032"
+      - "8042:8042"
+      - "8081:8080"
+      - "8088:8088"
+      - "10000:10000" # Thriftserver JDBC port
+      - "10001:10001"
+      - "50010:50010"
+      - "50070:50070"
+    volumes:
+      - ./../../../private_data:/opt/private_data # map private sample data file directory to /opt/private_data within the container
+      - ./../../../target:/opt/code # map compilation output directory to /opt/code within the container
+  worker:
+    image: derrickoswald/spark
+    command: start-spark worker sandbox
+    environment:
+      HDFS_USER: ${USER} # use value of environment variable "USER" as Spark owner/operator 
+    environment:
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 4g
+    links:
+      - sandbox
+    volumes:
+      - ./../../../private_data:/opt/private_data # map private sample data file directory to /opt/private_data within the container
+      - ./../../../target:/opt/code # map compilation output directory to /opt/code within the container

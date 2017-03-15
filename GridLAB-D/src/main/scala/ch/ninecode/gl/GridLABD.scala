@@ -22,6 +22,7 @@ import scala.collection.mutable.HashSet
 
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.permission._
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.FileUtil
 import org.apache.hadoop.fs.Path
@@ -459,7 +460,11 @@ class GridLABD (session: SparkSession) extends Serializable
             val hdfs = FileSystem.get (URI.create (HDFS_URI), hdfs_configuration)
 
             val file = new Path ("/simulation/" + equipment + "/" + path)
-            hdfs.mkdirs (file.getParent ())
+            // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
+            // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
+            hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa-rwx"))
+            hdfs.setPermission (file.getParent (), new FsPermission ("ugoa-rwx")) // "-"  WTF?
+
             if (null != bytes)
             {
                 val out = hdfs.create (file)
@@ -1238,6 +1243,7 @@ class GridLABD (session: SparkSession) extends Serializable
                     "while read line; do " +
                         "FILE=$line; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        "HADOOP_USER_NAME=$SPARK_USER; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>$FILE.out; " +
