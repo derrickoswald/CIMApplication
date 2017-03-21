@@ -3,7 +3,7 @@ GridLAB-D
 
 Distributed load-flow calculations using [GridLAB-D](http://www.gridlabd.org/).
 
-#Overview
+# Overview
 
 This program reads in a [CIM file](http://cimug.ucaiug.org/default.aspx) describing an electrical network
 and evaluates the maximum feed-in power at each house - to determine the upper size limit when a customer
@@ -22,7 +22,7 @@ The program runs on [Spark](https://spark.apache.org), usually on a cluster such
 [Amazon Web Services (AWS)](https://aws.amazon.com), [Azure](https://docs.microsoft.com/en-us/azure) or
 an in-house system.
 
-#Input
+# Input
 
 The starting point for analysis is a CIM export file.
 The files that have been tested are exported from [nisStrom](http://www.nis.ch).
@@ -68,7 +68,7 @@ This 47.5m underground cable, of 4 conductors of 50 sq. mm. each, has a positive
 per Kilometer and is in service at 400 Volts with a maximum rated current of 170 Amps. Not shown is that topologically, it is connected to a house and
 an intermediate junction.
 
-#Preparation
+# Preparation
 
 HDFS
 -----
@@ -96,7 +96,7 @@ _NOTE: checkpoint storage must be manually managed (it will not be erased automa
 hdfs dfs -rm -R "/checkpoint/*"
 ```
 
-#Operation
+# Operation
 
 The program is submitted to the cluster with the [spark-submit command](https://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit).
 
@@ -128,22 +128,22 @@ $ spark-submit --master yarn /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar
 
 The resulting SQLite database is `./simulation/results.db`, path relative to where the `spark-submit` command was executed.
 
-##Options
+## Options
 
-###master
+### master
 Allows specifying the Spark master (same meaning as spark-submit) when `GridLAB-D` is run in debug mode in a development environment. Normally this should not be used by end users. Within the program, the Spark session is accessed via `getOrCreate`, so it should be benign to specify the same master as for `spark-submit`.
 
-###opts
+### opts
 Allows specifying Spark options when `GridLAB-D` is run in debug mode in a development environment. Normally this should not be used by end users.
 When specified, options are in the form of [Spark Properties](https://spark.apache.org/docs/latest/configuration.html#viewing-spark-properties) (just like the _Arbitrary Spark configuration property_ `--conf` option for `spark-submit`), and not the form used by spark-submit. For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.driver.memory=2g`.
 
-###three
+### three
 Changes from the default of single phase simulation to three phase simulation. In general, the results should be the same between the two choices, so the default is the less memory and disk intensive single phase.
 
-###precalculation
+### precalculation
 Performs the pre-calculation phase only (see below) that calculates the maximum feed-in power for houses under the assumption of no other installed systems feeding in power. This allows the processing to proceed in two phases separated by an arbitrary amount of time. The simulation number (database primary key) is output on the screen at completion, and a list of transformers names (if any) which service houses with already existing photo-voltaic installations is written to `/simulation/trafos_with_eea/trafos.txt`.
 
-###trafos
+### trafos
 Allows the specification of a file containing a list of transformers to simulate, and calculate the maximum feed-in power for connected houses. A typical use-case is `--precalculation` followed by `--trafos` after editing the list of transformers:
 ```
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --precalculation hdfs://...
@@ -151,7 +151,7 @@ _edit the trafos.txt file_
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --trafos trafos.txt hdfs://...
 ```
 
-###simulation
+### simulation
 Performs the simulation phase only (see below) using the results of a prior pre-calculation as specified by the simulation number. This allows the processing to proceed in two phases separated by an arbitrary amount of time or to re-execute a failed job. A typical use-case is `--precalculation` followed by `--simulation` after some pause:
 ```
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --precalculation hdfs://...
@@ -160,19 +160,19 @@ _some time later_
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --simulation 42 hdfs://...
 ```
 
-###all
+### all
 Performs simulation on all transformers in the input file.
 
-###clean
+### clean
 Deletes generated simulation files from the HDFS /simulation directory after the maximum feed-in calculation has been made. A set of files comprises a directory, with the name of the transformer or ganged transformers, containing a gridlabd `.glm` file, and input (player) and output (recorder) files, as well as one standard output capture file. Cleaning is recommended since these sets of files, one for each transformer simulation, can be fairly large. 
 
-###erase
+### erase
 Deletes generated simulation files from the local directory of each worker node in the cluster. The simulation files are copied locally from HDFS, in order for gridlabd to operate on them. Erasing is highly recommended. The files can be found in the `work` directory (standalone) or `userlogs` directory (yarn).
 
-###logging
+### logging
 Specifies the logging level (verbosity) of log records. This overrides the logging level specified in log4j.properties.
 
-###checkpointdir
+### checkpointdir
 Specifies the checkpoint directory and turns checkpointing on - if not specified no checkpointing occurs. A RDD checkpoint is a _materialized_ RDD where the current state of the RDD is stored on disk and the _recipe_ for how to re-create it is discarded. The GridLAB-D program has optional checkpoints coded in logic to save the state after _costly_ computations - which means we trade off disk space for time to re-create, and the cost of extra disk/network I/O.
 
 **At the moment it is unclear under which conditions checkpointing should be recommended.**
@@ -182,7 +182,7 @@ _NOTE: checkpoint storage must be manually managed (it will not be erased automa
 hdfs dfs -rm -R "/checkpoint/*"
 ```
 
-#Processing
+# Processing
 
 The CIM file is read into Spark using a custom reader, [CIMScala](https://github.com/derrickoswald/CIMScala).
 The reader produces a set of [Resilient Distributed Dataset (RDD)](https://spark.apache.org/docs/latest/programming-guide.html#resilient-distributed-datasets-rdds), one for each class of CIM element including their relations.
@@ -192,11 +192,11 @@ connected with zero Ohm conductors such as bus bars or closed switches)
 and topological islands isolated by transformers and open switches.
 Usually, each power transformer (or set of ganged transformers) supplies one topological island.
 
-##Pre-Calculation
+## Pre-Calculation
 
 A graph traversal using [GraphX](https://spark.apache.org/docs/latest/graphx-programming-guide.html) yields the impedance between the transformer and each house as well as the cable that can sustain the least maximum current. From these values a best-case upper bound on maximum injected power can be computed, if the assumption is made that no other neighbors are also injecting power (the majority of cases). This step also identifies the houses that already have a photo-voltaic or wind power installation that is already feeding the network, which provides a list of topological islands that require simulation.
 
-##Load Flow
+## Load Flow
 
 For topological islands with existing feed-in installations, the program writes the island's equivalent circuit as
 a [.glm](http://gridlab-d.sourceforge.net/wiki/index.php/Creating_GLM_Files) file
@@ -207,7 +207,7 @@ The results of the load flow (voltages at each house and current through each co
 are analyzed to find the maximum power at which voltages are still within tolerance and currents don't
 exceed rated maximums.
 
-##Database Output
+## Database Output
 
 After each simulation, final results are written to a SQLite database that is local to the spark master node.
 This is the only step that runs only on the master node.
@@ -223,7 +223,7 @@ CREATE TABLE results (id integer primary key autoincrement, simulation integer, 
 
 The SQL query or view to extract the most recent results for each house is TBD
 
-#SWING Bus
+# SWING Bus
 
 The SWING bus (also known as a [slack bus](https://en.wikipedia.org/wiki/Slack_bus) or reference bus) is
 a node in the system which supplies or absorbs active and reactive power to and from the system that is

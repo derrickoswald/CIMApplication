@@ -3,7 +3,7 @@ CIMApplication
 
 J2EE access to Spark for Common Information Model (CIM) applications.
 
-#Overview
+# Overview
 
 This set of programs provides a demonstration of using Java EE Connector Architecture
 [JCA](https://en.wikipedia.org/wiki/Java_EE_Connector_Architecture)
@@ -17,7 +17,7 @@ to access Spark Resilient Distributed Dataset (RDD) for each CIM class.
 
 It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data applications running on Hadoop.
 
-#Architecture
+# Architecture
 
 The use of a resource adapter within a J2EE container leverages the technologies that ease
 deployment, security, transaction and user interface development that come with
@@ -28,12 +28,12 @@ jobs to the cluster of computers comprising the Hadoop infrastructure.
 As such, it offers a bridge between legacy serial applications running on a single machine and
 new parallel applications running on a cluster of machines.
 
-#Caveats
+# Caveats
 
 - currently only works within [Tomee](https://tomee.apache.org/) the [openejb](https://en.wikipedia.org/wiki/Apache_OpenEJB) container hosted in [Tomcat](https://tomcat.apache.org/).
 - currently only works with [Spark standalone](https://spark.apache.org/docs/1.6.0/spark-standalone.html) version 1.6.0
 
-#TomEE Setup
+# TomEE Setup
 
 - download and unzip/untar TomEE+ distribution in a suitable directory (for example in /opt)
 - if necessary, change the files ownership, e.g chown --recursive /opt/apache-tomee-plus-7.0.1/
