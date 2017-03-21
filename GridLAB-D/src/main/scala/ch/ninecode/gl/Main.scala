@@ -367,7 +367,11 @@ object Main
                 }
                 else
                     precalc_results.has.filter(_.has_eea)
-                val trafo = houses.keyBy (a => gridlabd.trafokreis (a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
+                def sorter (t1: Array[TData], t2: Array[TData]): Boolean =
+                {
+                    gridlabd.trafokreis (t1) < gridlabd.trafokreis (t2)
+                }
+                val trafo = houses.keyBy (a => gridlabd.trafokreis (a.source_obj)).groupByKey.map (_._2.head.source_obj).collect.sortWith (sorter)
                 println ("" + trafo.length + " transformers to process")
 
                 val precalc = System.nanoTime ()

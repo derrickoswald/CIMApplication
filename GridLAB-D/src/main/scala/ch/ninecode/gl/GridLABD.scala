@@ -1242,6 +1242,8 @@ class GridLABD (session: SparkSession) extends Serializable
                     "-c",
                     "while read line; do " +
                         "FILE=$line; " +
+//                        "pwd > /tmp/$FILE.environment.log; " +
+//                        "env >> /tmp/$FILE.environment.log; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                         "HADOOP_USER_NAME=$SPARK_USER; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
@@ -1491,6 +1493,7 @@ class GridLABD (session: SparkSession) extends Serializable
     {
         val start = System.nanoTime ()
         val simulation = trafokreis (transformers)
+        println (simulation + " start")
 
         val experiments = export (precalc_results, tdata, sdata, transformers)
         val write = System.nanoTime ()

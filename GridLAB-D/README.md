@@ -26,7 +26,7 @@ an in-house system.
 
 The starting point for analysis is a CIM export file.
 The files that have been tested are exported from [nisStrom](http://www.nis.ch).
-Normally the entire network is exported, but the program can work on files that are just a subset of the network. A typical file of the [BKW](https://www.bkw.ch) network weighs in at about 10GB.
+Normally the entire network is exported, but the program can work on files that are just a subset of the network. A typical file weighs in at about 10GB.
 The input file includes all electrically salient features and their connections, but can include location and asset information which are not used by this program.
 
 A CIM file is in RDF XML format. It includes electrical modeling parameters, such as switch status,

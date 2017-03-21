@@ -229,7 +229,7 @@ object PowerFeeding
         Files.createDirectories (file.getParent ())
 
         // write the file of transformers needing analysis
-        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.mkString("\n")
+        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.sortWith(_.compareTo(_) < 0).mkString("\n")
         Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
 
         val vertices = graph.vertices.map (_._2)
