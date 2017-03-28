@@ -1139,7 +1139,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                             "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
                             "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
                             "cat $FILE/$FILE.out; " +
-                            //"rm -rf $FILE; " +
+                            "rm -rf $FILE; " +
                             "done < /dev/stdin")
                 }
 
@@ -1180,9 +1180,9 @@ class GridLABD(session: SparkSession) extends Serializable {
      * NOTE: we don't have to sort by time, since the power is monotonically increasing,
      * just by selecting the minimum power solution we've chosen the first measurement over the limit
      */
-    def finder(values: Iterable[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]]): MaxEinspeiseleistung =
+    def finder(values: Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)]): MaxEinspeiseleistung =
         {
-                def seqop(current: MaxEinspeiseleistung, arg: Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]): MaxEinspeiseleistung =
+                def seqop(current: MaxEinspeiseleistung, arg: (Experiment, ThreePhaseComplexDataElement, String, String)): MaxEinspeiseleistung =
                     {
                         val experiment = arg._1
                         val data = arg._2
@@ -1214,128 +1214,133 @@ class GridLABD(session: SparkSession) extends Serializable {
             values.aggregate(MaxEinspeiseleistung(trafo, house, None, "unknown", ""))(seqop, combop)
         }
 
-    def voltcheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, max: Double): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
+    def voltcheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, max: Double): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
         {
             val limit = "voltage limit"
 
-                // eliminate current measurements and measurements within tolerance
-                def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
-                    {
-                        return (
-                            (r.units == "Volts") &&
-                            (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                            (r.value_a.abs > max))
+            // eliminate current measurements and measurements within tolerance
+            def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        (r.units == "Volts") &&
+                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                        (r.value_a.abs > max))
+                }
+            def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        (r.units == "Volts") &&
+                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                        ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+                }          
+            
+            // assign an experiment to each measurement
+            def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+                {
+                    for (e ← experiments) {
+                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                            return (e.house, (e, r, limit, has(r.element) + " > " + max + " Volts"))
                     }
-                def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
-                    {
-                        return (
-                            (r.units == "Volts") &&
-                            (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                            ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
-                    }
+                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+                }
 
-                //val overV = results.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
-
-                // assign an experiment to each measurement
-                def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
-                    {
-                        for (e ← experiments) {
-                            if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                                return (e, r, limit, has(r.element) + " > " + max + " Volts")
-                        }
-                        null.asInstanceOf[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]]
-                    }
-
-            assign(experiments)(element)
+            val interesting = (if (USE_ONE_PHASE) interesting1ph(element) else interesting3ph(element))
+            if (interesting)
+                assign(experiments)(element)
+            else 
+                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]    
         }
 
-    def ampcheck(experiments: Array[Experiment], elements: ThreePhaseComplexDataElement, cdata: Iterable[Tuple2[String, Double]]): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
+    def ampcheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, cdata: Iterable[Tuple2[String, Double]]): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
         {
             val limit = "current limit"
 
-                // eliminate measurements below capacity
-                def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
-                    {
-                        val r = arg._1
-                        val max = arg._2
-                        r.value_a.abs / Math.sqrt(3) > max
-                    }
-                def interesting3ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
-                    {
-                        val r = arg._1
-                        val max = arg._2
-                        ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
-                    }
-
-                val cable_max = cdata.find(c ⇒ elements.element == c._1) match
+            // eliminate measurements below capacity
+            def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
                 {
-                    case Some (cable) => cable._2
-                    case None =>
-                        log.error ("cable type " + elements.element + " not found")
-                        100.0
+                    val r = arg._1
+                    val max = arg._2
+                    r.value_a.abs / Math.sqrt(3) > max
                 }
-                //val results_and_cables = results.keyBy(_.element).join(cdata).values
-                //val overI = results_and_cables.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+            def interesting3ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
+                {
+                    val r = arg._1
+                    val max = arg._2
+                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+                }
 
-                // assign an experiment to each measurement
-                def assign(experiments: Array[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
-                    {
-                        val r = arg._1
-                        val max = arg._2
-                        for (e ← experiments) {
-                            if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                                return ((e, r, limit, r.element + " > " + max + " Amps"))
-                        }
-                        null.asInstanceOf[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]]
+            val cable_max = cdata.find(c ⇒ element.element == c._1) match
+            {
+                case Some (cable) => cable._2
+                case None =>
+                    log.error ("cable type " + element.element + " not found")
+                    100.0
+            }
+
+            // assign an experiment to each measurement
+            def assign(experiments: Array[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+                {
+                    val r = arg._1
+                    val max = arg._2
+                    for (e ← experiments) {
+                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                            return (e.house, (e, r, limit, r.element + " > " + max + " Amps"))
                     }
+                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+                }
 
-            assign(experiments)((elements, cable_max))
+            val interesting = (if (USE_ONE_PHASE) interesting1ph((element, cable_max)) else interesting3ph((element, cable_max)))
+            if (interesting)
+                assign(experiments)((element, cable_max))
+            else
+                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]  
         }
 
-    def powercheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, power: Double, trafo_name: String): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
+    def powercheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, power: Double, trafo_name: String): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
         {
             val limit = "transformer limit"
 
-                // eliminate voltage measurements and measurements below capacity
-                def interesting1ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
-                    {
-                        return (
-                            if ((r.element == trafo_name) &&
-                                (r.units == "Amps") && // redundant
-                                (r.value_a.abs > i))
-                                true
-                            else
-                                false)
-                    }
-                def interesting3ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
-                    {
-                        return (
-                            if ((r.element == trafo_name) &&
-                                (r.units == "Amps") && // redundant
-                                ((r.value_a.abs > i) || (r.value_b.abs > i) || (r.value_c.abs > i)))
-                                true
-                            else
-                                false)
-                    }
+            // eliminate voltage measurements and measurements below capacity
+            def interesting1ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        if ((r.element == trafo_name) &&
+                            (r.units == "Amps") && // redundant
+                            (r.value_a.abs > i))
+                            true
+                        else
+                            false)
+                }
+            def interesting3ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        if ((r.element == trafo_name) &&
+                            (r.units == "Amps") && // redundant
+                            ((r.value_a.abs > i) || (r.value_b.abs > i) || (r.value_c.abs > i)))
+                            true
+                        else
+                            false)
+                }
 
-            // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
+            // assign an experiment to each measurement
+            def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+                {
+                    for (e ← experiments) {
+                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                            return (e.house, (e, r, limit, r.element + " > " + power + " Watts"))
+                    }
+                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+                }
+            
             val i = if (USE_ONE_PHASE) math.sqrt(3) * power / 400.0 else power / (400.0 * math.sqrt(3))
-                //val overI = results.filter(if (USE_ONE_PHASE) interesting1ph(i) else interesting3ph(i))
-
-                // assign an experiment to each measurement
-                def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): Tuple4[Experiment, ThreePhaseComplexDataElement, String, String] =
-                    {
-                        for (e ← experiments) {
-                            if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                                return (e, r, limit, r.element + " > " + power + " Watts")
-                        }
-                        null.asInstanceOf[Tuple4[Experiment, ThreePhaseComplexDataElement, String, String]]
-                    }
-
-            assign(experiments)(element)
+            val interesting = (if (USE_ONE_PHASE) interesting1ph(i)(element) else interesting3ph(i)(element))
+            if (interesting)
+                assign(experiments)(element)
+            else
+                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
         }
 
-    def analyse(experiments: Array[Experiment])(element: (String, (ThreePhaseComplexDataElement, (Double, Iterable[(String, Double)])))): List[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+    def analyse(experiments: Array[Experiment])(element: (String, (ThreePhaseComplexDataElement, (Double, Iterable[(String, Double)])))): List[(String, (Experiment, ThreePhaseComplexDataElement, String, String))] =
         {
             val cdata = element._2._2._2
             val complexDataElement = element._2._1
@@ -1386,35 +1391,32 @@ class GridLABD(session: SparkSession) extends Serializable {
 
                     if (output.count != 0) {
                         val reduced_trafos = filtered_trafos.map(t ⇒ {
-                            val a = t._2
-                            val b = a._1
-                            val c = b.map(_.end1)
-                            val d = c.map(_.ratedS)
-                            val e = d.sum
                             val transformers = t._2._1.map(_.end1.ratedS).sum
                             val cdata_iter = t._2._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
                             (t._1, (transformers, cdata_iter))
                         })
 
                         val exp_array = experiments.collect
-                        val r = output.join(reduced_trafos).flatMap(o ⇒ analyse(exp_array)(o))
+                        val r = output.join(reduced_trafos).flatMap(analyse(exp_array))
 
                         // establish a "no limit found" default
                         val s = experiments.map(
                             (x) ⇒
                                 {
                                     (
+                                        x.house, (
                                         x,
                                         ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
                                         "no limit",
-                                        "")
+                                        ""))
                                 })
+  
+                        val ret = r.filter(_ != null).union(s).groupByKey().values.map(finder)
 
-                        val ret = r.union(s).groupBy(_._1.house).values.map(finder)
-                        val stored = ret.map(r ⇒ {
-                            Database.store("Einspeiseleistung", Calendar.getInstance())(Array(r))
+                        fileroot.map(f => {
+                            val max_einpeiseleistung = ret.filter(_.trafo == f).collect
+                            Database.store("Einspeiseleistung", Calendar.getInstance())(max_einpeiseleistung)
                         })
-                        println ("Stored " + stored.count + " results")
 
                         //trafokreis.map(t => cleanup(t._1))
 
