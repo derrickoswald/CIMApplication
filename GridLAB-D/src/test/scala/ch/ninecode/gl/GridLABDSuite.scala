@@ -75,7 +75,7 @@ class GridLABDSuite extends FunSuite
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
-        options.put ("ch.ninecode.cim.do_topo", "true")
+        options.put ("ch.ninecode.cim.do_topo", "false")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         println (elements.count () + " elements")
@@ -86,7 +86,7 @@ class GridLABDSuite extends FunSuite
     test ("Basic")
     {
         session: SparkSession ⇒
-          
+
         val begin = System.nanoTime ()
 
         val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
@@ -141,21 +141,20 @@ class GridLABDSuite extends FunSuite
         val trafo_list = precalc_results.has.filter(_.eea != null).keyBy (a => gridlabd.trafokreis_key(a.source_obj)).groupByKey.map (_._2.head.source_obj)
         println ("" + trafo_list.count + " transformers to process:")
         println (trafo_list.collect.map (a => gridlabd.trafokreis_key(a)).mkString ("\n"))
-  
+
         val edges  = precalc_results.edges.filter(_._1 != null)
         val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
         val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id))
         val grouped_precalc_results = vertices.groupWith(edges, has)
-        
+
         val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
         println("trafokreise: ", trafokreise.count)
-        
+
         gridlabd.einspeiseleistung(trafokreise)        
-        
+
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
         println ()
     }
-    
 }
