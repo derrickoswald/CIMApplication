@@ -1411,10 +1411,10 @@ class GridLABD(session: SparkSession) extends Serializable {
                                 })
 
                         val ret = r.union(s).groupBy(_._1.house).values.map(finder)
-                        ret.first
                         val stored = ret.map(r ⇒ {
                             Database.store("Einspeiseleistung", Calendar.getInstance())(Array(r))
                         })
+                        println ("Stored " + stored.count + " results")
 
                         //trafokreis.map(t => cleanup(t._1))
 
