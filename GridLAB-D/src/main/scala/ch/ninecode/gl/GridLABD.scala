@@ -1153,7 +1153,7 @@ class GridLABD(session: SparkSession) extends Serializable {
             val file_list = filename_root.flatMap(f ⇒ list_files(f, "output_data"))
             val data = file_list.map(f => read_csv(f._1) (f._2))
             val some = data.filter ((x) => if (null != x) true else false) // eliminate TRAXXXX_voltdump.csv
-            session.sparkContext.union (some.toSeq) //.fold(null)((x, y) ⇒ if (null == x) y else if (null == y) x else x.union(y))
+            session.sparkContext.union (some.toSeq).cache
         }
 
     /**
