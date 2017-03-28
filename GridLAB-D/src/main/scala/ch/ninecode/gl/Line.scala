@@ -148,11 +148,10 @@ class Line (one_phase: Boolean) extends Serializable
     }
 
     // get one of each type of ACLineSegment and emit a configuration for each of them
-    def getACLineSegmentConfigurations (edges: RDD[Iterable[PreEdge]]): RDD[String] =
+    def getACLineSegmentConfigurations (edges: Iterable[Iterable[PreEdge]]): Iterable[String] =
     {
-        edges.filter (x => isACLineSegment (x)).keyBy (x => configurationName (x))
-            .reduceByKey ((a, b) => a) // all lines with the same name have the same configuration
-            .map (configuration)
+        edges.filter (x => isACLineSegment (x)).groupBy(x => configurationName (x))
+             .map(x => configuration((x._1, x._2.head)))
     }
 
     def emit (edges: Iterable[PreEdge]): String =

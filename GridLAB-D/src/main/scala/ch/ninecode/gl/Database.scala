@@ -32,7 +32,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar) (equipment: String, records: Array[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar) (records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -88,8 +88,7 @@ object Database
                 }
                 datainsert.close
                 connection.commit
-
-                println (equipment + " " + records.length + " records")
+                
                 return (id)
             }
             else
@@ -118,7 +117,7 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar, gridlabd: GridLABD) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -158,12 +157,14 @@ object Database
             for (i <- 0 until records.length)
             {
                 val trafo_id = records(i).source_obj.map(_.transformer.id).sortWith (_ < _).mkString ("_")
+                val has_eea = records(i).eea != null
+                val has_id =  gridlabd.has(records(i).id_seq)
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, trafo_id)
-                datainsert.setString (4, records(i).has_id)
+                datainsert.setString (4, has_id)
                 datainsert.setDouble (5, records(i).max_power_feeding)
-                datainsert.setBoolean(6, records(i).has_eea)
+                datainsert.setBoolean(6, has_eea)
                 datainsert.setString (7, records(i).reason)
                 datainsert.setString (8, records(i).details)
                 datainsert.executeUpdate ()

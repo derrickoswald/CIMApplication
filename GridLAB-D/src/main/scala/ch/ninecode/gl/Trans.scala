@@ -9,7 +9,7 @@ import ch.ninecode.model._
  * @param transformers - the RDD of transformers
  * @param one_phase - flag to indicate if single phase output is desired
  */
-class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
+class Trans (one_phase: Boolean, USE_TOPOLOGICAL_NODES: Boolean) extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
 
@@ -27,40 +27,41 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
     }
 
     // get the configuration name (of the parallel transformers)
-    def configurationName (iter: Iterable[Tuple2[PreEdge,TData]]): String =
+    def configurationName (iter: Iterable[TData]): String =
     {
-        iter.map (_._1.element.id).map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
+        iter.map (_.transformer.id).map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
     }
 
     /**
      * Make one or more transformer configurations.
      * Most transformers have only two ends, so this should normally make one configurations
      */
-    def make_transformer_configuration (edges: Iterable[Tuple2[PreEdge,TData]]): String =
+    def make_transformer_configuration (trafokreis: Array[TData]): String =
     {
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
-        val config = configurationName (edges)
+        val config = configurationName (trafokreis)
         // primary and secondary voltage should be the same on all edges - use the first
-        val v0 = 1000.0 * edges.head._2.voltage0
-        val v1 = 1000.0 * edges.head._2.voltage1
-        if (!edges.forall ((edge) => (1000.0 * edge._2.voltage0 == v0)))
-            log.error ("transformer group " + config + " has different voltages on terminal 0 " + edges.map ((x) => x._2.voltage0).mkString (" "))
-        if (!edges.forall ((edge) => (1000.0 * edge._2.voltage1 == v1)))
-            log.error ("transformer group " + config + " has different voltages on terminal 1 " + edges.map ((x) => x._2.voltage1).mkString (" "))
+        // TODO check for voltages on terminal
+        val v0 = 1000.0 * trafokreis.head.voltage0
+        val v1 = 1000.0 * trafokreis.head.voltage1
+        if (!trafokreis.forall ((edge) => (1000.0 * edge.voltage0 == v0)))
+            log.error ("transformer group " + config + " has different voltages on terminal 0 " + trafokreis.map ((x) => x.voltage0).mkString (" "))
+        if (!trafokreis.forall ((edge) => (1000.0 * edge.voltage1 == v1)))
+            log.error ("transformer group " + config + " has different voltages on terminal 1 " + trafokreis.map ((x) => x.voltage1).mkString (" "))
         // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-        val power_rating = edges.foldLeft (0.0)((sum, edge) => edge._2.end1.ratedS)
+        val power_rating = trafokreis.foldLeft (0.0)((sum, edge) => sum + edge.end1.ratedS)
         // calculate the impedance as 1 / sum (1/Zi)
-        val impedances = edges.map (
+        val impedances = trafokreis.map (
             (edge) =>
             {
                 val sqrt3 = Math.sqrt (3)
-                val base_va = edge._2.end1.ratedS
+                val base_va = edge.end1.ratedS
                 // equivalent per unit values
                 val base_amps = base_va / v1 / sqrt3
                 val base_ohms = v1 / base_amps / sqrt3
                 // this end's impedance
-                val r = edge._2.end1.r / base_ohms
-                val x = edge._2.end1.x / base_ohms
+                val r = edge.end1.r / base_ohms
+                val x = edge.end1.x / base_ohms
                 Complex (r, x)
             }
         )
@@ -84,9 +85,9 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
     }
 
     // get one of each type of PowerTransformer and emit a configuration for each of them
-    def getTransformerConfigurations (edges: RDD[Iterable[Tuple2[PreEdge,TData]]]): RDD[String] =
+    def getTransformerConfigurations (trafokreis: Array[TData]): String =
     {
-        edges.map (make_transformer_configuration)
+        make_transformer_configuration(trafokreis)
     }
 
     def make_transformer (s: Iterable[Tuple2[PreEdge,TData]]): Transformer =
@@ -100,25 +101,28 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
         Transformer (node, s.map (_._2).toList)
     }
 
-    def getTransformers (edges: RDD[Iterable[Tuple2[PreEdge,TData]]]): RDD[Transformer] =
+    def getTransformers (edges: Iterable[Iterable[Tuple2[PreEdge,TData]]]): Iterable[Transformer] =
     {
         edges.map (make_transformer)
     }
 
-    def emit (edges: Iterable[Tuple2[PreEdge,TData]]): String =
+  def emit(trafo: Array[TData]): String =
     {
-        val config = configurationName (edges)
-        val name = edges.map (_._1.element.id).map (x => valid_config_name (x)).mkString ("_")
+        val config = configurationName (trafo)
+        val name = trafo.map (_.transformer.id).map (x => valid_config_name (x)).mkString ("_")
         // get an edge, they all have the same connectivity nodes
-        val edge = edges.head._1
+        val (cn1, cn2) = if (USE_TOPOLOGICAL_NODES)
+          (trafo.head.terminal0.TopologicalNode, trafo.head.terminal1.TopologicalNode)
+        else
+          (trafo.head.terminal0.ConnectivityNode, trafo.head.terminal1.ConnectivityNode)
         val obj = if (one_phase)
             "\n" +
             "        object transformer\n" +
             "        {\n" +
             "            name \"" + name + "\";\n" +
             "            phases AN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "            from \"" + cn1 + "\";\n" +
+            "            to \"" + cn2 + "\";\n" +
             "            configuration \"" + config + "\";\n" +
             "        };\n"
         else
@@ -127,8 +131,8 @@ class Trans (transformers: RDD[TData], one_phase: Boolean) extends Serializable
             "        {\n" +
             "            name \"" + name + "\";\n" +
             "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
+            "            from \"" + cn1 + "\";\n" +
+            "            to \"" + cn2 + "\";\n" +
             "            configuration \"" + config + "\";\n" +
             "        };\n"
         val rec = if (one_phase)

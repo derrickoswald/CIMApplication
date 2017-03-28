@@ -19,13 +19,13 @@ import org.apache.spark.graphx.VertexId
 import ch.ninecode.model._
 
 case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double) extends Serializable
-case class MaxPowerFeedingNodeEEA(has_id: String, source_obj: Array[TData], max_power_feeding: Double, has_eea: Boolean, reason: String, details: String) extends Serializable
+case class MaxPowerFeedingNodeEEA(id_seq: String, voltage: Double, source_obj: Array[TData], max_power_feeding: Double, eea: Iterable[PV], reason: String, details: String) extends Serializable
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
 case class PreCalculationResults (
     simulation: Int,
     has: RDD[MaxPowerFeedingNodeEEA],
     vertices: RDD[PowerFeedingNode],
-    edges: RDD[Tuple3[VertexId, VertexId, PreEdge]])
+    edges: RDD[(String, PreEdge)])
 
 class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 {
@@ -140,7 +140,6 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def calc_max_feeding_power(node: PowerFeedingNode): MaxPowerFeedingNodeEEA =
     {
-        val has_id = has(node.id_seq)
         val r = node.sum_r
         val v = node.voltage
         val min_ir = node.min_ir
@@ -159,7 +158,7 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
             else
                 (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA(has_id, trafo_id, p_max, false, reason, details)
+        MaxPowerFeedingNodeEEA(node.id_seq, node.voltage, trafo_id, p_max, null, reason, details)
     }
 
     def has(string: String): String =
@@ -173,11 +172,6 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
         houses.map(calc_max_feeding_power)
     }
 
-    def join_eea(house_nodes: RDD[MaxPowerFeedingNodeEEA], solars: RDD[Tuple2[String,Iterable[PV]]]): RDD[(MaxPowerFeedingNodeEEA, Option[SolarGeneratingUnit])] =
-    {
-        val keyed_solar = solars.map(s ⇒ (has(s._1), s._2.head.solar))
-        house_nodes.keyBy(_.has_id).leftOuterJoin(keyed_solar).values
-    }
 }
 
 object PowerFeeding
@@ -208,20 +202,20 @@ object PowerFeeding
 
         val graph = power_feeding.trace (start_ids)
         val house_nodes = power_feeding.get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
-        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, sdata)
+        val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(sdata).values
 
         val has = traced_house_nodes_EEA.map(node =>
         {
             node._2 match
             {
                 case Some (eea) =>
-                    node._1.copy(has_eea = true)
+                    node._1.copy(eea = eea)
                 case None =>
                     node._1
             }
         })
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
         println ("the simulation number is " + simulation)
 
         // make the directory
@@ -229,11 +223,26 @@ object PowerFeeding
         Files.createDirectories (file.getParent ())
 
         // write the file of transformers needing analysis
-        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.sortWith(_.compareTo(_) < 0).mkString("\n")
+        val trafo_string = has.filter(_.eea != null).map(x => gridlabd.trafokreis_key (x.source_obj)).distinct.collect.sortWith(_.compareTo(_) < 0).mkString("\n")
         Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
 
-        val vertices = graph.vertices.map (_._2)
-        val edges = graph.edges.map ((x) => (x.srcId, x.dstId, x.attr))
+        def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
+        {
+          val source = triplet.srcAttr.source_obj
+          val target = triplet.dstAttr.source_obj
+          
+          var ret = (null.asInstanceOf[String], triplet.attr)
+          if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
+            val source_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
+            val target_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
+            if (source_trafo_id == target_trafo_id)
+              ret = (source_trafo_id, triplet.attr) 
+          }
+          ret
+        }
+        
+        val vertices = graph.vertices.values
+        val edges = graph.triplets.map(mapGraphEdges)
 
         has.persist (gridlabd.STORAGE_LEVEL)
         vertices.persist (gridlabd.STORAGE_LEVEL)
@@ -243,7 +252,7 @@ object PowerFeeding
             case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
             case None =>
         }
-
+        
         PreCalculationResults (simulation, has, vertices, edges)
     }
 }

@@ -96,7 +96,7 @@ class PowerFeedingSuite extends FunSuite
         val begin = System.nanoTime ()
 
         val use_topological_nodes = true
-        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         val filename = FILE_DEPOT + root + ".rdf"
         val elements = readFile (session, filename)
 
@@ -126,24 +126,24 @@ class PowerFeedingSuite extends FunSuite
         val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))
         val graph = power_feeding.trace(start_ids)
         val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
-        val traced_house_nodes_EEA = power_feeding.join_eea(house_nodes, solars)
+        val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(solars).values
 
         val has = traced_house_nodes_EEA.map(node => 
           {
             val result = node._2 match
             {
               case Some (eea) => 
-                node._1.copy(has_eea = true)
+                node._1.copy(eea = eea)
               case None => 
                 node._1
             }
             result
           }).distinct
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
         println ("the simulation number is " + simulation)
 
-        val trafo_string = has.filter(_.has_eea).map(x => gridlabd.trafokreis (x.source_obj)).distinct.collect.mkString("\n")
+        val trafo_string = has.filter(_.eea != null).map(x => gridlabd.trafokreis_key (x.source_obj)).distinct.collect.mkString("\n")
         Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
     }
 

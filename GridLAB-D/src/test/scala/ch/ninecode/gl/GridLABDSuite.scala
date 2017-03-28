@@ -86,10 +86,10 @@ class GridLABDSuite extends FunSuite
     test ("Basic")
     {
         session: SparkSession ⇒
-
+          
         val begin = System.nanoTime ()
 
-        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11_assets_preview" // Brügg
         val filename =
             FILE_DEPOT + root + ".rdf"
@@ -138,24 +138,24 @@ class GridLABDSuite extends FunSuite
         val precalc = System.nanoTime ()
         println ("precalc: " + (precalc - prepare) / 1e9 + " seconds")
 
-        val trafo = precalc_results.has.filter(_.has_eea).keyBy (a => gridlabd.trafokreis(a.source_obj)).groupByKey.map (_._2.head.source_obj).collect
-        println ("" + trafo.length + " transformers to process:")
-        println (trafo.map (a => gridlabd.trafokreis(a)).mkString ("\n"))
-
-        def do_one_trafofreis (s: Array[TData]): Int =
-        {
-            val simulation = gridlabd.trafokreis (s)
-            val rdd = gridlabd.einspeiseleistung (precalc_results, tdata, sdata, cdata) (s)
-            val id = Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, rdd)
-            gridlabd.cleanup (simulation)
-            id
-        }
-        val results = trafo.par.map (do_one_trafofreis)
-
+        val trafo_list = precalc_results.has.filter(_.eea != null).keyBy (a => gridlabd.trafokreis_key(a.source_obj)).groupByKey.map (_._2.head.source_obj)
+        println ("" + trafo_list.count + " transformers to process:")
+        println (trafo_list.collect.map (a => gridlabd.trafokreis_key(a)).mkString ("\n"))
+  
+        val edges  = precalc_results.edges.filter(_._1 != null)
+        val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
+        val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id))
+        val grouped_precalc_results = vertices.groupWith(edges, has)
+        
+        val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
+        println("trafokreise: ", trafokreise.count)
+        
+        gridlabd.einspeiseleistung(trafokreise)        
+        
         val calculate = System.nanoTime ()
         println ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
         println ()
     }
-
+    
 }

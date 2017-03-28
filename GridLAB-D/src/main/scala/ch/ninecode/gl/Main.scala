@@ -55,7 +55,6 @@ object Main
         master: String = "",
         opts: Map[String,String] = Map(),
         three: Boolean = false,
-        fold_on_disk: Boolean = false,
         precalculation: Boolean = false,
         trafos: String = "",
         export_only: Boolean = false,
@@ -86,10 +85,6 @@ object Main
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
-
-        opt[Unit]('f', "fold_on_disk").
-            action ((_, c) => c.copy (fold_on_disk = true)).
-            text ("perform glm strings coalesce on HDFS")
 
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
@@ -170,29 +165,6 @@ object Main
         }
 
         return (ret)
-    }
-
-    def you_had_one_job (
-        gridlabd: GridLABD,
-        precalculation_results: PreCalculationResults,
-        tdata: RDD[TData],
-        sdata: RDD[Tuple2[String,Iterable[PV]]],
-        cdata: RDD[Tuple2[String,Double]],
-        export_only: Boolean) (transformers: Array[TData]): Unit =
-    {
-        val start = System.nanoTime ()
-
-        val simulation = gridlabd.trafokreis (transformers)
-        val records = gridlabd.einspeiseleistung (precalculation_results, tdata, sdata, cdata) (transformers)
-        gridlabd.cleanup (simulation)
-        val ret = if (0 != records.length)
-        {
-            val simulation = records(0).trafo
-            Database.store ("Einspeiseleistung", Calendar.getInstance ()) (simulation, records)
-        }
-
-        val finish = System.nanoTime ()
-        println (simulation + " total: " + (finish - start) / 1e9 + " seconds")
     }
 
     /**
@@ -308,7 +280,6 @@ object Main
                 gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
-                gridlabd.FOLD_ON_DISK = arguments.fold_on_disk
                 gridlabd.EXPORT_ONLY = arguments.export_only
                 gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
 
@@ -326,10 +297,7 @@ object Main
 
                 val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
                 val tdata = _transformers.getTransformerData ()
-
-                // get the rated current for every cable
-                val cdata = gridlabd.getCableMaxCurrent ()
-
+                
                 // get the existing photo-voltaic installations keyed by terminal
                 val sdata = gridlabd.getSolarInstallations (true)
 
@@ -363,35 +331,30 @@ object Main
                 else if (-1 != arguments.reference)
                 {
                     val changed = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, arguments.reference, arguments.delta)
-                    precalc_results.has.filter ((x) => changed.contains (x.has_id))
+                    precalc_results.has.filter ((x) => changed.contains (gridlabd.has(x.id_seq)))
                 }
                 else
-                    precalc_results.has.filter(_.has_eea)
-                def sorter (t1: Array[TData], t2: Array[TData]): Boolean =
-                {
-                    gridlabd.trafokreis (t1) < gridlabd.trafokreis (t2)
-                }
-                val trafo = houses.keyBy (a => gridlabd.trafokreis (a.source_obj)).groupByKey.map (_._2.head.source_obj).collect.sortWith (sorter)
-                println ("" + trafo.length + " transformers to process")
+                    precalc_results.has.filter(_.eea != null)
+                
+                val trafo_list = houses.keyBy (a => gridlabd.trafokreis_key (a.source_obj)).groupByKey.map (_._2.head.source_obj)
+                println ("" + trafo_list.count + " transformers to process")
 
                 val precalc = System.nanoTime ()
                 println ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
+                
                 // do gridlab simulation if not just pre-calculation
                 if (!arguments.precalculation)
                 {
-                    val temp = if (-1 != arguments.number)
-                        trafo.slice (0, Math.min (arguments.number, trafo.length))
-                    else
-                        trafo
-                    temp.par.map (
-                        (x) =>
-                        {
-                            val y = x.clone
-                            you_had_one_job (gridlabd, precalc_results, tdata, sdata, cdata, arguments.export_only) (y)
-                        }
-                    )
-                    println ("finished " + temp.length + " trafokreis")
+                   val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id)) 
+                   val edges  = precalc_results.edges.filter(_._1 != null)                   
+                   val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
+                   val grouped_precalc_results = vertices.groupWith(edges, has)
+                                     
+                   val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
+                   gridlabd.einspeiseleistung(trafokreise)
+                   
+                   println ("finished " + trafo_list.count + " trafokreis")
                 }
 
                 val calculate = System.nanoTime ()
@@ -403,5 +366,6 @@ object Main
             case None =>
                 sys.exit (1)
         }
+        
     }
 }
