@@ -1267,7 +1267,13 @@ class GridLABD(session: SparkSession) extends Serializable {
                         ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
                     }
 
-            val cable_max = cdata.find(c ⇒ elements.element == c._1).get._2
+                val cable_max = cdata.find(c ⇒ elements.element == c._1) match
+                {
+                    case Some (cable) => cable._2
+                    case None =>
+                        log.error ("cable type " + elements.element + " not found")
+                        100.0
+                }
                 //val results_and_cables = results.keyBy(_.element).join(cdata).values
                 //val overI = results_and_cables.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
 
@@ -1344,11 +1350,17 @@ class GridLABD(session: SparkSession) extends Serializable {
             // get the name of the transformer recorder (matches Trans.emit)
             val trafo_name = element._1
 
-            val v = voltcheck(experiments, complexDataElement, max)
-            val i = ampcheck(experiments, complexDataElement, cdata)
-            val p = powercheck(experiments, complexDataElement, trafo_power, trafo_name)
-
-            List(v, i, p)
+            val ret =
+                if (complexDataElement.units == "Volts")
+                    List (voltcheck(experiments, complexDataElement, max))
+                else if (complexDataElement.units == "Amps")
+                    if (complexDataElement.element == trafo_name)
+                        List (powercheck(experiments, complexDataElement, trafo_power, trafo_name))
+                    else
+                        List (ampcheck(experiments, complexDataElement, cdata))
+                else
+                    List()
+            ret
         }
 
     def einspeiseleistung(
