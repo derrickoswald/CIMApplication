@@ -1368,7 +1368,7 @@ class GridLABD(session: SparkSession) extends Serializable {
         {
             val start = System.nanoTime()
             val filtered_trafos = trafokreis.filter(_._2._2.isDefined)
-            val experiments = filtered_trafos.flatMap(export(_))
+            val experiments = filtered_trafos.flatMap(export(_)).cache
             experiments.count
             val write = System.nanoTime()
             println("export: " + (write - start) / 1e9 + " seconds")
