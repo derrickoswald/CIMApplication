@@ -1148,9 +1148,9 @@ class GridLABD(session: SparkSession) extends Serializable {
             out.map(check).fold(true)(_ && _)
         }
 
-    def read_output_files(filename_root: Array[String]): RDD[(String, ThreePhaseComplexDataElement)] =
+    def read_output_files(filename_root: String): RDD[(String, ThreePhaseComplexDataElement)] =
         {
-            val file_list = filename_root.flatMap(f ⇒ list_files(f, "output_data"))
+            val file_list = list_files(filename_root, "output_data")
             val data = file_list.map(f => read_csv(f._1) (f._2))
             val some = data.filter ((x) => if (null != x) true else false) // eliminate TRAXXXX_voltdump.csv
             session.sparkContext.union (some.toSeq).cache
@@ -1386,43 +1386,44 @@ class GridLABD(session: SparkSession) extends Serializable {
                 println("solve: " + (gridlabd - write) / 1e9 + " seconds")
 
                 if (success) {
-                    val fileroot = filtered_trafos.map(_._1).collect
-                    val output = read_output_files(fileroot)
+                    val fileroot_list = filtered_trafos.map(_._1).collect
+                    
+                    val reduced_trafos = filtered_trafos.map(t ⇒ {
+                        val transformers = t._2._1.map(_.end1.ratedS).sum
+                        val cdata_iter = t._2._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
+                        (t._1, (transformers, cdata_iter))
+                    })
+                            
+                    fileroot_list.par.map(fileroot => {
+                        val output = read_output_files(fileroot)                      
+                        if (output.count != 0) {
 
-                    if (output.count != 0) {
-                        val reduced_trafos = filtered_trafos.map(t ⇒ {
-                            val transformers = t._2._1.map(_.end1.ratedS).sum
-                            val cdata_iter = t._2._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
-                            (t._1, (transformers, cdata_iter))
-                        })
-
-                        val exp_array = experiments.collect
-                        val r = output.join(reduced_trafos).flatMap(analyse(exp_array))
-
-                        // establish a "no limit found" default
-                        val s = experiments.map(
-                            (x) ⇒
-                                {
-                                    (
-                                        x.house, (
-                                        x,
-                                        ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                                        "no limit",
-                                        ""))
-                                })
-  
-                        val ret = r.filter(_ != null).union(s).groupByKey().values.map(finder)
-
-                        fileroot.map(f => {
-                            val max_einpeiseleistung = ret.filter(_.trafo == f).collect
+                            val exp_array = experiments.filter(_.trafo == fileroot).collect
+                            val r = output.join(reduced_trafos.filter(_._1 == fileroot)).flatMap(analyse(exp_array))
+                            
+                            // establish a "no limit found" default
+                            val s = experiments.map(
+                                (x) ⇒
+                                    {
+                                        (
+                                            x.house, (
+                                            x,
+                                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                                            "no limit",
+                                            ""))
+                                    })
+      
+                            val ret = r.filter(_ != null).union(s).groupByKey().values.map(finder)
+                            
+                            val max_einpeiseleistung = ret.collect
                             Database.store("Einspeiseleistung", Calendar.getInstance())(max_einpeiseleistung)
-                        })
-
-                        //trafokreis.map(t => cleanup(t._1))
-
-                        val finish = System.nanoTime()
-                        println("outputread and analyse: " + (finish - gridlabd) / 1e9 + " seconds")
-                    }
+    
+                            //trafokreis.map(t => cleanup(t._1))
+                        }
+                    })
+                    
+                    val finish = System.nanoTime()
+                    println("outputread and analyse: " + (finish - gridlabd) / 1e9 + " seconds")
                 }
             }
 
