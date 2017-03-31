@@ -17,19 +17,13 @@
 	<name>CIM Resource Adapter (RAR)</name>
 
 	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
 		<!-- plugins versions -->
 		<version.plugin.compiler>3.2</version.plugin.compiler>
 		<version.plugin.jar>3.0.0</version.plugin.jar>
 		<version.plugin.rar>2.4</version.plugin.rar>
 
-        <version.dependency.scala>2.11</version.dependency.scala>
-        <version.dependency.spark>2.0.2</version.dependency.spark>
-        <version.dependency.cimreader>2.11-2.0.1-1.9.0</version.dependency.cimreader>
-
 		<!-- test dependencies versions -->
-		<version.dependency.junit>4.12</version.dependency.junit>
 		<version.dependency.tomee>7.0.0</version.dependency.tomee>
 		<version.dependency.shrinkwrap>2.2.2</version.dependency.shrinkwrap>
 	</properties>

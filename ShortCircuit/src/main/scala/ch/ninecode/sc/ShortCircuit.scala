@@ -631,7 +631,6 @@ object ShortCircuit
         val configuration = new SparkConf (false)
         configuration.setAppName ("ShortCircuit")
         configuration.setMaster ("spark://sandbox:7077")
-//        configuration.setSparkHome ("/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
         // get the necessary jar files to send to the cluster

@@ -14,18 +14,6 @@
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/ShortCircuit</url>
 
-    <properties>
-        <encoding>UTF-8</encoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <version.dependency.scala>2.11</version.dependency.scala>
-        <version.dependency.scalalibrary>2.11.8</version.dependency.scalalibrary>
-        <version.dependency.scalatest>3.0.1</version.dependency.scalatest>
-        <version.dependency.junit>4.11</version.dependency.junit>
-        <version.dependency.spark>2.0.2</version.dependency.spark>
-        <version.dependency.cimreader>2.11-2.0.1-1.9.0</version.dependency.cimreader>
-    </properties>
-
     <dependencies>
 
         <dependency>
