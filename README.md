@@ -8,7 +8,7 @@ J2EE access to Spark for Common Information Model (CIM) applications.
 This set of programs provides a demonstration of using Java EE Connector Architecture
 [JCA](https://en.wikipedia.org/wiki/Java_EE_Connector_Architecture)
 to connect to [Spark](https://spark.apache.org) and through the use of
-[CIMScala](https://github.com/derrickoswald/CIMScala) being able to read
+[CIMReader](https://github.com/derrickoswald/CIMReader) being able to read
 CIM files which are a standard interchange format based on IEC standards 61968 & 61970
 (see [CIM users group](http://cimug.ucaiug.org/default.aspx) for additional details)
 to access Spark Resilient Distributed Dataset (RDD) for each CIM class.

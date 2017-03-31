@@ -23,7 +23,7 @@
         <version.dependency.scalatest>3.0.1</version.dependency.scalatest>
         <version.dependency.junit>4.11</version.dependency.junit>
         <version.dependency.spark>2.0.1</version.dependency.spark>
-        <version.dependency.cimscala>2.11-2.0.1-1.9.0</version.dependency.cimscala>
+        <version.dependency.cimreader>2.11-2.0.1-1.9.0</version.dependency.cimreader>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
         <version.dependency.scopt>3.5.0</version.dependency.scopt>
     </properties>
@@ -81,8 +81,8 @@
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
-            <artifactId>CIMScala</artifactId>
-            <version>${version.dependency.cimscala}</version>
+            <artifactId>CIMReader</artifactId>
+            <version>${version.dependency.cimreader}</version>
             <scope>compile</scope>
         </dependency>
 
