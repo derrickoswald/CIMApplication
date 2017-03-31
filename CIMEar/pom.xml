@@ -17,11 +17,13 @@
     <name>CIM Enterprise Application (EAR)</name>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- plugins versions -->
         <version.ear.plugin>2.6</version.ear.plugin>
 
         <!-- project dependencies -->
         <version.dependency.project>2.0.0</version.dependency.project>
+
     </properties>
 
     <dependencies>

@@ -16,7 +16,6 @@
     <name>CIM Web Application (WAR)</name>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- project dependencies -->
         <version.dependency.project>2.0.0</version.dependency.project>
@@ -26,13 +25,13 @@
         <version.plugin.war>2.1.1</version.plugin.war>
 
         <!-- test dependencies versions -->
-        <version.dependency.junit>4.12</version.dependency.junit>
         <version.dependency.tomee>7.0.1</version.dependency.tomee>
         <version.dependency.arquillian>1.1.11.Final</version.dependency.arquillian>
         <tomee.classifier>plus</tomee.classifier>
         <version.dependency.shrinkwrap>2.2.2</version.dependency.shrinkwrap>
         <version.dependency.el>2.2.4</version.dependency.el>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
+
     </properties>
 
     <dependencies>

@@ -75,11 +75,11 @@ public class CIMManagedConnection implements ManagedConnection
     }
 
     /**
-     * Get the name of the CIMScala jar file.
+     * Get the name of the CIMReader jar file.
      * @see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
      * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
      */
-    protected String CIMScalaJarPath ()
+    protected String CIMReaderJarPath ()
         throws ResourceException
     {
         PrintWriter logger;
@@ -100,12 +100,12 @@ public class CIMManagedConnection implements ManagedConnection
         if (!ret.endsWith (".jar"))
         {
             if (null != logger)
-                logger.println ("CIMScala jar file could not be determined");
+                logger.println ("CIMReader jar file could not be determined");
             ret = null;
         }
         else
             if (null != logger)
-                logger.println ("CIMScala jar file: " + ret);
+                logger.println ("CIMReader jar file: " + ret);
 
         return (ret);
     }
@@ -143,7 +143,7 @@ public class CIMManagedConnection implements ManagedConnection
             configuration.set (key, _RequestInfo.getProperties ().get (key));
 
         // set up the list of jars to send with the connection request
-        String jar = CIMScalaJarPath ();
+        String jar = CIMReaderJarPath ();
         String[] jars = new String[_RequestInfo.getJars ().size () + (null == jar ? 0 : 1)];
         jars = _RequestInfo.getJars ().toArray (jars);
         if (null != jar)

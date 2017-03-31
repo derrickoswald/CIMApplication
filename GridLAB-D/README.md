@@ -184,7 +184,7 @@ hdfs dfs -rm -R "/checkpoint/*"
 
 # Processing
 
-The CIM file is read into Spark using a custom reader, [CIMScala](https://github.com/derrickoswald/CIMScala).
+The CIM file is read into Spark using a custom reader, [CIMReader](https://github.com/derrickoswald/CIMReader).
 The reader produces a set of [Resilient Distributed Dataset (RDD)](https://spark.apache.org/docs/latest/programming-guide.html#resilient-distributed-datasets-rdds), one for each class of CIM element including their relations.
 It also executes a topological analysis to identify a reduced subset of nodes
 (sets of electrically identical ConnectivityNode elements - 
