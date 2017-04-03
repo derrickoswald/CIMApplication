@@ -234,7 +234,7 @@ object PowerFeeding
           var ret = (null.asInstanceOf[String], triplet.attr)
           if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
             val source_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
-            val target_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
+            val target_trafo_id = gridlabd.trafokreis_key(target.trafo_id)
             if (source_trafo_id == target_trafo_id)
               ret = (source_trafo_id, triplet.attr) 
           }
