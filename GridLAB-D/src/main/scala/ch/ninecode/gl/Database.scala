@@ -29,6 +29,14 @@ object Database
         resultset2.close ()
         if (!exists2)
             statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, has_eea boolean, reason text, details text)")
+        val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'view' and name = 'feedin'")
+        val exists3 = resultset3.next ()
+        resultset3.close ()
+        if (!exists3)
+        {
+            statement.executeUpdate ("create view if not exists intermediate as select s.description Analysis, datetime(s.time / 1000, 'unixepoch', 'localtime'), s.time When_Epoc, r.trafo Transformer, r.house House, r.maximum Maximum, r.reason Reason, r.details Details from simulation s, results r where s.id = r.simulation")
+            statement.executeUpdate ("create view if not exists feedin as select i.Analysis, i.Transformer, i.House, i.Maximum, i.Reason, i.Details from intermediate i, (select max(When_Epoc) When_Epoc, House from intermediate group by House) m where i.When_Epoc = m.When_Epoc and i.House = m.House")
+        }
         statement.close ()
     }
 
@@ -88,7 +96,7 @@ object Database
                 }
                 datainsert.close
                 connection.commit
-                
+
                 return (id)
             }
             else
