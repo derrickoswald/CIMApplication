@@ -610,7 +610,7 @@ class GridLABD(session: SparkSession) extends Serializable {
 
     def check(input: String): Boolean =
         {
-            if ( /*input.contains ("WARNING") ||*/ input.contains("ERROR") || input.contains("FAIL")) {
+            if ( input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
                 println("gridlabd failed, message is: " + input)
                 false
             }
