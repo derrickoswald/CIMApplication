@@ -89,7 +89,7 @@ class GridLABDSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
+        val root = if (false) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         //val root = "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11_assets_preview" // Brügg
         val filename =
             FILE_DEPOT + root + ".rdf"

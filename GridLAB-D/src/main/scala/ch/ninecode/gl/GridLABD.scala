@@ -948,14 +948,14 @@ class GridLABD(session: SparkSession) extends Serializable {
             experiments.count
             val write = System.nanoTime()
             println("export: " + (write - start) / 1e9 + " seconds")
-            println("number of processed trafos: ", filtered_trafos.count)
+            println("number of processed trafos: " + filtered_trafos.count)
 
             var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
             if (!EXPORT_ONLY) {
                 val success = solve(filtered_trafos.map(_._1))
                 val gridlabd = System.nanoTime()
                 println("solve: " + (gridlabd - write) / 1e9 + " seconds")
-                println("solve success: ", success)
+                println("solve success: " + success)
                 
                 if (success) {
                     val fileroot_list = filtered_trafos.map(_._1).collect
