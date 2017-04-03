@@ -130,6 +130,8 @@ class GridLABD(session: SparkSession) extends Serializable {
     var USE_ONE_PHASE = true
     var EXPORT_ONLY = false
     var STORAGE_LEVEL = StorageLevel.MEMORY_ONLY
+    
+    val fileWriter = new FileWriter(this)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -325,47 +327,6 @@ class GridLABD(session: SparkSession) extends Serializable {
                 s
         }
 
-    def emit_pv(solargeneratingunits: List[SolarGeneratingUnit], parent: String, voltage: Double): String =
-        {
-            var load = ""
-            var index = 1
-            for (solargeneratingunit ← solargeneratingunits) {
-                val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-                if (power > 0) {
-                    if (USE_ONE_PHASE)
-                        load +=
-                            "\n" +
-                            "        object load\n" +
-                            "        {\n" +
-                            "            name \"" + parent + "_pv_" + index + "\";\n" +
-                            "            parent \"" + parent + "\";\n" +
-                            "            phases AN;\n" +
-                            "            constant_power_A -" + power + ";\n" +
-                            "            nominal_voltage " + voltage + "V;\n" +
-                            "            load_class R;\n" +
-                            "        }\n"
-                    else {
-                        val power3 = power / 3 // per phase
-                        load +=
-                            "\n" +
-                            "        object load\n" +
-                            "        {\n" +
-                            "            name \"" + parent + "_pv_" + index + "\";\n" +
-                            "            parent \"" + parent + "\";\n" +
-                            "            phases ABCN;\n" +
-                            "            constant_power_A -" + power3 + ";\n" +
-                            "            constant_power_B -" + power3 + ";\n" +
-                            "            constant_power_C -" + power3 + ";\n" +
-                            "            nominal_voltage " + voltage + "V;\n" +
-                            "            load_class R;\n" +
-                            "        }\n"
-                    }
-                    index += 1
-                }
-            }
-            load
-        }
-
     def has(string: String): String =
         {
             val n = string.indexOf("_")
@@ -375,80 +336,10 @@ class GridLABD(session: SparkSession) extends Serializable {
                 string
         }
 
-    def emit_slack(name: String, voltage: Double): String =
-        {
-            if (USE_ONE_PHASE)
-                "\n" +
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + name + "\";\n" +
-                    "            phases AN;\n" +
-                    "            bustype SWING;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            voltage_A " + voltage + ";\n" +
-                    "        };\n"
-            else
-                "\n" +
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + name + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            bustype SWING;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-                    "            voltage_A " + voltage + "+30.0d;\n" +
-                    "            voltage_B " + voltage + "-90.0d;\n" +
-                    "            voltage_C " + voltage + "+150.0d;\n" +
-                    "        };\n"
-        }
-
     def exists(filename: String): Boolean =
         {
             val f = new File(filename)
             f.exists
-        }
-
-    def eraseInputFile(equipment: String) {
-        if ("" == HDFS_URI)
-            FileUtils.deleteDirectory(new File("simulation/" + equipment + "/"))
-        else {
-            val hdfs_configuration = new Configuration()
-            hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get(URI.create(HDFS_URI), hdfs_configuration)
-
-            val directory = new Path("/simulation/" + equipment + "/")
-            hdfs.delete(directory, true)
-        }
-    }
-
-    def writeInputFile(equipment: String, path: String, bytes: Array[Byte]) =
-        {
-            if ("" == HDFS_URI) {
-                // ToDo: check for IOException
-                val file = Paths.get("simulation/" + equipment + "/" + path)
-                Files.createDirectories(file.getParent())
-                if (null != bytes)
-                    Files.write(file, bytes)
-            }
-            else {
-                val hdfs_configuration = new Configuration()
-                hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-                hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-                val hdfs = FileSystem.get(URI.create(HDFS_URI), hdfs_configuration)
-
-                val file = new Path("/simulation/" + equipment + "/" + path)
-                // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
-                // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-                hdfs.mkdirs(file.getParent(), new FsPermission("ugoa-rwx"))
-                hdfs.setPermission(file.getParent(), new FsPermission("ugoa-rwx")) // "-"  WTF?
-
-                if (null != bytes) {
-                    val out = hdfs.create(file)
-                    out.write(bytes)
-                    out.close()
-                }
-            }
         }
 
     //    def load_from_player_file (name: String, voltage: Double): String =
@@ -489,207 +380,6 @@ class GridLABD(session: SparkSession) extends Serializable {
     //                ""
     //        return (ret)
     //    }
-
-    def ramp_up(exp: Experiment, angle: Double): Array[Byte] =
-        {
-            val ret = new StringBuilder()
-                def addrow(time: Calendar, power: Double, angle: Double) =
-                    {
-                        ret.append(_DateFormat.format(time.getTime()))
-                        ret.append(",")
-                        if (USE_ONE_PHASE) {
-                            ret.append(-power)
-                            ret.append("\n")
-                        }
-                        else {
-                            ret.append(-power / 3) // negative load injects power, 1/3 per phase
-                            ret.append("<")
-                            ret.append(angle)
-                            ret.append("d\n")
-                        }
-                        time.add(Calendar.SECOND, exp.interval)
-                    }
-            val time = exp.t1
-            addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-            var power = exp.from
-            while (power < exp.to) {
-                addrow(time, power, angle)
-                power = power + exp.step
-            }
-            addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-
-            return (ret.toString().getBytes(StandardCharsets.UTF_8))
-        }
-
-    def generate_player_file(experiments: Array[Experiment], name: String, voltage: Double): String =
-        {
-            val house = has(name)
-            val filtered = experiments.filter(p ⇒ p.house == house)
-            val experiment = if (0 != filtered.length) filtered(0) else null
-
-            if (null != experiment) {
-                if (USE_ONE_PHASE) {
-                    writeInputFile(experiment.trafo, "input_data/" + house + ".csv", ramp_up(experiment, 0.0))
-                    "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + name + "_load\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            phases AN;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_A\";\n" +
-                        "                file \"input_data/" + house + ".csv\";\n" +
-                        "            };\n" +
-                        "        };\n"
-                }
-                else {
-                    val r_phase = 0.0
-                    val s_phase = 240.0
-                    val t_phase = 120.0
-                    writeInputFile(experiment.trafo, "input_data/" + house + "_R.csv", ramp_up(experiment, r_phase))
-                    writeInputFile(experiment.trafo, "input_data/" + house + "_S.csv", ramp_up(experiment, s_phase))
-                    writeInputFile(experiment.trafo, "input_data/" + house + "_T.csv", ramp_up(experiment, t_phase))
-                    "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + name + "_load\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_A\";\n" +
-                        "                file \"input_data/" + house + "_R.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_B\";\n" +
-                        "                file \"input_data/" + house + "_S.csv\";\n" +
-                        "            };\n" +
-                        "            object player\n" +
-                        "            {\n" +
-                        "                property \"constant_power_C\";\n" +
-                        "                file \"input_data/" + house + "_T.csv\";\n" +
-                        "            };\n" +
-                        "        };\n"
-                }
-            }
-            else
-                ""
-        }
-
-    def emit_node(experiments: Array[Experiment], name: String, voltage: Double): String =
-        {
-            val meter =
-                if (USE_ONE_PHASE)
-                    "\n" +
-                        "        object meter\n" +
-                        "        {\n" +
-                        "            name \"" + name + "\";\n" +
-                        "            phases AN;\n" +
-                        "            bustype PQ;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "        };\n"
-                else
-                    "\n" +
-                        "        object meter\n" +
-                        "        {\n" +
-                        "            name \"" + name + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            bustype PQ;\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "        };\n"
-
-            //           load_from_player_file (name, voltage)
-            val player = generate_player_file(experiments, name, voltage)
-
-            val recorder =
-                if (USE_ONE_PHASE)
-                    "\n" +
-                        "        object recorder\n" +
-                        "        {\n" +
-                        "            name \"" + has(name) + "_voltage_recorder\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            property voltage_A.real,voltage_A.imag;\n" +
-                        "            interval 5;\n" +
-                        "            file \"output_data/" + name + "_voltage.csv\";\n" +
-                        "        };\n"
-                else
-                    "\n" +
-                        "        object recorder\n" +
-                        "        {\n" +
-                        "            name \"" + has(name) + "_voltage_recorder\";\n" +
-                        "            parent \"" + name + "\";\n" +
-                        "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-                        "            interval 5;\n" +
-                        "            file \"output_data/" + name + "_voltage.csv\";\n" +
-                        "        };\n"
-
-            return (meter + (if ("" == player) "" else (player + recorder)))
-        }
-
-    def make_pv(node: MaxPowerFeedingNodeEEA): String =
-        {
-            val solargeneratingunits = node.eea.map((x) ⇒ { x.solar }).toList
-            emit_pv(solargeneratingunits, node.id_seq, node.voltage)
-        }
-
-    // emit one GridLAB-D node
-    def make_node(experiments: Array[Experiment])(arg: PowerFeedingNode): String =
-        {
-            emit_node(experiments, arg.id_seq, arg.voltage)
-        }
-
-    // emit one GridLAB-D edge
-    def make_link(line: Line, switch: SwitchDevice)(edges: Iterable[PreEdge]): String =
-        {
-            val edge = edges.head
-            val cls = edge.element.getClass.getName
-            val clazz = cls.substring(cls.lastIndexOf(".") + 1)
-            val ret = clazz match {
-                case "ACLineSegment" ⇒
-                    line.emit(edges)
-                case "PowerTransformer" ⇒
-                    "" // handled specially
-                case "Switch" ⇒
-                    switch.emit(edge, edge.element.asInstanceOf[Switch])
-                case "Cut" |
-                    "Disconnector" |
-                    "GroundDisconnector" |
-                    "Jumper" |
-                    "ProtectedSwitch" |
-                    "Sectionaliser" ⇒
-                    switch.emit(edge, edge.element.sup.asInstanceOf[Switch])
-                case "Breaker" |
-                    "LoadBreakSwitch" |
-                    "Recloser" ⇒
-                    switch.emit(edge, edge.element.sup.sup.asInstanceOf[Switch])
-                case "Fuse" ⇒
-                    switch.emit(edge, edge.element.sup.asInstanceOf[Switch], true)
-                case _ ⇒
-                    if (switch.one_phase) // borrow the phasing from switch
-                        "\n" +
-                            "        object link\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "\";\n" +
-                            "            phases AN;\n" +
-                            "            from \"" + edge.id_cn_1 + "\";\n" +
-                            "            to \"" + edge.id_cn_2 + "\";\n" +
-                            "        };\n"
-                    else
-                        "\n" +
-                            "        object link\n" +
-                            "        {\n" +
-                            "            name \"" + edge.id_equ + "\";\n" +
-                            "            phases ABCN;\n" +
-                            "            from \"" + edge.id_cn_1 + "\";\n" +
-                            "            to \"" + edge.id_cn_2 + "\";\n" +
-                            "        };\n"
-            }
-            return (ret)
-        }
 
     def make_graph_vertices(v: PreNode): Tuple2[VertexId, PreNode] =
         {
@@ -837,130 +527,6 @@ class GridLABD(session: SparkSession) extends Serializable {
             tz.getDisplayName(false, TimeZone.SHORT) + (-tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName(true, TimeZone.SHORT)
         }
 
-    def gather(rdd: Iterable[String]): String =
-        {
-            rdd.fold("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
-        }
-
-    def make_glm(
-        trafokreis: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])])),
-        starting_node: String,
-        simulation: String,
-        start: Calendar,
-        finish: Calendar,
-        swing_node: String): Tuple2[String, Array[Experiment]] =
-        {
-                def tdata_compare(t1: Array[TData], t2: Array[TData]): Boolean =
-                    {
-                        (t1.length == t2.length) && (trafokreis_key(t1) == trafokreis_key(t2))
-                    }
-
-                def vdata_compare(node: PowerFeedingNode, t2: Array[TData], ospin: String): Boolean =
-                    {
-                        val id = node.id_seq
-                        if (id == ospin)
-                            true
-                        else {
-                            val source = node.source_obj
-                            if (null == source)
-                                false
-                            else
-                                tdata_compare(source.trafo_id, t2)
-                        }
-                    }
-
-            val starting_transformers = trafokreis._2._1
-            val precalc_results = trafokreis._2._2.get
-            val traced_nodes = precalc_results._1
-            val traced_edges = precalc_results._2
-            val houses = precalc_results._3
-
-            // generate experiments
-            val window = 15 * 60 // window size in simulated seconds per experiment
-            val step = 1000
-            val experiments = houses.zipWithIndex.map(h ⇒
-                {
-                    // (has: Tuple2[String, Double], index: Long)
-                    def limit(d: Double) = math.ceil(d * 1.1 / step.doubleValue) * step.doubleValue // limit as ceiling(d+10%) thousands
-                    val house = has(h._1.id_seq)
-                    val max = limit(h._1.max_power_feeding)
-                    Experiment(simulation, house, start, h._2, window, 5, 0, max, step)
-                }).toArray
-
-            // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
-            val combined_edges = traced_edges.groupBy(_.key).values
-
-            // get one of each type of ACLineSegment and emit a configuration for each of them
-            val line = new Line(USE_ONE_PHASE)
-
-            val l_strings = line.getACLineSegmentConfigurations(combined_edges)
-
-            // get the transformer configuration
-            val trans = new Trans(USE_ONE_PHASE, USE_TOPOLOGICAL_NODES)
-            val t_string = trans.getTransformerConfigurations(starting_transformers)
-            val o_string = emit_slack(swing_node, starting_transformers(0).voltage0 * 1000)
-
-            // get the node strings   
-            val n_strings = traced_nodes.map(make_node(experiments))
-            val pv_strings = houses.filter(_.eea != null).map(make_pv)
-
-            // get the edge strings
-            val t_edges = trans.emit(starting_transformers)
-            val l_edges = combined_edges.map(make_link(line, new SwitchDevice(USE_ONE_PHASE)))
-
-            /**
-             * Create the output file.
-             */
-            val t1 = start.clone().asInstanceOf[Calendar]
-            t1.add(Calendar.SECOND, experiments.length * window)
-            val prefix =
-                "// $Id: " + simulation + ".glm\n" +
-                    "// Einspeiseleistung\n" +
-                    "//*********************************************\n" +
-                    "\n" +
-                    "        module tape;\n" +
-                    "\n" +
-                    "        module powerflow\n" +
-                    "        {\n" +
-                    "            solver_method NR;\n" +
-                    "            default_maximum_voltage_error 10e-6;\n" +
-                    "            NR_iteration_limit 5000;\n" +
-                    "            NR_superLU_procs 16;\n" +
-                    "            nominal_frequency 50;\n" +
-                    "        };\n" +
-                    "\n" +
-                    "        clock\n" +
-                    "        {\n" +
-                    "            timezone " + (if (USE_UTC) "UTC0UTC" else tzString) + ";\n" +
-                    "            starttime '" + _DateFormat.format(start.getTime()) + "';\n" +
-                    "            stoptime '" + _DateFormat.format(t1.getTime()) + "';\n" +
-                    "        };\n" +
-                    "\n" +
-                    "        class player\n" +
-                    "        {\n" +
-                    "            complex value;\n" +
-                    "        };\n" +
-                    "\n" +
-                    "        object voltdump\n" +
-                    "        {\n" +
-                    "            filename \"output_data/" + simulation + "_voltdump.csv\";\n" +
-                    "            mode polar;\n" +
-                    "            runtime '" + _DateFormat.format(start.getTime()) + "';\n" +
-                    "        };\n"
-
-            val result = new StringBuilder()
-            result.append(prefix)
-            result.append(t_string)
-            result.append(gather(l_strings))
-            result.append(o_string)
-            result.append(gather(n_strings))
-            result.append(t_edges)
-            result.append(gather(l_edges))
-            result.append(gather(pv_strings))
-
-            return ((result.toString(), experiments))
-        }
-
     def trafokreis_key(transformers: Array[TData]): String =
         {
             transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
@@ -990,10 +556,11 @@ class GridLABD(session: SparkSession) extends Serializable {
                         s
                 }
 
-            eraseInputFile(simulation)
-            val result = make_glm(trafokreis, starting._2, simulation, start, finish, starting._1)
-            writeInputFile(simulation, simulation + ".glm", result._1.getBytes(StandardCharsets.UTF_8))
-            writeInputFile(simulation, "output_data/dummy", null) // mkdir
+            fileWriter.eraseInputFile(simulation)
+
+            val result = fileWriter.make_glm(trafokreis, starting._2, simulation, start, finish, starting._1)
+            fileWriter.writeInputFile(simulation, simulation + ".glm", result._1.getBytes(StandardCharsets.UTF_8))
+            fileWriter.writeInputFile(simulation, "output_data/dummy", null) // mkdir
 
             result._2
         }
@@ -1143,7 +710,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                             "done < /dev/stdin")
                 }
 
-            val out = files.pipe(gridlabd)
+            val out = files.pipe(gridlabd).cache
             out.first
             out.map(check).fold(true)(_ && _)
         }
@@ -1463,10 +1030,10 @@ class GridLABD(session: SparkSession) extends Serializable {
                     println(result)
             }
             if (DELETE_SIMULATION_FILES)
-                eraseInputFile(equipment)
+                fileWriter.eraseInputFile(equipment)
             else {
-                eraseInputFile(equipment + "/output_data")
-                writeInputFile(equipment, "output_data/dummy", null) // mkdir
+                fileWriter.eraseInputFile(equipment + "/output_data")
+                fileWriter.writeInputFile(equipment, "output_data/dummy", null) // mkdir
             }
         }
 
