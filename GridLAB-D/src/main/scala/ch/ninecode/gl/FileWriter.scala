@@ -216,19 +216,28 @@ class FileWriter(gridlabd: GridLABD) extends Serializable {
             val precalc_results = trafokreis._2._2.get
             val traced_nodes = precalc_results._1
             val traced_edges = precalc_results._2
-            val houses = precalc_results._3
+            def significant (h: MaxPowerFeedingNodeEEA): Boolean =
+            {
+                (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
+            }
+            val houses = precalc_results._3.filter (significant)
 
             // generate experiments
             val window = 15 * 60 // window size in simulated seconds per experiment
-            val step = 1000
-            val experiments = houses.zipWithIndex.map(h ⇒
-                {
-                        // (has: Tuple2[String, Double], index: Long)
-                        def limit(d: Double) = math.ceil(d * 1.1 / step.doubleValue) * step.doubleValue // limit as ceiling(d+10%) thousands
-                    val house = gridlabd.has(h._1.id_seq)
-                    val max = limit(h._1.max_power_feeding)
-                    Experiment(simulation, house, start, h._2, window, 5, 0, max, step)
-                }).toArray
+            val margin = 1.25 // check up to 25% over the precalculated value
+            val step = 1000.0
+            val experiments = houses.zipWithIndex.map (
+            h ⇒
+            {
+                val house = gridlabd.has (h._1.id_seq) // the house under test
+                val index = h._2.toInt // experiment #
+                def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
+                val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
+                val interval = 5 // seconds per step
+                val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+                val riser = if (steps * step >= max) step else math.ceil (max / steps / 1000.0) * 1000.0 // limit as ceiling(minimum step size) in thousands
+                Experiment (simulation, house, start, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
+            }).toArray
 
             // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
             val combined_edges = traced_edges.groupBy(_.key).values
