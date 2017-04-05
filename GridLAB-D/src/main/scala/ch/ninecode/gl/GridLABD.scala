@@ -565,106 +565,14 @@ class GridLABD(session: SparkSession) extends Serializable {
             result._2
         }
 
-    def read_records(filename_root: String)(filename: String, element: String, units: String): Dataset[(String, ThreePhaseComplexDataElement)] =
-        {
-                def toTimeStamp(string: String): Long =
-                    {
-                        _DateFormat.parse(string).getTime()
-                    }
-
-            val customSchema = if (USE_ONE_PHASE)
-                StructType(
-                    Array(
-                        StructField("timestamp", StringType, true),
-                        StructField("A.real", DoubleType, true),
-                        StructField("A.imag", DoubleType, true)))
-            else
-                StructType(
-                    Array(
-                        StructField("timestamp", StringType, true),
-                        StructField("A.real", DoubleType, true),
-                        StructField("A.imag", DoubleType, true),
-                        StructField("B.real", DoubleType, true),
-                        StructField("B.imag", DoubleType, true),
-                        StructField("C.real", DoubleType, true),
-                        StructField("C.imag", DoubleType, true)))
-
-            val df = session.read
-                .format("csv")
-                .option("header", "true")
-                .option("comment", "#")
-                .schema(customSchema)
-                .load(filename)
-
-            import session.implicits._
-
-            df.map((r) ⇒
-                {
-                    if (USE_ONE_PHASE)
-                        (filename_root, ThreePhaseComplexDataElement(element, toTimeStamp(r.getString(0)), Complex(r.getDouble(1), r.getDouble(2)), Complex(0.0, 0.0), Complex(0.0, 0.0), units))
-                    else
-                        (filename_root, ThreePhaseComplexDataElement(element, toTimeStamp(r.getString(0)), Complex(r.getDouble(1), r.getDouble(2)), Complex(r.getDouble(3), r.getDouble(4)), Complex(r.getDouble(5), r.getDouble(6)), units))
-                })
-
-        }
-
     def check(input: String): Boolean =
         {
-            if ( input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
+            if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
                 println("gridlabd failed, message is: " + input)
                 false
             }
             else
                 true
-        }
-
-    def list_files(equipment: String, path: String): TraversableOnce[(String, String)] =
-        {
-            val hdfs_configuration = new Configuration()
-            hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get(URI.create(HDFS_URI), hdfs_configuration)
-
-            val root = if ("" == HDFS_URI)
-                new Path("simulation/" + equipment + "/" + path)
-            else
-                new Path("/simulation/" + equipment + "/" + path)
-
-            var files = Vector[(String, String)]()
-            try {
-                val iterator = hdfs.listFiles(root, false) // ToDo: recursive
-                while (iterator.hasNext()) {
-                    val fs = iterator.next()
-                    val path = fs.getPath().toString()
-                    files = files :+ (equipment, path)
-                }
-            }
-            catch {
-                case fnf: FileNotFoundException ⇒
-                    {
-                        // just return 0 files
-                    }
-            }
-
-            return ((files))
-        }
-
-    def read_csv(filename_root: String)(x: String): RDD[(String, ThreePhaseComplexDataElement)] =
-        {
-            if (x.endsWith("_voltage.csv")) {
-                val filebase = x.substring(x.lastIndexOf("/") + 1)
-                val element = filebase.substring(0, filebase.indexOf("_voltage.csv"))
-                val units = "Volts"
-                read_records(filename_root)(x, element, units).rdd
-            }
-            else if (x.endsWith("_current.csv")) {
-                val filebase = x.substring(x.lastIndexOf("/") + 1)
-                val element = filebase.substring(0, filebase.indexOf("_current.csv"))
-                val units = "Amps"
-                read_records(filename_root)(x, element, units).rdd
-            }
-            else
-                null
         }
 
     def solve(files: RDD[String]): Boolean =
@@ -715,12 +623,50 @@ class GridLABD(session: SparkSession) extends Serializable {
             out.map(check).fold(true)(_ && _)
         }
 
-    def read_output_files(filename_root: String): RDD[(String, ThreePhaseComplexDataElement)] =
+    def read_output_files(reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))]): RDD[(String, ThreePhaseComplexDataElement)] =
         {
-            val file_list = list_files(filename_root, "output_data")
-            val data = file_list.map(f => read_csv(f._1) (f._2))
-            val some = data.filter ((x) => if (null != x) true else false) // eliminate TRAXXXX_voltdump.csv
-            session.sparkContext.union (some.toSeq).cache
+      
+            def toTimeStamp(string: String): Long =
+                    {
+                        _DateFormat.parse(string).getTime()
+                    }
+            
+            val base_folder = "simulation"
+            val output_folder = "output_data"
+            val path = 
+              if (HDFS_URI == "")
+                base_folder + "/*/" + output_folder
+              else
+                "/" + base_folder + "/*/" + output_folder
+
+            val files = session.sparkContext.wholeTextFiles(path)
+
+            files.map(f => {
+              val path = f._1
+              val trafo_pattern = ".*" + base_folder + "/(.*)/" + output_folder + "/.*";
+              val element_pattern = ".*" + output_folder + "/(.*)_*";
+              val trafo = path.replaceAll(trafo_pattern, "$1")
+              val file = path.replaceAll(element_pattern, "$1")
+              val element = file.substring(0, file.indexOf("_"))
+              
+              var units = ""
+              if (file.endsWith("_voltage.csv"))
+                  units = "Volts"
+              else if (file.endsWith("_current.csv"))
+                  units = "Amps"
+              
+              val content = f._2.split("\n").filter(_.startsWith("2017"))
+              val complex_elements = content.map(c => {
+                val c_arr = c.split(",")
+                
+                if (USE_ONE_PHASE)
+                      ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
+                else
+                      ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+              })
+              
+              (trafo, complex_elements)
+            }).flatMapValues(_.toSeq)
         }
 
     /**
@@ -781,44 +727,41 @@ class GridLABD(session: SparkSession) extends Serializable {
             values.aggregate(MaxEinspeiseleistung(trafo, house, None, "unknown", ""))(seqop, combop)
         }
 
-    def voltcheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, max: Double): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+    def voltcheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             val limit = "voltage limit"
 
-            // eliminate current measurements and measurements within tolerance
-            def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
-                {
-                    return (
-                        (r.units == "Volts") &&
-                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                        (r.value_a.abs > max))
-                }
-            def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
-                {
-                    return (
-                        (r.units == "Volts") &&
-                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                        ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
-                }          
-            
-            // assign an experiment to each measurement
-            def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
-                {
-                    for (e ← experiments) {
-                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                            return (e.house, (e, r, limit, has(r.element) + " > " + max + " Volts"))
-                    }
-                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
-                }
+	        // eliminate current measurements and measurements within tolerance
+	        def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
+	            {
+	                return (
+	                    (r.units == "Volts") &&
+	                    (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+	                    (r.value_a.abs > max))
+	            }
+	        def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
+	            {
+	                return (
+	                    (r.units == "Volts") &&
+	                    (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+	                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+	            }
+	
+	        // assign an experiment to each measurement
+	        def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): List[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+	            {
+	                for (e ← experiments) {
+	                    if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+	                        return (List ((e, r, limit, has(r.element) + " > " + max + " Volts")))
+	                }
+	                List()
+	            }
 
-            val interesting = (if (USE_ONE_PHASE) interesting1ph(element) else interesting3ph(element))
-            if (interesting)
-                assign(experiments)(element)
-            else 
-                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]    
+            val overV = elements.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+            overV.flatMap (assign (experiments))
         }
 
-    def ampcheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, cdata: Iterable[Tuple2[String, Double]]): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+    def ampcheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[Tuple2[String, Double]]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             val limit = "current limit"
 
@@ -836,34 +779,33 @@ class GridLABD(session: SparkSession) extends Serializable {
                     ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
                 }
 
-            val cable_max = cdata.find(c ⇒ element.element == c._1) match
-            {
-                case Some (cable) => cable._2
-                case None =>
-                    log.error ("cable type " + element.element + " not found")
-                    100.0
-            }
-
             // assign an experiment to each measurement
-            def assign(experiments: Array[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+            def assign(experiments: Iterable[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
                 {
                     val r = arg._1
                     val max = arg._2
                     for (e ← experiments) {
                         if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                            return (e.house, (e, r, limit, r.element + " > " + max + " Amps"))
+                            return (List ((e, r, limit, r.element + " > " + max + " Amps")))
                     }
-                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+                    List()
                 }
 
-            val interesting = (if (USE_ONE_PHASE) interesting1ph((element, cable_max)) else interesting3ph((element, cable_max)))
-            if (interesting)
-                assign(experiments)((element, cable_max))
-            else
-                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]  
+            val cdata_map = cdata.toMap
+            val joined_elements = elements.map(e => {
+              val max_val = cdata_map.get(e.element)
+              val max = if (max_val.isDefined)
+                max_val.get
+              else
+                Double.PositiveInfinity
+              (e, max)
+            })
+            
+            val overI = joined_elements.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+            overI.flatMap (assign (experiments))                      
         }
 
-    def powercheck(experiments: Array[Experiment], element: ThreePhaseComplexDataElement, power: Double, trafo_name: String): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+    def powercheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], power: Double, trafo_name: String): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             val limit = "transformer limit"
 
@@ -890,53 +832,83 @@ class GridLABD(session: SparkSession) extends Serializable {
                 }
 
             // assign an experiment to each measurement
-            def assign(experiments: Array[Experiment])(r: ThreePhaseComplexDataElement): (String, (Experiment, ThreePhaseComplexDataElement, String, String)) =
+            def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
                 {
                     for (e ← experiments) {
                         if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                            return (e.house, (e, r, limit, r.element + " > " + power + " Watts"))
+                            return (List ((e, r, limit, r.element + " > " + power + " Watts")))
                     }
-                    null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+                    List()
                 }
-            
-            val i = if (USE_ONE_PHASE) math.sqrt(3) * power / 400.0 else power / (400.0 * math.sqrt(3))
-            val interesting = (if (USE_ONE_PHASE) interesting1ph(i)(element) else interesting3ph(i)(element))
-            if (interesting)
-                assign(experiments)(element)
-            else
-                null.asInstanceOf[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]
+
+            // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
+            val i = if (USE_ONE_PHASE) math.sqrt (3) * power / 400.0 else power / (400.0 * math.sqrt (3))
+            val overI = elements.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
+            overI.flatMap (assign (experiments))
         }
 
-    def analyse(experiments: Array[Experiment])(element: (String, (ThreePhaseComplexDataElement, Option[(Double, Iterable[(String, Double)])]))): List[(String, (Experiment, ThreePhaseComplexDataElement, String, String))] =
-        {
-            var ret = List().asInstanceOf[List[(String, (Experiment, ThreePhaseComplexDataElement, String, String))]]
-            val option = element._2._2
-            if (option.isDefined)
-            {
+    def analyse (trafo : (String, ((Double, Iterable[(String, Double)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+        {            
+            val cdata = trafo._2._1._2
+
+            val nominal = 400.0 // ToDo: get voltage from CIM
+            val tolerance = 3.0
+            val max = nominal + (nominal * tolerance / 100.0)
+            // could also check for under the minimum; r.value_a.abs < min
+
+            // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
+            val trafo_power = trafo._2._1._1
+            // get the name of the transformer recorder (matches Trans.emit)
+            val trafo_name = trafo._1
             
-              val cdata = option.get._2
-              val complexDataElement = element._2._1
-  
-              val nominal = 400.0 // ToDo: get voltage from CIM
-              val tolerance = 3.0
-              val max = nominal + (nominal * tolerance / 100.0)
-              // could also check for under the minimum; r.value_a.abs < min
-  
-              // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
-              val trafo_power = option.get._1
-              // get the name of the transformer recorder (matches Trans.emit)
-              val trafo_name = element._1
-  
-              
-              if (complexDataElement.units == "Volts")
-                  ret = List (voltcheck(experiments, complexDataElement, max))
-              else if (complexDataElement.units == "Amps")
-                  if (complexDataElement.element == trafo_name)
-                      ret = List (powercheck(experiments, complexDataElement, trafo_power, trafo_name))
-                  else
-                      ret = List (ampcheck(experiments, complexDataElement, cdata))
+            val complexDataElements = trafo._2._2._1
+            val experiments = trafo._2._2._2
+
+            val v = voltcheck(experiments, complexDataElements, max)
+            val i = ampcheck(experiments, complexDataElements, cdata)
+            val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
+            
+            // establish a "no limit found" default
+            val s = experiments.map(
+                (x) =>
+                    {
+                        (
+                            x,
+                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                            "no limit",
+                            "")
+                    })
+
+            val ret = s ++ v ++ i ++ p groupBy(k => k._1.house)
+            ret.values.map(v => finder(v)).toList
+        }
+
+    def solve_and_analyse(reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
+        {
+            val b4_solve = System.nanoTime()
+            val success = solve(reduced_trafos.map(_._1))
+            val solved = System.nanoTime()
+            println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
+            println("solve success: " + success)
+
+            val output = read_output_files(reduced_trafos)
+            output.count
+            
+            val read = System.nanoTime()
+            println("read: " + (read - solved) / 1e9 + " seconds")
+            
+            var r  = if (output.count != 0) {
+                reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo))).flatMap(analyse)
             }
-            ret
+            else {
+                null.asInstanceOf[RDD[MaxEinspeiseleistung]]
+            }
+            r.count
+
+            val analysed = System.nanoTime()
+            println("analysed: " + (analysed - read) / 1e9 + " seconds")
+            
+            r 
         }
 
     def einspeiseleistung(
@@ -944,7 +916,9 @@ class GridLABD(session: SparkSession) extends Serializable {
         {
             val start = System.nanoTime()
             val filtered_trafos = trafokreis.filter(_._2._2.isDefined)
-            val experiments = filtered_trafos.flatMap(export(_)).cache
+            println("filtered_trafos: " + filtered_trafos.count)
+
+            val experiments = filtered_trafos.flatMap(export).cache
             experiments.count
             val write = System.nanoTime()
             println("export: " + (write - start) / 1e9 + " seconds")
@@ -952,52 +926,71 @@ class GridLABD(session: SparkSession) extends Serializable {
 
             var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
             if (!EXPORT_ONLY) {
-                val success = solve(filtered_trafos.map(_._1))
-                val gridlabd = System.nanoTime()
-                println("solve: " + (gridlabd - write) / 1e9 + " seconds")
-                println("solve success: " + success)
+              
+                val reduced_trafos = filtered_trafos.mapValues(t => {
+                  val transformers = t._1.map(_.end1.ratedS).sum
+                  val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e => (e.element.id, e.ratedCurrent))
+                  (transformers, cdata_iter)
+                })
                 
-                if (success) {
-                    val fileroot_list = filtered_trafos.map(_._1).collect
+                val max_values = solve_and_analyse(reduced_trafos, experiments)
+                println("read results: " + max_values.count)
+                
+                val b4_experiment = System.nanoTime()
+                val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house => {
+                    val experiment = house._2._1
+                    val max_option = house._2._2
                     
-                    val reduced_trafos = filtered_trafos.mapValues(t ⇒ {
-                        val transformers = t._1.map(_.end1.ratedS).sum
-                        val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
-                        (transformers, cdata_iter)
-                    })
-                            
-                    fileroot_list.map(fileroot => {
-                        val output = read_output_files(fileroot)                      
-                        if (output.count != 0) {
-
-                            val exp_per_trafo = experiments.filter(_.trafo == fileroot)
-                            val exp_array = exp_per_trafo.collect
-                            val r = output.leftOuterJoin(reduced_trafos.filter(_._1 == fileroot)).flatMap(analyse(exp_array))
-                            
-                            // establish a "no limit found" default
-                            val s = exp_per_trafo.map(
-                                (x) ⇒
-                                    {
-                                        (
-                                            x.house, (
-                                            x,
-                                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                                            "no limit",
-                                            ""))
-                                    })
-      
-                            val ret = r.filter(_ != null).union(s).groupByKey().values.map(finder)
-                            
-                            val max_einpeiseleistung = ret.collect
-                            Database.store("Einspeiseleistung", Calendar.getInstance())(max_einpeiseleistung)
-    
-                            //trafokreis.map(t => cleanup(t._1))
+                    var to = experiment.to
+                    var from = to - 10000
+                    if (max_option.isDefined) {
+                        val max = max_option.get
+                        if (max.reason != "no limit" && max.max.isDefined) {
+                            to = max.max.get - 10000
+                            from = to - 10000
                         }
-                    })
+                    }                        
+                    experiment.copy(from=from , to=to, step = 1000)
+                })
                     
-                    val finish = System.nanoTime()
-                    println("outputread and analyse: " + (finish - gridlabd) / 1e9 + " seconds")
+                val experiment_adjusted = System.nanoTime()
+                println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
+                
+                filtered_trafos.map(t => {
+                    val equipment = t._1
+                    fileWriter.eraseInputFile(equipment + "/output_data")
+                    fileWriter.writeInputFile(equipment, "output_data/dummy", null) // mkdir
+                    fileWriter.eraseInputFile(equipment + "/input_data")
+                    fileWriter.writeInputFile(equipment, "input_data/dummy", null) // mkdir
+                }).count
+                
+                val filedelete = System.nanoTime()
+                println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
+                
+                experiments2.map(experiment => {
+                    fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", fileWriter.ramp_up(experiment, 0.0))
+                }).count
+                
+                val export2 = System.nanoTime()
+                println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
+                
+                ret = solve_and_analyse(reduced_trafos, experiments2)                 
+                println("ret: " + ret.count)
+                
+                val b4_db = System.nanoTime()
+                if (HDFS_URI == "") {
+                  val save = ret.groupBy(_.trafo).mapValues(t => {
+                    Database.store("Einspeiseleistung", Calendar.getInstance())(t.toArray)
+                  }).cache
+                  println("trafos saved: " + save.count)
+                } else { 
+                  ret.saveAsTextFile("/results")
                 }
+                  
+                val dbsave = System.nanoTime()
+                println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
+                
+                //trafokreis.map(t => cleanup(t._1)).count
             }
 
             ret

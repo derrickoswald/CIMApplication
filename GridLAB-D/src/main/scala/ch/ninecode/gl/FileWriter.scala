@@ -219,8 +219,8 @@ class FileWriter(gridlabd: GridLABD) extends Serializable {
             val houses = precalc_results._3
 
             // generate experiments
-            val window = 15 * 60 // window size in simulated seconds per experiment
-            val step = 1000
+            val window = 2 * 60 // window size in simulated seconds per experiment
+            val step = 10000
             val experiments = houses.zipWithIndex.map(h ⇒
                 {
                         // (has: Tuple2[String, Double], index: Long)
