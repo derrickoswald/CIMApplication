@@ -25,24 +25,24 @@ define
          */
         function init (event)
         {
-        	var value;
-        	var found = false;
-        	if (null != (value = localstorage.loadProperty ("accessKeyId")))
-    		{
-        		document.getElementById ("accessKeyId").value = value;
-        		found = true;
-    		}
-        	if (null != (value = localstorage.loadProperty ("secretAccessKey")))
-    		{
-        		document.getElementById ("secretAccessKey").value = value;
-	    		found = true;
-			}
-        	if (null != (value = localstorage.loadProperty ("region")))
-    		{
-        		document.getElementById ("region").value = value;
-	    		found = true;
-			}
-        	document.getElementById ("remember").checked = found;
+            var value;
+            var found = false;
+            if (null != (value = localstorage.loadProperty ("accessKeyId")))
+            {
+                document.getElementById ("accessKeyId").value = value;
+                found = true;
+            }
+            if (null != (value = localstorage.loadProperty ("secretAccessKey")))
+            {
+                document.getElementById ("secretAccessKey").value = value;
+                found = true;
+            }
+            if (null != (value = localstorage.loadProperty ("region")))
+            {
+                document.getElementById ("region").value = value;
+                found = true;
+            }
+            document.getElementById ("remember").checked = found;
         }
 
         function term (event)
@@ -55,18 +55,18 @@ define
                     }
                 );
 
-        	if (document.getElementById ("remember").checked)
-    		{
-        		localstorage.storeProperty ("accessKeyId", document.getElementById ("accessKeyId").value);
-        		localstorage.storeProperty ("secretAccessKey", document.getElementById ("secretAccessKey").value);
-        		localstorage.storeProperty ("region", document.getElementById ("region").value);
-    		}
-        	else
-    		{
-        		localstorage.clearProperty ("accessKeyId");
-        		localstorage.clearProperty ("secretAccessKey");
-        		localstorage.clearProperty ("region");
-    		}
+            if (document.getElementById ("remember").checked)
+            {
+                localstorage.storeProperty ("accessKeyId", document.getElementById ("accessKeyId").value);
+                localstorage.storeProperty ("secretAccessKey", document.getElementById ("secretAccessKey").value);
+                localstorage.storeProperty ("region", document.getElementById ("region").value);
+            }
+            else
+            {
+                localstorage.clearProperty ("accessKeyId");
+                localstorage.clearProperty ("secretAccessKey");
+                localstorage.clearProperty ("region");
+            }
         }
 
         return (
