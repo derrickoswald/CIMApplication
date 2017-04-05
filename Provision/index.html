@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Provision Spark</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    </head>
+    <body style="padding-top: 70px;">
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span
+                            class="icon-bar"></span>
+                    </button>
+                    <a id="home" class="navbar-brand" href="#">Provision Spark</a>
+                </div>
+                <div id="navigator_menu" class="navbar-collapse collapse">
+                    <ul id="utility" class="nav navbar-nav navbar-right">
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">View<span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li class="dropdown-header">Local</li>
+                                <li><a id="spark_ui" href="http://localhost:4040" target="_blank">Spark UI</a></li>
+                                <li class="divider"></li>
+                                <li class="dropdown-header">External</li>
+                                <li><a href="https://spark.apache.org" target="_blank">Spark</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="main" class="container-fluid">
+            <div id="default_area" class="row">
+                <div id="sidebar" class="col-md-2">
+                </div>
+                <div id="middle" class="col-md-10">
+                    <h1>Provisioning a Spark Cluster on ECS using Spot Instance Pricing</h1>
+                    <p>This wizard will lead you through the process of setting up a Spark cluster.</p>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.20.min.js"></script>
+        <script type="text/javascript" src="js/require.js" data-main="js/main.js"></script>
+    </body>
+</html>
