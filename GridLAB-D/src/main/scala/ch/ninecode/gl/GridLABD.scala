@@ -987,14 +987,10 @@ class GridLABD(session: SparkSession) extends Serializable {
                 println("ret: " + ret.count)
                 
                 val b4_db = System.nanoTime()
-                if (HDFS_URI == "") {
-                  val save = ret.groupBy(_.trafo).mapValues(t => {
-                    Database.store("Einspeiseleistung", Calendar.getInstance())(t.toArray)
-                  }).cache
-                  println("trafos saved: " + save.count)
-                } else { 
-                  ret.saveAsTextFile("/results")
-                }
+                reduced_trafos.map(_._1).collect.map(t => {
+                    val res = ret.filter(_.trafo == t).collect
+                    Database.store("Einspeiseleistung", Calendar.getInstance())(res)
+                })
                   
                 val dbsave = System.nanoTime()
                 println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
