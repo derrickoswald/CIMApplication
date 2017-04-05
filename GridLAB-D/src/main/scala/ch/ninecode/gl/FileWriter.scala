@@ -235,7 +235,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable {
                 val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
                 val interval = 5 // seconds per step
                 val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-                val riser = if (steps * step >= max) step else math.ceil (max / steps / 1000.0) * 1000.0 // limit as ceiling(minimum step size) in thousands
+                val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
                 Experiment (simulation, house, start, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
             }).toArray
 

@@ -944,16 +944,22 @@ class GridLABD(session: SparkSession) extends Serializable {
                     val experiment = house._2._1
                     val max_option = house._2._2
                     
+                    val step = 1000.0
+                    var riser = step
                     var to = experiment.to
                     var from = to - 10000
                     if (max_option.isDefined) {
                         val max = max_option.get
                         if (max.reason != "no limit" && max.max.isDefined) {
-                            to = max.max.get - 10000
-                            from = to - 10000
+                            to = max.max.get + step
+                            from = max.max.get - experiment.step
+                            val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+                            if (!(steps * step >= (to - from)))
+                              riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
+                            
                         }
                     }                        
-                    experiment.copy(from=from , to=to, step = 1000)
+                    experiment.copy(from=from , to=to, step = riser)
                 })
                     
                 val experiment_adjusted = System.nanoTime()
