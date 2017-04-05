@@ -694,38 +694,41 @@ class GridLABD(session: SparkSession) extends Serializable {
      * just by selecting the minimum power solution we've chosen the first measurement over the limit
      */
     def finder(values: Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)]): MaxEinspeiseleistung =
+    {
+        def seqop(current: MaxEinspeiseleistung, arg: (Experiment, ThreePhaseComplexDataElement, String, String)): MaxEinspeiseleistung =
         {
-                def seqop(current: MaxEinspeiseleistung, arg: (Experiment, ThreePhaseComplexDataElement, String, String)): MaxEinspeiseleistung =
-                    {
-                        val experiment = arg._1
-                        val data = arg._2
-                        val steps = Math.round((data.millis - experiment.t1.getTimeInMillis()) / (experiment.interval * 1000))
-                        val kw = experiment.from + (experiment.step * steps)
-                        current.max match {
-                            case None ⇒
-                                MaxEinspeiseleistung(experiment.trafo, experiment.house, Some(kw), arg._3, arg._4)
-                            case Some(kw1) ⇒
-                                if (kw1 < kw) current else MaxEinspeiseleistung(experiment.trafo, experiment.house, Some(kw), arg._3, arg._4)
-                        }
-                    }
-                def combop(a: MaxEinspeiseleistung, b: MaxEinspeiseleistung): MaxEinspeiseleistung =
-                    {
-                        a.max match {
-                            case None ⇒
-                                b
-                            case Some(kw1) ⇒
-                                b.max match {
-                                    case None ⇒
-                                        a
-                                    case Some(kw2) ⇒
-                                        if (kw1 < kw2) a else b
-                                }
-                        }
-                    }
-            val trafo = values.head._1.trafo
-            val house = values.head._1.house
-            values.aggregate(MaxEinspeiseleistung(trafo, house, None, "unknown", ""))(seqop, combop)
+            val experiment = arg._1
+            val data = arg._2
+            val reason = arg._3
+            val details = arg._4
+            val steps = Math.round((data.millis - experiment.t1.getTimeInMillis()) / (experiment.interval * 1000))
+            val ok_steps = if (0 < steps) steps - 1 else 0 // the step before the limit was exceeded is the maximum value
+            val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
+            current.max match {
+                case None ⇒
+                    MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw), reason, details)
+                case Some(kw1) ⇒
+                    if (kw1 < kw) current else MaxEinspeiseleistung(experiment.trafo, experiment.house, Some(kw), reason, details)
+            }
         }
+        def combop(a: MaxEinspeiseleistung, b: MaxEinspeiseleistung): MaxEinspeiseleistung =
+        {
+            a.max match {
+                case None ⇒
+                    b
+                case Some(kw1) ⇒
+                    b.max match {
+                        case None ⇒
+                            a
+                        case Some(kw2) ⇒
+                            if (kw1 < kw2) a else b
+                    }
+            }
+        }
+        val trafo = values.head._1.trafo
+        val house = values.head._1.house
+        values.aggregate(MaxEinspeiseleistung(trafo, house, None, "unknown", ""))(seqop, combop)
+    }
 
     def voltcheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {

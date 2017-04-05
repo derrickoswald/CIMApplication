@@ -35,7 +35,7 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
-    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels withName _)
+    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName (_))
 
     implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
     (s) =>
@@ -54,6 +54,7 @@ object Main
     case class Arguments (
         master: String = "",
         opts: Map[String,String] = Map(),
+        storage: String = "MEMORY_AND_DISK_SER",
         three: Boolean = false,
         precalculation: Boolean = false,
         trafos: String = "",
@@ -81,6 +82,10 @@ object Main
         opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = x)).
             text ("other Spark options")
+
+        opt[String]('g', "storage_level").
+            action ((x, c) => c.copy (storage = x)).
+            text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
 
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
@@ -203,21 +208,24 @@ object Main
                         configuration.setJars (Array (s1))
                 }
 
-                // register low level classes
-                configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-                // register CIM case classes
-                CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-                // register edge related classes
-                configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-                // register topological classes
-                configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
-                // register GridLAB-D classes
-                configuration.registerKryoClasses (Array (
-                    classOf[ch.ninecode.gl.PreNode],
-                    classOf[ch.ninecode.gl.PreEdge],
-                    classOf[ch.ninecode.gl.PV],
-                    classOf[ch.ninecode.gl.Transformer],
-                    classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                if (StorageLevel.fromString (arguments.storage).useDisk)
+                {
+                    // register low level classes
+                    configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
+                    // register CIM case classes
+                    CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
+                    // register edge related classes
+                    configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
+                    // register topological classes
+                    configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+                    // register GridLAB-D classes
+                    configuration.registerKryoClasses (Array (
+                        classOf[ch.ninecode.gl.PreNode],
+                        classOf[ch.ninecode.gl.PreEdge],
+                        classOf[ch.ninecode.gl.PV],
+                        classOf[ch.ninecode.gl.Transformer],
+                        classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
                 // make a Spark session
@@ -247,7 +255,7 @@ object Main
                 // read the file
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
-                options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+                options.put ("StorageLevel", arguments.storage)
                 options.put ("ch.ninecode.cim.make_edges", "false")
                 options.put ("ch.ninecode.cim.do_join", "false")
                 options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
