@@ -1,0 +1,36 @@
+<h1>Create or Select a Cluster</h1>
+<p>
+    <strong>Create a named cluster on ECS.</strong>
+</p>
+<p>
+An Amazon EC2 Container Service (Amazon ECS) cluster is a logical grouping of container instances
+that you can place tasks on.
+When you first use the Amazon ECS service, a cluster named "default" is created for you,
+but you can create multiple clusters in an account to keep resources separate.
+For example, the instances running in a cluster can be selectively stopped by iterating through
+the instances programmatically.
+</p>
+
+<p>
+In this step we choose an existing cluster (choose from the drop down menu by clicking twice in the text input area)
+or create a new cluster (recommended).
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cluster">Cluster</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="cluster_help">
+                <input id="cluster" class="form-control" type="text" name="cluster" list="cluster_list">
+                <span class="input-group-btn">
+                    <button id="create_cluster" class="btn btn-default" type="button">Create</button>
+                </span>
+            </div>
+            <datalist id="cluster_list">
+            </datalist>
+            <span id="cluster_help" class="help-block">
+                Use this cluster name. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+</div>
+

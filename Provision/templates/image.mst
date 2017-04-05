@@ -1,0 +1,27 @@
+<h1>Select ECS Compatible Image</h1>
+<p>
+    <strong>Select an Amazon Machine Image (AMI) for the master and slave instances.</strong>
+</p>
+<p>
+Each of the software images running on the instances used in the ECS cluster must meet certain requirements.
+This is most easily satisfied by choosing an AMI from the subset that are "Amazon ECS Optimized".
+The recommended AMI is the most recently released version.
+</p>
+
+<p>
+In this step we choose an AMI for the master and slave nodes.
+Choose from the drop down list.
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="image">Image</label>
+        <div class="col-sm-9">
+            <select id="image" class="form-control" type="select" name="image" aria-describedby="image_help">
+            </select>
+            <span id="images_help" class="help-block">
+                Choose the Amazon Machine Image for the master and slave instances from the list.
+            </span>
+        </div>
+    </div>
+</div>
+

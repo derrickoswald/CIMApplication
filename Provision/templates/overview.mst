@@ -1,0 +1,62 @@
+<h1>Provision ECS Spark Cluster</h1>
+<p>
+    <strong>Create a Spark cluster on Amazon EC2 Container Service (ECS) using spot instances.</strong>
+</p>
+<p>
+From what I can see, there are three parts:
+<ul>
+<li>provisioning the cluster (a fleet) – end state: Docker capable instances are up and running</li>
+<li>running the docker containers on the cluster (executing tasks for master and N slaves) – end state: Spark is running on the cluster</li>
+<li>copy data files to HDFS and execute the specific command on the master to start the Spark program that computes the maximum feed-in power for each household – end state: spark-submit terminates successfully</li>
+</ul>
+In the end, the first two phases are merged, using the ability to start a task at instance initialization.
+</p>
+<p>
+This wizard helps with the steps of the process shown below:
+</p>
+
+<p>
+Although the wizard is meant to be a linear process, some latitude is provided to jump between
+steps using the navigation menu on the left hand side. 
+</p>
+<p>
+The first step is to provide the Amazon credentials that allow access to EC2 and ECS:
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="accessKeyId">Access Key Id</label>
+        <div class="col-sm-9">
+            <input id="accessKeyId" class="form-control" type="text" name="accessKeyId" placeholder="e.g. AKIAJRY5D745MOSGE2HZ" aria-describedby="accessKeyId_help">
+            <span id="accessKeyId_help" class="help-block">
+                The access key used to execute Amazon Web Services.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="secretAccessKey">Secret Access Key</label>
+        <div class="col-sm-9">
+            <input id="secretAccessKey" class="form-control" type="text" name="secretAccessKey" placeholder="e.g. QI1QIqU9zOktczhWePMioHy79gXvHzV+npWDKiCv" aria-describedby="secretAccessKey_help">
+            <span id="secretAccessKey_help" class="help-block">
+                The secret access key used to execute Amazon Web Services.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="region">Region</label>
+        <div class="col-sm-9">
+            <input id="region" class="form-control" type="text" name="region" placeholder="e.g. eu-west-1" aria-describedby="region_help">
+            <span id="region_help" class="help-block">
+                The region in which to execute Amazon Web Services.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="remember">Remember credentials</label>
+        <div class="col-sm-9">
+            <input id="remember" type="checkbox" value="" aria-describedby="remember_help">
+            <span id="remember_help" class="help-block">
+                Enables or disables saving the provided credentials in browser local storage.
+            </span>
+        </div>
+    </div>
+</div>
