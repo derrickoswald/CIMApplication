@@ -75,9 +75,9 @@ define
 
         return (
                 {
-                	storeProperty: storeProperty,
-                	loadProperty: loadProperty,
-                	clearProperty: clearProperty
+                    storeProperty: storeProperty,
+                    loadProperty: loadProperty,
+                    clearProperty: clearProperty
                 }
             );
         }

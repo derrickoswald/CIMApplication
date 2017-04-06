@@ -1,0 +1,35 @@
+<h1>Select Instance Types</h1>
+<p>
+    <strong>Select an instance type, one each for the master and slave instances.</strong>
+</p>
+<p>
+Yadda
+</p>
+
+<p>
+In this step we choose one instance type for the master and one for the slave nodes.
+Choose from the drop down lists.
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="master">Master</label>
+        <div class="col-sm-9">
+            <select id="master" class="form-control" type="select" name="master" aria-describedby="master_help">
+            </select>
+            <span id="master_help" class="help-block">
+                Choose the instance type for the master from the list.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="slaves">Slaves</label>
+        <div class="col-sm-9">
+            <select id="slaves" class="form-control" type="select" name="slaves" aria-describedby="slaves_help">
+            </select>
+            <span id="slaves_help" class="help-block">
+                Choose the instance type for the slaves from the list.
+            </span>
+        </div>
+    </div>
+</div>
+

@@ -16,71 +16,65 @@ define
      */
     function ()
     {
-    	var clusters = null;
+        var clusters = null;
 
-    	function show_clusters (data)
-    	{
-    		function active (cluster)
-    		{
-    			return (cluster.status == "ACTIVE");
-    		}
-    		function extract (cluster)
-    		{
-    			return ({"clusterArn": cluster.clusterArn, "clusterName": cluster.clusterName, "registeredContainerInstancesCount": cluster.registeredContainerInstancesCount });
-    		}
-//    		{ "clusters": [ { "clusterArn": "arn:aws:ecs:eu-west-1:115120041846:cluster/playpen", "clusterName": "playpen", "status": "ACTIVE", "registeredContainerInstancesCount": 0, "runningTasksCount": 0, "pendingTasksCount": 0, "activeServicesCount": 0 } ], "failures": [] }
-    		clusters = data.clusters.filter (active).map (extract)
-    		function wrap (cluster)
-    		{
-    			return ("<option value=\"" + cluster.clusterName + "\">" + cluster.clusterName + " (" + cluster.clusterArn + ")" + "</option>")
-    		}
-    		var options = clusters.map (wrap).join ("\n");
-    		document.getElementById ("cluster_list").innerHTML = options;
-    	}
+        function show_clusters (data)
+        {
+            function active (cluster)
+            {
+                return (cluster.status == "ACTIVE");
+            }
+            function extract (cluster)
+            {
+                return ({"clusterArn": cluster.clusterArn, "clusterName": cluster.clusterName, "registeredContainerInstancesCount": cluster.registeredContainerInstancesCount });
+            }
+//            { "clusters": [ { "clusterArn": "arn:aws:ecs:eu-west-1:115120041846:cluster/playpen", "clusterName": "playpen", "status": "ACTIVE", "registeredContainerInstancesCount": 0, "runningTasksCount": 0, "pendingTasksCount": 0, "activeServicesCount": 0 } ], "failures": [] }
+            clusters = data.clusters.filter (active).map (extract)
+            function wrap (cluster)
+            {
+                return ("<option value=\"" + cluster.clusterName + "\">" + cluster.clusterName + " (" + cluster.clusterArn + ")" + "</option>")
+            }
+            var options = clusters.map (wrap).join ("\n");
+            document.getElementById ("cluster_list").innerHTML = options;
+        }
 
-    	function describe_clusters (data)
-    	{
-//    		{ "clusterArns": [ "arn:aws:ecs:eu-west-1:115120041846:cluster/playpen" ] }
-//    		{
-//    		    "clusters": [
-//    		        ""
-//    		    ]
-//    		}
+        function describe_clusters (data)
+        {
             var ecs = new AWS.ECS ();
             ecs.describeClusters ({ clusters: data.clusterArns }, function (err, data) {
                 if (err) console.log (err, err.stack); // an error occurred
                 else     show_clusters (data);           // successful response
             });
-    	}
+        }
 
-    	function lookup_cluster ()
-    	{
-    		var name = document.getElementById ("cluster").value;
-    		var found = null;
-    		function find (cluster)
-    		{
-    			if (cluster.clusterName == name)
-    				found = cluster;
-    		}
-    		clusters.forEach (find);
-    		return (found);
-    	}
+        function lookup_cluster ()
+        {
+            var name = document.getElementById ("cluster").value;
+            var found = null;
+            function find (cluster)
+            {
+                if (cluster.clusterName == name)
+                    found = cluster;
+            }
+            clusters.forEach (find);
+            return (found);
+        }
 
-    	function change_cluster (event)
-    	{
-    		var cluster = lookup_cluster ();
-    		document.getElementById ("create_cluster").disabled = null != cluster;
-    	}
+        function change_cluster (event)
+        {
+            var cluster = lookup_cluster ();
+            document.getElementById ("create_cluster").disabled = null != cluster;
+        }
 
-    	function create_cluster (event)
-    	{
-    		var name = document.getElementById ("cluster").value;
-    		var ecs = new AWS.ECS ();
+        function create_cluster (event)
+        {
+            var name = document.getElementById ("cluster").value;
+            var ecs = new AWS.ECS ();
             ecs.createCluster ({ clusterName: name }, function (err, data) {
                 if (err) console.log (err, err.stack); // an error occurred
                 else     init (null); // refresh
             });
-    	}
+        }
 
         /**
          * Form initialization function.
@@ -91,25 +85,19 @@ define
          */
         function init (event)
         {
-            var ecs = new AWS.ECS ();
-            // options:
-//        	{
-//         	   "maxResults": number,
-//         	   "nextToken": "string"
-//         	}
-            ecs.listClusters ({}, function (err, data) {
-                if (err) console.log (err, err.stack); // an error occurred
-                else     describe_clusters (data);           // successful response
-            });
+            if ((null == clusters) || (null == event))
+            {
+                var ecs = new AWS.ECS ();
+                ecs.listClusters ({}, function (err, data) {
+                    if (err) console.log (err, err.stack); // an error occurred
+                    else     describe_clusters (data);     // successful response
+                });
+            }
         }
 
         function term (event)
         {
-    		var cluster = lookup_cluster ();
-    		if (null != cluster)
-    			this.cluster = cluster;
-    		else
-    			delete this.cluster;
+            this.cluster = lookup_cluster ();
         }
 
         return (
@@ -129,7 +117,8 @@ define
                             ],
                             transitions:
                             {
-                                enter: init
+                                enter: init,
+                                leave: term
                             }
                         }
                     );

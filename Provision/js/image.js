@@ -16,26 +16,39 @@ define
      */
     function ()
     {
-    	var ecs_images = null;
+        var ecs_images = null;
 
         function show_images (data)
         {
             var images = data.Images;
-        	function is_ecs_optimized (image)
+            function is_ecs_optimized (image)
             {
                 return ((null != image.Name) && (-1 != image.Name.indexOf ("amazon-ecs-optimized")));
             }
-        	function descending_date (a, b)
-        	{
-        		return (b.CreationDate.localeCompare (a.CreationDate));
-        	}
-            var ecs_images = images.filter (is_ecs_optimized).sort (descending_date);
-    		function wrap (image)
-    		{
-    			return ("<option value=\"" + image.ImageId + "\">" + image.ImageId + " - " + image.Name + " (" + image.CreationDate + ") " + image.Description + "</option>")
-    		}
-    		var options = ecs_images.map (wrap).join ("\n");
-    		document.getElementById ("image").innerHTML = options;
+            function descending_date (a, b)
+            {
+                return (b.CreationDate.localeCompare (a.CreationDate));
+            }
+            ecs_images = images.filter (is_ecs_optimized).sort (descending_date);
+            function wrap (image)
+            {
+                return ("<option value=\"" + image.ImageId + "\">" + image.ImageId + " - " + image.Name + " (" + image.CreationDate + ") " + image.Description + "</option>")
+            }
+            var options = ecs_images.map (wrap).join ("\n");
+            document.getElementById ("image").innerHTML = options;
+        }
+
+        function lookup_image ()
+        {
+            var name = document.getElementById ("image").value;
+            var found = null;
+            function find (image)
+            {
+                if (image.ImageId == name)
+                    found = image;
+            }
+            ecs_images.forEach (find);
+            return (found);
         }
 
         /**
@@ -47,41 +60,35 @@ define
          */
         function init (event)
         {
-            var ec2 = new AWS.EC2 ();
-            // ECS optimized instances have a block device /dev/xvdcz
-            // http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-ami-storage-config.html
-            //  ...launch with an 8-GiB volume for the operating system that is
-            // attached at /dev/xvda and mounted as the root of the file system.
-            // There is an additional 22-GiB volume that is attached at /dev/xvdcz
-            // that Docker uses for image and metadata storage...
-            var params = {
-                      Filters: [
-                        {
-                          Name: 'block-device-mapping.device-name',
-                          Values: [
-                            '/dev/xvdcz'
+            if (null == ecs_images)
+            {
+                var ec2 = new AWS.EC2 ();
+                // ECS optimized instances have a block device /dev/xvdcz
+                // http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-ami-storage-config.html
+                //  ...launch with an 8-GiB volume for the operating system that is
+                // attached at /dev/xvda and mounted as the root of the file system.
+                // There is an additional 22-GiB volume that is attached at /dev/xvdcz
+                // that Docker uses for image and metadata storage...
+                var params = {
+                          Filters: [
+                            {
+                              Name: 'block-device-mapping.device-name',
+                              Values: [
+                                '/dev/xvdcz'
+                              ]
+                            }
                           ]
-                        }
-                      ]
-                    };
-            ec2.describeImages (params, function (err, data) {
-              if (err) console.log (err, err.stack); // an error occurred
-              else     show_images (data);           // successful response
-            });
+                        };
+                ec2.describeImages (params, function (err, data) {
+                  if (err) console.log (err, err.stack); // an error occurred
+                  else     show_images (data);           // successful response
+                });
+            }
         }
 
         function term (event)
         {
-        	var master = document.getElementById ("master").value;
-    		if (null != master)
-    			this.master = master;
-    		else
-    			delete this.master;
-        	var slaves = document.getElementById ("slaves").value;
-    		if (null != slaves)
-    			this.slaves = slaves;
-    		else
-    			delete this.slaves;
+            this.image = lookup_image ();
         }
 
         return (
@@ -98,7 +105,8 @@ define
                             ],
                             transitions:
                             {
-                                enter: init
+                                enter: init,
+                                leave: term
                             }
                         }
                     );
