@@ -593,6 +593,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                             "FILE=$line; " +
                             "pushd simulation/$FILE; " +
                             "gridlabd $FILE.glm 2>$FILE.out; " +
+                            "cat output_data/* > output.txt; " + 
                             "popd;" +
                             "cat simulation/$FILE/$FILE.out; " +
                             "done < /dev/stdin")
@@ -610,16 +611,16 @@ class GridLABD(session: SparkSession) extends Serializable {
                             "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                             "pushd $FILE; " +
                             "gridlabd $FILE.glm 2>$FILE.out; " +
+                            "cat output_data/* > output.txt; " +
                             "popd; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output_data/ /simulation/$FILE; " +
+                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt /simulation/$FILE; " +
                             "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
                             "cat $FILE/$FILE.out; " +
                             "rm -rf $FILE; " +
                             "done < /dev/stdin")
                 }
 
-            val out = files.pipe(gridlabd).cache
-            out.first
+            val out = files.pipe(gridlabd)
             out.map(check).fold(true)(_ && _)
         }
 
@@ -635,38 +636,45 @@ class GridLABD(session: SparkSession) extends Serializable {
             val output_folder = "output_data"
             val path = 
               if (HDFS_URI == "")
-                base_folder + "/*/" + output_folder
+                base_folder + "/*/output.txt"
               else
-                "/" + base_folder + "/*/" + output_folder
+                "/" + base_folder + "/*/output.txt"
 
-            val files = session.sparkContext.wholeTextFiles(path)
+            val files = session.sparkContext.wholeTextFiles(path, 14)
 
-            files.map(f => {
-              val path = f._1
-              val trafo_pattern = ".*" + base_folder + "/(.*)/" + output_folder + "/.*";
-              val element_pattern = ".*" + output_folder + "/(.*)_*";
+            files.map(k => {
+              val path = k._1
+              val trafo_pattern = ".*" + base_folder + "/(.*)/output.txt"
               val trafo = path.replaceAll(trafo_pattern, "$1")
-              val file = path.replaceAll(element_pattern, "$1")
-              val element = file.substring(0, file.indexOf("_"))
+              (trafo, k._2)
               
-              var units = ""
-              if (file.endsWith("_voltage.csv"))
-                  units = "Volts"
-              else if (file.endsWith("_current.csv"))
-                  units = "Amps"
+            }).flatMapValues(f => {
               
-              val content = f._2.split("\n").filter(_.startsWith("2017"))
-              val complex_elements = content.map(c => {
-                val c_arr = c.split(",")
-                
-                if (USE_ONE_PHASE)
-                      ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
-                else
-                      ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
-              })
-              
-              (trafo, complex_elements)
-            }).flatMapValues(_.toSeq)
+                var units = ""    
+        		var element = ""
+              	val content = f.split("\n").filter(s => s.startsWith("# file") || s.startsWith("2017"))
+              	
+              	content.map(c => {
+	                if (c.startsWith("# file")) {
+	                  val filename_pattern = "# file...... output_data/(.*)"
+	                  val filename = c.replaceAll(filename_pattern, "$1")
+	                  element = filename.substring(0, filename.indexOf("_"))
+	            
+	                  if (filename.endsWith("_voltage.csv"))
+	                      units = "Volts"
+	                  else if (filename.endsWith("_current.csv"))
+	                      units = "Amps"
+	                  null.asInstanceOf[ThreePhaseComplexDataElement]
+	                } else {
+	                  val c_arr = c.split(",")
+	                  
+	                  if (USE_ONE_PHASE)
+	                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
+	                  else
+	                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+	                }
+	              }).filter(_ != null)
+            })
         }
 
     /**
@@ -891,27 +899,16 @@ class GridLABD(session: SparkSession) extends Serializable {
             val b4_solve = System.nanoTime()
             val success = solve(reduced_trafos.map(_._1))
             val solved = System.nanoTime()
-            println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
             println("solve success: " + success)
+            println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
 
             val output = read_output_files(reduced_trafos)
-            output.count
             
             val read = System.nanoTime()
             println("read: " + (read - solved) / 1e9 + " seconds")
             
-            var r  = if (output.count != 0) {
-                reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo))).flatMap(analyse)
-            }
-            else {
-                null.asInstanceOf[RDD[MaxEinspeiseleistung]]
-            }
-            r.count
-
-            val analysed = System.nanoTime()
-            println("analysed: " + (analysed - read) / 1e9 + " seconds")
-            
-            r 
+            val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
+            prepared_results.flatMap(analyse)
         }
 
     def einspeiseleistung(
@@ -934,7 +931,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                   val transformers = t._1.map(_.end1.ratedS).sum
                   val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e => (e.element.id, e.ratedCurrent))
                   (transformers, cdata_iter)
-                })
+                }).cache
                 
                 val max_values = solve_and_analyse(reduced_trafos, experiments)
                 println("read results: " + max_values.count)
@@ -960,7 +957,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                         }
                     }                        
                     experiment.copy(from=from , to=to, step = riser)
-                })
+                }).cache
                     
                 val experiment_adjusted = System.nanoTime()
                 println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
@@ -968,6 +965,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                 filtered_trafos.map(t => {
                     val equipment = t._1
                     fileWriter.eraseInputFile(equipment + "/output_data")
+                    fileWriter.eraseInputFile(equipment + "/output.txt")
                     fileWriter.writeInputFile(equipment, "output_data/dummy", null) // mkdir
                     fileWriter.eraseInputFile(equipment + "/input_data")
                     fileWriter.writeInputFile(equipment, "input_data/dummy", null) // mkdir
@@ -983,8 +981,11 @@ class GridLABD(session: SparkSession) extends Serializable {
                 val export2 = System.nanoTime()
                 println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
                 
-                ret = solve_and_analyse(reduced_trafos, experiments2)                 
+                ret = solve_and_analyse(reduced_trafos, experiments2).cache
                 println("ret: " + ret.count)
+                
+                val analyse = System.nanoTime()
+                println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
                 
                 val b4_db = System.nanoTime()
                 reduced_trafos.map(_._1).collect.map(t => {
