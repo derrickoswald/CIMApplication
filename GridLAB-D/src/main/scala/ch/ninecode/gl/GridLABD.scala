@@ -589,9 +589,9 @@ class GridLABD(session: SparkSession) extends Serializable {
                         "bash",
                         "-c",
                         "while read line; do " +
-                            "FILE=$line; " +
+                            "export FILE=$line; " +
                             "pushd simulation/$FILE; " +
-                            "gridlabd $FILE.glm 2>$FILE.out; " +
+                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                             "cat output_data/* > output.txt; " + 
                             "popd;" +
                             "cat simulation/$FILE/$FILE.out; " +
@@ -602,14 +602,14 @@ class GridLABD(session: SparkSession) extends Serializable {
                         "bash",
                         "-c",
                         "while read line; do " +
-                            "FILE=$line; " +
+                            "export FILE=$line; " +
                             //                        "pwd > /tmp/$FILE.environment.log; " +
                             //                        "env >> /tmp/$FILE.environment.log; " +
                             "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                             "HADOOP_USER_NAME=$SPARK_USER; " +
                             "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
                             "pushd $FILE; " +
-                            "gridlabd $FILE.glm 2>$FILE.out; " +
+                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                             "cat output_data/* > output.txt; " +
                             "popd; " +
                             "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt /simulation/$FILE; " +
