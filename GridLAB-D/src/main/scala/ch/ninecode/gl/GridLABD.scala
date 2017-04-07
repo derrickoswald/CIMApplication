@@ -944,12 +944,18 @@ class GridLABD(session: SparkSession) extends Serializable {
                     val step = 1000.0
                     var riser = step
                     var to = experiment.to
-                    var from = to - 10000
+                    var from = to - experiment.step
                     if (max_option.isDefined) {
                         val max = max_option.get
                         if (max.reason != "no limit" && max.max.isDefined) {
-                            to = max.max.get + step
-                            from = max.max.get - experiment.step
+                            val max_val = max.max.get
+                            if (max_val > experiment.step) {
+                                to = max_val + step
+                                from = max_val - experiment.step
+                            } else {
+                                to = experiment.step
+                                from = 0
+                            }
                             val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
                             if (!(steps * step >= (to - from)))
                               riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
