@@ -60,7 +60,6 @@ object Main
         trafos: String = "",
         export_only: Boolean = false,
         all: Boolean = false,
-        clean: Boolean = false,
         erase: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
@@ -106,10 +105,6 @@ object Main
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
             text ("process all transformers (not just those with EEA)")
-
-        opt[Unit]('c', "clean").
-            action ((_, c) => c.copy (clean = true)).
-            text ("clean up (delete) simulation local files")
 
         opt[Unit]('e', "erase").
             action ((_, c) => c.copy (erase = true)).
@@ -285,7 +280,7 @@ object Main
                     val uri = new URI (name)
                     uri.getScheme + "://" + uri.getAuthority + "/"
                 }
-                gridlabd.DELETE_INTERMEDIATE_FILES = arguments.clean
+
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
                 gridlabd.USE_ONE_PHASE = !arguments.three
                 gridlabd.EXPORT_ONLY = arguments.export_only

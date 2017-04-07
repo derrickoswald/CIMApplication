@@ -125,7 +125,6 @@ class GridLABD(session: SparkSession) extends Serializable {
 
     var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
-    var DELETE_INTERMEDIATE_FILES = true
     var DELETE_SIMULATION_FILES = true
     var USE_ONE_PHASE = true
     var EXPORT_ONLY = false
@@ -640,7 +639,8 @@ class GridLABD(session: SparkSession) extends Serializable {
               else
                 "/" + base_folder + "/*/output.txt"
 
-            val files = session.sparkContext.wholeTextFiles(path, 14)
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            val files = session.sparkContext.wholeTextFiles(path, executors)
 
             files.map(k => {
               val path = k._1
@@ -962,14 +962,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                 val experiment_adjusted = System.nanoTime()
                 println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
                 
-                filtered_trafos.map(t => {
-                    val equipment = t._1
-                    fileWriter.eraseInputFile(equipment + "/output_data")
-                    fileWriter.eraseInputFile(equipment + "/output.txt")
-                    fileWriter.writeInputFile(equipment, "output_data/dummy", null) // mkdir
-                    fileWriter.eraseInputFile(equipment + "/input_data")
-                    fileWriter.writeInputFile(equipment, "input_data/dummy", null) // mkdir
-                }).count
+                filtered_trafos.map(t => cleanup(t._1, false)).count
                 
                 val filedelete = System.nanoTime()
                 println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
@@ -996,45 +989,25 @@ class GridLABD(session: SparkSession) extends Serializable {
                 val dbsave = System.nanoTime()
                 println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
                 
-                //trafokreis.map(t => cleanup(t._1)).count
+                if (DELETE_SIMULATION_FILES)
+                    filtered_trafos.map(t => cleanup(t._1, true)).count
             }
-
+            
             ret
         }
 
-    def cleanup(equipment: String): Unit =
+    def cleanup(equipment: String, includes_glm: Boolean): Unit =
         {
-            if (DELETE_INTERMEDIATE_FILES) {
-                val rm =
-                    if ("" == HDFS_URI) // local
-                        Array[String](
-                            "bash",
-                            "-c",
-                            "while read line; do " +
-                                "FILE=$line; " +
-                                "rm -rf simulation/$FILE; " +
-                                "done < /dev/stdin")
-                    else // cluster
-                        Array[String](
-                            "bash",
-                            "-c",
-                            "while read line; do " +
-                                "FILE=$line; " +
-                                "rm -rf $FILE; " +
-                                "done < /dev/stdin")
-                val files = session.sparkContext.parallelize(Array[String](equipment))
-                val del = files.pipe(rm)
-                val result = del.collect.mkString("\n")
-                if ("" != result)
-                    println(result)
-            }
-            if (DELETE_SIMULATION_FILES)
+            if (includes_glm)
                 fileWriter.eraseInputFile(equipment)
-            else {
+            else       
+                fileWriter.eraseInputFile(equipment + "/input_data")
                 fileWriter.eraseInputFile(equipment + "/output_data")
-                fileWriter.writeInputFile(equipment, "output_data/dummy", null) // mkdir
-            }
+                fileWriter.writeInputFile(equipment, "/output_data/dummy", null) // mkdir
+                if (!(HDFS_URI == ""))
+                    fileWriter.eraseInputFile(equipment + "/output.txt")
+                    fileWriter.eraseInputFile(equipment + "/" + equipment + ".out")
+                
         }
-
 }
 
