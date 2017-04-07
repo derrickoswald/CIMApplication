@@ -998,16 +998,18 @@ class GridLABD(session: SparkSession) extends Serializable {
 
     def cleanup(equipment: String, includes_glm: Boolean): Unit =
         {
-            if (includes_glm)
+            if (includes_glm) {
                 fileWriter.eraseInputFile(equipment)
-            else       
+            }
+            else {
                 fileWriter.eraseInputFile(equipment + "/input_data")
                 fileWriter.eraseInputFile(equipment + "/output_data")
                 fileWriter.writeInputFile(equipment, "/output_data/dummy", null) // mkdir
-                if (!(HDFS_URI == ""))
+                if (!(HDFS_URI == "")) {
                     fileWriter.eraseInputFile(equipment + "/output.txt")
                     fileWriter.eraseInputFile(equipment + "/" + equipment + ".out")
-                
+                }
+            }
         }
 }
 
