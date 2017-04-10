@@ -178,7 +178,6 @@ define
         {
             this.master = document.getElementById ("master").value;
             this.slaves = document.getElementById ("slaves").value;
-            alert (JSON.stringify (this, null, 4));
         }
 
         return (

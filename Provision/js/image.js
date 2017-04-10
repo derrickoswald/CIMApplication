@@ -47,7 +47,8 @@ define
                 if (image.ImageId == name)
                     found = image;
             }
-            ecs_images.forEach (find);
+            if (null != ecs_images)
+                ecs_images.forEach (find);
             return (found);
         }
 

@@ -56,14 +56,17 @@ define
                 if (cluster.clusterName == name)
                     found = cluster;
             }
-            clusters.forEach (find);
+            if (null != clusters)
+                clusters.forEach (find);
             return (found);
         }
 
         function change_cluster (event)
         {
             var cluster = lookup_cluster ();
-            document.getElementById ("create_cluster").disabled = null != cluster;
+            var name = document.getElementById ("cluster").value;
+            var creatable = ((null != cluster) && ("" != name))
+            document.getElementById ("create_cluster").disabled = creatable;
         }
 
         function create_cluster (event)
