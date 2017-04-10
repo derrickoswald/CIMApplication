@@ -183,13 +183,13 @@ object PowerFeeding
       val pn = PreNode ("", 0.0)
       val v0 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal0.TopologicalNode else tdata(0).terminal0.ConnectivityNode)
       val v1 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
-      val ratedS = tdata(0).end1.ratedS
+      val ratedS = tdata.map(_.end1.ratedS).sum
       val r = if (tdata.length > 1)
       {
           // ToDo: handle 3 or more transformers ganged together
           val r1 = tdata(0).end1.r
           val r2 = tdata(1).end1.r
-          (r1 + r2) / (r1 * r2)
+          (r1 * r2) / (r1 + r2)
       }
       else
           tdata(0).end1.r
