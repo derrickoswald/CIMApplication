@@ -18,7 +18,7 @@ import org.apache.spark.graphx.VertexId
 
 import ch.ninecode.model._
 
-case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double) extends Serializable
+case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double, multiple_paths: Boolean) extends Serializable
 case class MaxPowerFeedingNodeEEA(id_seq: String, voltage: Double, source_obj: Array[TData], max_power_feeding: Double, eea: Iterable[PV], reason: String, details: String) extends Serializable
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
 case class PreCalculationResults (
@@ -92,14 +92,14 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.srcAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                    Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir)))
+                    Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)))
                 }
                 else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
                 {
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.dstAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                    Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir)))
+                    Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)))
                 }
                 else
                     Iterator.empty
@@ -111,7 +111,7 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def mergeMessage(a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
     {
-        if (a.sum_r > b.sum_r) a else b
+        a.copy(multiple_paths=true)
     }
 
     def trace(starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
@@ -122,15 +122,15 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
             starting_nodes.find (s ⇒ s.nsPin == id) match
             {
                 case Some (node) =>
-                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity)
+                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity, false)
                 case None =>
-                    PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
+                    PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
             }
         }
         val graph = initial.mapVertices (starting_map)
 
         // run Pregel
-        val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity)
+        val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
         graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
             vertexProgram,
             sendMessage,
@@ -151,7 +151,9 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
         val p_max_u = math.sqrt(3) * 1.03 * 0.03 * v * v / r_summe
         val p_max_i = math.sqrt(3) * min_ir * (v + r_summe * min_ir)
         val (p_max, reason, details) =
-            if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
+            if (node.multiple_paths)
+                (trafo_ratedS, "transformer limit", "multiple paths")
+            else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
                 (trafo_ratedS, "transformer limit", "assuming no EEA")
             else if (p_max_u < p_max_i)
                 (p_max_u, "voltage limit", "assuming no EEA")
