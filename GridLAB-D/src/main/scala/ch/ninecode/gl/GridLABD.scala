@@ -975,11 +975,7 @@ class GridLABD(session: SparkSession) extends Serializable {
                 println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
                 
                 val b4_db = System.nanoTime()
-                reduced_trafos.map(_._1).collect.map(t => {
-                    val res = ret.filter(_.trafo == t).collect
-                    Database.store("Einspeiseleistung", Calendar.getInstance())(res)
-                })
-                  
+                Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
                 val dbsave = System.nanoTime()
                 println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
                 
