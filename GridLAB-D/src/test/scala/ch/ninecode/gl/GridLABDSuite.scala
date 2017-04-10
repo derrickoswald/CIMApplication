@@ -147,7 +147,7 @@ class GridLABDSuite extends FunSuite
         val grouped_precalc_results = vertices.groupWith(edges, has)
 
         val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
-        println("trafokreise: ", trafokreise.count)
+        println("trafokreise: " + trafokreise.count)
 
         gridlabd.einspeiseleistung(trafokreise)        
 

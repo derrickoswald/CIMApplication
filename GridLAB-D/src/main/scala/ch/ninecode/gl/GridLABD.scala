@@ -170,18 +170,6 @@ class GridLABD(session: SparkSession) extends Serializable {
 
     def get(name: String): RDD[Element] = get(name, 10)
 
-    // make a valid configuration name
-    // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
-    def valid_config_name(string: String): String =
-        {
-            if ((null == string) || ("" == string))
-                "unknown"
-            else if (string.charAt(0).isLetter || ('_' == string.charAt(0)))
-                string
-            else
-                "_" + string
-        }
-
     // function to see if the Pregel algorithm should continue tracing or not
     def shouldContinue(element: Element): Boolean =
         {
