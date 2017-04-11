@@ -220,14 +220,6 @@ object PowerFeeding
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
         println ("the simulation number is " + simulation)
 
-        // make the directory
-        val file = Paths.get ("simulation/dummy")
-        Files.createDirectories (file.getParent ())
-
-        // write the file of transformers needing analysis
-        val trafo_string = has.filter(_.eea != null).map(x => gridlabd.trafokreis_key (x.source_obj)).distinct.collect.sortWith(_.compareTo(_) < 0).mkString("\n")
-        Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
-
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
           val source = triplet.srcAttr.source_obj
