@@ -12,6 +12,7 @@ import java.sql.SQLException
 import java.sql.Timestamp
 import java.sql.Types
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -378,6 +379,39 @@ class GridLABD(session: SparkSession) extends Serializable {
             Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
         }
 
+    def filterValidSolarUnits(pv: RDD[PV]): RDD[PV] =
+        {
+            val lifecycle = get("LifecycleDate").asInstanceOf[RDD[LifecycleDate]]          
+            val asset = get("Asset").asInstanceOf[RDD[Asset]]
+            val lifecycle_per_eea = asset.keyBy(_.lifecycle).join(lifecycle.keyBy(_.id)).map(l => (l._2._1.IdentifiedObject.name, (l._2._2)))            
+            val pv_lifecycle = pv.keyBy(_.solar.id).leftOuterJoin(lifecycle_per_eea)
+            
+            def lifecycleValid (lifecycle: LifecycleDate): Boolean = 
+            {
+                if (lifecycle.installationDate != null) {
+                    true
+                } else if (lifecycle.receivedDate != null) {
+                    val _DateFormat = new SimpleDateFormat("dd.MM.yyyy")
+                    val receivedDate = _DateFormat.parse(lifecycle.receivedDate)
+                    val now = new Date()
+                    val diffTime = now.getTime() - receivedDate.getTime()
+                    val diffDays = diffTime / (1000 * 60 * 60 * 24);
+                    diffDays < 400
+                } else 
+                    false
+            }
+            
+            val valid_pv = pv_lifecycle.filter(p => {
+                val lifecycle_option = p._2._2
+                if (lifecycle_option.isDefined)
+                    lifecycleValid(lifecycle_option.get)
+                else
+                    false
+            })
+            
+            valid_pv.map(_._2._1)
+        }
+
     // get the existing photo-voltaic installations keyed by terminal
     def getSolarInstallations(topologicalnodes: Boolean): RDD[Tuple2[String, Iterable[PV]]] =
         {
@@ -411,7 +445,8 @@ class GridLABD(session: SparkSession) extends Serializable {
             val t = terminals.keyBy(_.ConductingEquipment).join(house_solars).values.map(
                 (x) ⇒ PV(if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-            val pv = t.groupBy(_.node)
+            val filteredPV = filterValidSolarUnits(t)
+            val pv = filteredPV.groupBy(_.node)
 
             pv.persist(STORAGE_LEVEL)
             session.sparkContext.getCheckpointDir match {
