@@ -1,0 +1,48 @@
+<h1>Create or Select a Role</h1>
+<p>
+    <strong>Create or select a role with appropriate policy settings.</strong>
+</p>
+<p>
+The IAM role created by this step has the following managed policies attached:
+<ul>
+<li>AmazonEC2ContainerServiceforEC2Role</li>
+<li>AmazonEC2ContainerServiceRole</li>
+<li>AmazonEC2SpotFleetRole</li>
+</ul>
+</p>
+<p>
+It also has the custom policy needed for instance discovery and startup, which includes:
+<ul>
+<li>ecs:DescribeContainerInstances</li>
+<li>ecs:ListContainerInstances</li>
+<li>ec2:DescribeInstances</li>
+<li>ecs:StartTask</li>
+</ul>
+</p>
+<p>
+An instance profile of the same name is also created.
+</p>
+
+<p>
+In this step we choose an existing role (choose from the drop down menu by clicking twice in the text input area)
+or create a new role (recommended).
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="role">Role</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="role_help">
+                <input id="role" class="form-control" type="text" name="role" list="role_list">
+                <span class="input-group-btn">
+                    <button id="create_role" class="btn btn-default" type="button">Create</button>
+                </span>
+            </div>
+            <datalist id="role_list">
+            </datalist>
+            <span id="role_help" class="help-block">
+                Use this role. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+</div>
+
