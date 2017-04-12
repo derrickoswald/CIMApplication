@@ -8,8 +8,8 @@ define
 (
     [],
     /**
-     * @summary Get/create IAM security groups.
-     * @description Gets or creates the necessary the security groups.
+     * @summary Get/create IAM security role.
+     * @description Gets or creates the necessary the security role.
      * @name iam
      * @exports iam
      * @version 1.0
@@ -29,12 +29,26 @@ define
             document.getElementById ("role_list").innerHTML = options;
         }
 
+        function update_iam (role)
+        {
+            var subset =
+            {
+                roleName: role.RoleName,
+                roleArn: role.Arn,
+                profileArn: role.Arn.replace (":role/", ":instance-profile/")
+            };
+            var text = JSON.stringify (subset, null, 4);
+            document.getElementById ("iam_contents").value = text;
+        }
+
         function change_role (event)
         {
             var role = lookup_role ();
             var name = document.getElementById ("role").value;
             var creatable = ((null != role) && ("" != name))
             document.getElementById ("create_role").disabled = creatable;
+            if (null != role)
+                update_iam (role);
         }
 
         function add_role_to_instance_profile (name)
@@ -252,12 +266,9 @@ define
 
         function term (event)
         {
-            var name = document.getElementById ("role").value;
-            if ("" != name)
-                if (null == roles)
-                    this.role = { RoleName: name }
-                else
-                    this.role = lookup_role ();
+            var text = document.getElementById ("iam_contents").value;
+            if ("" != text)
+                this.iam = JSON.parse (text);
         }
 
         return (

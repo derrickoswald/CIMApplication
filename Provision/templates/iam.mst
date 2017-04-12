@@ -13,9 +13,9 @@ Change to the Provision directory and execute Chrome or Chromium with disabled w
     cd CIMApplication/Provision
     chromium-browser --disable-web-security --user-data-dir ./index.html
 </pre>
-Perform this step.
-Then, when using the wizard by just opening the index.html in a browser, enter the name of the
-created role.
+Perform this step. Copy the text in the IAM text box.
+Then, when using the wizard by just opening the index.html in a browser, paste the text of the
+created role in the text box.
 </p>
 <p>
 The IAM role created by this step has the following managed policies attached:
@@ -56,6 +56,16 @@ or create a new role (recommended).
             </datalist>
             <span id="role_help" class="help-block">
                 Use this role. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="iam_contents">IAM</label>
+        <div class="col-sm-9">
+            <textarea id="iam_contents" class="form-control" type="textarea" name="iam_contents" rows="16" cols="65" aria-describedby="iam_contents_help">
+            </textarea>
+            <span id="iam_contents_help" class="help-block">
+                Copy and paste this text between running with and without disabled web security.
             </span>
         </div>
     </div>

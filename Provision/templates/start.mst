@@ -3,13 +3,28 @@
     <strong>Initiate the instances to start the cluster.</strong>
 </p>
 <p>
-Yadda.
+In this step we request a spot instance for the master node
+and one or more spot instances for the worker nodes.
 </p>
 
 <p>
-.
+
 </p>
 <div class="form-horizontal">
-    <pre id="wizard_data"></pre>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="start_master">Master</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="start_master_help">
+                <input id="start_master" class="form-control" type="text" name="start_master">
+                <span class="input-group-btn">
+                    <button id="start_master_button" class="btn btn-default" type="button">Start</button>
+                </span>
+            </div>
+            <span id="start_master_help" class="help-block">
+                Specify a price and click the start button to start the master and slave instances.
+            </span>
+        </div>
+    </div>
 </div>
+<pre id="wizard_data"></pre>
 

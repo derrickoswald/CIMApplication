@@ -156,6 +156,19 @@ define
             xmlhttp.send ();
         }
 
+        function lookup_instance (type)
+        {
+            var found = null;
+            function find (instance)
+            {
+                if (instance.type == type)
+                    found = instance;
+            }
+            if (null != instances)
+                instances.forEach (find);
+            return (found);
+        }
+
         /**
          * Form initialization function.
          *
@@ -176,8 +189,8 @@ define
 
         function term (event)
         {
-            this.master = document.getElementById ("master").value;
-            this.slaves = document.getElementById ("slaves").value;
+            this.master = lookup_instance (document.getElementById ("master").value);
+            this.slaves = lookup_instance (document.getElementById ("slaves").value);
         }
 
         return (
