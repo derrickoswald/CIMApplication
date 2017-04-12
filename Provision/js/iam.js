@@ -252,7 +252,12 @@ define
 
         function term (event)
         {
-            this.role = lookup_role ();
+            var name = document.getElementById ("role").value;
+            if ("" != name)
+                if (null == roles)
+                    this.role = { RoleName: name }
+                else
+                    this.role = lookup_role ();
         }
 
         return (

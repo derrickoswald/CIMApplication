@@ -3,13 +3,7 @@ Provision a Spark Cluster on ECS
 
 # Usage
 
-Change to the Provision directory and execute Chrome or Chromium with disabled web security
-to allow [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS):
-
-    cd CIMApplication/Provision
-    chromium-browser --disable-web-security --user-data-dir ./index.html
-
-Follow the wizard steps.
+Open the index.html in your browser and follow the wizard steps.
 
 # Notes
 

@@ -3,6 +3,21 @@
     <strong>Create or select a role with appropriate policy settings.</strong>
 </p>
 <p>
+Unfortunately, the IAM API of Amazon is not CORS compliant
+(see https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) which means this
+step of the wizard currently requires special handling.
+</p>
+<p>
+Change to the Provision directory and execute Chrome or Chromium with disabled web security:
+<pre>
+    cd CIMApplication/Provision
+    chromium-browser --disable-web-security --user-data-dir ./index.html
+</pre>
+Perform this step.
+Then, when using the wizard by just opening the index.html in a browser, enter the name of the
+created role.
+</p>
+<p>
 The IAM role created by this step has the following managed policies attached:
 <ul>
 <li>AmazonEC2ContainerServiceforEC2Role</li>

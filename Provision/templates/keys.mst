@@ -1,0 +1,34 @@
+<h1>Create or Select a Key Pair</h1>
+<p>
+    <strong>Create a key pair on ECS.</strong>
+</p>
+<p>
+A key pair is needed to protect communications with the cluster.
+For example, using SSH to the master node will require the specification of a private key file.
+</p>
+<p>
+In this step we choose an existing key pair (choose from the drop down menu by clicking twice in the text input area)
+or create a new key pair (recommended).
+</p>
+</p>
+After creation, download the .pem file using the link and save it (usually in the ~/.ssh directory).
+<p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="keypair">Key Pair</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="keypair_help">
+                <input id="keypair" class="form-control" type="text" name="keypair" list="keypair_list">
+                <span class="input-group-btn">
+                    <button id="create_keypair" class="btn btn-default" type="button">Create</button>
+                </span>
+            </div>
+            <datalist id="keypair_list">
+            </datalist>
+            <span id="keypair_help" class="help-block">
+                Use this key Pair. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+</div>
+<div id="generated_key_pair"></div>
