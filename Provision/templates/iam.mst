@@ -62,8 +62,7 @@ or create a new role (recommended).
     <div class="form-group">
         <label class="col-sm-3 control-label" for="iam_contents">IAM</label>
         <div class="col-sm-9">
-            <textarea id="iam_contents" class="form-control" type="textarea" name="iam_contents" rows="16" cols="65" aria-describedby="iam_contents_help">
-            </textarea>
+            <textarea id="iam_contents" class="form-control" type="textarea" name="iam_contents" rows="16" cols="65" aria-describedby="iam_contents_help"></textarea>
             <span id="iam_contents_help" class="help-block">
                 Copy and paste this text between running with and without disabled web security.
             </span>

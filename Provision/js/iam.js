@@ -266,7 +266,7 @@ define
 
         function term (event)
         {
-            var text = document.getElementById ("iam_contents").value;
+            var text = document.getElementById ("iam_contents").value.trim ();
             if ("" != text)
                 this.iam = JSON.parse (text);
         }
