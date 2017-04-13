@@ -8,8 +8,8 @@
     <parent>
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
-        <version>2.0.0</version>
         <relativePath>../pom.xml</relativePath>
+        <version>2.1.0</version>
     </parent>
     <artifactId>CIMEar</artifactId>
     <packaging>ear</packaging>
@@ -21,9 +21,6 @@
         <!-- plugins versions -->
         <version.ear.plugin>2.6</version.ear.plugin>
 
-        <!-- project dependencies -->
-        <version.dependency.project>2.0.0</version.dependency.project>
-
     </properties>
 
     <dependencies>
@@ -31,49 +28,49 @@
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMConnector</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>rar</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMWeb</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>war</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.geo</groupId>
             <artifactId>GeoVis</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.sm</groupId>
             <artifactId>SmartMeter</artifactId>
-            <version>${version.dependency.project}</version>
+            <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
