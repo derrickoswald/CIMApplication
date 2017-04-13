@@ -1,6 +1,6 @@
 /**
  * @fileOverview Image selection step of the ECS provisioning wizard.
- * @name images
+ * @name image
  * @author Derrick Oswald
  * @version 1.0
  */
@@ -10,8 +10,8 @@ define
     /**
      * @summary Get an image for the master and slave instances.
      * @description Gets the ECS optimized images and allows the user to choose.
-     * @name images
-     * @exports images
+     * @name image
+     * @exports image
      * @version 1.0
      */
     function ()
@@ -57,7 +57,7 @@ define
          *
          * @param {object} event - the tab being shown event, <em>not used</em>
          * @function init
-         * @memberOf module:images
+         * @memberOf module:image
          */
         function init (event)
         {

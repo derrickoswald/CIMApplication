@@ -6,13 +6,13 @@
  */
 define
 (
-    ["wizard", "mustache", "overview", "cluster", "task", "image", "instancetype", "iam", "keys", "start"],
+    ["wizard", "mustache", "overview", "cluster", "task", "image", "instancetype", "iam", "keys", "security", "start"],
     /**
      * @summary Create an ECS cluster by specifying the AMI, instances and containers.
      * @exports ecswizard
      * @version 1.0
      */
-    function (wiz, mustache, overview, cluster, task, image, instancetype, iam, keys, start)
+    function (wiz, mustache, overview, cluster, task, image, instancetype, iam, keys, security, start)
     {
         var left;
         var content;
@@ -41,6 +41,7 @@ define
             instancetype.getStep (),
             iam.getStep (),
             keys.getStep (),
+            security.getStep (),
             start.getStep ()
         ];
 
@@ -49,7 +50,7 @@ define
          * @return {object} containing { left, middle, right } elements for
          * the left quarter, middle half and right quarter respectively.
          * @function layout
-         * @memberOf module:page
+         * @memberOf module:ecswizard
          */
         function layout ()
         {
@@ -80,7 +81,7 @@ define
          * @return {object} containing { left, middle, right } elements for
          * the left quarter, middle half and right quarter respectively.
          * @function get_layout
-         * @memberOf module:page
+         * @memberOf module:ecswizard
          */
         function get_layout ()
         {

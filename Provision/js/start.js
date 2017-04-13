@@ -8,8 +8,8 @@ define
 (
     [],
     /**
-     * @summary .
-     * @description .
+     * @summary Start master and slave instances.
+     * @description Executes .
      * @name start
      * @exports start
      * @version 1.0

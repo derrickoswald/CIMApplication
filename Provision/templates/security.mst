@@ -1,0 +1,48 @@
+<h1>Create or Select Security Groups</h1>
+<p>
+    <strong>Create/select security groups on EC2.</strong>
+</p>
+<p>
+Yadda.
+</p>
+
+<p>
+In this step we choose either existing security groups
+(choose from the drop down menu by clicking twice in the text input area)
+or create new security groups for master and worker instances (recommended).
+</p>
+<div class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="master_security_group">Master security group</label>
+        <div class="col-sm-9">
+            <input id="master_security_group" class="form-control" type="text" name="master_security_group" list="master_security_group_list" aria-describedby="master_security_group_help">
+            <datalist id="master_security_group_list">
+            </datalist>
+            <span id="master_security_group_help" class="help-block">
+                Use this group for the master instance. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="worker_security_group">Worker security group</label>
+        <div class="col-sm-9">
+            <input id="worker_security_group" class="form-control" type="text" name="worker_security_group" list="worker_security_group_list" aria-describedby="worker_security_group_help">
+            <datalist id="worker_security_group_list">
+            </datalist>
+            <span id="worker_security_group_help" class="help-block">
+                Use this group for the worker instances. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="authorized_ip">Authorized IP address</label>
+        <div class="col-sm-9">
+            <input id="authorized_ip" class="form-control" type="text" name="authorized_ip" aria-describedby="authorized_ip_help">
+            <span id="authorized_ip_help" class="help-block">
+                Allow only access from this IP address (dot notation: www.xx.yy.zz). Default is all IP addresses.
+            </span>
+        </div>
+    </div>
+    <button id="create_security_groups" class="btn btn-default" type="button">Create</button>
+</div>
+

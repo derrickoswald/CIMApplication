@@ -248,7 +248,7 @@ define
          *
          * @param {object} event - the tab being shown event, <em>not used</em>
          * @function init
-         * @memberOf module:cluster
+         * @memberOf module:iam
          */
         function init (event)
         {
