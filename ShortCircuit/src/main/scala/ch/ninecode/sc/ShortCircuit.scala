@@ -24,7 +24,7 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType};
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType, DoubleType}
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim._

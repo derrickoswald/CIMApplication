@@ -105,7 +105,7 @@ class GridLABDSuite extends FunSuite
         gridlabd.DELETE_SIMULATION_FILES = false
 
         val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
-        val tdata = _transformers.getTransformerData ()
+        val tdata = _transformers.getTransformerData (null)
         tdata.persist (gridlabd.STORAGE_LEVEL)
         val cdata = gridlabd.getCableMaxCurrent ()
         cdata.persist (gridlabd.STORAGE_LEVEL)

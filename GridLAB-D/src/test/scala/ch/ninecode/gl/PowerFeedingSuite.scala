@@ -112,7 +112,7 @@ class PowerFeedingSuite extends FunSuite
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
-        val tdata = _transformers.getTransformerData ()
+        val tdata = _transformers.getTransformerData (null)
         tdata.persist (gridlabd.STORAGE_LEVEL)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)

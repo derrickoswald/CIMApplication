@@ -67,6 +67,7 @@ object Main
         reference: Int = -1,
         delta: Double = 1e-6,
         number: Int = -1,
+        short_circuit: String = "",
         files: Seq[String] = Seq()
     )
 
@@ -133,6 +134,10 @@ object Main
         opt[Int]('n', "number").valueName ("N").
             action ((x, c) => c.copy (number = x)).
             text ("number of transformers to process")
+
+        opt[String]('c', "csv").valueName ("<file>").
+            action ((x, c) => c.copy (short_circuit = x)).
+            text ("short circuit power file")
 
         help ("help").text ("prints this usage text")
 
@@ -299,8 +304,8 @@ object Main
 //                }
 
                 val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
-                val tdata = _transformers.getTransformerData ()
-                
+                val tdata = _transformers.getTransformerData (arguments.short_circuit)
+
                 // get the existing photo-voltaic installations keyed by terminal
                 val sdata = gridlabd.getSolarInstallations (true)
 

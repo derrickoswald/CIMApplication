@@ -16,18 +16,21 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.model._
 
 /**
- * transformer - PowerTransformer, the transformer element
- * station - Substation, the station where the transformer is located
- * voltage0 - Double, the voltage for the transformer high voltage end (kV)
- * end0 - PowerTransformerEnd, the high voltage transformer end
- * terminal0 - Terminal, the high voltage terminal
- * voltage1 - Double, the voltage for the transformer low voltage end (kV)
- * end1 - PowerTransformerEnd, the low voltage transformer end
- * terminal1 - Terminal, the low voltage terminal
+ * Transformer data.
+ * @param transformer The PowerTransformer object.
+ * @param station The Substation object where the transformer is located.
+ * @param shortcircuit The ShortCircuit object with the available short circuit power and phase at the primary.
+ * @param voltage0 The voltage for the transformer high voltage end (kV).
+ * @param end0 The high voltage PowerTransformerEnd.
+ * @param terminal0 The high voltage Terminal.
+ * @param voltage1 The voltage for the transformer low voltage end (kV).
+ * @param end1 The low voltage PowerTransformerEnd.
+ * @param terminal1 The low voltage Terminal.
  */
 case class TData (
     transformer: PowerTransformer,
     station: Substation,
+    shortcircuit: ShortCircuitData,
     end0: PowerTransformerEnd,
     voltage0: Double,
     terminal0: Terminal,
@@ -136,7 +139,16 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         ret
     }
 
-    def getTransformerData (): RDD[TData] =
+    def addSC (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[ShortCircuitData])) =
+    {
+        arg._2 match
+        {
+            case Some (sc) => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, sc)
+            case None => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, ShortCircuitData (arg._1._2.id, 200, -70, false))
+        }
+    }
+
+    def getTransformerData (shortcircuitdata: String): RDD[TData] =
     {
         // get all transformers in substations
         val transformers = get ("PowerTransformer").asInstanceOf[RDD[PowerTransformer]]
@@ -191,9 +203,22 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         // attach Terminal elements
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).flatMap (addTerminals)
 
+        // optionally read in the short circuit data
+        val short_circuit = 
+            if ((null != shortcircuitdata) && ("" != shortcircuitdata))
+            {
+                val sc = new ShortCircuit (session, storage_level)
+                sc.read_csv (shortcircuitdata)
+            }
+            else
+                session.sparkContext.parallelize (List[ShortCircuitData] ())
+
+        val transformers_stations_plus_ends_plus_terminals_plus_sc =
+            transformers_stations_plus_ends_plus_terminals.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).values.map (addSC)
+
         // convert to TData
-        val transformer_data = transformers_stations_plus_ends_plus_terminals.map (
-            (x) => TData (x._1, x._2, x._3._1, x._3._2, x._3._3, x._4._1, x._4._2, x._4._3)
+        val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (
+            (x) => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, x._4._1, x._4._2, x._4._3)
             )
 
         transformer_data.persist (storage_level)
