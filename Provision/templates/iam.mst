@@ -14,8 +14,7 @@ Change to the Provision directory and execute Chrome or Chromium with disabled w
     chromium-browser --disable-web-security --user-data-dir ./index.html
 </pre>
 Perform this step. Copy the text in the IAM text box.
-Then, when using the wizard by just opening the index.html in a browser, paste the text of the
-created role in the text box.
+Then, paste the text of the created role in the text box below.
 </p>
 <p>
 The IAM role created by this step has the following managed policies attached:

@@ -35,7 +35,7 @@ The first step is to provide the Amazon credentials that allow access to EC2 and
     <div class="form-group">
         <label class="col-sm-3 control-label" for="secretAccessKey">Secret Access Key</label>
         <div class="col-sm-9">
-            <input id="secretAccessKey" class="form-control" type="text" name="secretAccessKey" placeholder="e.g. QI1QIqU9zOktczhWePMioHy79gXvHzV+npWDKiCv" aria-describedby="secretAccessKey_help">
+            <input id="secretAccessKey" class="form-control" type="password" name="secretAccessKey" placeholder="e.g. QI1QIqU9zOktczhWePMioHy79gXvHzV+npWDKiCv" aria-describedby="secretAccessKey_help">
             <span id="secretAccessKey_help" class="help-block">
                 The secret access key used to execute Amazon Web Services.
             </span>

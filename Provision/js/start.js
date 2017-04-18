@@ -18,10 +18,23 @@ define
     {
         var details;
 
-        function adjust_disk ()
+        function adjust_master_disk ()
         {
-            // for now just use the default layout
-            return (details.image.BlockDeviceMappings);
+            var mappings = details.image.BlockDeviceMappings;
+            var master = details.master;
+            function sum (size, disk)
+            {
+                return (size + disk.Ebs.VolumeSize);
+            }
+            var needed = mappings.reduce (sum, 0);
+            var extra = master.storage - needed;
+            function add (disk)
+            {
+                if (disk.DeviceName == "/dev/xvdcz")
+                    disk.disk.Ebs.VolumeSize = disk.disk.Ebs.VolumeSize + extra;
+            }
+            mappings = mappings.map (add);
+            return (mappings);
         }
 
         function start_master ()
@@ -103,31 +116,35 @@ script\n\
 end script\n\
 --==BOUNDARY==--";
 
-            var disk = adjust_disk ();
+            var disk = adjust_master_disk ();
+            var now = new Date ();
+            var then = new Date (now.valueOf ());
+            then.setDate (then.getDate () + 1); // one day should be OK
             var master_spot_fleet_request =
             {
                 IamFleetRole: details.iam.roleArn,
                 AllocationStrategy: "lowestPrice",
                 TargetCapacity: 1,
                 SpotPrice: "1.912",
-                ValidFrom: "2017-03-28T06:28:10Z",
-                ValidUntil: "2018-03-28T06:28:10Z",
+                ValidFrom: now.toISOString (),
+                ValidUntil: then.toISOString (),
                 TerminateInstancesWithExpiration: true,
-                LaunchSpecifications: [ {
-                    ImageId: details.image.ImageId,
-                    InstanceType: details.master.type,
-                    KeyName: details.keypair.KeyName,
-                    SpotPrice: "1.912",
-                    IamInstanceProfile:
+                LaunchSpecifications:
+                [
                     {
-                        Arn : details.iam.profileArn
-                    },
-                    BlockDeviceMappings: disk,
-                    SecurityGroups: [ {
-                        GroupId: "sg-5a25d623"
-                    } ],
-                    UserData: btoa(master_startup_script)
-                } ],
+                        ImageId: details.image.ImageId,
+                        InstanceType: details.master.type,
+                        KeyName: details.keypair.KeyName,
+                        SpotPrice: "1.912",
+                        IamInstanceProfile: { Arn : details.iam.profileArn },
+                        BlockDeviceMappings: disk,
+                        SecurityGroups:
+                        [
+                            { GroupId: details.master_security_group.GroupId }
+                        ],
+                        UserData: btoa (master_startup_script)
+                    }
+                ],
                 Type: "request"
             };
             var text = JSON.stringify (master_spot_fleet_request, null, 4);

@@ -110,8 +110,8 @@ define
                 IpPermissions:
                 [
                     // see https://spark.apache.org/docs/latest/security.html#configuring-ports-for-network-security
-// not needed?      { IpProtocol: "icmp", FromPort:    -1, ToPort:    -1, UserIdGroupPairs: pairs }, // all icmp traffic from master to workers
-//                  { IpProtocol:  "tcp", FromPort:     0, ToPort: 65535, UserIdGroupPairs: pairs }, // all tcp traffic from master to workers
+                    { IpProtocol: "icmp", FromPort:    -1, ToPort:    -1, UserIdGroupPairs: pairs }, // all icmp traffic from master to workers
+                    { IpProtocol:  "tcp", FromPort:     0, ToPort: 65535, UserIdGroupPairs: pairs }, // all tcp traffic from master to workers
                     { IpProtocol:  "udp", FromPort:     0, ToPort: 65535, UserIdGroupPairs: pairs }, // all udp traffic from master to workers
                     { IpProtocol:  "tcp", FromPort:    22, ToPort:    22, IpRanges: [ { CidrIp: authorized_ip } ] }, // ssh
                     { IpProtocol:  "tcp", FromPort:  8081, ToPort:  8081, IpRanges: [ { CidrIp: authorized_ip } ] }, // Standalone Worker Web UI
