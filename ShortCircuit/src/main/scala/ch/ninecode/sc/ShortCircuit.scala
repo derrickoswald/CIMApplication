@@ -35,7 +35,7 @@ import ch.ninecode.model._
 // we have to define these classes external to the main class,
 // otherwise we have to pattern match on Any and then cast it asInstanceOf[whatever]
 
-// create a holder for pre-computed transformer power availabaility
+// create a holder for pre-computed transformer power availability
 case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
 // create a basket to hold all transformer data
@@ -650,7 +650,7 @@ object ShortCircuit
         // register short circuit inner classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
 
-        // create a Sprk session
+        // create a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 

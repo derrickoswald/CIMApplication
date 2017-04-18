@@ -1,67 +1,69 @@
 package ch.ninecode.gl
 
 import java.io.File
-import java.io.FileNotFoundException
-import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.SQLException
-import java.sql.Timestamp
-import java.sql.Types
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 import scala.collection.Map
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.HashSet
 
-import org.apache.commons.io.FileUtils
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.permission._
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.FileUtil
-import org.apache.hadoop.fs.Path
 import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
-import org.apache.spark.graphx.VertexRDD
-import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
-import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim._
 import ch.ninecode.model._
 
-import javax.xml.bind.DatatypeConverter
-
-// just to get a single copy of the vertex_id function
-trait Graphable {
-    def vertex_id(string: String): VertexId =
-        {
-            var h = 2166136261l;
-            for (c ← string)
-                h = (h * 16777619) ^ c
-            h.asInstanceOf[VertexId]
-        }
+/**
+ * Common GraphX functions.
+ * Used just to get a single copy of the vertex_id function.
+ */
+trait Graphable
+{
+    /**
+     * Compute the vertex id.
+     * @param string The CIM MRID.
+     */
+    def vertex_id (string: String): VertexId =
+    {
+        var h = 2166136261l;
+        for (c ← string)
+            h = (h * 16777619) ^ c
+        h.asInstanceOf[VertexId]
+    }
 }
 
 // define the minimal node and edge classes
-case class PreNode(id_seq: String, voltage: Double) extends Graphable with Serializable
-case class PreEdge(
+
+/**
+ * Vertex data.
+ * @param id_seq ConnectivityNode or TopologicalNode MRID.
+ * @param voltage Node voltage.
+ */
+case class PreNode (
+    id_seq: String,
+    voltage: Double) extends Graphable with Serializable
+
+/**
+ * Edge data.
+ * @param id_seq_1 Terminal 1 MRID.
+ * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
+ * @param v1 Terminal 1 voltage
+ * @param id_seq_2 Terminal 2 MRID.
+ * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
+ * @param v2 Terminal 2 voltage
+ * @param id_equ ConductingEquipment MRID.
+ * @param ratedCurrent Cable rated current (A).
+ * @param equipment ConductingEquipment object for the edge.
+ * @param element Element object for the edge.
+ * @param connected Flag indicating if there is connectivity through the edge (for tracing).
+ */
+case class PreEdge (
     id_seq_1: String,
     id_cn_1: String,
     v1: Double,
@@ -72,53 +74,114 @@ case class PreEdge(
     ratedCurrent: Double,
     equipment: ConductingEquipment,
     element: Element,
-    connected: Boolean) extends Graphable with Serializable {
-    // provide a key on the two connections, independent of to-from from-to ordering
+    connected: Boolean) extends Graphable with Serializable
+{
+    /**
+     * Ordered key.
+     * Provide a key on the two connections, independent of to-from from-to ordering.
+     */
     def key(): String =
-        {
-            if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
-        }
-}
-
-case class PV(node: String, solar: SolarGeneratingUnit)
-case class Transformer(node: String, transformer: List[TData])
-
-/**
- * trafo - string, NIS Number of transformer feeding house
- * house - string, NIS Number of house being experimented on
- * t0 - timestamp, origin for all experiments
- * t1 - timestamp, start time for this experiment
- * slot - number, unique experiment number (slot in windowed time)
- * window - seconds, duration of the experiment
- * interval - seconds, duration between steps in the experiment
- * from - KW, starting PV power
- * to - KW, ending PV power
- * step - KW, KW increment (resolution of the Einspeiseleistung value)
- */
-case class Experiment(trafo: String, house: String, t0: Calendar, slot: Int, window: Int, interval: Int, from: Double, to: Double, step: Double) {
-    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
-    def t1 = { val t = dup(t0); t.add(Calendar.SECOND, slot * window); t }
-    def t2 = { val t = dup(t0); t.add(Calendar.SECOND, (slot + 1) * window); t }
+    {
+        if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
+    }
 }
 
 /**
- * element - string, node or branch name (ConnectivityNode/TopologicalNode name or NIS Number of cable)
- * millis - long, number of milliseconds since the epoc
- * value_a - complex, phase A value
- * value_b - complex, phase B value
- * value_c - complex, phase C value
- * units - string, Volts for a node, Amps for a branch
+ * Photovoltaic attachment.
+ * Generating equipment attached to a node.
+ * @param node ConnectivityNode or TopologicalNode MRID.
+ * @param solar SolarGeneratingUnit object attached to the node.
  */
-case class ThreePhaseComplexDataElement(element: String, millis: Long, value_a: Complex, value_b: Complex, value_c: Complex, units: String)
+case class PV (
+    node: String,
+    solar: SolarGeneratingUnit)
 
 /**
- * trafo - string, NIS Number of transformer feeding house
- * house - string, NIS Number of house
- * max - Option[Double], maximum KW feed in power or None if no limit was found
+ * Transformer attachment.
+ * Transformer(s) attached to a node.
+ * @param node ConnectivityNode or TopologicalNode MRID.
+ * @param transformer Transformer data object(s) attached to the node.
  */
-case class MaxEinspeiseleistung(trafo: String, house: String, max: Option[Double], reason: String, details: String)
+case class Transformer (
+    node: String,
+    transformer: List[TData])
 
-class GridLABD(session: SparkSession) extends Serializable {
+/**
+ * Stepped experiment parameters.
+ * @param trafo CIM MRID of the transformer feeding the house.
+ * @param house CIM MRID of house being experimented on.
+ * @param t0 Origin for all experiments.
+ * @param t1 Start time for this experiment.
+ * @param slot Unique experiment number (slot in windowed time).
+ * @param window Duration of the experiment (seconds).
+ * @param interval Duration between steps in the experiment (seconds).
+ * @param from Starting PV power (kW).
+ * @param to Ending PV power (kW).
+ * @param step Power increment, resolution of the Einspeiseleistung value (kW).
+ */
+case class Experiment (
+    trafo: String,
+    house: String,
+    t0: Calendar,
+    slot: Int,
+    window: Int,
+    interval: Int,
+    from: Double,
+    to: Double,
+    step: Double)
+{
+    /**
+     * Calendar duplication utility function.
+     * @param c The Calendar value to be cloned.
+     */
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+    /**
+     * The start time of the experiment.
+     */
+    def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+    /**
+     * The end time of the experiment.
+     */
+    def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
+}
+
+/**
+ * Recorder time series element.
+ * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
+ * @param millis Number of milliseconds since the epoc.
+ * @param value_a Phase A value.
+ * @param value_b Phase B value.
+ * @param value_c Phase C value.
+ * @param units <code>Volts</code> for a node, <code>Amps</code> for an edge.
+ */
+case class ThreePhaseComplexDataElement (
+    element: String,
+    millis: Long,
+    value_a: Complex,
+    value_b: Complex,
+    value_c: Complex,
+    units: String)
+
+/**
+ * Final result record.
+ * @param trafo MRID of transformer feeding the house.
+ * @param house MRID of the house.
+ * @param max Maximum feed in power (kW) or None if no limit was found.
+ * @param reason Explanatory reason for the limit (voltage, current or power exceeded).
+ * @param details The test which caused the limit including the network element.
+ */
+case class MaxEinspeiseleistung (
+    trafo: String,
+    house: String,
+    max: Option[Double],
+    reason: String,
+    details: String)
+
+/**
+ * Compute the maximum feed-in power at house connections in a network.
+ */
+class GridLABD(session: SparkSession) extends Serializable
+{
     @transient lazy val log = org.apache.log4j.LogManager.getLogger("myLogger")
     log.setLevel(org.apache.log4j.Level.DEBUG)
 
