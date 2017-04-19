@@ -22,12 +22,12 @@ Choose from the drop down lists.
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="slaves">Slaves</label>
+        <label class="col-sm-3 control-label" for="worker">Slaves</label>
         <div class="col-sm-9">
-            <select id="slaves" class="form-control" type="select" name="slaves" aria-describedby="slaves_help">
+            <select id="worker" class="form-control" type="select" name="worker" aria-describedby="worker_help">
             </select>
-            <span id="slaves_help" class="help-block">
-                Choose the instance type for the slaves from the list.
+            <span id="worker_help" class="help-block">
+                Choose the instance type for workers from the list.
             </span>
         </div>
     </div>

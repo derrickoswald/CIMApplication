@@ -8,7 +8,7 @@ define
 (
     ["mustache"],
     /**
-     * @summary Get instance types for master and slaves.
+     * @summary Get instance types for master and workers.
      * @description Gets the instance type the user has and chosen for master and slave.
      * @name instancetype
      * @exports instancetype
@@ -135,7 +135,7 @@ define
             }
             var options = instances.filter (big).map (wrap).join ("\n");
             document.getElementById ("master").innerHTML = options;
-            document.getElementById ("slaves").innerHTML = options;
+            document.getElementById ("worker").innerHTML = options;
         }
 
         function get_instances (callback)
@@ -190,7 +190,7 @@ define
         function term (event)
         {
             this.master = lookup_instance (document.getElementById ("master").value);
-            this.slaves = lookup_instance (document.getElementById ("slaves").value);
+            this.worker = lookup_instance (document.getElementById ("worker").value);
         }
 
         return (

@@ -1,10 +1,9 @@
 <h1>Start the Cluster</h1>
 <p>
-    <strong>Initiate the instances to start the cluster.</strong>
+    <strong>Initiate the cluster instances.</strong>
 </p>
 <p>
-In this step we request a spot instance for the master node
-and one or more spot instances for the worker nodes.
+In this step we request a spot fleet for the master and slave nodes.
 </p>
 
 <p>
@@ -12,19 +11,36 @@ and one or more spot instances for the worker nodes.
 </p>
 <div class="form-horizontal">
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="start_master">Master</label>
+        <label class="col-sm-3 control-label" for="master_price">Master price</label>
         <div class="col-sm-9">
-            <div class="input-group" aria-describedby="start_master_help">
-                <input id="start_master" class="form-control" type="text" name="start_master">
-                <span class="input-group-btn">
-                    <button id="start_master_button" class="btn btn-default" type="button">Start</button>
-                </span>
-            </div>
-            <span id="start_master_help" class="help-block">
-                Specify a price and click the start button to start the master and slave instances.
+            <input id="master_price" class="form-control" type="text" name="master_price" aria-describedby="master_price_help">
+            <span id="master_price_help" class="help-block">
+                Specify a price for the master instance.
             </span>
         </div>
     </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="worker_price">Worker price</label>
+        <div class="col-sm-9">
+            <input id="worker_price" class="form-control" type="text" name="worker_price" aria-describedby="worker_price_help">
+            <span id="worker_price_help" class="help-block">
+                Specify a price for the worker instances.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="worker_count">Number of workers</label>
+        <div class="col-sm-9">
+            <input id="worker_count" class="form-control" type="text" name="worker_count" aria-describedby="worker_count_help">
+            <span id="worker_count_help" class="help-block">
+                Specify the number of worker instances.
+            </span>
+        </div>
+    </div>
+    <button id="start_cluster" class="btn btn-default" type="button">Start cluster</button>
 </div>
+<p style="margin-top=20px;margin-bottom=20px;">
+JSON Data
+</p>
 <pre id="wizard_data"></pre>
 

@@ -6,7 +6,7 @@
 From what I can see, there are three parts:
 <ul>
 <li>provisioning the cluster (a fleet) – end state: Docker capable instances are up and running</li>
-<li>running the docker containers on the cluster (executing tasks for master and N slaves) – end state: Spark is running on the cluster</li>
+<li>running the docker containers on the cluster (executing tasks for master and N workers) – end state: Spark is running on the cluster</li>
 <li>copy data files to HDFS and execute the specific command on the master to start the Spark program that computes the maximum feed-in power for each household – end state: spark-submit terminates successfully</li>
 </ul>
 In the end, the first two phases are merged, using the ability to start a task at instance initialization.
