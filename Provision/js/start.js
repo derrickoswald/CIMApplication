@@ -20,7 +20,7 @@ define
 
         function adjust_master_disk ()
         {
-            var mappings = details.image.BlockDeviceMappings;
+            var mappings = JSON.parse (JSON.stringify (details.image.BlockDeviceMappings));
             var master = details.master;
             function sum (size, disk)
             {
@@ -40,7 +40,7 @@ define
 
         function adjust_worker_disk ()
         {
-            var mappings = details.image.BlockDeviceMappings;
+            var mappings = JSON.parse (JSON.stringify (details.image.BlockDeviceMappings));
             var worker = details.worker;
             function sum (size, disk)
             {
@@ -115,16 +115,18 @@ script\n\
     # make the overrides JSON file\n\
     cat <<-EOF >/tmp/overrides.json\n\
 	{\n\
-		\"containerOverrides\": [\n\
+		\"containerOverrides\":\n\
+		[\n\
 			{\n\
 				\"name\": \"sandbox\",\n\
-                \"command\": [\"start-spark\", \"master\"],\n\
-				\"environment\": [\n\
-				{\n\
-					\"name\": \"SPARK_PUBLIC_DNS\",\n\
-					\"value\": $master_dns_name\n\
-				}\n\
-			]\n\
+				\"command\": [\"start-spark\", \"master\"],\n\
+				\"environment\":\n\
+				[\n\
+					{\n\
+						\"name\": \"SPARK_PUBLIC_DNS\",\n\
+						\"value\": $master_dns_name\n\
+					}\n\
+				]\n\
 			}\n\
 		]\n\
 	}\n\
@@ -187,7 +189,7 @@ script\n\
     region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')\n\
 \n\
     # Get the master internal DNS name\n\
-    until [ -n '$master_ecs_arn' ]; master_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == master' | jq '.containerInstanceArns|.[0]' | awk -F'\"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;\n\
+    until [ -n \"$master_ecs_arn\" ]; do master_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == master' | jq '.containerInstanceArns|.[0]' | awk -F'\"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;\n\
     master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $master_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
     master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')\n\
 \n\
@@ -195,23 +197,25 @@ script\n\
     slave_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
     slave_dns_name=$(aws ec2 describe-instances --region $region --instance-id $slave_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
 \n\
-        # make the overrides JSON file\n\
-        cat <<-EOF >/tmp/overrides.json\n\
-        {\n\
-            \"containerOverrides\": [\n\
-                {\n\
-                    \"name\": \"sandbox\",\n\
-                    \"command\": [\"start-spark\", \"worker\", $master_dns_name],\n\
-                    \"environment\": [\n\
-                    {\n\
-                        \"name\": \"SPARK_PUBLIC_DNS\",\n\
-                        \"value\": $slave_dns_name\n\
-                    }\n\
-                ]\n\
-                }\n\
-            ]\n\
-        }\n\
-        EOF\n\
+    # make the overrides JSON file\n\
+    cat <<-EOF >/tmp/overrides.json\n\
+	{\n\
+		\"containerOverrides\":\n\
+		[\n\
+			{\n\
+				\"name\": \"sandbox\",\n\
+				\"command\": [\"start-spark\", \"worker\", $master_dns_name],\n\
+				\"environment\":\n\
+				[\n\
+					{\n\
+						\"name\": \"SPARK_PUBLIC_DNS\",\n\
+						\"value\": $slave_dns_name\n\
+					}\n\
+				]\n\
+			}\n\
+		]\n\
+	}\n\
+	EOF\n\
 \n\
     # Specify the task definition to run at launch\n\
     task_definition=" + details.taskdefinition.family + "\n\
@@ -237,64 +241,167 @@ end script\n\
             var now = new Date ();
             var then = new Date (now.valueOf ());
             then.setDate (then.getDate () + 1); // one day should be OK
+            now.setUTCHours (now.getUTCHours () - 1); // account for clock skew
+            // Amazon doesn't like milliseconds
+            var from = now.toISOString ().split ('.')[0] + "Z";
+            var until = then.toISOString ().split ('.')[0] + "Z";
 
-            var spot_feet_request =
+            var master_request =
             {
-                IamFleetRole: details.iam.roleArn,
-                AllocationStrategy: "lowestPrice",
-                TargetCapacity: 1,
+                //DryRun = true,
                 SpotPrice: master_price,
-                ValidFrom: now.toISOString (),
-                ValidUntil: then.toISOString (),
-                TerminateInstancesWithExpiration: true,
-                Type: "request",
-                LaunchSpecifications:
-                [
-                    {
-                        ImageId: details.image.ImageId,
-                        InstanceType: details.master.type,
-                        KeyName: details.keypair.KeyName,
-                        SpotPrice: master_price,
-                        IamInstanceProfile: { Arn : details.iam.profileArn },
-                        BlockDeviceMappings: master_disk,
-                        SecurityGroups:
-                        [
-                            { GroupId: details.master_security_group.GroupId }
-                        ],
-                        UserData: btoa (master_startup_script)
-                    }
-                ]
+                //ClientToken; "",
+                InstanceCount: 1,
+                Type: "one-time",
+                //ValidFrom: from,
+                ValidUntil: until,
+                //LaunchGroup: "", 
+                //AvailabilityZoneGroup: "", 
+                //BlockDurationMinutes: 0, 
+                LaunchSpecification:
+                {
+                    ImageId: details.image.ImageId,
+                    KeyName: details.keypair.KeyName,
+                    SecurityGroups: [ details.master_security_group.GroupName ],
+                    UserData: btoa (master_startup_script),
+                    //AddressingType: "",
+                    InstanceType: details.master.type,
+                    //Placement: {
+                    //    AvailabilityZone: "",
+                    //    GroupName: "",
+                    //    Tenancy: ""
+                    //},
+                    //KernelId: "",
+                    //RamdiskId: "",
+                    BlockDeviceMappings: master_disk,
+                    //SubnetId: "",
+                    //NetworkInterfaces: []
+                    IamInstanceProfile: { Arn : details.iam.profileArn },
+                    //EbsOptimized: true
+                    //Monitoring: { enabled: true }
+                    SecurityGroupIds: [ details.master_security_group.GroupId ]
+                }
             };
-            var worker =
-            {
-                ImageId: details.image.ImageId,
-                InstanceType: details.worker.type,
-                KeyName: details.keypair.KeyName,
-                SpotPrice: worker_price,
-                IamInstanceProfile: { Arn : details.iam.profileArn },
-                BlockDeviceMappings: worker_disk,
-                SecurityGroups:
-                [
-                    { GroupId: details.worker_security_group.GroupId }
-                ],
-                UserData: btoa (worker_startup_script)
-            };
-            for (var i = 0; i < worker_count; i++)
-                spot_feet_request.LaunchSpecifications.push (worker);
 
-            var text = JSON.stringify (spot_feet_request, null, 4);
+            var worker_request =
+            {
+                //DryRun = true,
+                SpotPrice: worker_price,
+                //ClientToken; "",
+                InstanceCount: worker_count,
+                Type: "one-time",
+                //ValidFrom: from,
+                ValidUntil: until,
+                //LaunchGroup: "", 
+                //AvailabilityZoneGroup: "", 
+                //BlockDurationMinutes: 0, 
+                LaunchSpecification:
+                {
+                    ImageId: details.image.ImageId,
+                    KeyName: details.keypair.KeyName,
+                    SecurityGroups: [ details.worker_security_group.GroupName ],
+                    UserData: btoa (worker_startup_script),
+                    //AddressingType: "",
+                    InstanceType: details.worker.type,
+                    //Placement: {
+                    //    AvailabilityZone: "",
+                    //    GroupName: "",
+                    //    Tenancy: ""
+                    //},
+                    //KernelId: "",
+                    //RamdiskId: "",
+                    BlockDeviceMappings: worker_disk,
+                    //SubnetId: "",
+                    //NetworkInterfaces: []
+                    IamInstanceProfile: { Arn : details.iam.profileArn },
+                    //EbsOptimized: true
+                    //Monitoring: { enabled: true }
+                    SecurityGroupIds: [ details.worker_security_group.GroupId ]
+                }
+            };
+
+
+            var text = "Master\n" + JSON.stringify (master_request, null, 4) + "\nWorkers\n" + JSON.stringify (worker_request, null, 4);
             document.getElementById ("wizard_data").innerHTML = text;
 
             var ec2 = new AWS.EC2 ();
+            ec2.requestSpotInstances (master_request, function (err, data) {
+                if (err) console.log (err, err.stack); // an error occurred
+                else
+                {
+                    details.master_request = data.SpotInstanceRequests;
+                    ec2.requestSpotInstances (worker_request, function (err, data) {
+                        if (err) console.log (err, err.stack); // an error occurred
+                        else
+                        {
+                            details.worker_request = data.SpotInstanceRequests;
+                            console.log (JSON.stringify (data, null, 4));
+                            wait_for_master ();
+                        }
+                    });
+                }
+            });
+        }
+
+        function sleep (ms)
+        {
+            return new Promise ((resolve) => setTimeout (resolve, ms));
+        }
+
+        function wait_for_master ()
+        {
+            var ecs = new AWS.ECS ();
             var params =
             {
-                DryRun: true, 
-                SpotFleetRequestConfig: spot_feet_request
+                cluster: details.cluster.clusterName,
+                filter: "attribute:node_type == master"
             };
-            ec2.requestSpotFleet (params, function (err, data) {
-                if (err) console.log (err, err.stack); // an error occurred
-                else console.log (JSON.stringify (data, null, 4));
-            });
+            var found = false;
+            for (var i = 0; i < 30; i++)
+            {
+                sleep (2000).then (() =>
+                {
+                    ecs.listContainerInstances (params, function (err, data) {
+                        if (err) console.log (err, err.stack); // an error occurred
+                        else
+                        {
+                            var arns = data.containerInstanceArns;
+                            if (0 < arns.length)
+                            {
+                                found = true;
+                                var params =
+                                {
+                                    cluster: details.cluster.clusterName,
+                                    containerInstances: [ arns[0] ]
+                                };
+                                ecs.describeContainerInstances (params, function (err, data) {
+                                    if (err) console.log (err, err.stack); // an error occurred
+                                    else
+                                    {
+                                        var instance = data.containerInstances[0].ec2InstanceId;
+                                        var params =
+                                        {
+                                            InstanceIds: [ instance ]
+                                        };
+                                        var ec2 = new AWS.EC2 ();
+                                        ec2.describeInstances (params, function (err, data) {
+                                            if (err) console.log (err, err.stack); // an error occurred
+                                            else
+                                            {
+                                                var dns = data.Reservations[0].Instances[0].PublicDnsName;
+                                                var text = "ssh -i \"~/.ssh/" + details.keypair.KeyName + ".pem\" ec2-user@" + dns;
+                                                document.getElementById ("ssh_command").innerHTML = text;
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+                if (found)
+                    break;
+            }
         }
 
         /**
