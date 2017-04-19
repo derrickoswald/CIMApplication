@@ -68,6 +68,7 @@ object Main
         delta: Double = 1e-6,
         number: Int = -1,
         short_circuit: String = "",
+        dedup: Boolean = false,
         files: Seq[String] = Seq()
     )
 
@@ -138,6 +139,10 @@ object Main
         opt[String]('c', "csv").valueName ("<file>").
             action ((x, c) => c.copy (short_circuit = x)).
             text ("short circuit power file")
+
+        opt[Unit]('u', "deduplicate").
+            action ((_, c) => c.copy (dedup = true)).
+            text ("de-duplicate input (striped) files")
 
         help ("help").text ("prints this usage text")
 
@@ -256,6 +261,7 @@ object Main
                 val options = new HashMap[String, String] ()
                 options.put ("path", arguments.files.mkString (","))
                 options.put ("StorageLevel", arguments.storage)
+                options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString())
                 options.put ("ch.ninecode.cim.make_edges", "false")
                 options.put ("ch.ninecode.cim.do_join", "false")
                 options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
