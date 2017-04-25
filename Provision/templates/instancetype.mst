@@ -32,4 +32,5 @@ Choose from the drop down lists.
         </div>
     </div>
 </div>
-
+<div id="chart"></div>
+<pre id="price_data"></pre>

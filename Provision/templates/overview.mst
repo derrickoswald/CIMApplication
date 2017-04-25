@@ -44,7 +44,8 @@ The first step is to provide the Amazon credentials that allow access to EC2 and
     <div class="form-group">
         <label class="col-sm-3 control-label" for="region">Region</label>
         <div class="col-sm-9">
-            <input id="region" class="form-control" type="text" name="region" placeholder="e.g. eu-west-1" aria-describedby="region_help">
+            <select id="region" class="form-control" type="select" name="region" placeholder="e.g. eu-west-1" aria-describedby="region_help">
+            </select>
             <span id="region_help" class="help-block">
                 The region in which to execute Amazon Web Services.
             </span>

@@ -16,6 +16,72 @@ define
      */
     function (localstorage)
     {
+
+        var regions =
+        [
+            {
+                code: "us-east-1",
+                name: "US East (N. Virginia)"
+            },
+            {
+                code: "us-east-2",
+                name: "US East (Ohio)"
+            },
+            {
+                code: "us-west-1",
+                name: "US West (N. California)"
+            },
+            {
+                code: "us-west-2",
+                name: "US West (Oregon)"
+            },
+            {
+                code: "ca-central-1",
+                name: "Canada (Central)"
+            },
+            {
+                code: "eu-west-1",
+                name: "EU (Ireland)"
+            },
+            {
+                code: "eu-central-1",
+                name: "EU (Frankfurt)"
+            },
+            {
+                code: "eu-west-2",
+                name: "EU (London)"
+            },
+            {
+                code: "ap-northeast-1",
+                name: "Asia Pacific (Tokyo)"
+            },
+            {
+                code: "ap-northeast-2",
+                name: "Asia Pacific (Seoul)"
+            },
+            {
+                code: "ap-southeast-1",
+                name: "Asia Pacific (Singapore)"
+            },
+            {
+                code: "ap-southeast-2",
+                name: "Asia Pacific (Sydney)"
+            },
+            {
+                code: "ap-south-1",
+                name: "Asia Pacific (Mumbai)"
+            },
+            {
+                code: "sa-east-1",
+                name: "South America (São Paulo)"
+            }
+        ];
+
+        function wrap (region)
+        {
+            return ("<option value=\"" + region.code + "\">" + region.name + " - " + region.code + "</option>")
+        }
+
         /**
          * Form initialization function.
          *
@@ -25,6 +91,8 @@ define
          */
         function init (event)
         {
+            document.getElementById ("region").innerHTML = regions.map (wrap).join ("\n");
+
             var value;
             var found = false;
             if (null != (value = localstorage.loadProperty ("accessKeyId")))

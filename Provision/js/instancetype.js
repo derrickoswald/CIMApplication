@@ -169,6 +169,120 @@ define
             return (found);
         }
 
+        function format (datum)
+        {
+            return (
+                {
+                    time: Date.parse (datum.Timestamp),
+                    type: datum.InstanceType,
+                    price: Number (datum.SpotPrice),
+                    zone: datum.AvailabilityZone
+                }
+            );
+        }
+
+        function show_prices (data)
+        {
+            var raw = data.SpotPriceHistory.map (format);
+            var text = JSON.stringify (raw, null, 4);
+            document.getElementById ("price_data").innerHTML = text;
+            function eu_west_1a (element)
+            {
+                return (element.zone == "eu-west-1a");
+            }
+            // need to make array of arrays: [date, open, high, low, close]
+            function high (element)
+            {
+                var price = element.price;
+                return ([element.time.valueOf (), price, price, price, price]);
+            }
+            var series =
+            {
+                type : 'line',
+                name: raw[0].type,
+                data: raw.filter (eu_west_1a).map (high),
+                tooltip:
+                {
+                    pointFormat: "<span style='color:{series.color}'>\u25CF</span> {series.name}: <b>US${point.y}</b><br/>",
+                    valueDecimals: 2,
+                    valueSuffix: ''
+                },
+                dataGrouping:
+                {
+                    enabled: false
+                }
+            };
+            var lastDate = series.data[series.data.length - 1][0];
+            lastDate = new Date (lastDate.valueOf ());
+            lastDate.setDate (lastDate.getDate () + 1);
+            series.data.push ([lastDate, null, null, null, null]);
+
+            var chart = $('#chart').highcharts ();
+            chart.addSeries (series);
+        }
+
+        function get_price_history (instance_type)
+        {
+            var now = new Date ();
+            var then = new Date (now.valueOf ());
+            then.setDate (then.getDate () - 7); // one week of history
+            now.setUTCHours (now.getUTCHours () - 1); // account for clock skew
+            // Amazon doesn't like milliseconds
+            var to = now.toISOString ().split ('.')[0] + "Z";
+            var from = then.toISOString ().split ('.')[0] + "Z";
+
+            var params =
+            {
+                //DryRun: true,
+                StartTime: from,
+                EndTime: to,
+                InstanceTypes: [ instance_type ],
+                ProductDescriptions: [ "Linux/UNIX" ],
+                //Filters: [
+                //    {
+                //        Name: "",
+                //        Values: [
+                //            ""
+                //        ]
+                //    }
+                //],
+                //AvailabilityZone: "",
+                //MaxResults: 0,
+                //NextToken: ""
+            };
+            var chart = $('#chart').highcharts ();
+            chart.showLoading ('Loading data from server...');
+            var ec2 = new AWS.EC2 ();
+            var accumulator = { SpotPriceHistory: [] };
+            function next ()
+            {
+                ec2.describeSpotPriceHistory (params, function (err, data) {
+                    if (err) console.log (err, err.stack); // an error occurred
+                    else
+                    {
+                        accumulator.SpotPriceHistory = accumulator.SpotPriceHistory.concat (data.SpotPriceHistory);
+                        if (("undefined" == typeof (data.NextToken)) || (null == data.NextToken) || ("" == data.NextToken))
+                        {
+                            chart.hideLoading ();
+                            show_prices (accumulator);
+                        }
+                        else
+                        {
+                            params.NextToken = data.NextToken;
+                            next ();
+                        }
+                    }
+                });
+            }
+            next ();
+        }
+
+        function change_instance (event)
+        {
+            var instance_type = event.target.value;
+            get_price_history (instance_type);
+        }
+
         /**
          * Form initialization function.
          *
@@ -184,6 +298,44 @@ define
                     if (err) console.log (err); // an error occurred
                     else     show_types (data); // successful response
                   });
+
+                Highcharts.setOptions
+                ({
+                    global: { timezoneOffset: -60, useUTC: true },
+                });
+
+                // create the chart
+                $('#chart').highcharts ('StockChart', {
+                    chart:
+                    {
+                        zoomType: 'x'
+                    },
+
+                    scrollbar:
+                    {
+                        liveRedraw: false
+                    },
+
+                    xAxis :
+                    {
+                        minRange: 3600 * 1000 // one hour
+                    },
+
+                    yAxis:
+                    {
+                        title:
+                        {
+                            text: 'Price (US$)'
+                        },
+                        floor: 0
+                    },
+
+                    title:
+                    {
+                        text: 'Spot Price'
+                    },
+
+                });
             }
         }
 
@@ -204,6 +356,8 @@ define
                             template: "templates/instancetype.mst",
                             hooks:
                             [
+                                { id: "master", event: "change", code: change_instance },
+                                { id: "worker", event: "change", code: change_instance },
                             ],
                             transitions:
                             {
