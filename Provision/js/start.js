@@ -417,6 +417,8 @@ end script\n\
             details = this;
             var text = JSON.stringify (this, null, 4);
             document.getElementById ("wizard_data").innerHTML = text;
+            if ("undefined" != typeof (details.worker_count))
+                document.getElementById ("worker_count").value = details.worker_count.toString;
         }
 
         function term (event)

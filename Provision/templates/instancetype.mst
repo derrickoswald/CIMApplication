@@ -1,13 +1,22 @@
 <h1>Select Instance Types</h1>
 <p>
-    <strong>Select an instance type, one each for the master and slave instances.</strong>
+    <strong>Select an instance type, one each for the master and worker instances.</strong>
 </p>
 <p>
-Yadda
+The instances shown in the list have sufficient disk in the form of 
+<a href="https://aws.amazon.com/ebs/">Elastic Block Store (EBS)</a>
+to be used as ECS instances,
+since 8GB is used by the system and 22GB is used by ECS image caching.
+If you require HDFS storage you should probably choose an instance with more than the minimum.
 </p>
-
 <p>
-In this step we choose one instance type for the master and one for the slave nodes.
+The estimated cost is based on the current minimum prices for 1 master and N workers.
+Historical information from the displayed price history - for the same day of the week -
+should be used to validate this cost estimate.
+Deployment to a particular zone in a region (alternate colors in the charts) may
+lead to increased prices as well.
+</p>
+Choose one instance type for the master and one instance type for all the worker nodes.
 Choose from the drop down lists.
 </p>
 <div class="form-horizontal">
@@ -22,7 +31,7 @@ Choose from the drop down lists.
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="worker">Slaves</label>
+        <label class="col-sm-3 control-label" for="worker">Workers</label>
         <div class="col-sm-9">
             <select id="worker" class="form-control" type="select" name="worker" aria-describedby="worker_help">
             </select>
@@ -31,6 +40,16 @@ Choose from the drop down lists.
             </span>
         </div>
     </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="worker_count">Number of workers</label>
+        <div class="col-sm-9">
+            <input id="worker_count" class="form-control" type="text" name="worker_count" value="10" aria-describedby="worker_count_help">
+            <span id="worker_count_help" class="help-block">
+                Specify the number of worker instances.
+            </span>
+        </div>
+    </div>
 </div>
-<div id="chart"></div>
-<pre id="price_data"></pre>
+<div id="cost_estimate"></div>
+<div id="master_chart"></div>
+<div id="worker_chart"></div>

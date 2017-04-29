@@ -36,12 +36,12 @@ define
 //            if ("undefined" == typeof (synchronous))
 //                synchronous = true;
 //            ret = new XMLHttpRequest ();
-//            if ('withCredentials' in ret) // "withCredentials" only exists on XMLHTTPRequest2 objects
+//            if ("withCredentials" in ret) // "withCredentials" only exists on XMLHTTPRequest2 objects
 //            {
 //                ret.open (method, url, synchronous);
 //                ret.withCredentials = true;
 //            }
-//            else if (typeof XDomainRequest != 'undefined') // IE
+//            else if (typeof XDomainRequest != "undefined") // IE
 //            {
 //                ret = new XDomainRequest ();
 //                ret.open (method, url);
@@ -106,7 +106,7 @@ define
                     string = string.substring (index + 1).trim ();
                 }
                 var characters = string.split ("");
-                var numbers = characters.filter (function (c) { return (c >= '0' && c <= '9'); });
+                var numbers = characters.filter (function (c) { return (c >= "0" && c <= "9"); });
                 size = count * Number (numbers.join (""));
 
                 return (size);
@@ -125,17 +125,21 @@ define
                 );
             }
 
-            function wrap (instance)
-            {
-                return ("<option value=\"" + instance.type + "\">" + instance.type + " - CPU: " + instance.cpu + " Memory: " + instance.memory + " Strorage: " + instance.storage + "</option>")
-            }
             function big (instance)
             {
                 return (instance.storage >= 30)
             }
-            var options = instances.filter (big).map (wrap).join ("\n");
+            var biggies = instances.filter (big);
+            function wrap (instance)
+            {
+                return ("<option value=\"" + instance.type + "\">" + instance.type + " - CPU: " + instance.cpu + " Memory: " + instance.memory + " Storage: " + instance.storage + "GB (" + (instance.storage - 30) + "GB available)</option>")
+            }
+            var options = biggies.map (wrap).join ("\n");
             document.getElementById ("master").innerHTML = options;
             document.getElementById ("worker").innerHTML = options;
+
+            // initialize the charts
+            get_price_history (["master_chart", "worker_chart"], biggies[0].type);
         }
 
         function get_instances (callback)
@@ -181,90 +185,141 @@ define
             );
         }
 
-        function show_prices (data)
+        function update_chart (chart, name, seriess)
         {
-            var raw = data.SpotPriceHistory.map (format);
-            var text = JSON.stringify (raw, null, 4);
-            document.getElementById ("price_data").innerHTML = text;
-            function eu_west_1a (element)
-            {
-                return (element.zone == "eu-west-1a");
-            }
-            // need to make array of arrays: [date, open, high, low, close]
-            function high (element)
-            {
-                var price = element.price;
-                return ([element.time.valueOf (), price, price, price, price]);
-            }
-            var series =
-            {
-                type : 'line',
-                name: raw[0].type,
-                data: raw.filter (eu_west_1a).map (high),
-                tooltip:
-                {
-                    pointFormat: "<span style='color:{series.color}'>\u25CF</span> {series.name}: <b>US${point.y}</b><br/>",
-                    valueDecimals: 2,
-                    valueSuffix: ''
-                },
-                dataGrouping:
-                {
-                    enabled: false
-                }
-            };
-            var lastDate = series.data[series.data.length - 1][0];
-            lastDate = new Date (lastDate.valueOf ());
-            lastDate.setDate (lastDate.getDate () + 1);
-            series.data.push ([lastDate, null, null, null, null]);
+            var ch = $("#" + chart).highcharts ();
 
-            var chart = $('#chart').highcharts ();
-            chart.addSeries (series);
+            // remove the old
+            function remove (series)
+            {
+                var remove = !series.name.startsWith ("Navigator");
+                if (remove)
+                    series.remove (false);
+                return (!remove);
+            }
+            function check (acc, val)
+            {
+                return (acc && val);
+            }
+            do
+            {}
+            while (!ch.series.map (remove).reduce (check, true));
+
+            // add the new
+            seriess[0].showInNavigator = true;
+            function add (series)
+            {
+                ch.addSeries (series, false);
+            }
+            seriess.map (add);
+            ch.subtitle.update ({ text: name });
+
+            // refresh
+            ch.reflow ();
+            ch.redraw ();
         }
 
-        function get_price_history (instance_type)
+        function show_prices (chart, data, now)
+        {
+            var raw = data.SpotPriceHistory.map (format);
+            var name = raw[0].type;
+            function zone (zones, element)
+            {
+                if (!zones.includes (element.zone))
+                    zones.push (element.zone);
+                return (zones);
+            }
+            var zones = raw.reduce (zone, []);
+            function make_series (zone)
+            {
+                function only_zone (element)
+                {
+                    return (element.zone == zone);
+                }
+                function bytime (a, b)
+                {
+                    return (a.time.valueOf () - b.time.valueOf ());
+                }
+                function high (element)
+                {
+                    var price = element.price;
+                    return ([element.time.valueOf (), price, price, price, price]);
+                }
+                var series =
+                {
+                        type : "line",
+                        name: zone,
+                        description: "Amazon EC2 spot instance price for " + name + " instance type in zone " + zone,
+                        data: raw.filter (only_zone).sort (bytime).map (high),
+                        step: true,
+                        tooltip: { },
+                        turboThreshold: 0
+                }
+                function tooltip ()
+                {
+                    var value;
+                    if (this.y >= 1.0)
+                        value = '$' + this.y.toFixed(2)
+                    else
+                        value = (100*this.y).toFixed(2) + '¢'
+                    return ("<span style='color:" + this.color + "'>\u25CF</span> " + series.name + ": <b>" + value + "</b><br/>");
+                }
+                var price = series.data[series.data.length -1][1];
+                series.data.push ([now.valueOf (), price, price, price, price])
+                series.tooltip.pointFormatter = tooltip;
+                return (series);
+            }
+
+            var seriess = zones.map (make_series);
+            update_chart (chart, name, seriess);
+
+            // update the estimated cost
+            estimate_costs ();
+        }
+
+        function get_price_history (charts, instance_type)
         {
             var now = new Date ();
             var then = new Date (now.valueOf ());
-            then.setDate (then.getDate () - 7); // one week of history
+            then.setDate (then.getDate () - 10); // ten days of history
             now.setUTCHours (now.getUTCHours () - 1); // account for clock skew
             // Amazon doesn't like milliseconds
-            var to = now.toISOString ().split ('.')[0] + "Z";
-            var from = then.toISOString ().split ('.')[0] + "Z";
+            var to = now.toISOString ().split (".")[0] + "Z";
+            var from = then.toISOString ().split (".")[0] + "Z";
 
             var params =
             {
-                //DryRun: true,
                 StartTime: from,
                 EndTime: to,
                 InstanceTypes: [ instance_type ],
                 ProductDescriptions: [ "Linux/UNIX" ],
-                //Filters: [
-                //    {
-                //        Name: "",
-                //        Values: [
-                //            ""
-                //        ]
-                //    }
-                //],
-                //AvailabilityZone: "",
-                //MaxResults: 0,
-                //NextToken: ""
             };
-            var chart = $('#chart').highcharts ();
-            chart.showLoading ('Loading data from server...');
+            function loading (chart)
+            {
+                $("#" + chart).highcharts ().showLoading ("Loading price data from AWS...");
+            }
+            function hide_loading (chart)
+            {
+                $("#" + chart).highcharts ().hideLoading ();
+            }
+            charts.map (loading);
             var ec2 = new AWS.EC2 ();
-            var accumulator = { SpotPriceHistory: [] };
+            var prices = { SpotPriceHistory: [] };
             function next ()
             {
                 ec2.describeSpotPriceHistory (params, function (err, data) {
                     if (err) console.log (err, err.stack); // an error occurred
                     else
                     {
-                        accumulator.SpotPriceHistory = accumulator.SpotPriceHistory.concat (data.SpotPriceHistory);
+                        prices.SpotPriceHistory = prices.SpotPriceHistory.concat (data.SpotPriceHistory);
                         if (("undefined" == typeof (data.NextToken)) || (null == data.NextToken) || ("" == data.NextToken))
                         {
-                            chart.hideLoading ();
-                            show_prices (accumulator);
+                            charts.map (hide_loading);
+                            function show (chart)
+                            {
+                                show_prices (chart, prices, now);
+                            }
+                            charts.map (show);
                         }
                         else
                         {
@@ -277,12 +332,131 @@ define
             next ();
         }
 
-        function change_instance (event)
+        function estimate_costs ()
         {
-            var instance_type = event.target.value;
-            get_price_history (instance_type);
+            var worker_count = Number (document.getElementById ("worker_count").value);
+            var master = $("#master_chart").highcharts ();
+            var worker = $("#worker_chart").highcharts ();
+            function not_navigator (series)
+            {
+                return (!series.name.startsWith ("Navigator"));
+            }
+            function costs (series)
+            {
+                return (series.points[series.points.length - 1].y); // use undocumented points array because data array is zero length
+            }
+            function miner (acc, val)
+            {
+                var cost = (val < acc.cost) ? val : acc.cost;
+                return ({ cost: cost, count: acc.count + 1 });
+            }
+            var master_costs = master.series.filter (not_navigator).map (costs).reduce (miner, { cost: Number.MAX_VALUE, count: 0 });
+            var worker_costs = worker.series.filter (not_navigator).map (costs).reduce (miner, { cost: Number.MAX_VALUE, count: 0 });
+            if ((master_costs.count > 0) && (worker_costs.count > 0))
+            {
+                var cost = master_costs.cost + (worker_costs.cost * worker_count);
+                var value;
+                if (cost >= 1.0)
+                    value = '$' + cost.toFixed(2)
+                else
+                    value = (100*cost).toFixed(2) + '¢'
+                document.getElementById ("cost_estimate").innerHTML = "<h1>Estimated cost: " + value + "/hr</h1>";
+            }
         }
 
+        function change_instance (event)
+        {
+            var chart = event.target.id + "_chart";
+            var instance_type = event.target.value;
+            get_price_history ([chart], instance_type);
+        }
+
+        function create_chart (container, title)
+        {
+            $("#" + container).highcharts (
+                "StockChart",
+                {
+                    chart:
+                    {
+                        zoomType: "x",
+                        description: "Amazon EC2 spot instance pricing"
+                    },
+                    navigator:
+                    {
+                        name: "Navigator_" + container,
+                        height: 20
+                    },
+                    rangeSelector:
+                    {
+                        buttons:
+                        [
+                            {
+                                type: "hour",
+                                count: 1,
+                                text: "Hour"
+                            },
+                            {
+                                type: "hour",
+                                count: 4,
+                                text: "4hr"
+                            },
+                            {
+                                type: 'day',
+                                count: 1,
+                                text: 'Day'
+                            },
+                            {
+                                type: 'day',
+                                count: 3,
+                                text: '3d'
+                            },
+                            {
+                                type: 'day',
+                                count: 7,
+                                text: 'Week'
+                            },
+                            {
+                                type: 'all',
+                                text: 'All'
+                            }
+                        ],
+                        inputEnabled: false
+                    },
+                    scrollbar:
+                    {
+                        liveRedraw: false
+                    },
+                    xAxis :
+                    {
+                        minRange: 3600 * 1000 // one hour
+                    },
+                    yAxis:
+                    {
+                        title:
+                        {
+                            text: "Price (US$/hr)"
+                        },
+                        floor: 0,
+                        opposite: false
+                    },
+                    title:
+                    {
+                        text: title
+                    },
+                    subtitle:
+                    {
+                        text: "instance type"
+                    },
+                    legend:
+                    {
+                        enabled: true,
+                        floating: true,
+                        align: "left",
+                        verticalAlign: "top"
+                    }
+                }
+            );
+        }
         /**
          * Form initialization function.
          *
@@ -294,48 +468,19 @@ define
         {
             if (null == instances)
             {
-                get_instances (function (err, data) {
-                    if (err) console.log (err); // an error occurred
-                    else     show_types (data); // successful response
-                  });
-
                 Highcharts.setOptions
                 ({
                     global: { timezoneOffset: -60, useUTC: true },
                 });
 
                 // create the chart
-                $('#chart').highcharts ('StockChart', {
-                    chart:
-                    {
-                        zoomType: 'x'
-                    },
+                create_chart ("master_chart", "Master Spot Price");
+                create_chart ("worker_chart", "Worker Spot Price");
 
-                    scrollbar:
-                    {
-                        liveRedraw: false
-                    },
-
-                    xAxis :
-                    {
-                        minRange: 3600 * 1000 // one hour
-                    },
-
-                    yAxis:
-                    {
-                        title:
-                        {
-                            text: 'Price (US$)'
-                        },
-                        floor: 0
-                    },
-
-                    title:
-                    {
-                        text: 'Spot Price'
-                    },
-
-                });
+                get_instances (function (err, data) {
+                    if (err) console.log (err); // an error occurred
+                    else     show_types (data); // successful response
+                  });
             }
         }
 
@@ -343,6 +488,7 @@ define
         {
             this.master = lookup_instance (document.getElementById ("master").value);
             this.worker = lookup_instance (document.getElementById ("worker").value);
+            this.worker_count = Number (document.getElementById ("worker_count").value);
         }
 
         return (
@@ -358,6 +504,8 @@ define
                             [
                                 { id: "master", event: "change", code: change_instance },
                                 { id: "worker", event: "change", code: change_instance },
+                                { id: "worker_count", event: "change", code: estimate_costs },
+                                { id: "worker_count", event: "input", code: estimate_costs },
                             ],
                             transitions:
                             {
