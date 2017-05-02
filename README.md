@@ -13,11 +13,17 @@ CIM files which are a standard interchange format based on IEC standards 61968 &
 (see [CIM users group](http://cimug.ucaiug.org/default.aspx) for additional details)
 to access Spark Resilient Distributed Dataset (RDD) for each CIM class.
 
-![CIMApplication Overview](https://rawgit.com/derrickoswald/CIMApplication/master/img/Overview.svg "Overview diagram")
-
 It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data applications running on Hadoop.
 
+# Provisioning a Cluster
+
+To create a cluster on Amazon ECS you can use the provisioning tool:
+
+<a href="https://derrickoswald.github.io/CIMApplication">https://derrickoswald.github.io/CIMApplication</a>
+
 # Architecture
+
+![CIMApplication Overview](https://rawgit.com/derrickoswald/CIMApplication/master/img/Overview.svg "Overview diagram")
 
 The use of a resource adapter within a J2EE container leverages the technologies that ease
 deployment, security, transaction and user interface development that come with
