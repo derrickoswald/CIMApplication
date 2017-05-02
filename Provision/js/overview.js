@@ -83,6 +83,104 @@ define
         }
 
         /**
+         * @summary Read the configuration files..
+         * @description 
+         * @param {FileList} files - the files dropped or selected by the user
+         * @param {object} data - the context object for the wizard
+         * @function add_files
+         * @memberOf module:thingmaker/files
+         */
+        function read_configuration (files, data)
+        {
+            function get (array, key)
+            {
+                var value = null;
+                function check (str)
+                {
+                    var ret = false;
+                    if (str.startsWith (key))
+                    {
+                        var index = str.indexOf ("=");
+                        if (-1 != index)
+                        {
+                            value = str.substring (index + 1).trim ();
+                            ret = true;
+                        }
+                    }
+                    return (ret);
+                }
+                array.map (check);
+                return (value);
+            };
+
+            function onLoadEnd (event)
+            {
+                if (event.target.readyState == FileReader.DONE)
+                {
+                    var text = event.target.result.split ("\n");
+                    var aws_access_key_id = get (text, "aws_access_key_id");
+                    if (null != aws_access_key_id)
+                        document.getElementById ("accessKeyId").value = aws_access_key_id
+                    var aws_secret_access_key = get (text, "aws_secret_access_key");
+                    if (null != aws_secret_access_key)
+                        document.getElementById ("secretAccessKey").value = aws_secret_access_key
+                    var region = get (text, "region");
+                    if (null != region)
+                        document.getElementById ("region").value = region
+                }
+            };
+
+            for (var i = 0; i < files.length; i++)
+            {
+                console.log (files.item (i));
+                var reader = new FileReader ();
+                reader.onloadend = onLoadEnd;
+                reader.readAsText (files[i]);
+            }
+        }
+
+        /**
+         * @summary Handler for file change events.
+         * @description Read the configuration file and update the display.
+         * @param {object} event - the file change event
+         * @function file_change
+         * @memberOf module:overview
+         */
+        function file_change (event)
+        {
+            read_configuration (event.target.files, this);
+        }
+
+        /**
+         * @summary Event handler for dropped files.
+         * @description Attached to the drop target, this handler responds to dropped files,
+         * adding them to the list of files.
+         * @see {module:thingmaker/files.add_files}
+         * @param {object} event - the drop event
+         * @memberOf module:overview
+         */
+        function file_drop (event)
+        {
+            event.stopPropagation ();
+            event.preventDefault ();
+            read_configuration (event.dataTransfer.files, this);
+        }
+
+        /**
+         * @summary Event handler for dragging files.
+         * @description Attached to the drop target, this handler simply modifies the effect to copy,
+         * (which produces the typical hand cursor).
+         * @param {object} event - the dragover event
+         * @memberOf module:overview
+         */
+        function file_drag (event)
+        {
+            event.stopPropagation ();
+            event.preventDefault ();
+            event.dataTransfer.dropEffect = 'copy';
+        }
+
+        /**
          * Form initialization function.
          *
          * @param {object} event - the tab being shown event, <em>not used</em>
@@ -148,6 +246,9 @@ define
                             template: "templates/overview.mst",
                             hooks:
                             [
+                                { id: "config_file", event: "change", code: file_change },
+                                { id: "files_drop_zone", event: "dragover", code: file_drag },
+                                { id: "files_drop_zone", event: "drop", code: file_drop }
                             ],
                             transitions:
                             {
