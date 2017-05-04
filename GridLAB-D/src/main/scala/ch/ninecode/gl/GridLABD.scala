@@ -998,7 +998,7 @@ class GridLABD(session: SparkSession) extends Serializable
     }
 
     def einspeiseleistung(
-        trafokreise: RDD[(String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))] //        trafokreis: RDD[String]
+        trafokreise: RDD[(String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))]
         ): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime()
