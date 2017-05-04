@@ -1,7 +1,7 @@
 package ch.ninecode.gl
 
-
 import java.net.URI
+import java.util.Calendar
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
@@ -9,8 +9,10 @@ import scala.io.Source
 import org.apache.spark.graphx.Graph
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.model._
 
 case class EinspeiseleistungOptions (
     cim_reader_options: Iterable[(String, String)],
@@ -28,8 +30,109 @@ case class EinspeiseleistungOptions (
     files: Seq[String] = Seq()
 )
 
+trait Problem
+{
+    import Problem._
+    def node (t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
+
+    def name (): String
+    def start_time (): Calendar
+    def finish_time (): Calendar
+    def swing_node (): String
+}
+
+object Problem
+{
+    var USE_TOPOLOGICAL_NODES: Boolean = true
+}
+
+case class Trafokreis
+(
+    start: Calendar,
+    trafo: String,
+    transformers: Array[TData],
+    nodes: Iterable[PowerFeedingNode],
+    edges: Iterable[PreEdge],
+    houses: Iterable[MaxPowerFeedingNodeEEA]
+) extends Problem
+{
+    import Trafokreis._
+
+    val window = 3 * 60 // window size in simulated seconds per experiment
+    val margin = 1.25 // check up to 25% over the precalculated value
+    val step = 10000.0
+    def significant (h: MaxPowerFeedingNodeEEA) = (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
+    def nis_number (string: String): String =
+    {
+        val n = string.indexOf("_")
+        if (0 < n)
+            string.substring(0, n)
+        else
+            string
+    }
+    def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)) =
+    {
+        val house = nis_number (h._1.id_seq) // the house under test
+        val index = h._2 // experiment #
+        def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
+        val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
+        val interval = 5 // seconds per step
+        val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+        val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
+        Experiment (trafo, house, start_time (), index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
+    }
+
+    // generate experiments
+    lazy val experiments = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
+
+    def name (): String = trafo
+
+    def start_time (): Calendar = start
+    def finish_time (): Calendar =
+    {
+        val t = start_time ().clone().asInstanceOf[Calendar]
+        t.add (Calendar.SECOND, experiments.length * window)
+        t
+    }
+
+    // find the swing node
+    def swing_node (): String =
+    {
+        transformers.size match
+        {
+            case 0 ⇒
+                throw new IllegalStateException ("no transformers in TData array")
+            case 1 ⇒
+                node (transformers(0).terminal0)
+            case _ ⇒
+                val s = (node(transformers(0).terminal0), node(transformers(0).terminal1))
+                if (!transformers.forall((x) ⇒ (node(x.terminal0) == s._1)))
+                    log.error("transformer group " + trafo + " has different nodes on terminal 0 " + transformers.map((x) ⇒ node(x.terminal0)).mkString(" "))
+                if (!transformers.forall((x) ⇒ (node(x.terminal1) == s._2)))
+                    log.error("transformer group " + trafo + " has different nodes on terminal 1 " + transformers.map((x) ⇒ node(x.terminal1)).mkString(" "))
+                node(transformers(0).terminal0)
+        }
+    }
+}
+
+object Trafokreis
+{
+    val log = LoggerFactory.getLogger (Trafokreis.getClass)
+}
+
 case class Einspeiseleistung (options: EinspeiseleistungOptions)
 {
+    def makeTrafokreis (start: Calendar) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+    {
+        arg match
+        {
+            case (trafokreise, (transformers, Some (x))) =>
+                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3)
+            case _ =>
+                null
+        }
+    }
+
     def run (session: SparkSession)
     {
         val start = System.nanoTime ()
@@ -159,9 +262,11 @@ case class Einspeiseleistung (options: EinspeiseleistungOptions)
             val grouped_precalc_results = vertices.groupWith(edges, has)
 
             val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
-            val filtered_trafos = trafokreise.filter(_._2._2.isDefined)
+            val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
+
+            val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0)_)
             println("filtered_trafos: " + filtered_trafos.count)
-            gridlabd.einspeiseleistung(filtered_trafos)
+            gridlabd.einspeiseleistung (filtered_trafos)
 
             println ("finished " + trafo_list.count + " trafokreis")
         }

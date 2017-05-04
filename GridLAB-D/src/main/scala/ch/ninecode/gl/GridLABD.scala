@@ -613,34 +613,14 @@ class GridLABD(session: SparkSession) extends Serializable
         transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
     }
 
-    def export(trafokreis: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Array[Experiment] =
+    def export(trafokreis: Trafokreis): Array[Experiment] =
     {
-        val start = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 12:00:00".replace(" ", "T"))
-        val finish = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 14:00:00".replace(" ", "T"))
-        val simulation = trafokreis._1
-        val transformers = trafokreis._2._1
-
-        // find the starting and swing node
-        def node(t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
-        val starting =
-            transformers.size match
-            {
-                case 0 ⇒
-                    throw new IllegalStateException("no transformers in TData array")
-                case 1 ⇒
-                    (node(transformers(0).terminal0), node(transformers(0).terminal1))
-                case _ ⇒
-                    val s = (node(transformers(0).terminal0), node(transformers(0).terminal1))
-                    if (!transformers.forall((x) ⇒ (node(x.terminal0) == s._1)))
-                        log.error("transformer group " + simulation + " has different nodes on terminal 0 " + transformers.map((x) ⇒ node(x.terminal0)).mkString(" "))
-                    if (!transformers.forall((x) ⇒ (node(x.terminal1) == s._2)))
-                        log.error("transformer group " + simulation + " has different nodes on terminal 1 " + transformers.map((x) ⇒ node(x.terminal1)).mkString(" "))
-                    s
-            }
+        val simulation = trafokreis.trafo
+        val transformers = trafokreis.transformers
 
         fileWriter.eraseInputFile(simulation)
 
-        val result = fileWriter.make_glm(trafokreis, simulation, start, finish, starting._1)
+        val result = fileWriter.make_glm(trafokreis)
         fileWriter.writeInputFile(simulation, simulation + ".glm", result._1.getBytes(StandardCharsets.UTF_8))
         fileWriter.writeInputFile(simulation, "output_data/dummy", null) // mkdir
 
@@ -997,9 +977,7 @@ class GridLABD(session: SparkSession) extends Serializable
         prepared_results.flatMap(analyse)
     }
 
-    def einspeiseleistung(
-        trafokreise: RDD[(String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))]
-        ): RDD[MaxEinspeiseleistung] =
+    def einspeiseleistung(trafokreise: RDD[Trafokreis]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime()
 
@@ -1011,10 +989,10 @@ class GridLABD(session: SparkSession) extends Serializable
         var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
         if (!EXPORT_ONLY) {
 
-            val reduced_trafos = trafokreise.mapValues(t ⇒ {
-                val transformers = t._1.map(_.end1.ratedS).sum
-                val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
-                (transformers, cdata_iter)
+            val reduced_trafos = trafokreise.map (t ⇒ {
+                val transformers = t.transformers.map(_.end1.ratedS).sum
+                val cdata_iter = t.edges.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
+                (t.trafo, (transformers, cdata_iter))
             }).cache
 
             val max_values = solve_and_analyse(reduced_trafos, experiments)
@@ -1053,7 +1031,7 @@ class GridLABD(session: SparkSession) extends Serializable
             val experiment_adjusted = System.nanoTime()
             println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
-            trafokreise.map(t ⇒ cleanup(t._1, false)).count
+            trafokreise.map(t ⇒ cleanup(t.trafo, false)).count
 
             val filedelete = System.nanoTime()
             println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
@@ -1077,7 +1055,7 @@ class GridLABD(session: SparkSession) extends Serializable
             println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
 
             if (DELETE_SIMULATION_FILES)
-                trafokreise.map(t ⇒ cleanup(t._1, true)).count
+                trafokreise.map(t ⇒ cleanup(t.trafo, true)).count
         }
 
         ret

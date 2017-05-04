@@ -206,38 +206,12 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
     }
 
     def make_glm(
-        trafokreis: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])])),
-        simulation: String,
-        start: Calendar,
-        finish: Calendar,
-        swing_node: String): Tuple2[String, Array[Experiment]] =
+        trafokreis: Trafokreis): Tuple2[String, Array[Experiment]] =
     {
-        val starting_transformers = trafokreis._2._1
-        val precalc_results = trafokreis._2._2.get
+        val starting_transformers = trafokreis.transformers
+        val precalc_results = (trafokreis.nodes, trafokreis.edges, trafokreis.houses)
         val traced_nodes = precalc_results._1
         val traced_edges = precalc_results._2
-        def significant (h: MaxPowerFeedingNodeEEA): Boolean =
-        {
-            (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
-        }
-        val houses = precalc_results._3.filter (significant)
-
-        // generate experiments
-        val window = 3 * 60 // window size in simulated seconds per experiment
-        val margin = 1.25 // check up to 25% over the precalculated value
-        val step = 10000.0
-        val experiments = houses.zipWithIndex.map (
-        h ⇒
-        {
-            val house = gridlabd.has (h._1.id_seq) // the house under test
-            val index = h._2.toInt // experiment #
-            def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
-            val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
-            val interval = 5 // seconds per step
-            val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-            val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-            Experiment (simulation, house, start, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
-        }).toArray
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = traced_edges.groupBy(_.key).values
@@ -250,11 +224,12 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         // get the transformer configuration
         val trans = new Trans(gridlabd.USE_ONE_PHASE, gridlabd.USE_TOPOLOGICAL_NODES)
         val t_string = trans.getTransformerConfigurations(starting_transformers)
-        val o_string = emit_slack(swing_node, starting_transformers(0).voltage0 * 1000)
+        val o_string = emit_slack(trafokreis.swing_node (), starting_transformers(0).voltage0 * 1000)
 
         // get the node strings
+        val experiments = trafokreis.experiments
         val n_strings = traced_nodes.map(make_node(experiments))
-        val pv_strings = houses.filter(_.eea != null).map(make_pv)
+        val pv_strings = trafokreis.houses.filter(_.eea != null).map(make_pv)
 
         // get the edge strings
         val t_edges = trans.emit(starting_transformers)
@@ -263,10 +238,10 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         /**
          * Create the output file.
          */
-        val t1 = start.clone().asInstanceOf[Calendar]
-        t1.add(Calendar.SECOND, experiments.length * window)
+        val t0 = trafokreis.start_time ()
+        val t1 = trafokreis.finish_time ()
         val prefix =
-            "// $Id: " + simulation + ".glm\n" +
+            "// $Id: " + trafokreis.name + ".glm\n" +
                 "// Einspeiseleistung\n" +
                 "//*********************************************\n" +
                 "\n" +
@@ -284,7 +259,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
                 "        clock\n" +
                 "        {\n" +
                 "            timezone " + (if (gridlabd.USE_UTC) "UTC0UTC" else gridlabd.tzString) + ";\n" +
-                "            starttime '" + gridlabd._DateFormat.format(start.getTime()) + "';\n" +
+                "            starttime '" + gridlabd._DateFormat.format(t0.getTime()) + "';\n" +
                 "            stoptime '" + gridlabd._DateFormat.format(t1.getTime()) + "';\n" +
                 "        };\n" +
                 "\n" +
@@ -295,9 +270,9 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
                 "\n" +
                 "        object voltdump\n" +
                 "        {\n" +
-                "            filename \"output_data/" + simulation + "_voltdump.csv\";\n" +
+                "            filename \"output_data/" + trafokreis.name + "_voltdump.csv\";\n" +
                 "            mode polar;\n" +
-                "            runtime '" + gridlabd._DateFormat.format(start.getTime()) + "';\n" +
+                "            runtime '" + gridlabd._DateFormat.format(t0.getTime()) + "';\n" +
                 "        };\n"
 
         val result = new StringBuilder()
