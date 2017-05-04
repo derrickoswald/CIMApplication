@@ -104,7 +104,7 @@ class PowerFeedingSuite extends FunSuite
         println ("read : " + (read - begin) / 1e9 + " seconds")
 
         // set up for execution
-        val gridlabd = new GridLABD (session)
+        val gridlabd = new GridLABD (session, true)
         gridlabd.HDFS_URI = "" // local
         gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
 

@@ -248,8 +248,8 @@ object Main
                     short_circuit = arguments.short_circuit,
                     files = arguments.files
                 )
-                val eins = Einspeiseleistung (options)
-                eins.run (session)
+                val eins = Einspeiseleistung (session, options)
+                eins.run ()
 
                 val calculate = System.nanoTime ()
                 println ("total: " + (calculate - begin) / 1e9 + " seconds")

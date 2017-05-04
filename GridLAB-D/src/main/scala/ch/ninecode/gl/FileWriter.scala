@@ -18,9 +18,8 @@ import org.apache.hadoop.fs.Path
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-class FileWriter(gridlabd: GridLABD) extends Serializable
+class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
 {
-
     def gather(rdd: Iterable[String]): String =
     {
         rdd.fold("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
@@ -94,7 +93,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         for (solargeneratingunit ← solargeneratingunits) {
             val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
             if (power > 0) {
-                if (gridlabd.USE_ONE_PHASE)
+                if (one_phase)
                     load +=
                         "\n" +
                         "        object load\n" +
@@ -131,7 +130,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
     def emit_node(experiments: Array[Experiment], name: String, voltage: Double): String =
     {
         val meter =
-            if (gridlabd.USE_ONE_PHASE)
+            if (one_phase)
                 "\n" +
                     "        object meter\n" +
                     "        {\n" +
@@ -154,7 +153,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         val player = generate_player_file(experiments, name, voltage)
 
         val recorder =
-            if (gridlabd.USE_ONE_PHASE)
+            if (one_phase)
                 "\n" +
                     "        object recorder\n" +
                     "        {\n" +
@@ -180,7 +179,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
 
     def emit_slack(name: String, voltage: Double): String =
     {
-        if (gridlabd.USE_ONE_PHASE)
+        if (one_phase)
             "\n" +
                 "        object meter\n" +
                 "        {\n" +
@@ -205,35 +204,31 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
                 "        };\n"
     }
 
-    def make_glm(
-        trafokreis: Trafokreis): Tuple2[String, Array[Experiment]] =
+    def make_glm (trafokreis: Trafokreis): String =
     {
         val starting_transformers = trafokreis.transformers
-        val precalc_results = (trafokreis.nodes, trafokreis.edges, trafokreis.houses)
-        val traced_nodes = precalc_results._1
-        val traced_edges = precalc_results._2
 
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
-        val combined_edges = traced_edges.groupBy(_.key).values
+        val combined_edges = trafokreis.edges.groupBy(_.key).values
 
         // get one of each type of ACLineSegment and emit a configuration for each of them
-        val line = new Line(gridlabd.USE_ONE_PHASE)
+        val line = new Line(one_phase)
 
         val l_strings = line.getACLineSegmentConfigurations(combined_edges)
 
         // get the transformer configuration
-        val trans = new Trans(gridlabd.USE_ONE_PHASE, gridlabd.USE_TOPOLOGICAL_NODES)
+        val trans = new Trans(one_phase, gridlabd.USE_TOPOLOGICAL_NODES)
         val t_string = trans.getTransformerConfigurations(starting_transformers)
         val o_string = emit_slack(trafokreis.swing_node (), starting_transformers(0).voltage0 * 1000)
 
         // get the node strings
         val experiments = trafokreis.experiments
-        val n_strings = traced_nodes.map(make_node(experiments))
+        val n_strings = trafokreis.nodes.map(make_node(experiments))
         val pv_strings = trafokreis.houses.filter(_.eea != null).map(make_pv)
 
         // get the edge strings
         val t_edges = trans.emit(starting_transformers)
-        val l_edges = combined_edges.map(make_link(line, new SwitchDevice(gridlabd.USE_ONE_PHASE)))
+        val l_edges = combined_edges.map(make_link(line, new SwitchDevice(one_phase)))
 
         /**
          * Create the output file.
@@ -285,7 +280,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         result.append(gather(l_edges))
         result.append(gather(pv_strings))
 
-        return ((result.toString(), experiments))
+        result.toString()
     }
 
     def generate_player_file(experiments: Array[Experiment], name: String, voltage: Double): String =
@@ -295,7 +290,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
         val experiment = if (0 != filtered.length) filtered(0) else null
 
         if (null != experiment) {
-            if (gridlabd.USE_ONE_PHASE) {
+            if (one_phase) {
                 writeInputFile(experiment.trafo, "input_data/" + house + ".csv", ramp_up(experiment, 0.0))
                 "\n" +
                     "        object load\n" +
@@ -354,7 +349,7 @@ class FileWriter(gridlabd: GridLABD) extends Serializable
                 {
                     ret.append(gridlabd._DateFormat.format(time.getTime()))
                     ret.append(",")
-                    if (gridlabd.USE_ONE_PHASE) {
+                    if (one_phase) {
                         ret.append(-power)
                         ret.append("\n")
                     }

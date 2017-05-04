@@ -95,8 +95,8 @@ class GridLABDSuite extends FunSuite
             short_circuit = "",
             files = List(filename)
         )
-        val eins = Einspeiseleistung (options)
-        eins.run (session)
+        val eins = Einspeiseleistung (session, options)
+        eins.run ()
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds")
