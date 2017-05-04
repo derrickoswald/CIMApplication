@@ -349,26 +349,27 @@ object Main
                 }
                 else
                     precalc_results.has.filter(_.eea != null)
-                
+
                 val trafo_list = houses.keyBy (a => gridlabd.trafokreis_key (a.source_obj)).groupByKey.map (_._2.head.source_obj)
                 println ("" + trafo_list.count + " transformers to process")
 
                 val precalc = System.nanoTime ()
                 println ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
-                
                 // do gridlab simulation if not just pre-calculation
                 if (!arguments.precalculation)
                 {
-                   val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id)) 
-                   val edges  = precalc_results.edges.filter(_._1 != null)                   
-                   val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
-                   val grouped_precalc_results = vertices.groupWith(edges, has)
-                                     
-                   val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
-                   gridlabd.einspeiseleistung(trafokreise)
-                   
-                   println ("finished " + trafo_list.count + " trafokreis")
+                    val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id)) 
+                    val edges  = precalc_results.edges.filter(_._1 != null)                   
+                    val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
+                    val grouped_precalc_results = vertices.groupWith(edges, has)
+
+                    val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
+                    val filtered_trafos = trafokreise.filter(_._2._2.isDefined)
+                    println("filtered_trafos: " + filtered_trafos.count)
+                    gridlabd.einspeiseleistung(filtered_trafos)
+
+                    println ("finished " + trafo_list.count + " trafokreis")
                 }
 
                 val calculate = System.nanoTime ()

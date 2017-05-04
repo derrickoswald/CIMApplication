@@ -16,6 +16,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
 
@@ -29,7 +30,7 @@ trait Graphable
      * Compute the vertex id.
      * @param string The CIM MRID.
      */
-    def vertex_id (string: String): VertexId =
+    def vertex_id(string: String): VertexId =
     {
         var h = 2166136261l;
         for (c ← string)
@@ -45,7 +46,7 @@ trait Graphable
  * @param id_seq ConnectivityNode or TopologicalNode MRID.
  * @param voltage Node voltage.
  */
-case class PreNode (
+case class PreNode(
     id_seq: String,
     voltage: Double) extends Graphable with Serializable
 
@@ -63,7 +64,7 @@ case class PreNode (
  * @param element Element object for the edge.
  * @param connected Flag indicating if there is connectivity through the edge (for tracing).
  */
-case class PreEdge (
+case class PreEdge(
     id_seq_1: String,
     id_cn_1: String,
     v1: Double,
@@ -74,8 +75,7 @@ case class PreEdge (
     ratedCurrent: Double,
     equipment: ConductingEquipment,
     element: Element,
-    connected: Boolean) extends Graphable with Serializable
-{
+    connected: Boolean) extends Graphable with Serializable {
     /**
      * Ordered key.
      * Provide a key on the two connections, independent of to-from from-to ordering.
@@ -92,7 +92,7 @@ case class PreEdge (
  * @param node ConnectivityNode or TopologicalNode MRID.
  * @param solar SolarGeneratingUnit object attached to the node.
  */
-case class PV (
+case class PV(
     node: String,
     solar: SolarGeneratingUnit)
 
@@ -102,7 +102,7 @@ case class PV (
  * @param node ConnectivityNode or TopologicalNode MRID.
  * @param transformer Transformer data object(s) attached to the node.
  */
-case class Transformer (
+case class Transformer(
     node: String,
     transformer: List[TData])
 
@@ -119,7 +119,7 @@ case class Transformer (
  * @param to Ending PV power (kW).
  * @param step Power increment, resolution of the Einspeiseleistung value (kW).
  */
-case class Experiment (
+case class Experiment(
     trafo: String,
     house: String,
     t0: Calendar,
@@ -134,11 +134,13 @@ case class Experiment (
      * Calendar duplication utility function.
      * @param c The Calendar value to be cloned.
      */
-    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+
     /**
      * The start time of the experiment.
      */
     def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+
     /**
      * The end time of the experiment.
      */
@@ -154,7 +156,7 @@ case class Experiment (
  * @param value_c Phase C value.
  * @param units <code>Volts</code> for a node, <code>Amps</code> for an edge.
  */
-case class ThreePhaseComplexDataElement (
+case class ThreePhaseComplexDataElement(
     element: String,
     millis: Long,
     value_a: Complex,
@@ -170,7 +172,7 @@ case class ThreePhaseComplexDataElement (
  * @param reason Explanatory reason for the limit (voltage, current or power exceeded).
  * @param details The test which caused the limit including the network element.
  */
-case class MaxEinspeiseleistung (
+case class MaxEinspeiseleistung(
     trafo: String,
     house: String,
     max: Option[Double],
@@ -182,10 +184,7 @@ case class MaxEinspeiseleistung (
  */
 class GridLABD(session: SparkSession) extends Serializable
 {
-    @transient lazy val log = org.apache.log4j.LogManager.getLogger("myLogger")
-    log.setLevel(org.apache.log4j.Level.DEBUG)
-
-    //val log = LoggerFactory.getLogger (getClass)
+    val log = LoggerFactory.getLogger (getClass)
 
     var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
@@ -193,7 +192,7 @@ class GridLABD(session: SparkSession) extends Serializable
     var USE_ONE_PHASE = true
     var EXPORT_ONLY = false
     var STORAGE_LEVEL = StorageLevel.MEMORY_ONLY
-    
+
     val fileWriter = new FileWriter(this)
 
     // for dates without time zones, the timezone of the machine is used:
@@ -209,189 +208,187 @@ class GridLABD(session: SparkSession) extends Serializable
     if (USE_UTC)
         _DateFormat.setTimeZone(TimeZone.getTimeZone("UTC"))
 
-    def get(name: String, retry: Int): RDD[Element] =
+    /**
+     * Lookup CIM RDD by name.
+     * @param name The unqualified name of the RDD (name of the class)
+     */
+    def get (name: String): RDD[Element] =
+    {
+        val rdds = session.sparkContext.getPersistentRDDs
+        for (key <- rdds.keys)
         {
-            val rdds = session.sparkContext.getPersistentRDDs.filter(_._2.name == name)
-            if (0 < rdds.size)
-                rdds.head._2.asInstanceOf[RDD[Element]]
-            else if (0 < retry) {
-                val continue = try {
-                    log.error("get on RDD " + name + " failed, retry " + retry)
-                    Thread.sleep(2000L)
-                    true
-                }
-                catch {
-                    case _: Throwable ⇒ false
-                }
-                if (continue)
-                    get(name, retry - 1)
-                else
-                    null
-            }
-            else
-                null
+            val rdd = rdds (key)
+            if (rdd.name == name)
+                return (rdd.asInstanceOf[RDD[Element]])
         }
 
-    def get(name: String): RDD[Element] = get(name, 10)
+        return (null)
+    }
 
-    // function to see if the Pregel algorithm should continue tracing or not
+    /**
+     * Function to see if the Pregel algorithm should continue tracing or not.
+     * @param element The edge element (subclass of ConductingEquipment).
+     */
     def shouldContinue(element: Element): Boolean =
-        {
-            val clazz = element.getClass.getName
-            val cls = clazz.substring(clazz.lastIndexOf(".") + 1)
-            cls match {
-                case "Switch" ⇒
-                    !element.asInstanceOf[Switch].normalOpen
-                case "Cut" ⇒
-                    !element.asInstanceOf[Cut].Switch.normalOpen
-                case "Disconnector" ⇒
-                    !element.asInstanceOf[Disconnector].Switch.normalOpen
-                case "Fuse" ⇒
-                    !element.asInstanceOf[Fuse].Switch.normalOpen
-                case "GroundDisconnector" ⇒
-                    !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-                case "Jumper" ⇒
-                    !element.asInstanceOf[Jumper].Switch.normalOpen
-                case "ProtectedSwitch" ⇒
-                    !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-                case "Sectionaliser" ⇒
-                    !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-                case "Breaker" ⇒
-                    !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-                case "LoadBreakSwitch" ⇒
-                    !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-                case "Recloser" ⇒
-                    !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-                case "Conductor" ⇒
-                    true
-                case "ACLineSegment" ⇒
-                    true
-                case "PowerTransformer" ⇒
-                    false
-                case _ ⇒
-                    log.error("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed not conducting")
-                    false
-            }
+    {
+        val clazz = element.getClass.getName
+        val cls = clazz.substring(clazz.lastIndexOf(".") + 1)
+        cls match {
+            case "Switch" ⇒
+                !element.asInstanceOf[Switch].normalOpen
+            case "Cut" ⇒
+                !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" ⇒
+                !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" ⇒
+                !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" ⇒
+                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" ⇒
+                !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "ProtectedSwitch" ⇒
+                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Sectionaliser" ⇒
+                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+            case "Breaker" ⇒
+                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" ⇒
+                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" ⇒
+                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Conductor" ⇒
+                true
+            case "ACLineSegment" ⇒
+                true
+            case "PowerTransformer" ⇒
+                false
+            case _ ⇒
+                log.error("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed not conducting")
+                false
         }
+    }
 
     def edge_operator(voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[(Element, Double), Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
-        {
-            var ret = List[PreEdge]()
-                def node_name(t: Terminal): String =
-                    {
-                        return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
-                    }
+    {
+        var ret = List[PreEdge]()
 
-            val e = arg._1._1._1
-            val ratedCurrent = arg._1._1._2
-            val pte_op = arg._1._2
-            val t_it = arg._2
-            // get the ConductingEquipment
-            var c = e
-            while ((null != c) && !c.getClass().getName().endsWith(".ConductingEquipment"))
-                c = c.sup
-            if (null != c) {
-                // sort terminals by sequence number (and hence the primary is index 0)
-                val terminals = t_it.toArray.sortWith(_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
-                // get the equipment
-                val equipment = c.asInstanceOf[ConductingEquipment]
-                // make a list of voltages
-                val volt = 1000.0 * voltages.getOrElse(equipment.BaseVoltage, 0.0)
-                val volts =
-                    pte_op match {
-                        case Some(x: Iterable[PowerTransformerEnd]) ⇒
-                            // sort ends by end number
-                            // ToDo: handle the case where terminal sequence and end sequence aren't the same
-                            val tends = x.toArray.sortWith(_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                            tends.map(e ⇒ 1000.0 * voltages.getOrElse(e.TransformerEnd.BaseVoltage, 0.0))
-                        case None ⇒
-                            Array[Double](volt, volt)
-                    }
-                // Note: we eliminate 230V edges because transformer information doesn't exist and
-                // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
-                if (!volts.contains(230.0))
-                    // make a pre-edge for each pair of terminals
-                    ret = terminals.length match {
-                        case 1 ⇒
-                            ret :+
-                                new PreEdge(
+        def node_name(t: Terminal): String =
+        {
+            return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
+        }
+
+        val e = arg._1._1._1
+        val ratedCurrent = arg._1._1._2
+        val pte_op = arg._1._2
+        val t_it = arg._2
+        // get the ConductingEquipment
+        var c = e
+        while ((null != c) && !c.getClass().getName().endsWith(".ConductingEquipment"))
+            c = c.sup
+        if (null != c) {
+            // sort terminals by sequence number (and hence the primary is index 0)
+            val terminals = t_it.toArray.sortWith(_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+            // get the equipment
+            val equipment = c.asInstanceOf[ConductingEquipment]
+            // make a list of voltages
+            val volt = 1000.0 * voltages.getOrElse(equipment.BaseVoltage, 0.0)
+            val volts =
+                pte_op match {
+                    case Some(x: Iterable[PowerTransformerEnd]) ⇒
+                        // sort ends by end number
+                        // ToDo: handle the case where terminal sequence and end sequence aren't the same
+                        val tends = x.toArray.sortWith(_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                        tends.map(e ⇒ 1000.0 * voltages.getOrElse(e.TransformerEnd.BaseVoltage, 0.0))
+                    case None ⇒
+                        Array[Double](volt, volt)
+                }
+            // Note: we eliminate 230V edges because transformer information doesn't exist and
+            // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
+            if (!volts.contains(230.0))
+                // make a pre-edge for each pair of terminals
+                ret = terminals.length match {
+                    case 1 ⇒
+                        ret :+
+                            new PreEdge(
+                                terminals(0).ACDCTerminal.id,
+                                node_name(terminals(0)),
+                                volts(0),
+                                "",
+                                "",
+                                volts(0),
+                                terminals(0).ConductingEquipment,
+                                ratedCurrent,
+                                equipment,
+                                e,
+                                false)
+                    case _ ⇒
+                        {
+                            for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                            {
+                                ret = ret :+ new PreEdge(
                                     terminals(0).ACDCTerminal.id,
                                     node_name(terminals(0)),
                                     volts(0),
-                                    "",
-                                    "",
-                                    volts(0),
+                                    terminals(i).ACDCTerminal.id,
+                                    node_name(terminals(i)),
+                                    volts(i),
                                     terminals(0).ConductingEquipment,
                                     ratedCurrent,
                                     equipment,
                                     e,
-                                    false)
-                        case _ ⇒
-                            {
-                                for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                                {
-                                    ret = ret :+ new PreEdge(
-                                        terminals(0).ACDCTerminal.id,
-                                        node_name(terminals(0)),
-                                        volts(0),
-                                        terminals(i).ACDCTerminal.id,
-                                        node_name(terminals(i)),
-                                        volts(i),
-                                        terminals(0).ConductingEquipment,
-                                        ratedCurrent,
-                                        equipment,
-                                        e,
-                                        shouldContinue(e))
-                                }
-                                ret
+                                    shouldContinue(e))
                             }
-                    }
-            }
-            //else // shouldn't happen, terminals always reference ConductingEquipment, right?
-
-            return (ret)
+                            ret
+                        }
+                }
         }
+        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
+
+        return (ret)
+    }
 
     def topological_node_operator(arg: Tuple2[Tuple2[TopologicalNode, Terminal], PreEdge]): PreNode =
-        {
-            val node = arg._1._1
-            val term = arg._1._2
-            val edge = arg._2
-            PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
-        }
+    {
+        val node = arg._1._1
+        val term = arg._1._2
+        val edge = arg._2
+        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
+    }
 
     def connectivity_node_operator(arg: Tuple2[Tuple2[ConnectivityNode, Terminal], PreEdge]): PreNode =
-        {
-            val node = arg._1._1
-            val term = arg._1._2
-            val edge = arg._2
-            PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
-        }
+    {
+        val node = arg._1._1
+        val term = arg._1._2
+        val edge = arg._2
+        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
+    }
 
     def base_name(s: String): String =
-        {
-            if (s.endsWith("_topo_fuse"))
-                s.substring(0, s.length - "_topo_fuse".length)
-            else if (s.endsWith("_topo"))
-                s.substring(0, s.length - "_topo".length)
-            else
-                s
-        }
+    {
+        if (s.endsWith("_topo_fuse"))
+            s.substring(0, s.length - "_topo_fuse".length)
+        if (s.endsWith("_fuse_topo"))
+            s.substring(0, s.length - "_fuse_topo".length)
+        else if (s.endsWith("_topo"))
+            s.substring(0, s.length - "_topo".length)
+        else
+            s
+    }
 
     def has(string: String): String =
-        {
-            val n = string.indexOf("_")
-            if (0 < n)
-                string.substring(0, n)
-            else
-                string
-        }
+    {
+        val n = string.indexOf("_")
+        if (0 < n)
+            string.substring(0, n)
+        else
+            string
+    }
 
     def exists(filename: String): Boolean =
-        {
-            val f = new File(filename)
-            f.exists
-        }
+    {
+        val f = new File(filename)
+        f.exists
+    }
 
     //    def load_from_player_file (name: String, voltage: Double): String =
     //    {
@@ -433,274 +430,274 @@ class GridLABD(session: SparkSession) extends Serializable
     //    }
 
     def make_graph_vertices(v: PreNode): Tuple2[VertexId, PreNode] =
-        {
-            (v.vertex_id(v.id_seq), v)
-        }
+    {
+        (v.vertex_id(v.id_seq), v)
+    }
 
     def make_graph_edges(e: PreEdge): Edge[PreEdge] =
-        {
-            Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
-        }
+    {
+        Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
+    }
 
     def filterValidSolarUnits(pv: RDD[PV]): RDD[PV] =
+    {
+        val lifecycle = get("LifecycleDate").asInstanceOf[RDD[LifecycleDate]]
+        val asset = get("Asset").asInstanceOf[RDD[Asset]]
+        val lifecycle_per_eea = asset.keyBy(_.lifecycle).join(lifecycle.keyBy(_.id)).map(l ⇒ (l._2._1.IdentifiedObject.name, (l._2._2)))
+        val pv_lifecycle = pv.keyBy(_.solar.id).leftOuterJoin(lifecycle_per_eea)
+
+        def lifecycleValid(lifecycle: LifecycleDate): Boolean =
         {
-            val lifecycle = get("LifecycleDate").asInstanceOf[RDD[LifecycleDate]]          
-            val asset = get("Asset").asInstanceOf[RDD[Asset]]
-            val lifecycle_per_eea = asset.keyBy(_.lifecycle).join(lifecycle.keyBy(_.id)).map(l => (l._2._1.IdentifiedObject.name, (l._2._2)))            
-            val pv_lifecycle = pv.keyBy(_.solar.id).leftOuterJoin(lifecycle_per_eea)
-            
-            def lifecycleValid (lifecycle: LifecycleDate): Boolean = 
+            if (lifecycle.installationDate != null)
+                true
+            else if (lifecycle.receivedDate != null)
             {
-                if (lifecycle.installationDate != null) {
-                    true
-                } else if (lifecycle.receivedDate != null) {
-                    val _DateFormat = new SimpleDateFormat("dd.MM.yyyy")
-                    val receivedDate = _DateFormat.parse(lifecycle.receivedDate)
-                    val now = new Date()
-                    val diffTime = now.getTime() - receivedDate.getTime()
-                    val diffDays = diffTime / (1000 * 60 * 60 * 24);
-                    diffDays < 400
-                } else 
-                    false
+                val _DateFormat = new SimpleDateFormat("dd.MM.yyyy")
+                val receivedDate = _DateFormat.parse(lifecycle.receivedDate)
+                val now = new Date()
+                val diffTime = now.getTime() - receivedDate.getTime()
+                val diffDays = diffTime / (1000 * 60 * 60 * 24);
+                diffDays < 400
             }
-            
-            val valid_pv = pv_lifecycle.filter(p => {
-                val lifecycle_option = p._2._2
-                if (lifecycle_option.isDefined)
-                    lifecycleValid(lifecycle_option.get)
-                else
-                    false
-            })
-            
-            valid_pv.map(_._2._1)
+            else
+                false
         }
+
+        val valid_pv = pv_lifecycle.filter(p ⇒ {
+            val lifecycle_option = p._2._2
+            if (lifecycle_option.isDefined)
+                lifecycleValid(lifecycle_option.get)
+            else
+                false
+        })
+
+        valid_pv.map(_._2._1)
+    }
 
     // get the existing photo-voltaic installations keyed by terminal
     def getSolarInstallations(topologicalnodes: Boolean): RDD[Tuple2[String, Iterable[PV]]] =
-        {
-            // note there are two independent linkages happening here through the UserAttribute class:
-            // - SolarGeneratingUnit to ServiceLocation
-            // - ServiceLocation to EnergyConsumer
+    {
+        // note there are two independent linkages happening here through the UserAttribute class:
+        // - SolarGeneratingUnit to ServiceLocation
+        // - ServiceLocation to EnergyConsumer
 
-            // link to service location ids via UserAttribute
-            val attributes = get("UserAttribute").asInstanceOf[RDD[UserAttribute]]
+        // link to service location ids via UserAttribute
+        val attributes = get("UserAttribute").asInstanceOf[RDD[UserAttribute]]
 
-            // user attributes link through string quantities
-            val strings = get("StringQuantity").asInstanceOf[RDD[StringQuantity]]
+        // user attributes link through string quantities
+        val strings = get("StringQuantity").asInstanceOf[RDD[StringQuantity]]
 
-            // get solar to service linkage, e.g. ("EEA5280", "MST115133")
-            // and service to house linkage, e.g. ("MST115133", "HAS138130")
-            val pairs = attributes.keyBy(_.value).join(strings.keyBy(_.id)).values.map(x ⇒ (x._1.name, x._2.value))
+        // get solar to service linkage, e.g. ("EEA5280", "MST115133")
+        // and service to house linkage, e.g. ("MST115133", "HAS138130")
+        val pairs = attributes.keyBy(_.value).join(strings.keyBy(_.id)).values.map(x ⇒ (x._1.name, x._2.value))
 
-            // get a simple list of house to pv id pairs
-            val links = pairs.join(pairs.map(x ⇒ (x._2, x._1))).values
+        // get a simple list of house to pv id pairs
+        val links = pairs.join(pairs.map(x ⇒ (x._2, x._1))).values
 
-            // get the pv stations
-            val solars = get("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
+        // get the pv stations
+        val solars = get("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
 
-            // get a simple list of house to pv pairs
-            val house_solars = links.map(x ⇒ (x._2, x._1)).join(solars.keyBy(_.id)).values
+        // get a simple list of house to pv pairs
+        val house_solars = links.map(x ⇒ (x._2, x._1)).join(solars.keyBy(_.id)).values
 
-            // get the terminals
-            val terminals = get("Terminal").asInstanceOf[RDD[Terminal]]
+        // get the terminals
+        val terminals = get("Terminal").asInstanceOf[RDD[Terminal]]
 
-            // link to the connectivity/topological node through the terminal
-            val t = terminals.keyBy(_.ConductingEquipment).join(house_solars).values.map(
-                (x) ⇒ PV(if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
+        // link to the connectivity/topological node through the terminal
+        val t = terminals.keyBy(_.ConductingEquipment).join(house_solars).values.map(
+            (x) ⇒ PV(if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-            val filteredPV = filterValidSolarUnits(t)
-            val pv = filteredPV.groupBy(_.node)
+        val filteredPV = filterValidSolarUnits(t)
+        val pv = filteredPV.groupBy(_.node)
 
-            pv.persist(STORAGE_LEVEL)
-            session.sparkContext.getCheckpointDir match {
-                case Some(dir) ⇒ pv.checkpoint()
-                case None ⇒
-            }
-
-            pv
+        pv.persist(STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match {
+            case Some(dir) ⇒ pv.checkpoint()
+            case None ⇒
         }
+
+        pv
+    }
 
     // Note: we return a bogus value just so there is a time sequential dependence on this by later code
     def prepare(): Tuple2[RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]] =
-        {
-            log.info("prepare() begin")
+    {
+        // get a map of voltages
+        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap()
 
-            // get a map of voltages
-            val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap()
+        // get the terminals
+        val terminals = get("Terminal").asInstanceOf[RDD[Terminal]].filter(null != _.ConnectivityNode)
 
-            // get the terminals
-            val terminals = get("Terminal").asInstanceOf[RDD[Terminal]].filter(null != _.ConnectivityNode)
+        // get the terminals keyed by equipment
+        val terms = terminals.groupBy(_.ConductingEquipment)
 
-            // get the terminals keyed by equipment
-            val terms = terminals.groupBy(_.ConductingEquipment)
+        // get all elements
+        val elements = get("Elements").asInstanceOf[RDD[Element]]
 
-            // get all elements
-            val elements = get("Elements").asInstanceOf[RDD[Element]]
+        // join with WireInfo to get ratedCurrent (only for ACLineSegments)
+        val cableMaxCurrent = getCableMaxCurrent()
+        val joined_elements = elements.keyBy(_.id).leftOuterJoin(cableMaxCurrent).map(e ⇒
+            {
+                val ele = e._2._1
+                val wire = e._2._2
+                val wireinfo = wire match {
+                    case Some(maxCurrent) ⇒ maxCurrent
+                    case None ⇒ Double.PositiveInfinity
+                }
+                (ele.id, (ele, wireinfo))
+            })
 
-            // join with WireInfo to get ratedCurrent (only for ACLineSegments)
-            val cableMaxCurrent = getCableMaxCurrent()
-            val joined_elements = elements.keyBy(_.id).leftOuterJoin(cableMaxCurrent).map(e ⇒
-                {
-                    val ele = e._2._1
-                    val wire = e._2._2
-                    val wireinfo = wire match {
-                        case Some(maxCurrent) ⇒ maxCurrent
-                        case None ⇒ Double.PositiveInfinity
-                    }
-                    (ele.id, (ele, wireinfo))
-                })
+        // get the transformer ends keyed by transformer
+        val ends = get("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy(_.PowerTransformer)
 
-            // get the transformer ends keyed by transformer
-            val ends = get("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy(_.PowerTransformer)
+        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
+        val elementsplus = joined_elements.leftOuterJoin(ends)
 
-            // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
-            val elementsplus = joined_elements.leftOuterJoin(ends)
+        // map the terminal 'pairs' to edges
+        val edges = elementsplus.join(terms).flatMapValues(edge_operator(voltages, USE_TOPOLOGICAL_NODES)).values
 
-            // map the terminal 'pairs' to edges
-            val edges = elementsplus.join(terms).flatMapValues(edge_operator(voltages, USE_TOPOLOGICAL_NODES)).values
+        // eliminate edges with only one connectivity node, or the same connectivity node
+        val real_edges = edges.filter(x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
 
-            // eliminate edges with only one connectivity node, or the same connectivity node
-            val real_edges = edges.filter(x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
+        // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
+        val tv = edges.keyBy(_.id_seq_1).union(edges.keyBy(_.id_seq_2)).distinct
 
-            // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
-            val tv = edges.keyBy(_.id_seq_1).union(edges.keyBy(_.id_seq_2)).distinct
+        // get the nodes RDD
+        val nodes = if (USE_TOPOLOGICAL_NODES) {
+            // get the topological nodes RDD
+            val tnodes = get("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
 
-            // get the nodes RDD
-            val nodes = if (USE_TOPOLOGICAL_NODES) {
-                // get the topological nodes RDD
-                val tnodes = get("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
-
-                // map the topological nodes to prenodes with voltages
-                tnodes.keyBy(_.id).join(terminals.keyBy(_.TopologicalNode)).values.keyBy(_._2.id).join(tv).values.map(topological_node_operator).distinct
-            }
-            else {
-                // get the connectivity nodes RDD
-                val connectivitynodes = get("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
-
-                // map the connectivity nodes to prenodes with voltages
-                connectivitynodes.keyBy(_.id).join(terminals.keyBy(_.ConnectivityNode)).values.keyBy(_._2.id).join(tv).values.map(connectivity_node_operator).distinct
-            }
-
-            // persist edges and nodes to avoid recompute
-            val xedges = real_edges.map(make_graph_edges)
-            val xnodes = nodes.map(make_graph_vertices)
-            val e = xedges.count
-            xedges.name = "xedges"
-            xedges.persist(STORAGE_LEVEL)
-            val n = xnodes.count
-            xnodes.name = "xnodes"
-            xnodes.persist(STORAGE_LEVEL)
-            session.sparkContext.getCheckpointDir match {
-                case Some(dir) ⇒
-                    xedges.checkpoint(); xnodes.checkpoint()
-                case None ⇒
-            }
-
-            log.info("prepare() end")
-            val _xedges = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xedges").head._2.asInstanceOf[RDD[Edge[PreEdge]]]
-            val _xnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xnodes").head._2.asInstanceOf[RDD[(VertexId, PreNode)]]
-
-            (_xedges, _xnodes)
+            // map the topological nodes to prenodes with voltages
+            tnodes.keyBy(_.id).join(terminals.keyBy(_.TopologicalNode)).values.keyBy(_._2.id).join(tv).values.map(topological_node_operator).distinct
         }
+        else {
+            // get the connectivity nodes RDD
+            val connectivitynodes = get("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
+
+            // map the connectivity nodes to prenodes with voltages
+            connectivitynodes.keyBy(_.id).join(terminals.keyBy(_.ConnectivityNode)).values.keyBy(_._2.id).join(tv).values.map(connectivity_node_operator).distinct
+        }
+
+        // persist edges and nodes to avoid recompute
+        val xedges = real_edges.map(make_graph_edges)
+        val xnodes = nodes.map(make_graph_vertices)
+        val e = xedges.count
+        xedges.name = "xedges"
+        xedges.persist(STORAGE_LEVEL)
+        val n = xnodes.count
+        xnodes.name = "xnodes"
+        xnodes.persist(STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match {
+            case Some(dir) ⇒
+                xedges.checkpoint(); xnodes.checkpoint()
+            case None ⇒
+        }
+
+        val _xedges = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xedges").head._2.asInstanceOf[RDD[Edge[PreEdge]]]
+        val _xnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xnodes").head._2.asInstanceOf[RDD[(VertexId, PreNode)]]
+
+        (_xedges, _xnodes)
+    }
 
     def tzString: String =
-        {
-            // "CET-1CEST"
-            val t = Calendar.getInstance()
-            val tz = t.getTimeZone
-            // ToDo: fractional hour time zones
-            tz.getDisplayName(false, TimeZone.SHORT) + (-tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName(true, TimeZone.SHORT)
-        }
+    {
+        // "CET-1CEST"
+        val t = Calendar.getInstance()
+        val tz = t.getTimeZone
+        // ToDo: fractional hour time zones
+        tz.getDisplayName(false, TimeZone.SHORT) + (-tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName(true, TimeZone.SHORT)
+    }
 
     def trafokreis_key(transformers: Array[TData]): String =
-        {
-            transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
-        }
+    {
+        transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
+    }
 
     def export(trafokreis: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Array[Experiment] =
-        {
-            val start = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 12:00:00".replace(" ", "T"))
-            val finish = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 14:00:00".replace(" ", "T"))
-            val simulation = trafokreis._1
-            val transformers = trafokreis._2._1
+    {
+        val start = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 12:00:00".replace(" ", "T"))
+        val finish = javax.xml.bind.DatatypeConverter.parseDateTime("2017-01-24 14:00:00".replace(" ", "T"))
+        val simulation = trafokreis._1
+        val transformers = trafokreis._2._1
 
-                // find the starting and swing node
-                def node(t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
-            val starting =
-                transformers.size match {
-                    case 0 ⇒
-                        throw new IllegalStateException("no transformers in TData array")
-                    case 1 ⇒
-                        (node(transformers(0).terminal0), node(transformers(0).terminal1))
-                    case _ ⇒
-                        val s = (node(transformers(0).terminal0), node(transformers(0).terminal1))
-                        if (!transformers.forall((x) ⇒ (node(x.terminal0) == s._1)))
-                            log.error("transformer group " + simulation + " has different nodes on terminal 0 " + transformers.map((x) ⇒ node(x.terminal0)).mkString(" "))
-                        if (!transformers.forall((x) ⇒ (node(x.terminal1) == s._2)))
-                            log.error("transformer group " + simulation + " has different nodes on terminal 1 " + transformers.map((x) ⇒ node(x.terminal1)).mkString(" "))
-                        s
-                }
+        // find the starting and swing node
+        def node(t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
+        val starting =
+            transformers.size match
+            {
+                case 0 ⇒
+                    throw new IllegalStateException("no transformers in TData array")
+                case 1 ⇒
+                    (node(transformers(0).terminal0), node(transformers(0).terminal1))
+                case _ ⇒
+                    val s = (node(transformers(0).terminal0), node(transformers(0).terminal1))
+                    if (!transformers.forall((x) ⇒ (node(x.terminal0) == s._1)))
+                        log.error("transformer group " + simulation + " has different nodes on terminal 0 " + transformers.map((x) ⇒ node(x.terminal0)).mkString(" "))
+                    if (!transformers.forall((x) ⇒ (node(x.terminal1) == s._2)))
+                        log.error("transformer group " + simulation + " has different nodes on terminal 1 " + transformers.map((x) ⇒ node(x.terminal1)).mkString(" "))
+                    s
+            }
 
-            fileWriter.eraseInputFile(simulation)
+        fileWriter.eraseInputFile(simulation)
 
-            val result = fileWriter.make_glm(trafokreis, starting._2, simulation, start, finish, starting._1)
-            fileWriter.writeInputFile(simulation, simulation + ".glm", result._1.getBytes(StandardCharsets.UTF_8))
-            fileWriter.writeInputFile(simulation, "output_data/dummy", null) // mkdir
+        val result = fileWriter.make_glm(trafokreis, simulation, start, finish, starting._1)
+        fileWriter.writeInputFile(simulation, simulation + ".glm", result._1.getBytes(StandardCharsets.UTF_8))
+        fileWriter.writeInputFile(simulation, "output_data/dummy", null) // mkdir
 
-            result._2
-        }
+        result._2
+    }
 
     def check(input: String): Boolean =
-        {
-            if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
-                println("gridlabd failed, message is: " + input)
-                false
-            }
-            else
-                true
+    {
+        if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
+            println("gridlabd failed, message is: " + input)
+            false
         }
+        else
+            true
+    }
 
     def solve(files: RDD[String]): Boolean =
-        {
-            // assumes gridlabd is installed on every node:
-            // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
-            // convert the rpm to a deb usig alien:
-            //   sudo alien gridlabd_3.2.0-2_amd64.rpm
-            // install on every node:
-            //   sudo dpkg -i gridlabd_3.2.0-2_amd64.deb
+    {
+        // assumes gridlabd is installed on every node:
+        // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
+        // convert the rpm to a deb usig alien:
+        //   sudo alien gridlabd_3.2.0-2_amd64.rpm
+        // install on every node:
+        //   sudo dpkg -i gridlabd_3.2.0-2_amd64.deb
 
-            val gridlabd =
-                if ("" == HDFS_URI) // local
-                    Array[String](
-                        "bash",
-                        "-c",
-                        "while read line; do " +
-                            "export FILE=$line; " +
-                            "pushd simulation/$FILE; " +
-                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
-                            "cat output_data/* > output.txt; " + 
-                            "popd;" +
-                            "cat simulation/$FILE/$FILE.out; " +
-                            "done < /dev/stdin")
-                else // cluster
-                {
-                    Array[String](
-                        "bash",
-                        "-c",
-                        "while read line; do " +
-                            "export FILE=$line; " +
-                            //                        "pwd > /tmp/$FILE.environment.log; " +
-                            //                        "env >> /tmp/$FILE.environment.log; " +
-                            "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
-                            "HADOOP_USER_NAME=$SPARK_USER; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
-                            "pushd $FILE; " +
-                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
-                            "cat output_data/* > output.txt; " +
-                            "popd; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt /simulation/$FILE; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
-                            "cat $FILE/$FILE.out; " +
+        val gridlabd =
+            if ("" == HDFS_URI) // local
+                Array[String](
+                    "bash",
+                    "-c",
+                    "while read line; do " +
+                        "export FILE=$line; " +
+                        "pushd simulation/$FILE; " +
+                        "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                        "cat output_data/* > output.txt; " +
+                        "popd;" +
+                        "cat simulation/$FILE/$FILE.out; " +
+                        "done < /dev/stdin")
+            else // cluster
+            {
+                Array[String](
+                    "bash",
+                    "-c",
+                    "while read line; do " +
+                        "export FILE=$line; " +
+                        //                        "pwd > /tmp/$FILE.environment.log; " +
+                        //                        "env >> /tmp/$FILE.environment.log; " +
+                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        "HADOOP_USER_NAME=$SPARK_USER; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
+                        "pushd $FILE; " +
+                        "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                        "cat output_data/* > output.txt; " +
+                        "popd; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt /simulation/$FILE; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
+                        "cat $FILE/$FILE.out; " +
                             "rm -rf $FILE; " +
                             "done < /dev/stdin")
                 }
@@ -710,77 +707,78 @@ class GridLABD(session: SparkSession) extends Serializable
         }
 
     def read_output_files(reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))]): RDD[(String, ThreePhaseComplexDataElement)] =
-        {
-      
+    {
+
             def toTimeStamp(string: String): Long =
-                    {
-                        _DateFormat.parse(string).getTime()
-                    }
-            
-            val base_folder = "simulation"
-            val output_folder = "output_data"
-            val path = 
-              if (HDFS_URI == "")
+                {
+                    _DateFormat.parse(string).getTime()
+                }
+
+        val base_folder = "simulation"
+        val output_folder = "output_data"
+        val path =
+            if (HDFS_URI == "")
                 base_folder + "/*/output.txt"
-              else
+            else
                 "/" + base_folder + "/*/output.txt"
 
-            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-            val files = session.sparkContext.wholeTextFiles(path, executors)
+        val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+        val files = session.sparkContext.wholeTextFiles(path, executors)
 
-            files.map(k => {
-              val path = k._1
-              val trafo_pattern = ".*" + base_folder + "/(.*)/output.txt"
-              val trafo = path.replaceAll(trafo_pattern, "$1")
-              (trafo, k._2)
-              
-            }).flatMapValues(f => {
-              
-                var units = ""    
-        		var element = ""
-              	val content = f.split("\n").filter(s => s.startsWith("# file") || s.startsWith("2017"))
-              	
-              	content.map(c => {
-	                if (c.startsWith("# file")) {
-	                  val filename_pattern = "# file...... output_data/(.*)"
-	                  val filename = c.replaceAll(filename_pattern, "$1")
-	                  element = filename.substring(0, filename.indexOf("_"))
-	            
-	                  if (filename.endsWith("_voltage.csv"))
-	                      units = "Volts"
-	                  else if (filename.endsWith("_current.csv"))
-	                      units = "Amps"
-	                  null.asInstanceOf[ThreePhaseComplexDataElement]
-	                } else {
-	                  val c_arr = c.split(",")
-	                  
-	                  if (USE_ONE_PHASE)
-	                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
-	                  else
-	                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
-	                }
-	              }).filter(_ != null)
-            })
-        }
+        files.map(k ⇒ {
+            val path = k._1
+            val trafo_pattern = ".*" + base_folder + "/(.*)/output.txt"
+            val trafo = path.replaceAll(trafo_pattern, "$1")
+            (trafo, k._2)
+
+        }).flatMapValues(f ⇒ {
+
+            var units = ""
+            var element = ""
+            val content = f.split("\n").filter(s ⇒ s.startsWith("# file") || s.startsWith("2017"))
+
+            content.map(c ⇒ {
+                if (c.startsWith("# file")) {
+                    val filename_pattern = "# file...... output_data/(.*)"
+                    val filename = c.replaceAll(filename_pattern, "$1")
+                    element = filename.substring(0, filename.indexOf("_"))
+
+                    if (filename.endsWith("_voltage.csv"))
+                        units = "Volts"
+                    else if (filename.endsWith("_current.csv"))
+                        units = "Amps"
+                    null.asInstanceOf[ThreePhaseComplexDataElement]
+                }
+                else {
+                    val c_arr = c.split(",")
+
+                    if (USE_ONE_PHASE)
+                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
+                    else
+                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+                }
+            }).filter(_ != null)
+        })
+    }
 
     /**
      * Get pairs of cable id and maximum current.
      */
     def getCableMaxCurrent(): RDD[Tuple2[String, Double]] =
-        {
-            val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
-            val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
-            val keyed = lines.keyBy(_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-            val cables = keyed.join(wireinfos.keyBy(_.id)).values.map(x ⇒ (x._1.id, x._2.ratedCurrent))
+    {
+        val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
+        val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
+        val keyed = lines.keyBy(_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
+        val cables = keyed.join(wireinfos.keyBy(_.id)).values.map(x ⇒ (x._1.id, x._2.ratedCurrent))
 
-            cables.persist(STORAGE_LEVEL)
-            session.sparkContext.getCheckpointDir match {
-                case Some(dir) ⇒ cables.checkpoint()
-                case None ⇒
-            }
-
-            cables
+        cables.persist(STORAGE_LEVEL)
+        session.sparkContext.getCheckpointDir match {
+            case Some(dir) ⇒ cables.checkpoint()
+            case None ⇒
         }
+
+        cables
+    }
 
     /**
      * Find the minimum value solution from a collection
@@ -807,11 +805,13 @@ class GridLABD(session: SparkSession) extends Serializable
         }
         def combop(a: MaxEinspeiseleistung, b: MaxEinspeiseleistung): MaxEinspeiseleistung =
         {
-            a.max match {
+            a.max match
+            {
                 case None ⇒
                     b
                 case Some(kw1) ⇒
-                    b.max match {
+                    b.max match
+                    {
                         case None ⇒
                             a
                         case Some(kw2) ⇒
@@ -825,42 +825,42 @@ class GridLABD(session: SparkSession) extends Serializable
     }
 
     def voltcheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-        {
-            val limit = "voltage limit"
+    {
+        val limit = "voltage limit"
 
-	        // eliminate current measurements and measurements within tolerance
-	        def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
-	            {
-	                return (
-	                    (r.units == "Volts") &&
-	                    (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-	                    (r.value_a.abs > max))
-	            }
-	        def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
-	            {
-	                return (
-	                    (r.units == "Volts") &&
-	                    (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-	                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
-	            }
-	
-	        // assign an experiment to each measurement
-	        def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): List[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-	            {
-	                for (e ← experiments) {
-	                    if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-	                        return (List ((e, r, limit, has(r.element) + " > " + max + " Volts")))
-	                }
-	                List()
-	            }
+            // eliminate current measurements and measurements within tolerance
+            def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        (r.units == "Volts") &&
+                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                        (r.value_a.abs > max))
+                }
+            def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
+                {
+                    return (
+                        (r.units == "Volts") &&
+                        (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+                        ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+                }
 
-            val overV = elements.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
-            overV.flatMap (assign (experiments))
-        }
+            // assign an experiment to each measurement
+            def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): List[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+                {
+                    for (e ← experiments) {
+                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                            return (List ((e, r, limit, has(r.element) + " > " + max + " Volts")))
+                    }
+                    List()
+                }
+
+        val overV = elements.filter (if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+        overV.flatMap (assign (experiments))
+    }
 
     def ampcheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[Tuple2[String, Double]]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-        {
-            val limit = "current limit"
+    {
+        val limit = "current limit"
 
             // eliminate measurements below capacity
             def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
@@ -888,23 +888,23 @@ class GridLABD(session: SparkSession) extends Serializable
                     List()
                 }
 
-            val cdata_map = cdata.toMap
-            val joined_elements = elements.map(e => {
-              val max_val = cdata_map.get(e.element)
-              val max = if (max_val.isDefined)
+        val cdata_map = cdata.toMap
+        val joined_elements = elements.map(e ⇒ {
+            val max_val = cdata_map.get(e.element)
+            val max = if (max_val.isDefined)
                 max_val.get
-              else
+            else
                 Double.PositiveInfinity
-              (e, max)
-            })
-            
-            val overI = joined_elements.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
-            overI.flatMap (assign (experiments))                      
-        }
+            (e, max)
+        })
+
+        val overI = joined_elements.filter(if (USE_ONE_PHASE) interesting1ph else interesting3ph)
+        overI.flatMap (assign (experiments))
+    }
 
     def powercheck(experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], power: Double, trafo_name: String): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-        {
-            val limit = "transformer limit"
+    {
+        val limit = "transformer limit"
 
             // eliminate voltage measurements and measurements below capacity
             def interesting1ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
@@ -938,166 +938,166 @@ class GridLABD(session: SparkSession) extends Serializable
                     List()
                 }
 
-            // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
-            val i = if (USE_ONE_PHASE) math.sqrt (3) * power / 400.0 else power / (400.0 * math.sqrt (3))
-            val overI = elements.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
-            overI.flatMap (assign (experiments))
-        }
+        // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
+        val i = if (USE_ONE_PHASE) math.sqrt (3) * power / 400.0 else power / (400.0 * math.sqrt (3))
+        val overI = elements.filter (if (USE_ONE_PHASE) interesting1ph (i) else interesting3ph (i))
+        overI.flatMap (assign (experiments))
+    }
 
-    def analyse (trafo : (String, ((Double, Iterable[(String, Double)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
-        {            
-            val cdata = trafo._2._1._2
+    def analyse(trafo: (String, ((Double, Iterable[(String, Double)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+    {
+        val cdata = trafo._2._1._2
 
-            val nominal = 400.0 // ToDo: get voltage from CIM
-            val tolerance = 3.0
-            val max = nominal + (nominal * tolerance / 100.0)
-            // could also check for under the minimum; r.value_a.abs < min
+        val nominal = 400.0 // ToDo: get voltage from CIM
+        val tolerance = 3.0
+        val max = nominal + (nominal * tolerance / 100.0)
+        // could also check for under the minimum; r.value_a.abs < min
 
-            // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
-            val trafo_power = trafo._2._1._1
-            // get the name of the transformer recorder (matches Trans.emit)
-            val trafo_name = trafo._1
-            
-            val complexDataElements = trafo._2._2._1
-            val experiments = trafo._2._2._2
+        // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
+        val trafo_power = trafo._2._1._1
+        // get the name of the transformer recorder (matches Trans.emit)
+        val trafo_name = trafo._1
 
-            val v = voltcheck(experiments, complexDataElements, max)
-            val i = ampcheck(experiments, complexDataElements, cdata)
-            val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
-            
-            // establish a "no limit found" default
-            val s = experiments.map(
-                (x) =>
-                    {
-                        (
-                            x,
-                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                            "no limit",
-                            "")
-                    })
+        val complexDataElements = trafo._2._2._1
+        val experiments = trafo._2._2._2
 
-            val ret = s ++ v ++ i ++ p groupBy(k => k._1.house)
-            ret.values.map(v => finder(v)).toList
-        }
+        val v = voltcheck(experiments, complexDataElements, max)
+        val i = ampcheck(experiments, complexDataElements, cdata)
+        val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
+
+        // establish a "no limit found" default
+        val s = experiments.map(
+            (x) ⇒
+                {
+                    (
+                        x,
+                        ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                        "no limit",
+                        "")
+                })
+
+        val ret = s ++ v ++ i ++ p groupBy (k ⇒ k._1.house)
+        ret.values.map(v ⇒ finder(v)).toList
+    }
 
     def solve_and_analyse(reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
-        {
-            val b4_solve = System.nanoTime()
-            val success = solve(reduced_trafos.map(_._1))
-            val solved = System.nanoTime()
-            println("solve success: " + success)
-            println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
+    {
+        val b4_solve = System.nanoTime()
+        val success = solve(reduced_trafos.map(_._1))
+        val solved = System.nanoTime()
+        println("solve success: " + success)
+        println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
 
-            val output = read_output_files(reduced_trafos)
-            
-            val read = System.nanoTime()
-            println("read: " + (read - solved) / 1e9 + " seconds")
-            
-            val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
-            prepared_results.flatMap(analyse)
-        }
+        val output = read_output_files(reduced_trafos)
+
+        val read = System.nanoTime()
+        println("read: " + (read - solved) / 1e9 + " seconds")
+
+        val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
+        prepared_results.flatMap(analyse)
+    }
 
     def einspeiseleistung(
-        trafokreis: RDD[(String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))]): RDD[MaxEinspeiseleistung] =
-        {
-            val start = System.nanoTime()
-            val filtered_trafos = trafokreis.filter(_._2._2.isDefined)
-            println("filtered_trafos: " + filtered_trafos.count)
+        trafokreise: RDD[(String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))] //        trafokreis: RDD[String]
+        ): RDD[MaxEinspeiseleistung] =
+    {
+        val start = System.nanoTime()
 
-            val experiments = filtered_trafos.flatMap(export).cache
-            experiments.count
-            val write = System.nanoTime()
-            println("export: " + (write - start) / 1e9 + " seconds")
-            println("number of processed trafos: " + filtered_trafos.count)
+        val experiments = trafokreise.flatMap(export).cache
+        experiments.count
+        val write = System.nanoTime()
+        println("export: " + (write - start) / 1e9 + " seconds")
 
-            var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
-            if (!EXPORT_ONLY) {
-              
-                val reduced_trafos = filtered_trafos.mapValues(t => {
-                  val transformers = t._1.map(_.end1.ratedS).sum
-                  val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e => (e.element.id, e.ratedCurrent))
-                  (transformers, cdata_iter)
-                }).cache
-                
-                val max_values = solve_and_analyse(reduced_trafos, experiments)
-                println("read results: " + max_values.count)
-                
-                val b4_experiment = System.nanoTime()
-                val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house => {
-                    val experiment = house._2._1
-                    val max_option = house._2._2
-                    
-                    val step = 1000.0
-                    var riser = step
-                    var to = experiment.to
-                    var from = to - experiment.step
-                    if (max_option.isDefined) {
-                        val max = max_option.get
-                        if (max.reason != "no limit" && max.max.isDefined) {
-                            val max_val = max.max.get
-                            if (max_val > experiment.step) {
-                                to = max_val + step
-                                from = max_val - experiment.step
-                            } else {
-                                to = experiment.step
-                                from = 0
-                            }
-                            val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-                            if (!(steps * step >= (to - from)))
-                              riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
-                            
+        var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
+        if (!EXPORT_ONLY) {
+
+            val reduced_trafos = trafokreise.mapValues(t ⇒ {
+                val transformers = t._1.map(_.end1.ratedS).sum
+                val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
+                (transformers, cdata_iter)
+            }).cache
+
+            val max_values = solve_and_analyse(reduced_trafos, experiments)
+            println("read results: " + max_values.count)
+
+            val b4_experiment = System.nanoTime()
+            val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house ⇒ {
+                val experiment = house._2._1
+                val max_option = house._2._2
+
+                val step = 1000.0
+                var riser = step
+                var to = experiment.to
+                var from = to - experiment.step
+                if (max_option.isDefined) {
+                    val max = max_option.get
+                    if (max.reason != "no limit" && max.max.isDefined) {
+                        val max_val = max.max.get
+                        if (max_val > experiment.step) {
+                            to = max_val + step
+                            from = max_val - experiment.step
                         }
-                    }                        
-                    experiment.copy(from=from , to=to, step = riser)
-                }).cache
-                    
-                val experiment_adjusted = System.nanoTime()
-                println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
-                
-                filtered_trafos.map(t => cleanup(t._1, false)).count
-                
-                val filedelete = System.nanoTime()
-                println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
-                
-                experiments2.map(experiment => {
-                    fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", fileWriter.ramp_up(experiment, 0.0))
-                }).count
-                
-                val export2 = System.nanoTime()
-                println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
-                
-                ret = solve_and_analyse(reduced_trafos, experiments2).cache
-                println("ret: " + ret.count)
-                
-                val analyse = System.nanoTime()
-                println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
-                
-                val b4_db = System.nanoTime()
-                Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
-                val dbsave = System.nanoTime()
-                println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
-                
-                if (DELETE_SIMULATION_FILES)
-                    filtered_trafos.map(t => cleanup(t._1, true)).count
-            }
-            
-            ret
+                        else {
+                            to = experiment.step
+                            from = 0
+                        }
+                        val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+                        if (!(steps * step >= (to - from)))
+                            riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
+
+                    }
+                }
+                experiment.copy(from = from, to = to, step = riser)
+            }).cache
+
+            val experiment_adjusted = System.nanoTime()
+            println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
+
+            trafokreise.map(t ⇒ cleanup(t._1, false)).count
+
+            val filedelete = System.nanoTime()
+            println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
+
+            experiments2.map(experiment ⇒ {
+                fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", fileWriter.ramp_up(experiment, 0.0))
+            }).count
+
+            val export2 = System.nanoTime()
+            println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
+
+            ret = solve_and_analyse(reduced_trafos, experiments2).cache
+            println("ret: " + ret.count)
+
+            val analyse = System.nanoTime()
+            println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
+
+            val b4_db = System.nanoTime()
+            Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
+            val dbsave = System.nanoTime()
+            println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
+
+            if (DELETE_SIMULATION_FILES)
+                trafokreise.map(t ⇒ cleanup(t._1, true)).count
         }
+
+        ret
+    }
 
     def cleanup(equipment: String, includes_glm: Boolean): Unit =
+    {
+        if (includes_glm)
+            fileWriter.eraseInputFile(equipment)
+        else
         {
-            if (includes_glm) {
-                fileWriter.eraseInputFile(equipment)
-            }
-            else {
-                fileWriter.eraseInputFile(equipment + "/input_data")
-                fileWriter.eraseInputFile(equipment + "/output_data")
-                fileWriter.writeInputFile(equipment, "/output_data/dummy", null) // mkdir
-                if (!(HDFS_URI == "")) {
-                    fileWriter.eraseInputFile(equipment + "/output.txt")
-                    fileWriter.eraseInputFile(equipment + "/" + equipment + ".out")
-                }
+            fileWriter.eraseInputFile(equipment + "/input_data")
+            fileWriter.eraseInputFile(equipment + "/output_data")
+            fileWriter.writeInputFile(equipment, "/output_data/dummy", null) // mkdir
+            if (!(HDFS_URI == ""))
+            {
+                fileWriter.eraseInputFile(equipment + "/output.txt")
+                fileWriter.eraseInputFile(equipment + "/" + equipment + ".out")
             }
         }
+    }
 }
 
