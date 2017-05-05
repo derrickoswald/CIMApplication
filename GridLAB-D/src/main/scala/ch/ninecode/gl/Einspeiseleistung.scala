@@ -188,37 +188,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
     }
 
-    def ramp_up (gridlabd: GridLABD, exp: Experiment, angle: Double): Array[Byte] =
-    {
-        val ret = new StringBuilder()
-        def addrow(time: Calendar, power: Double, angle: Double) =
-        {
-            ret.append(gridlabd._DateFormat.format(time.getTime()))
-            ret.append(",")
-            if (!options.three) {
-                ret.append(-power)
-                ret.append("\n")
-            }
-            else {
-                ret.append(-power / 3) // negative load injects power, 1/3 per phase
-                ret.append("<")
-                ret.append(angle)
-                ret.append("d\n")
-            }
-            time.add(Calendar.SECOND, exp.interval)
-        }
-        val time = exp.t1
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-        var power = exp.from
-        while (power < exp.to) {
-            addrow(time, power, angle)
-            power = power + exp.step
-        }
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-
-        return (ret.toString().getBytes(StandardCharsets.UTF_8))
-    }
-
     /**
      * Find the minimum value solution from a collection
      * NOTE: we don't have to sort by time, since the power is monotonically increasing,
@@ -436,6 +405,37 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         prepared_results.flatMap(analyse)
     }
 
+    def ramp_up (gridlabd: GridLABD, exp: Experiment, angle: Double): Array[Byte] =
+    {
+        val ret = new StringBuilder()
+        def addrow(time: Calendar, power: Double, angle: Double) =
+        {
+            ret.append(gridlabd.fileWriter._DateFormat.format(time.getTime()))
+            ret.append(",")
+            if (!options.three) {
+                ret.append(-power)
+                ret.append("\n")
+            }
+            else {
+                ret.append(-power / 3) // negative load injects power, 1/3 per phase
+                ret.append("<")
+                ret.append(angle)
+                ret.append("d\n")
+            }
+            time.add(Calendar.SECOND, exp.interval)
+        }
+        val time = exp.t1
+        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+        var power = exp.from
+        while (power < exp.to) {
+            addrow(time, power, angle)
+            power = power + exp.step
+        }
+        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+
+        return (ret.toString().getBytes(StandardCharsets.UTF_8))
+    }
+
     def generate_player_file (gridlabd: GridLABD) (experiment: Experiment): Int =
     {
         if (options.three)
@@ -443,12 +443,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val r_phase = 0.0
             val s_phase = 240.0
             val t_phase = 120.0
-            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_R.csv", ramp_up (gridlabd, experiment, r_phase))
-            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_S.csv", ramp_up (gridlabd, experiment, s_phase))
-            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_T.csv", ramp_up (gridlabd, experiment, t_phase))
+            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_R.csv", ramp_up (gridlabd, experiment, r_phase))
+            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_S.csv", ramp_up (gridlabd, experiment, s_phase))
+            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_T.csv", ramp_up (gridlabd, experiment, t_phase))
         }
         else
-            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", ramp_up (gridlabd, experiment, 0.0))
+            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", ramp_up (gridlabd, experiment, 0.0))
         1
     }
 

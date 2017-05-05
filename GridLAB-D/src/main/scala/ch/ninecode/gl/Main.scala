@@ -217,7 +217,6 @@ object Main
                         classOf[ch.ninecode.gl.PreNode],
                         classOf[ch.ninecode.gl.PreEdge],
                         classOf[ch.ninecode.gl.PV],
-                        classOf[ch.ninecode.gl.Transformer],
                         classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
