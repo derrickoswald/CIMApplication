@@ -20,6 +20,11 @@ import ch.ninecode.model._
 
 class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
 {
+    // emitting classes
+    val line = new Line (one_phase)
+    val trans = new Trans (one_phase, gridlabd.USE_TOPOLOGICAL_NODES)
+    val switch = new SwitchDevice (one_phase)
+
     def nis_number (string: String): String =
     {
         val n = string.indexOf("_")
@@ -47,7 +52,7 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
     }
 
     // emit one GridLAB-D edge
-    def make_link(line: Line, switch: SwitchDevice)(edges: Iterable[PreEdge]): String =
+    def make_link (edges: Iterable[PreEdge]): String =
     {
         val edge = edges.head
         val cls = edge.element.getClass.getName
@@ -73,24 +78,15 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
             case "Fuse" ⇒
                 switch.emit(edge, edge.element.sup.asInstanceOf[Switch], true)
             case _ ⇒
-                if (switch.one_phase) // borrow the phasing from switch
-                    "\n" +
-                        "        object link\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases AN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "        };\n"
-                else
-                    "\n" +
-                        "        object link\n" +
-                        "        {\n" +
-                        "            name \"" + edge.id_equ + "\";\n" +
-                        "            phases ABCN;\n" +
-                        "            from \"" + edge.id_cn_1 + "\";\n" +
-                        "            to \"" + edge.id_cn_2 + "\";\n" +
-                        "        };\n"
+                // by default, make a link
+                "\n" +
+                    "        object link\n" +
+                    "        {\n" +
+                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                    "            from \"" + edge.id_cn_1 + "\";\n" +
+                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "        };\n"
         }
         return (ret)
     }
@@ -99,37 +95,27 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
     {
         var load = ""
         var index = 1
-        for (solargeneratingunit ← solargeneratingunits) {
+        for (solargeneratingunit ← solargeneratingunits)
+        {
             val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
+            val power3 = power / 3 // per phase
             if (power > 0) {
-                if (one_phase)
-                    load +=
-                        "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + parent + "_pv_" + index + "\";\n" +
-                        "            parent \"" + parent + "\";\n" +
-                        "            phases AN;\n" +
-                        "            constant_power_A -" + power + ";\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            load_class R;\n" +
-                        "        }\n"
-                else {
-                    val power3 = power / 3 // per phase
-                    load +=
-                        "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + parent + "_pv_" + index + "\";\n" +
-                        "            parent \"" + parent + "\";\n" +
-                        "            phases ABCN;\n" +
+                load +=
+                    "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "            name \"" + parent + "_pv_" + index + "\";\n" +
+                    "            parent \"" + parent + "\";\n" +
+                    "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                    (if (one_phase)
+                        "            constant_power_A -" + power + ";\n"
+                    else
                         "            constant_power_A -" + power3 + ";\n" +
                         "            constant_power_B -" + power3 + ";\n" +
-                        "            constant_power_C -" + power3 + ";\n" +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            load_class R;\n" +
-                        "        }\n"
-                }
+                        "            constant_power_C -" + power3 + ";\n") +
+                    "            nominal_voltage " + voltage + "V;\n" +
+                    "            load_class R;\n" +
+                    "        }\n"
                 index += 1
             }
         }
@@ -144,150 +130,101 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
         val experiment = if (0 != filtered.length) filtered(0) else null
 
         if (null != experiment)
-            if (one_phase)
-                "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "            name \"" + name + "_load\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            phases AN;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_A\";\n" +
-                    "                file \"input_data/" + house + ".csv\";\n" +
-                    "            };\n" +
-                    "        };\n"
+            "\n" +
+            "        object load\n" +
+            "        {\n" +
+            "            name \"" + name + "_load\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+            "            nominal_voltage " + voltage + "V;\n" +
+            (if (one_phase)
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_A\";\n" +
+                "                file \"input_data/" + house + ".csv\";\n" +
+                "            };\n"
             else
-                "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "            name \"" + name + "_load\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_A\";\n" +
-                    "                file \"input_data/" + house + "_R.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_B\";\n" +
-                    "                file \"input_data/" + house + "_S.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_C\";\n" +
-                    "                file \"input_data/" + house + "_T.csv\";\n" +
-                    "            };\n" +
-                    "        };\n"
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_A\";\n" +
+                "                file \"input_data/" + house + "_R.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_B\";\n" +
+                "                file \"input_data/" + house + "_S.csv\";\n" +
+                "            };\n" +
+                "            object player\n" +
+                "            {\n" +
+                "                property \"constant_power_C\";\n" +
+                "                file \"input_data/" + house + "_T.csv\";\n" +
+                "            };\n") +
+            "        };\n" +
+            "\n" + // only need a recorder if there is a load
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + name + "_voltage.csv\";\n" +
+            "        };\n"
         else
             ""
     }
 
     def emit_node(experiments: Array[Experiment], name: String, voltage: Double): String =
     {
-        val meter =
-            if (one_phase)
-                "\n" +
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + name + "\";\n" +
-                    "            phases AN;\n" +
-                    "            bustype PQ;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "        };\n"
-            else
-                "\n" +
-                    "        object meter\n" +
-                    "        {\n" +
-                    "            name \"" + name + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            bustype PQ;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "        };\n"
-
-        //           load_from_player_file (name, voltage)
-        val player = generate_load (experiments, name, voltage)
-
-        val recorder =
-            if (one_phase)
-                "\n" +
-                    "        object recorder\n" +
-                    "        {\n" +
-                    "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            property voltage_A.real,voltage_A.imag;\n" +
-                    "            interval 5;\n" +
-                    "            file \"output_data/" + name + "_voltage.csv\";\n" +
-                    "        };\n"
-            else
-                "\n" +
-                    "        object recorder\n" +
-                    "        {\n" +
-                    "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
-                    "            interval 5;\n" +
-                    "            file \"output_data/" + name + "_voltage.csv\";\n" +
-                    "        };\n"
-
-        return (meter + (if ("" == player) "" else (player + recorder)))
+        "\n" +
+        "        object meter\n" +
+        "        {\n" +
+        "            name \"" + name + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            bustype PQ;\n" +
+        "            nominal_voltage " + voltage + "V;\n" +
+        "        };\n" +
+        generate_load (experiments, name, voltage)  // or load_from_player_file (name, voltage)
     }
 
     def emit_slack(name: String, voltage: Double): String =
     {
-        if (one_phase)
-            "\n" +
-                "        object meter\n" +
-                "        {\n" +
-                "            name \"" + name + "\";\n" +
-                "            phases AN;\n" +
-                "            bustype SWING;\n" +
-                "            nominal_voltage " + voltage + "V;\n" +
-                "            voltage_A " + voltage + ";\n" +
-                "        };\n"
+        "\n" +
+        "        object meter\n" +
+        "        {\n" +
+        "            name \"" + name + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            bustype SWING;\n" +
+        "            nominal_voltage " + voltage + "V;\n" +
+        (if (one_phase)
+            "            voltage_A " + voltage + ";\n"
         else
-            "\n" +
-                "        object meter\n" +
-                "        {\n" +
-                "            name \"" + name + "\";\n" +
-                "            phases ABCN;\n" +
-                "            bustype SWING;\n" +
-                "            nominal_voltage " + voltage + "V;\n" +
-                // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-                "            voltage_A " + voltage + "+30.0d;\n" +
-                "            voltage_B " + voltage + "-90.0d;\n" +
-                "            voltage_C " + voltage + "+150.0d;\n" +
-                "        };\n"
+            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+            "            voltage_A " + voltage + "+30.0d;\n" +
+            "            voltage_B " + voltage + "-90.0d;\n" +
+            "            voltage_C " + voltage + "+150.0d;\n") +
+        "        };\n"
     }
 
     def make_glm (trafokreis: Trafokreis): String =
     {
-        val starting_transformers = trafokreis.transformers
-
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = trafokreis.edges.groupBy(_.key).values
 
         // get one of each type of ACLineSegment and emit a configuration for each of them
-        val line = new Line(one_phase)
-
         val l_strings = line.getACLineSegmentConfigurations(combined_edges)
 
         // get the transformer configuration
-        val trans = new Trans(one_phase, gridlabd.USE_TOPOLOGICAL_NODES)
-        val t_string = trans.getTransformerConfigurations(starting_transformers)
-        val o_string = emit_slack(trafokreis.swing_node (), starting_transformers(0).voltage0 * 1000)
+        val t_string = trans.getTransformerConfigurations(trafokreis.transformers)
+        val o_string = emit_slack (trafokreis.swing_node (), trafokreis.swing_node_voltage ())
 
         // get the node strings
         val experiments = trafokreis.experiments
-        val n_strings = trafokreis.nodes.map(make_node(experiments))
-        val pv_strings = trafokreis.houses.filter(_.eea != null).map(make_pv)
+        val n_strings = trafokreis.nodes.map (make_node(experiments))
+        val pv_strings = trafokreis.houses.filter (_.eea != null).map(make_pv)
 
         // get the edge strings
-        val t_edges = trans.emit(starting_transformers)
-        val l_edges = combined_edges.map(make_link(line, new SwitchDevice(one_phase)))
+        val t_edges = trans.emit (trafokreis.transformers)
+        val l_edges = combined_edges.map (make_link)
 
         /**
          * Create the output file.

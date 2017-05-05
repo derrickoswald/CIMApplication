@@ -29,29 +29,40 @@ class Trans (one_phase: Boolean, USE_TOPOLOGICAL_NODES: Boolean) extends Seriali
     // get the configuration name (of the parallel transformers)
     def configurationName (iter: Iterable[TData]): String =
     {
-        iter.map (_.transformer.id).map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
+        val n = iter.map (_.transformer.id).map (valid_config_name).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
+        // limit to 64 bytes with null:
+        // typedef struct s_objecttree {
+        //     char name[64];
+        //     OBJECT *obj;
+        //     struct s_objecttree *before, *after;
+        //     int balance; /* unused */
+        // } OBJECTTREE;
+        if (n.getBytes.length > 63)
+            "_" + Math.abs (n.hashCode())
+        else
+            n
     }
 
     /**
      * Make one or more transformer configurations.
      * Most transformers have only two ends, so this should normally make one configurations
      */
-    def make_transformer_configuration (trafokreis: Array[TData]): String =
+    def getTransformerConfigurations (transformers: Array[TData]): String =
     {
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
-        val config = configurationName (trafokreis)
+        val config = configurationName (transformers)
         // primary and secondary voltage should be the same on all edges - use the first
         // TODO check for voltages on terminal
-        val v0 = 1000.0 * trafokreis.head.voltage0
-        val v1 = 1000.0 * trafokreis.head.voltage1
-        if (!trafokreis.forall ((edge) => (1000.0 * edge.voltage0 == v0)))
-            log.error ("transformer group " + config + " has different voltages on terminal 0 " + trafokreis.map ((x) => x.voltage0).mkString (" "))
-        if (!trafokreis.forall ((edge) => (1000.0 * edge.voltage1 == v1)))
-            log.error ("transformer group " + config + " has different voltages on terminal 1 " + trafokreis.map ((x) => x.voltage1).mkString (" "))
+        val v0 = 1000.0 * transformers.head.voltage0
+        val v1 = 1000.0 * transformers.head.voltage1
+        if (!transformers.forall ((edge) => (1000.0 * edge.voltage0 == v0)))
+            log.error ("transformer group " + config + " has different voltages on terminal 0 " + transformers.map ((x) => x.voltage0).mkString (" "))
+        if (!transformers.forall ((edge) => (1000.0 * edge.voltage1 == v1)))
+            log.error ("transformer group " + config + " has different voltages on terminal 1 " + transformers.map ((x) => x.voltage1).mkString (" "))
         // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-        val power_rating = trafokreis.foldLeft (0.0)((sum, edge) => sum + edge.end1.ratedS)
+        val power_rating = transformers.foldLeft (0.0)((sum, edge) => sum + edge.end1.ratedS)
         // calculate the impedance as 1 / sum (1/Zi)
-        val impedances = trafokreis.map (
+        val impedances = transformers.map (
             (edge) =>
             {
                 val sqrt3 = Math.sqrt (3)
@@ -67,94 +78,42 @@ class Trans (one_phase: Boolean, USE_TOPOLOGICAL_NODES: Boolean) extends Seriali
         )
         val total_impedance = impedances.map (_.reciprocal).foldLeft (Complex (0.0, 0.0))(_.+(_)).reciprocal
 
-        val ret =
-            "\n" +
-            "        object transformer_configuration\n" +
-            "        {\n" +
-            "            name \"" + config + "\";\n" +
-            "            connect_type WYE_WYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
-            "            install_type PADMOUNT;\n" +
-            "            power_rating " + (power_rating / 1000.0) + ";\n" +
-            "            primary_voltage " + v0 + ";\n" +
-            "            secondary_voltage " + v1 + ";\n" +
-            "            resistance " + total_impedance.re + ";\n" +
-            "            reactance " + total_impedance.im + ";\n" +
-            "        };\n"
-
-        return (ret)
+        "\n" +
+        "        object transformer_configuration\n" +
+        "        {\n" +
+        "            name \"" + config + "\";\n" +
+        "            connect_type WYE_WYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
+        "            install_type PADMOUNT;\n" +
+        "            power_rating " + (power_rating / 1000.0) + ";\n" +
+        "            primary_voltage " + v0 + ";\n" +
+        "            secondary_voltage " + v1 + ";\n" +
+        "            resistance " + total_impedance.re + ";\n" +
+        "            reactance " + total_impedance.im + ";\n" +
+        "        };\n"
     }
 
-    // get one of each type of PowerTransformer and emit a configuration for each of them
-    def getTransformerConfigurations (trafokreis: Array[TData]): String =
+    def emit (transformers: Array[TData]): String =
     {
-        make_transformer_configuration(trafokreis)
-    }
-
-    def make_transformer (s: Iterable[Tuple2[PreEdge,TData]]): Transformer =
-    {
-        // get an edge, they all have the same connectivity nodes
-        val an_edge = s.head._1
-        // get a primary terminal (they are all the same)
-        val a_primary = s.head._2.terminal0
-        // get the connectivity node for the primary terminal
-        val node = if (an_edge.id_seq_1 == a_primary.id) an_edge.id_cn_1 else an_edge.id_cn_2
-        Transformer (node, s.map (_._2).toList)
-    }
-
-    def getTransformers (edges: Iterable[Iterable[Tuple2[PreEdge,TData]]]): Iterable[Transformer] =
-    {
-        edges.map (make_transformer)
-    }
-
-  def emit(trafo: Array[TData]): String =
-    {
-        val config = configurationName (trafo)
-        val name = trafo.map (_.transformer.id).map (x => valid_config_name (x)).mkString ("_")
-        // get an edge, they all have the same connectivity nodes
-        val (cn1, cn2) = if (USE_TOPOLOGICAL_NODES)
-          (trafo.head.terminal0.TopologicalNode, trafo.head.terminal1.TopologicalNode)
-        else
-          (trafo.head.terminal0.ConnectivityNode, trafo.head.terminal1.ConnectivityNode)
-        val obj = if (one_phase)
-            "\n" +
-            "        object transformer\n" +
-            "        {\n" +
-            "            name \"" + name + "\";\n" +
-            "            phases AN;\n" +
-            "            from \"" + cn1 + "\";\n" +
-            "            to \"" + cn2 + "\";\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object transformer\n" +
-            "        {\n" +
-            "            name \"" + name + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + cn1 + "\";\n" +
-            "            to \"" + cn2 + "\";\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        val rec = if (one_phase)
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + name + "_current_recorder\";\n" +
-            "            parent \"" + name + "\";\n" +
-            "            property current_out_A.real,current_out_A.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + name + "_current.csv\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + name + "_current_recorder\";\n" +
-            "            parent \"" + name + "\";\n" +
-            "            property current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + name + "_current.csv\";\n" +
-            "        };\n"
-        return (obj + rec)
+        val config = configurationName (transformers)
+        val name = transformers.map (_.transformer.id).map (x => valid_config_name (x)).mkString ("_")
+        // all transformers in the array have the same nodes
+        "\n" +
+        "        object transformer\n" +
+        "        {\n" +
+        "            name \"" + name + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            from \"" + transformers.head.node0 + "\";\n" +
+        "            to \"" + transformers.head.node1 + "\";\n" +
+        "            configuration \"" + config + "\";\n" +
+        "        };\n" +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + name + "_current_recorder\";\n" +
+        "            parent \"" + name + "\";\n" +
+        "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
+        "            interval 5;\n" +
+        "            file \"output_data/" + name + "_current.csv\";\n" +
+        "        };\n"
     }
 }

@@ -99,6 +99,7 @@ trait Problem
     def start_time (): Calendar
     def finish_time (): Calendar
     def swing_node (): String
+    def swing_node_voltage (): Double
 }
 
 object Problem
@@ -165,6 +166,8 @@ case class Trafokreis
                 node(transformers(0).terminal0)
         }
     }
+
+    def swing_node_voltage (): Double = transformers(0).voltage0 * 1000
 }
 
 object Trafokreis
@@ -611,7 +614,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 //                }
 
         val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
-        val tdata = _transformers.getTransformerData (options.short_circuit)
+        val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
 
         // get the existing photo-voltaic installations keyed by terminal
         val sdata = gridlabd.getSolarInstallations (true)

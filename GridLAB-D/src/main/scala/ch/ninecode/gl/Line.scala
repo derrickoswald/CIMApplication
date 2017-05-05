@@ -90,7 +90,7 @@ class Line (one_phase: Boolean) extends Serializable
     def configurationName (iter: Iterable[PreEdge]): String =
     {
         val n = iter.map (_.equipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-        .map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||")
+        .map (valid_config_name).toArray.sortWith (_ < _).mkString ("||")
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -163,48 +163,25 @@ class Line (one_phase: Boolean) extends Serializable
         else
             "overhead_line"
         val config = configurationName (edges)
-        val obj = if (one_phase)
-            "\n" +
-            "        object " + typ + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases AN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            length " + line.Conductor.len + "m;\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object " + typ + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            length " + line.Conductor.len + "m;\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        val rec = if (one_phase)
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
-            "            property current_in_A.real,current_in_A.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
-            "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-            "        };\n"
-        return (obj + rec)
+
+        "\n" +
+        "        object " + typ + "\n" +
+        "        {\n" +
+        "            name \"" + edge.id_equ + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            from \"" + edge.id_cn_1 + "\";\n" +
+        "            to \"" + edge.id_cn_2 + "\";\n" +
+        "            length " + line.Conductor.len + "m;\n" +
+        "            configuration \"" + config + "\";\n" +
+        "        };\n" +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + edge.id_equ + "_current_recorder\";\n" +
+        "            parent \"" + edge.id_equ + "\";\n" +
+        "            property " + (if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
+        "            interval 5;\n" +
+        "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
+        "        };\n"
     }
 }

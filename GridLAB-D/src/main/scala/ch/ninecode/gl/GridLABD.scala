@@ -97,16 +97,6 @@ case class PV(
     solar: SolarGeneratingUnit)
 
 /**
- * Transformer attachment.
- * Transformer(s) attached to a node.
- * @param node ConnectivityNode or TopologicalNode MRID.
- * @param transformer Transformer data object(s) attached to the node.
- */
-case class Transformer(
-    node: String,
-    transformer: List[TData])
-
-/**
  * Recorder time series element.
  * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
  * @param millis Number of milliseconds since the epoc.
@@ -167,6 +157,16 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
     }
 
     /**
+     * The name of the node associated with a terminal.
+     * @param terminal The terminal object to get the node for.
+     * @return The name of the TopologicalNode or ConnectivityNode.
+     */
+    def node_name (t: Terminal): String =
+    {
+        return (if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode)
+    }
+
+    /**
      * Function to see if the Pregel algorithm should continue tracing or not.
      * @param element The edge element (subclass of ConductingEquipment).
      */
@@ -209,14 +209,9 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         }
     }
 
-    def edge_operator(voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[(Element, Double), Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator(voltages: Map[String, Double])(arg: Tuple2[Tuple2[(Element, Double), Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
     {
         var ret = List[PreEdge]()
-
-        def node_name(t: Terminal): String =
-        {
-            return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
-        }
 
         val e = arg._1._1._1
         val ratedCurrent = arg._1._1._2
@@ -505,7 +500,7 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         val elementsplus = joined_elements.leftOuterJoin(ends)
 
         // map the terminal 'pairs' to edges
-        val edges = elementsplus.join(terms).flatMapValues(edge_operator(voltages, USE_TOPOLOGICAL_NODES)).values
+        val edges = elementsplus.join(terms).flatMapValues (edge_operator (voltages)).values
 
         // eliminate edges with only one connectivity node, or the same connectivity node
         val real_edges = edges.filter(x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
