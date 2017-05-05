@@ -15,6 +15,7 @@ import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexRDD
 import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.model._
 
@@ -214,7 +215,7 @@ object PowerFeeding
       StartingTrafos (v0, v1, tdata, r, ratedS)
     }
 
-    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
+    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
         val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
@@ -256,9 +257,9 @@ object PowerFeeding
         val vertices = graph.vertices.values
         val edges = graph.triplets.map(mapGraphEdges)
 
-        has.persist (gridlabd.STORAGE_LEVEL)
-        vertices.persist (gridlabd.STORAGE_LEVEL)
-        edges.persist (gridlabd.STORAGE_LEVEL)
+        has.persist (storage_level)
+        vertices.persist (storage_level)
+        edges.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {
             case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()

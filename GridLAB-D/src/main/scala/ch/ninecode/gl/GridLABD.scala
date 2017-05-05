@@ -125,19 +125,20 @@ case class ThreePhaseComplexDataElement(
 /**
  * Compute the maximum feed-in power at house connections in a network.
  */
-class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
+class GridLABD (
+    session: SparkSession,
+    one_phase: Boolean = false,
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
 
     var USE_TOPOLOGICAL_NODES = true
     var HDFS_URI = "hdfs://sandbox:8020/"
-    var STORAGE_LEVEL = StorageLevel.MEMORY_ONLY
-
-    val fileWriter = new FileWriter (this, one_phase)
 
     /**
      * Lookup CIM RDD by name.
      * @param name The unqualified name of the RDD (name of the class)
+     * @return The RDD found or null if nothing was found.
      */
     def get (name: String): RDD[Element] =
     {
@@ -323,86 +324,6 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
     }
 
-    def filterValidSolarUnits(pv: RDD[PV]): RDD[PV] =
-    {
-        val lifecycle = get("LifecycleDate").asInstanceOf[RDD[LifecycleDate]]
-        val asset = get("Asset").asInstanceOf[RDD[Asset]]
-        val lifecycle_per_eea = asset.keyBy(_.lifecycle).join(lifecycle.keyBy(_.id)).map(l ⇒ (l._2._1.IdentifiedObject.name, (l._2._2)))
-        val pv_lifecycle = pv.keyBy(_.solar.id).leftOuterJoin(lifecycle_per_eea)
-
-        def lifecycleValid(lifecycle: LifecycleDate): Boolean =
-        {
-            if (lifecycle.installationDate != null)
-                true
-            else if (lifecycle.receivedDate != null)
-            {
-                val _DateFormat = new SimpleDateFormat("dd.MM.yyyy")
-                val receivedDate = _DateFormat.parse(lifecycle.receivedDate)
-                val now = new Date()
-                val diffTime = now.getTime() - receivedDate.getTime()
-                val diffDays = diffTime / (1000 * 60 * 60 * 24);
-                diffDays < 400
-            }
-            else
-                false
-        }
-
-        val valid_pv = pv_lifecycle.filter(p ⇒ {
-            val lifecycle_option = p._2._2
-            if (lifecycle_option.isDefined)
-                lifecycleValid(lifecycle_option.get)
-            else
-                false
-        })
-
-        valid_pv.map(_._2._1)
-    }
-
-    // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations(topologicalnodes: Boolean): RDD[Tuple2[String, Iterable[PV]]] =
-    {
-        // note there are two independent linkages happening here through the UserAttribute class:
-        // - SolarGeneratingUnit to ServiceLocation
-        // - ServiceLocation to EnergyConsumer
-
-        // link to service location ids via UserAttribute
-        val attributes = get("UserAttribute").asInstanceOf[RDD[UserAttribute]]
-
-        // user attributes link through string quantities
-        val strings = get("StringQuantity").asInstanceOf[RDD[StringQuantity]]
-
-        // get solar to service linkage, e.g. ("EEA5280", "MST115133")
-        // and service to house linkage, e.g. ("MST115133", "HAS138130")
-        val pairs = attributes.keyBy(_.value).join(strings.keyBy(_.id)).values.map(x ⇒ (x._1.name, x._2.value))
-
-        // get a simple list of house to pv id pairs
-        val links = pairs.join(pairs.map(x ⇒ (x._2, x._1))).values
-
-        // get the pv stations
-        val solars = get("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
-
-        // get a simple list of house to pv pairs
-        val house_solars = links.map(x ⇒ (x._2, x._1)).join(solars.keyBy(_.id)).values
-
-        // get the terminals
-        val terminals = get("Terminal").asInstanceOf[RDD[Terminal]]
-
-        // link to the connectivity/topological node through the terminal
-        val t = terminals.keyBy(_.ConductingEquipment).join(house_solars).values.map(
-            (x) ⇒ PV(if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
-
-        val filteredPV = filterValidSolarUnits(t)
-        val pv = filteredPV.groupBy(_.node)
-
-        pv.persist(STORAGE_LEVEL)
-        session.sparkContext.getCheckpointDir match {
-            case Some(dir) ⇒ pv.checkpoint()
-            case None ⇒
-        }
-
-        pv
-    }
-
     /**
      * Get pairs of cable id and maximum current.
      */
@@ -413,7 +334,7 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         val keyed = lines.keyBy(_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
         val cables = keyed.join(wireinfos.keyBy(_.id)).values.map(x ⇒ (x._1.id, x._2.ratedCurrent))
 
-        cables.persist(STORAGE_LEVEL)
+        cables.persist(storage_level)
         session.sparkContext.getCheckpointDir match {
             case Some(dir) ⇒ cables.checkpoint()
             case None ⇒
@@ -486,29 +407,17 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         val xnodes = nodes.map(make_graph_vertices)
         val e = xedges.count
         xedges.name = "xedges"
-        xedges.persist(STORAGE_LEVEL)
+        xedges.persist(storage_level)
         val n = xnodes.count
         xnodes.name = "xnodes"
-        xnodes.persist(STORAGE_LEVEL)
+        xnodes.persist(storage_level)
         session.sparkContext.getCheckpointDir match {
             case Some(dir) ⇒
                 xedges.checkpoint(); xnodes.checkpoint()
             case None ⇒
         }
 
-        val _xedges = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xedges").head._2.asInstanceOf[RDD[Edge[PreEdge]]]
-        val _xnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "xnodes").head._2.asInstanceOf[RDD[(VertexId, PreNode)]]
-
-        (_xedges, _xnodes)
-    }
-
-    def tzString: String =
-    {
-        // "CET-1CEST"
-        val t = Calendar.getInstance()
-        val tz = t.getTimeZone
-        // ToDo: fractional hour time zones
-        tz.getDisplayName(false, TimeZone.SHORT) + (-tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName(true, TimeZone.SHORT)
+        (xedges, xnodes)
     }
 
     def trafokreis_key(transformers: Array[TData]): String =
@@ -516,11 +425,11 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
         transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
     }
 
-    def export(trafokreis: Trafokreis): Unit =
+    def export(generator: GLMGenerator, trafokreis: Trafokreis): Unit =
     {
         val name = trafokreis.name
         eraseInputFile (name)
-        val result = fileWriter.make_glm (trafokreis)
+        val result = generator.make_glm (trafokreis)
         writeInputFile (name, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
         writeInputFile (name, "output_data/dummy", null) // mkdir
     }
@@ -584,9 +493,10 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
 
     def read_output_files (one_phase: Boolean, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))]): RDD[(String, ThreePhaseComplexDataElement)] =
     {
-        def toTimeStamp(string: String): Long =
+        val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+        def toTimeStamp (string: String): Long =
         {
-            fileWriter._DateFormat.parse(string).getTime()
+            date_format.parse (string).getTime ()
         }
 
         val base_folder = "simulation"

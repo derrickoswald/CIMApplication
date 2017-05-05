@@ -105,21 +105,22 @@ class PowerFeedingSuite extends FunSuite
         // set up for execution
         val gridlabd = new GridLABD (session, true)
         gridlabd.HDFS_URI = "" // local
-        gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
+        val storage_level = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
         val (xedges, xnodes) = gridlabd.prepare ()
 
-        val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
+        val _transformers = new Transformers (session, storage_level)
         val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, null)
-        tdata.persist (gridlabd.STORAGE_LEVEL)
+        tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
-        val solars = gridlabd.getSolarInstallations (use_topological_nodes)
+        val eins = Einspeiseleistung (session, EinspeiseleistungOptions ())
+        val solars = eins.getSolarInstallations (use_topological_nodes, storage_level)
         // construct the initial graph from the real edges and nodes
-        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
+        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
         val power_feeding = new PowerFeeding(initial)
 
         val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))

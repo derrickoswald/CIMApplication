@@ -9,7 +9,7 @@ import ch.ninecode.model._
  * @param transformers - the RDD of transformers
  * @param one_phase - flag to indicate if single phase output is desired
  */
-class Trans (one_phase: Boolean, USE_TOPOLOGICAL_NODES: Boolean) extends Serializable
+class Trans (one_phase: Boolean) extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
 
