@@ -19,7 +19,25 @@ import org.apache.spark.graphx.VertexId
 import ch.ninecode.model._
 
 case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double, multiple_paths: Boolean) extends Serializable
-case class MaxPowerFeedingNodeEEA(id_seq: String, voltage: Double, source_obj: Array[TData], max_power_feeding: Double, eea: Iterable[PV], reason: String, details: String) extends Serializable
+case class MaxPowerFeedingNodeEEA (
+    id_seq: String,
+    voltage: Double,
+    source_obj: Array[TData],
+    max_power_feeding: Double,
+    eea: Iterable[PV],
+    reason: String,
+    details: String)
+    extends Serializable
+{
+    def nis_number: String =
+    {
+        val n = id_seq.indexOf("_")
+        if (0 < n)
+            id_seq.substring(0, n)
+        else
+            id_seq
+    }
+}
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
 case class PreCalculationResults (
     simulation: Int,

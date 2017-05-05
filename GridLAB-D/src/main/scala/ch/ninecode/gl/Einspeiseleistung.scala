@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.util.Calendar
 
 import scala.collection.mutable.HashMap
@@ -32,6 +33,62 @@ case class EinspeiseleistungOptions (
     short_circuit: String = "",
     files: Seq[String] = Seq()
 )
+
+/**
+ * Stepped experiment parameters.
+ * @param trafo CIM MRID of the transformer feeding the house.
+ * @param house CIM MRID of house being experimented on.
+ * @param t0 Origin for all experiments.
+ * @param t1 Start time for this experiment.
+ * @param slot Unique experiment number (slot in windowed time).
+ * @param window Duration of the experiment (seconds).
+ * @param interval Duration between steps in the experiment (seconds).
+ * @param from Starting PV power (kW).
+ * @param to Ending PV power (kW).
+ * @param step Power increment, resolution of the Einspeiseleistung value (kW).
+ */
+case class Experiment(
+    trafo: String,
+    house: String,
+    t0: Calendar,
+    slot: Int,
+    window: Int,
+    interval: Int,
+    from: Double,
+    to: Double,
+    step: Double)
+{
+    /**
+     * Calendar duplication utility function.
+     * @param c The Calendar value to be cloned.
+     */
+    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+
+    /**
+     * The start time of the experiment.
+     */
+    def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+
+    /**
+     * The end time of the experiment.
+     */
+    def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
+}
+
+/**
+ * Final result record.
+ * @param trafo MRID of transformer feeding the house.
+ * @param house MRID of the house.
+ * @param max Maximum feed in power (kW) or None if no limit was found.
+ * @param reason Explanatory reason for the limit (voltage, current or power exceeded).
+ * @param details The test which caused the limit including the network element.
+ */
+case class MaxEinspeiseleistung(
+    trafo: String,
+    house: String,
+    max: Option[Double],
+    reason: String,
+    details: String)
 
 trait Problem
 {
@@ -65,17 +122,9 @@ case class Trafokreis
     val margin = 1.25 // check up to 25% over the precalculated value
     val step = 10000.0
     def significant (h: MaxPowerFeedingNodeEEA) = (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
-    def nis_number (string: String): String =
-    {
-        val n = string.indexOf("_")
-        if (0 < n)
-            string.substring(0, n)
-        else
-            string
-    }
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)) =
     {
-        val house = nis_number (h._1.id_seq) // the house under test
+        val house = h._1.nis_number // the house under test
         val index = h._2 // experiment #
         def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
         val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
@@ -134,6 +183,37 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             case _ =>
                 null
         }
+    }
+
+    def ramp_up (gridlabd: GridLABD, exp: Experiment, angle: Double): Array[Byte] =
+    {
+        val ret = new StringBuilder()
+        def addrow(time: Calendar, power: Double, angle: Double) =
+        {
+            ret.append(gridlabd._DateFormat.format(time.getTime()))
+            ret.append(",")
+            if (!options.three) {
+                ret.append(-power)
+                ret.append("\n")
+            }
+            else {
+                ret.append(-power / 3) // negative load injects power, 1/3 per phase
+                ret.append("<")
+                ret.append(angle)
+                ret.append("d\n")
+            }
+            time.add(Calendar.SECOND, exp.interval)
+        }
+        val time = exp.t1
+        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+        var power = exp.from
+        while (power < exp.to) {
+            addrow(time, power, angle)
+            power = power + exp.step
+        }
+        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+
+        return (ret.toString().getBytes(StandardCharsets.UTF_8))
     }
 
     /**
@@ -205,7 +285,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             for (e ← experiments) {
                 if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                    return (List ((e, r, limit, r.element + " > " + max + " Volts")))
+                    return (List ((e, r, limit, e.house + " > " + max + " Volts")))
             }
             List()
         }
@@ -353,6 +433,22 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         prepared_results.flatMap(analyse)
     }
 
+    def generate_player_file (gridlabd: GridLABD) (experiment: Experiment): Int =
+    {
+        if (options.three)
+        {
+            val r_phase = 0.0
+            val s_phase = 240.0
+            val t_phase = 120.0
+            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_R.csv", ramp_up (gridlabd, experiment, r_phase))
+            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_S.csv", ramp_up (gridlabd, experiment, s_phase))
+            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_T.csv", ramp_up (gridlabd, experiment, t_phase))
+        }
+        else
+            gridlabd.fileWriter.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", ramp_up (gridlabd, experiment, 0.0))
+        1
+    }
+
     def einspeiseleistung (gridlabd: GridLABD, trafokreise: RDD[Trafokreis]): RDD[MaxEinspeiseleistung] =
     {
         val start = System.nanoTime()
@@ -371,6 +467,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
         if (!options.export_only)
         {
+            val c = experiments.map (generate_player_file (gridlabd)_).count
+            println (c.toString + " experiments")
 
             val reduced_trafos = trafokreise.map (t ⇒ {
                 val transformers = t.transformers.map(_.end1.ratedS).sum
@@ -419,9 +517,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val filedelete = System.nanoTime()
             println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
 
-            experiments2.map(experiment ⇒ {
-                gridlabd.fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", gridlabd.fileWriter.ramp_up(experiment, 0.0))
-            }).count
+            val d = experiments2.map (generate_player_file (gridlabd)_).count
+            println (d.toString + " experiments")
 
             val export2 = System.nanoTime()
             println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
@@ -549,7 +646,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else if (-1 != options.reference)
         {
             val changed = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta)
-            precalc_results.has.filter ((x) => changed.contains (gridlabd.has(x.id_seq)))
+            precalc_results.has.filter ((x) => changed.contains (x.nis_number))
         }
         else
             precalc_results.has.filter(_.eea != null)

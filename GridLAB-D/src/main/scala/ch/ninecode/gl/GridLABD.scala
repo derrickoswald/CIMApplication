@@ -107,47 +107,6 @@ case class Transformer(
     transformer: List[TData])
 
 /**
- * Stepped experiment parameters.
- * @param trafo CIM MRID of the transformer feeding the house.
- * @param house CIM MRID of house being experimented on.
- * @param t0 Origin for all experiments.
- * @param t1 Start time for this experiment.
- * @param slot Unique experiment number (slot in windowed time).
- * @param window Duration of the experiment (seconds).
- * @param interval Duration between steps in the experiment (seconds).
- * @param from Starting PV power (kW).
- * @param to Ending PV power (kW).
- * @param step Power increment, resolution of the Einspeiseleistung value (kW).
- */
-case class Experiment(
-    trafo: String,
-    house: String,
-    t0: Calendar,
-    slot: Int,
-    window: Int,
-    interval: Int,
-    from: Double,
-    to: Double,
-    step: Double)
-{
-    /**
-     * Calendar duplication utility function.
-     * @param c The Calendar value to be cloned.
-     */
-    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
-
-    /**
-     * The start time of the experiment.
-     */
-    def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
-
-    /**
-     * The end time of the experiment.
-     */
-    def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
-}
-
-/**
  * Recorder time series element.
  * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
  * @param millis Number of milliseconds since the epoc.
@@ -163,21 +122,6 @@ case class ThreePhaseComplexDataElement(
     value_b: Complex,
     value_c: Complex,
     units: String)
-
-/**
- * Final result record.
- * @param trafo MRID of transformer feeding the house.
- * @param house MRID of the house.
- * @param max Maximum feed in power (kW) or None if no limit was found.
- * @param reason Explanatory reason for the limit (voltage, current or power exceeded).
- * @param details The test which caused the limit including the network element.
- */
-case class MaxEinspeiseleistung(
-    trafo: String,
-    house: String,
-    max: Option[Double],
-    reason: String,
-    details: String)
 
 /**
  * Compute the maximum feed-in power at house connections in a network.
@@ -370,15 +314,6 @@ class GridLABD (session: SparkSession, one_phase: Boolean) extends Serializable
             s.substring(0, s.length - "_topo".length)
         else
             s
-    }
-
-    def has(string: String): String =
-    {
-        val n = string.indexOf("_")
-        if (0 < n)
-            string.substring(0, n)
-        else
-            string
     }
 
     def exists(filename: String): Boolean =

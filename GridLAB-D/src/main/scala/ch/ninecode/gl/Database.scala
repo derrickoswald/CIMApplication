@@ -166,7 +166,7 @@ object Database
             {
                 val trafo_id = records(i).source_obj.map(_.transformer.id).sortWith (_ < _).mkString ("_")
                 val has_eea = records(i).eea != null
-                val has_id =  gridlabd.has(records(i).id_seq)
+                val has_id =  records(i).nis_number
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, trafo_id)

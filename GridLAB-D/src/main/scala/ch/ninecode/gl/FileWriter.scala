@@ -20,6 +20,15 @@ import ch.ninecode.model._
 
 class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
 {
+    def nis_number (string: String): String =
+    {
+        val n = string.indexOf("_")
+        if (0 < n)
+            string.substring(0, n)
+        else
+            string
+    }
+
     def gather(rdd: Iterable[String]): String =
     {
         rdd.fold("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
@@ -127,6 +136,56 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
         load
     }
 
+
+    def generate_load (experiments: Array[Experiment], name: String, voltage: Double): String =
+    {
+        val house = nis_number (name)
+        val filtered = experiments.filter(p ⇒ p.house == house)
+        val experiment = if (0 != filtered.length) filtered(0) else null
+
+        if (null != experiment)
+            if (one_phase)
+                "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "            name \"" + name + "_load\";\n" +
+                    "            parent \"" + name + "\";\n" +
+                    "            phases AN;\n" +
+                    "            nominal_voltage " + voltage + "V;\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_A\";\n" +
+                    "                file \"input_data/" + house + ".csv\";\n" +
+                    "            };\n" +
+                    "        };\n"
+            else
+                "\n" +
+                    "        object load\n" +
+                    "        {\n" +
+                    "            name \"" + name + "_load\";\n" +
+                    "            parent \"" + name + "\";\n" +
+                    "            phases ABCN;\n" +
+                    "            nominal_voltage " + voltage + "V;\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_A\";\n" +
+                    "                file \"input_data/" + house + "_R.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_B\";\n" +
+                    "                file \"input_data/" + house + "_S.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"constant_power_C\";\n" +
+                    "                file \"input_data/" + house + "_T.csv\";\n" +
+                    "            };\n" +
+                    "        };\n"
+        else
+            ""
+    }
+
     def emit_node(experiments: Array[Experiment], name: String, voltage: Double): String =
     {
         val meter =
@@ -150,14 +209,14 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
                     "        };\n"
 
         //           load_from_player_file (name, voltage)
-        val player = generate_player_file(experiments, name, voltage)
+        val player = generate_load (experiments, name, voltage)
 
         val recorder =
             if (one_phase)
                 "\n" +
                     "        object recorder\n" +
                     "        {\n" +
-                    "            name \"" + gridlabd.has(name) + "_voltage_recorder\";\n" +
+                    "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
                     "            parent \"" + name + "\";\n" +
                     "            property voltage_A.real,voltage_A.imag;\n" +
                     "            interval 5;\n" +
@@ -167,7 +226,7 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
                 "\n" +
                     "        object recorder\n" +
                     "        {\n" +
-                    "            name \"" + gridlabd.has(name) + "_voltage_recorder\";\n" +
+                    "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
                     "            parent \"" + name + "\";\n" +
                     "            property voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag;\n" +
                     "            interval 5;\n" +
@@ -281,96 +340,6 @@ class FileWriter (gridlabd: GridLABD, one_phase: Boolean) extends Serializable
         result.append(gather(pv_strings))
 
         result.toString()
-    }
-
-    def generate_player_file(experiments: Array[Experiment], name: String, voltage: Double): String =
-    {
-        val house = gridlabd.has(name)
-        val filtered = experiments.filter(p ⇒ p.house == house)
-        val experiment = if (0 != filtered.length) filtered(0) else null
-
-        if (null != experiment) {
-            if (one_phase) {
-                writeInputFile(experiment.trafo, "input_data/" + house + ".csv", ramp_up(experiment, 0.0))
-                "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "            name \"" + name + "_load\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            phases AN;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_A\";\n" +
-                    "                file \"input_data/" + house + ".csv\";\n" +
-                    "            };\n" +
-                    "        };\n"
-            }
-            else {
-                val r_phase = 0.0
-                val s_phase = 240.0
-                val t_phase = 120.0
-                writeInputFile(experiment.trafo, "input_data/" + house + "_R.csv", ramp_up(experiment, r_phase))
-                writeInputFile(experiment.trafo, "input_data/" + house + "_S.csv", ramp_up(experiment, s_phase))
-                writeInputFile(experiment.trafo, "input_data/" + house + "_T.csv", ramp_up(experiment, t_phase))
-                "\n" +
-                    "        object load\n" +
-                    "        {\n" +
-                    "            name \"" + name + "_load\";\n" +
-                    "            parent \"" + name + "\";\n" +
-                    "            phases ABCN;\n" +
-                    "            nominal_voltage " + voltage + "V;\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_A\";\n" +
-                    "                file \"input_data/" + house + "_R.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_B\";\n" +
-                    "                file \"input_data/" + house + "_S.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"constant_power_C\";\n" +
-                    "                file \"input_data/" + house + "_T.csv\";\n" +
-                    "            };\n" +
-                    "        };\n"
-            }
-        }
-        else
-            ""
-    }
-
-    def ramp_up(exp: Experiment, angle: Double): Array[Byte] =
-    {
-        val ret = new StringBuilder()
-            def addrow(time: Calendar, power: Double, angle: Double) =
-                {
-                    ret.append(gridlabd._DateFormat.format(time.getTime()))
-                    ret.append(",")
-                    if (one_phase) {
-                        ret.append(-power)
-                        ret.append("\n")
-                    }
-                    else {
-                        ret.append(-power / 3) // negative load injects power, 1/3 per phase
-                        ret.append("<")
-                        ret.append(angle)
-                        ret.append("d\n")
-                    }
-                    time.add(Calendar.SECOND, exp.interval)
-                }
-        val time = exp.t1
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-        var power = exp.from
-        while (power < exp.to) {
-            addrow(time, power, angle)
-            power = power + exp.step
-        }
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-
-        return (ret.toString().getBytes(StandardCharsets.UTF_8))
     }
 
     def writeInputFile(equipment: String, path: String, bytes: Array[Byte]) =
