@@ -102,26 +102,34 @@ The program is submitted to the cluster with the [spark-submit command](https://
 
 Of the many arguments to spark-submit, the crucial one to execute the GridLAB-D program is the correct full path to the `.jar` file. A bit of help text is available if you add a `--help` switch:
 ```
-$ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --help
-GridLAB-D 2.0.0
+$ spark-submit /opt/code/GridLAB-D-2.2.0-jar-with-dependencies.jar --help
+GridLAB-D 2.2.0
 Usage: GridLAB-D [options] <CIM> <CIM> ...
 
   -m, --master MASTER_URL  spark://host:port, mesos://host:port, yarn, or local[*]
   -o, --opts k1=v1,k2=v2   other Spark options
+  -g, --storage_level <value>
+                           storage level for RDD serialization (default: MEMORY_AND_DISK_SER)
   -3, --three              use three phase computations
   -p, --precalculation     calculates threshold and EEA existence for all HAS, assuming no EEA
   -t, --trafos <TRA file>  file of transformer names (one per line) to process
-  -s, --simulation N       simulation number (database key) from precalculation to select transformers to process
-  -a, --all                process all transformers (no pre-calculation)
-  -c, --clean              clean up (delete) simulation local files
+  -x, --export_only        generates glm files only - no solve or analyse operations
+  -a, --all                process all transformers (not just those with EEA)
   -e, --erase              clean up (delete) simulation HDFS files
   -l, --logging <value>    log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN
-  -k, --checkpointdir <dir> checkpoint directory on HDFS, e.g. hdfs://...
+  -k, --checkpointdir <dir>
+                           checkpoint directory on HDFS, e.g. hdfs://...
+  -s, --simulation N       simulation number (precalc) to use for transformer list
+  -r, --reference N        simulation number (precalc) to use as reference for transformer list
+  -d, --delta D            delta power difference threshold for reference comparison
+  -n, --number N           number of transformers to process
+  -c, --csv <file>         short circuit power file
+  -u, --deduplicate        de-duplicate input (striped) files
   --help                   prints this usage text
   <CIM> <CIM> ...          CIM rdf files to process
 ```
 
-_NOTE: It is important to understand that options before the jar file are consumed (and normally understood) by `spark-submit`, while options after the jar file are passed to the `GridLAB-D` program. While `spark-submit` and `GridLAB-D` both have a `--master` option, in the folowing example `yarn` is passed to `spark-submit` while `local[*]` is passed to `GridLAB-D` (whch overrides the default master set by `spark-submit`:_
+_NOTE: It is important to understand that options before the jar file are consumed (and normally understood) by `spark-submit`, while options after the jar file are passed to the `GridLAB-D` program. While `spark-submit` and `GridLAB-D` both have a `--master` option, in the following example `yarn` is passed to `spark-submit` while `local[*]` is passed to `GridLAB-D` (which overrides the default master set by `spark-submit`:_
 ```
 $ spark-submit --master yarn /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --master local[*]
 ```
@@ -137,6 +145,10 @@ Allows specifying the Spark master (same meaning as spark-submit) when `GridLAB-
 Allows specifying Spark options when `GridLAB-D` is run in debug mode in a development environment. Normally this should not be used by end users.
 When specified, options are in the form of [Spark Properties](https://spark.apache.org/docs/latest/configuration.html#viewing-spark-properties) (just like the _Arbitrary Spark configuration property_ `--conf` option for `spark-submit`), and not the form used by spark-submit. For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.driver.memory=2g`.
 
+### storage_level
+The storage level to use for the CIMReader and GridLAB-D program
+[object serialization](http://spark.apache.org/docs/latest/tuning.html#data-serialization).
+
 ### three
 Changes from the default of single phase simulation to three phase simulation. In general, the results should be the same between the two choices, so the default is the less memory and disk intensive single phase.
 
@@ -151,20 +163,8 @@ _edit the trafos.txt file_
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --trafos trafos.txt hdfs://...
 ```
 
-### simulation
-Performs the simulation phase only (see below) using the results of a prior pre-calculation as specified by the simulation number. This allows the processing to proceed in two phases separated by an arbitrary amount of time or to re-execute a failed job. A typical use-case is `--precalculation` followed by `--simulation` after some pause:
-```
-$ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --precalculation hdfs://...
-**the simulation number is 42**
-_some time later_
-$ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --simulation 42 hdfs://...
-```
-
 ### all
 Performs simulation on all transformers in the input file.
-
-### clean
-Deletes generated simulation files from the HDFS /simulation directory after the maximum feed-in calculation has been made. A set of files comprises a directory, with the name of the transformer or ganged transformers, containing a gridlabd `.glm` file, and input (player) and output (recorder) files, as well as one standard output capture file. Cleaning is recommended since these sets of files, one for each transformer simulation, can be fairly large. 
 
 ### erase
 Deletes generated simulation files from the local directory of each worker node in the cluster. The simulation files are copied locally from HDFS, in order for gridlabd to operate on them. Erasing is highly recommended. The files can be found in the `work` directory (standalone) or `userlogs` directory (yarn).
@@ -181,6 +181,33 @@ _NOTE: checkpoint storage must be manually managed (it will not be erased automa
 ```
 hdfs dfs -rm -R "/checkpoint/*"
 ```
+
+### simulation
+Performs the simulation phase only (see below) using the results of a prior pre-calculation as specified by the simulation number. This allows the processing to proceed in two phases separated by an arbitrary amount of time or to re-execute a failed job. A typical use-case is `--precalculation` followed by `--simulation` after some pause:
+```
+$ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --precalculation hdfs://...
+**the simulation number is 42**
+_some time later_
+$ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --simulation 42 hdfs://...
+```
+
+###reference
+Use this reference (simulation) number for a comparison to the current pre-calculation simulation
+to determine which transformers have new photo-voltaic installations or have changed the estimated
+power sufficiently to need to be simulated. This mode is used to avoid recomputing transformer circuits
+that have not changed.
+
+###delta
+The amount of power difference, relative to the reference value, that will trigger a simulation
+in the reference mode documented above.
+
+###csv
+The name of the file with short circuit power availability at each substation.
+
+###deduplicate
+When using striped or tiled RDF files as input, this option will eliminate
+duplicated elements contained in multiple files.
+
 
 # Processing
 
