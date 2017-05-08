@@ -191,20 +191,20 @@ _some time later_
 $ spark-submit /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar --simulation 42 hdfs://...
 ```
 
-###reference
+### reference
 Use this reference (simulation) number for a comparison to the current pre-calculation simulation
 to determine which transformers have new photo-voltaic installations or have changed the estimated
 power sufficiently to need to be simulated. This mode is used to avoid recomputing transformer circuits
 that have not changed.
 
-###delta
+### delta
 The amount of power difference, relative to the reference value, that will trigger a simulation
 in the reference mode documented above.
 
-###csv
+### csv
 The name of the file with short circuit power availability at each substation.
 
-###deduplicate
+### deduplicate
 When using striped or tiled RDF files as input, this option will eliminate
 duplicated elements contained in multiple files.
 
