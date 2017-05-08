@@ -1,7 +1,8 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
 import java.text.SimpleDateFormat
 
+import ch.ninecode.gl._
 import ch.ninecode.model.SolarGeneratingUnit
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis) extends GLMGenerator (one_phase, date_format)

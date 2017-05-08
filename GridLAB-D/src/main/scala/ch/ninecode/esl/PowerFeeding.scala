@@ -1,23 +1,21 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.Calendar
+
+import scala.Iterator
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-
-import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexRDD
-import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.Graph.graphToGraphOps
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.model._
+import ch.ninecode.gl._
 
 case class PowerFeedingNode (
     id_seq: String,

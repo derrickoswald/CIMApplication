@@ -6,19 +6,14 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 import scala.collection.Map
 
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.permission._
 import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.FileUtil
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
@@ -27,7 +22,26 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Breaker
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.ConnectivityNode
+import ch.ninecode.model.Cut
+import ch.ninecode.model.Disconnector
+import ch.ninecode.model.Element
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.Jumper
+import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.ProtectedSwitch
+import ch.ninecode.model.Recloser
+import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Switch
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.WireInfo
 
 /**
  * Common GraphX functions.
@@ -57,7 +71,11 @@ trait Graphable
  */
 case class PreNode(
     id_seq: String,
-    voltage: Double) extends Graphable with Serializable
+    voltage: Double) extends GLMNode with Graphable with Serializable
+{
+    override def id () = id_seq
+    override def nominal_voltage () = voltage
+}
 
 /**
  * Edge data.
@@ -84,7 +102,7 @@ case class PreEdge(
     ratedCurrent: Double,
     equipment: ConductingEquipment,
     element: Element,
-    connected: Boolean) extends Graphable with Serializable {
+    connected: Boolean) extends GLMEdge with Graphable with Serializable {
     /**
      * Ordered key.
      * Provide a key on the two connections, independent of to-from from-to ordering.
@@ -93,6 +111,11 @@ case class PreEdge(
     {
         if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
     }
+    override def id (): String = id_equ
+    override def cn1 (): String = id_cn_1
+    override def cn2 (): String = id_cn_2
+    override def eq (): ConductingEquipment = equipment
+    override def el (): Element = element
 }
 
 /**

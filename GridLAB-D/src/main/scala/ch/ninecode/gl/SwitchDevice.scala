@@ -4,7 +4,7 @@ import ch.ninecode.model.Switch
 
 class SwitchDevice (val one_phase: Boolean) extends Serializable
 {
-    def emit (edge: PreEdge, switch: Switch, fuse: Boolean = false): String =
+    def emit (edge: GLMEdge, switch: Switch, fuse: Boolean = false): String =
     {
         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
         var current = switch.ratedCurrent
@@ -18,10 +18,10 @@ class SwitchDevice (val one_phase: Boolean) extends Serializable
         "\n" +
         "        object " + (if (fuse) "fuse" else "switch") + "\n" +
         "        {\n" +
-        "            name \"" + edge.id_equ + "\";\n" +
+        "            name \"" + edge.id + "\";\n" +
         "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            from \"" + edge.id_cn_1 + "\";\n" +
-        "            to \"" + edge.id_cn_2 + "\";\n" +
+        "            from \"" + edge.cn1 + "\";\n" +
+        "            to \"" + edge.cn2 + "\";\n" +
         details +
         "        };\n"
     }

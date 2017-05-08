@@ -4,12 +4,23 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Element
 import ch.ninecode.model.Switch
 
 trait GLMNode extends Serializable
 {
     def id (): String
     def nominal_voltage (): Double
+}
+
+trait GLMEdge extends Serializable
+{
+    def id (): String
+    def cn1 (): String
+    def cn2 (): String
+    def eq (): ConductingEquipment
+    def el (): Element
 }
 
 class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends Serializable
@@ -26,7 +37,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
 
     lazy val use_utc = date_format.getTimeZone == TimeZone.getTimeZone("UTC")
 
-    def edge_groups: Iterable[Iterable[PreEdge]] = List(List[PreEdge]())
+    def edge_groups: Iterable[Iterable[GLMEdge]] = List(List[GLMEdge]())
 
     def transformers: Array[TData] = Array()
 
@@ -67,40 +78,40 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     }
 
     // emit one GridLAB-D edge
-    def make_link (edges: Iterable[PreEdge]): String =
+    def make_link (edges: Iterable[GLMEdge]): String =
     {
         val edge = edges.head
-        val cls = edge.element.getClass.getName
+        val cls = edge.el.getClass.getName
         val clazz = cls.substring (cls.lastIndexOf(".") + 1)
         val ret = clazz match {
             case "ACLineSegment" ⇒
-                line.emit(edges)
+                line.emit (edges)
             case "PowerTransformer" ⇒
                 "" // handled specially
             case "Switch" ⇒
-                switch.emit(edge, edge.element.asInstanceOf[Switch])
+                switch.emit(edge, edge.el.asInstanceOf[Switch])
             case "Cut" |
                 "Disconnector" |
                 "GroundDisconnector" |
                 "Jumper" |
                 "ProtectedSwitch" |
                 "Sectionaliser" ⇒
-                switch.emit(edge, edge.element.sup.asInstanceOf[Switch])
+                switch.emit(edge, edge.el.sup.asInstanceOf[Switch])
             case "Breaker" |
                 "LoadBreakSwitch" |
                 "Recloser" ⇒
-                switch.emit(edge, edge.element.sup.sup.asInstanceOf[Switch])
+                switch.emit(edge, edge.el.sup.sup.asInstanceOf[Switch])
             case "Fuse" ⇒
-                switch.emit(edge, edge.element.sup.asInstanceOf[Switch], true)
+                switch.emit(edge, edge.el.sup.asInstanceOf[Switch], true)
             case _ ⇒
                 // by default, make a link
                 "\n" +
                     "        object link\n" +
                     "        {\n" +
-                    "            name \"" + edge.id_equ + "\";\n" +
+                    "            name \"" + edge.id + "\";\n" +
                     "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                    "            from \"" + edge.id_cn_1 + "\";\n" +
-                    "            to \"" + edge.id_cn_2 + "\";\n" +
+                    "            from \"" + edge.cn1 + "\";\n" +
+                    "            to \"" + edge.cn2 + "\";\n" +
                     "        };\n"
         }
         return (ret)

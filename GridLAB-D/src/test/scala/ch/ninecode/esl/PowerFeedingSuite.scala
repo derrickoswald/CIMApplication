@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -24,6 +24,10 @@ import ch.ninecode.cim._
 import ch.ninecode.model._
 
 import javax.xml.bind.DatatypeConverter
+import ch.ninecode.gl.GridLABD;
+import ch.ninecode.gl.PreEdge;
+import ch.ninecode.gl.PreNode;
+import ch.ninecode.gl.Transformers;
 
 class PowerFeedingSuite extends FunSuite
 {
@@ -56,8 +60,17 @@ class PowerFeedingSuite extends FunSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        // register Einspeiseleistung classes
+        configuration.registerKryoClasses (Array (
+            classOf[ch.ninecode.esl.Experiment],
+            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
+            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
+            classOf[ch.ninecode.esl.PV],
+            classOf[ch.ninecode.esl.PowerFeedingNode],
+            classOf[ch.ninecode.esl.PreCalculationResults],
+            classOf[ch.ninecode.esl.Trafokreis],
+            classOf[ch.ninecode.esl.StartingTrafos]))
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
