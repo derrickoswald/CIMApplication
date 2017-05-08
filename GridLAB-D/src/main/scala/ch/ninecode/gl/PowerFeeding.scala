@@ -25,7 +25,11 @@ case class PowerFeedingNode (
     source_obj: StartingTrafos,
     sum_r: Double,
     min_ir: Double,
-    multiple_paths: Boolean) extends Serializable
+    multiple_paths: Boolean) extends GLMNode
+{
+    override def id () = id_seq
+    override def nominal_voltage () = voltage
+}
 
 case class MaxPowerFeedingNodeEEA (
     id_seq: String,

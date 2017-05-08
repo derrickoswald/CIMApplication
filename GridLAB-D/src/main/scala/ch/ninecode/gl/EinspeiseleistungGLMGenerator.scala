@@ -22,26 +22,30 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def nodes: Iterable[PowerFeedingNode] = trafokreis.nodes
 
-    override def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null)
-
-    override def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
+    override def extra (): Iterable[String] =
     {
-        val solargeneratingunits = node.eea.map((x) ⇒ { x.solar }).toList
-        emit_pv (solargeneratingunits, node)
+        def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null)
+
+        def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
+        {
+            val solargeneratingunits = node.eea.map((x) ⇒ { x.solar }).toList
+            emit_pv (solargeneratingunits, node)
+        }
+
+        extra_nodes.map (emit_extra_node)
     }
 
-    override def emit_node (node: PowerFeedingNode): String =
+
+    override def emit_node (node: GLMNode): String =
     {
         // or load_from_player_file (name, voltage)
         super.emit_node (node) + generate_load (node)
     }
 
-    def generate_load (node: PowerFeedingNode): String =
+    def generate_load (node: GLMNode): String =
     {
         val experiments = trafokreis.experiments
-        val name = node.id_seq
-        val voltage = node.voltage
-        val house = nis_number (name)
+        val house = nis_number (node.id)
         val filtered = experiments.filter(p ⇒ p.house == house)
         val experiment = if (0 != filtered.length) filtered(0) else null
 
@@ -49,10 +53,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             "\n" +
             "        object load\n" +
             "        {\n" +
-            "            name \"" + name + "_load\";\n" +
-            "            parent \"" + name + "\";\n" +
+            "            name \"" + node.id + "_load\";\n" +
+            "            parent \"" + node.id + "\";\n" +
             "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-            "            nominal_voltage " + voltage + "V;\n" +
+            "            nominal_voltage " + node.nominal_voltage + "V;\n" +
             (if (one_phase)
                 "            object player\n" +
                 "            {\n" +
@@ -79,11 +83,11 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             "\n" + // only need a recorder if there is a load
             "        object recorder\n" +
             "        {\n" +
-            "            name \"" + nis_number (name) + "_voltage_recorder\";\n" +
-            "            parent \"" + name + "\";\n" +
+            "            name \"" + nis_number (node.id) + "_voltage_recorder\";\n" +
+            "            parent \"" + node.id + "\";\n" +
             "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
             "            interval 5;\n" +
-            "            file \"output_data/" + name + "_voltage.csv\";\n" +
+            "            file \"output_data/" + node.id + "_voltage.csv\";\n" +
             "        };\n"
         else
             ""

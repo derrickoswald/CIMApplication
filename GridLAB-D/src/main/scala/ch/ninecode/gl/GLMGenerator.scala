@@ -6,19 +6,25 @@ import java.util.TimeZone
 
 import ch.ninecode.model.Switch
 
+trait GLMNode extends Serializable
+{
+    def id (): String
+    def nominal_voltage (): Double
+}
+
 class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends Serializable
 {
-
-    val use_utc = date_format.getTimeZone == TimeZone.getTimeZone("UTC")
     /**
      * Get the name of the generated GLM file
      * @return The unique name for the generated file and directory structure.
      */
     def name: String = "gridlabd"
 
-    def start_time (): Calendar = ???
+    def start_time (): Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-08T12:00:00")
 
-    def finish_time (): Calendar = ???
+    def finish_time (): Calendar = start_time
+
+    lazy val use_utc = date_format.getTimeZone == TimeZone.getTimeZone("UTC")
 
     def edge_groups: Iterable[Iterable[PreEdge]] = List(List[PreEdge]())
 
@@ -28,11 +34,9 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
 
     def swing_node_voltage: Double = 0.0
 
-    def nodes: Iterable[PowerFeedingNode] = List()
+    def nodes: Iterable[GLMNode] = List()
 
-    def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = List ()
-
-    def emit_extra_node (node: MaxPowerFeedingNodeEEA): String = ???
+    def extra: Iterable[String] = List()
 
     def tzString: String =
     {
@@ -67,7 +71,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     {
         val edge = edges.head
         val cls = edge.element.getClass.getName
-        val clazz = cls.substring(cls.lastIndexOf(".") + 1)
+        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
         val ret = clazz match {
             case "ACLineSegment" ⇒
                 line.emit(edges)
@@ -102,15 +106,15 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         return (ret)
     }
 
-    def emit_node (node: PowerFeedingNode): String =
+    def emit_node (node: GLMNode): String =
     {
         "\n" +
         "        object meter\n" +
         "        {\n" +
-        "            name \"" + node.id_seq + "\";\n" +
+        "            name \"" + node.id + "\";\n" +
         "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
         "            bustype PQ;\n" +
-        "            nominal_voltage " + node.voltage + "V;\n" +
+        "            nominal_voltage " + node.nominal_voltage + "V;\n" +
         "        };\n"
     }
 
@@ -138,11 +142,11 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
         val combined_edges = edge_groups
 
-        // get a configuration for each type of ACLineSegment
-        val l_strings = line.getACLineSegmentConfigurations (combined_edges)
-
         // get the transformer configurations
         val t_string = trans.getTransformerConfigurations (transformers)
+
+        // get a configuration for each type of ACLineSegment
+        val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
         // emit the swing node
         val o_string = emit_slack (swing_node, swing_node_voltage)
@@ -150,11 +154,14 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         // get the node strings
         val n_strings = nodes.map (emit_node)
 
-        val pv_strings = extra_nodes.map (emit_extra_node)
+        // get the transformer strings
+        val t_edges = trans.emit (transformers)
 
         // get the edge strings
-        val t_edges = trans.emit (transformers)
         val l_edges = combined_edges.map (make_link)
+
+        // get the extra strings
+        val e_strings = extra
 
         /**
          * Create the output file.
@@ -204,7 +211,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         result.append(gather(n_strings))
         result.append(t_edges)
         result.append(gather(l_edges))
-        result.append(gather(pv_strings))
+        result.append(gather(e_strings))
 
         result.toString()
     }

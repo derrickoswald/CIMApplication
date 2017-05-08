@@ -577,7 +577,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         def doit (t: Trafokreis): Array[Experiment] =
         {
-            val generator = new EinspeiseleistungGLMGenerator (!options.three, t)
+            val generator = new EinspeiseleistungGLMGenerator (!options.three, _DateFormat, t)
             gridlabd.export (generator)
             t.experiments
         }
