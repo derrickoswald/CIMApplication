@@ -1,10 +1,6 @@
 package ch.ninecode.gl
 
-import scala.math.sqrt
-
-import org.apache.spark.rdd.RDD
-
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
 
 class Line (one_phase: Boolean) extends Serializable
 {

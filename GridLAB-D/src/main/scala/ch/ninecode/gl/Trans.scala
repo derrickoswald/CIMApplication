@@ -1,9 +1,6 @@
 package ch.ninecode.gl
 
-import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
-
-import ch.ninecode.model._
 
 /**
  * @param transformers - the RDD of transformers

@@ -1,6 +1,6 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model._
+import ch.ninecode.model.Switch
 
 class SwitchDevice (val one_phase: Boolean) extends Serializable
 {

@@ -257,6 +257,5 @@ object Main
             case None =>
                 sys.exit (1)
         }
-        
     }
 }

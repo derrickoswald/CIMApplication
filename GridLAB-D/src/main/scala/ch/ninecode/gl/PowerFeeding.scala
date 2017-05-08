@@ -19,7 +19,14 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.model._
 
-case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double, multiple_paths: Boolean) extends Serializable
+case class PowerFeedingNode (
+    id_seq: String,
+    voltage: Double,
+    source_obj: StartingTrafos,
+    sum_r: Double,
+    min_ir: Double,
+    multiple_paths: Boolean) extends Serializable
+
 case class MaxPowerFeedingNodeEEA (
     id_seq: String,
     voltage: Double,

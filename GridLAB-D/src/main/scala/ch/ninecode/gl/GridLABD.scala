@@ -96,16 +96,6 @@ case class PreEdge(
 }
 
 /**
- * Photovoltaic attachment.
- * Generating equipment attached to a node.
- * @param node ConnectivityNode or TopologicalNode MRID.
- * @param solar SolarGeneratingUnit object attached to the node.
- */
-case class PV(
-    node: String,
-    solar: SolarGeneratingUnit)
-
-/**
  * Recorder time series element.
  * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
  * @param millis Number of milliseconds since the epoc.
@@ -420,21 +410,21 @@ class GridLABD (
         (xedges, xnodes)
     }
 
-    def trafokreis_key(transformers: Array[TData]): String =
+    def trafokreis_key (transformers: Array[TData]): String =
     {
         transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
     }
 
-    def export(generator: GLMGenerator, trafokreis: Trafokreis): Unit =
+    def export (generator: GLMGenerator): Unit =
     {
-        val name = trafokreis.name
+        val name = generator.name
         eraseInputFile (name)
-        val result = generator.make_glm (trafokreis)
+        val result = generator.make_glm ()
         writeInputFile (name, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
         writeInputFile (name, "output_data/dummy", null) // mkdir
     }
 
-    def check(input: String): Boolean =
+    def check (input: String): Boolean =
     {
         if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
             println("gridlabd failed, message is: " + input)
@@ -546,7 +536,7 @@ class GridLABD (
         })
     }
 
-    def writeInputFile(equipment: String, path: String, bytes: Array[Byte]) =
+    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
     {
         if ("" == HDFS_URI)
         {
@@ -578,7 +568,7 @@ class GridLABD (
         }
     }
 
-    def eraseInputFile(equipment: String)
+    def eraseInputFile (equipment: String)
     {
         if ("" == HDFS_URI)
             FileUtils.deleteDirectory(new File("simulation/" + equipment + "/"))
@@ -594,7 +584,7 @@ class GridLABD (
         }
     }
 
-    def cleanup(equipment: String, includes_glm: Boolean): Unit =
+    def cleanup (equipment: String, includes_glm: Boolean): Unit =
     {
         if (includes_glm)
             eraseInputFile(equipment)
