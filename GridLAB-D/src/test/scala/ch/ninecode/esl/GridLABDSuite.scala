@@ -89,6 +89,7 @@ class GridLABDSuite extends FunSuite
             FILE_DEPOT + root + ".rdf"
 
         val options = EinspeiseleistungOptions (
+            verbose = true,
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
             precalculation = false,
@@ -104,11 +105,9 @@ class GridLABDSuite extends FunSuite
             files = List(filename)
         )
         val eins = Einspeiseleistung (session, options)
-        eins.run ()
+        val count = eins.run ()
 
         val total = System.nanoTime ()
-        println ("total: " + (total - begin) / 1e9 + " seconds")
-
-        println ()
+        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
     }
 }

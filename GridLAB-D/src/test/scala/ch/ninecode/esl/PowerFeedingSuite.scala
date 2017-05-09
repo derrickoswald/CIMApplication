@@ -130,7 +130,7 @@ class PowerFeedingSuite extends FunSuite
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
-        val eins = Einspeiseleistung (session, EinspeiseleistungOptions ())
+        val eins = Einspeiseleistung (session, EinspeiseleistungOptions (verbose = true))
         val solars = eins.getSolarInstallations (use_topological_nodes, storage_level)
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)

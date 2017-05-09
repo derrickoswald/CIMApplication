@@ -13,6 +13,7 @@ import org.apache.spark.graphx.VertexId
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
 import ch.ninecode.gl._
@@ -206,6 +207,8 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
 object PowerFeeding
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos =
     {
       val pn = PreNode ("", 0.0)
@@ -246,13 +249,13 @@ object PowerFeeding
         })
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
-        println ("the simulation number is " + simulation)
+        log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
           val source = triplet.srcAttr.source_obj
           val target = triplet.dstAttr.source_obj
-          
+
           var ret = (null.asInstanceOf[String], triplet.attr)
           if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
             val source_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
@@ -262,7 +265,7 @@ object PowerFeeding
           }
           ret
         }
-        
+
         val vertices = graph.vertices.values
         val edges = graph.triplets.map(mapGraphEdges)
 
@@ -274,7 +277,7 @@ object PowerFeeding
             case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
             case None =>
         }
-        
+
         PreCalculationResults (simulation, has, vertices, edges)
     }
 }

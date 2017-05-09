@@ -10,6 +10,7 @@ import scala.util.Random
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
@@ -41,6 +42,7 @@ object Main
     )
 
     case class Arguments (
+        quiet: Boolean = false,
         master: String = "",
         opts: Map[String,String] = Map(),
         storage: String = "MEMORY_AND_DISK_SER",
@@ -64,6 +66,10 @@ object Main
     val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
+
+        opt[Unit]('q', "quiet").
+            action ((_, c) => c.copy (quiet = true)).
+            text ("supress informational messages")
 
         opt[String]('m', "master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
@@ -181,6 +187,8 @@ object Main
         {
             case Some (arguments) =>
 
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Main").setLevel (org.apache.log4j.Level.INFO)
+                val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
                 // create the configuration
@@ -237,11 +245,12 @@ object Main
                     session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
 
                 val setup = System.nanoTime ()
-                println ("setup : " + (setup - begin) / 1e9 + " seconds")
+                log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
                 val ro = HashMap[String,String] ()
                 ro.put ("StorageLevel", arguments.storage)
                 ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
                 val options = EinspeiseleistungOptions (
+                    verbose = !arguments.quiet,
                     cim_reader_options = ro,
                     three = arguments.three,
                     precalculation = arguments.precalculation,
@@ -257,10 +266,10 @@ object Main
                     files = arguments.files
                 )
                 val eins = Einspeiseleistung (session, options)
-                eins.run ()
+                val count = eins.run ()
 
                 val calculate = System.nanoTime ()
-                println ("total: " + (calculate - begin) / 1e9 + " seconds")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds " + count + " trafokreise")
 
                 sys.exit (0)
             case None =>

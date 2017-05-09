@@ -424,9 +424,11 @@ class GridLABD (
         val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist(storage_level)
-        session.sparkContext.getCheckpointDir match {
+        session.sparkContext.getCheckpointDir match
+        {
             case Some(dir) ⇒
-                xedges.checkpoint(); xnodes.checkpoint()
+                xedges.checkpoint()
+                xnodes.checkpoint()
             case None ⇒
         }
 
@@ -449,8 +451,9 @@ class GridLABD (
 
     def check (input: String): Boolean =
     {
-        if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL")) {
-            println("gridlabd failed, message is: " + input)
+        if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL"))
+        {
+            log.error ("gridlabd failed, message is: " + input)
             false
         }
         else

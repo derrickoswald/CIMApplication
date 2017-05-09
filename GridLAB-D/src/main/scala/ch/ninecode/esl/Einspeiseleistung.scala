@@ -22,6 +22,7 @@ import ch.ninecode.gl._
 import ch.ninecode.model._
 
 case class EinspeiseleistungOptions (
+    verbose: Boolean = false,
     cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
     three: Boolean = false,
     precalculation: Boolean = false,
@@ -186,6 +187,13 @@ case class PV(
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions)
 {
+    if (options.verbose)
+    {
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Einspeiseleistung").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
+    }
+    val log = LoggerFactory.getLogger (getClass)
+
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
     // timezone can be set on each node of the cluster with:
@@ -389,31 +397,31 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     {
         val limit = "current limit"
 
-            // eliminate measurements below capacity
-            def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
-                {
-                    val r = arg._1
-                    val max = arg._2
-                    r.value_a.abs / Math.sqrt(3) > max
-                }
-            def interesting3ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
-                {
-                    val r = arg._1
-                    val max = arg._2
-                    ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
-                }
+        // eliminate measurements below capacity
+        def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
+        {
+            val r = arg._1
+            val max = arg._2
+            r.value_a.abs / Math.sqrt(3) > max
+        }
+        def interesting3ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
+        {
+            val r = arg._1
+            val max = arg._2
+            ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+        }
 
-            // assign an experiment to each measurement
-            def assign(experiments: Iterable[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-                {
-                    val r = arg._1
-                    val max = arg._2
-                    for (e ← experiments) {
-                        if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                            return (List ((e, r, limit, r.element + " > " + max + " Amps")))
-                    }
-                    List()
-                }
+        // assign an experiment to each measurement
+        def assign(experiments: Iterable[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+        {
+            val r = arg._1
+            val max = arg._2
+            for (e ← experiments) {
+                if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                    return (List ((e, r, limit, r.element + " > " + max + " Amps")))
+            }
+            List()
+        }
 
         val cdata_map = cdata.toMap
         val joined_elements = elements.map(e ⇒ {
@@ -512,13 +520,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val b4_solve = System.nanoTime()
         val success = gridlabd.solve(reduced_trafos.map(_._1))
         val solved = System.nanoTime()
-        println("solve success: " + success)
-        println("solve: " + (solved - b4_solve) / 1e9 + " seconds")
+        log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds " + (if (success) "successful" else "failed"))
 
         val output = gridlabd.read_output_files (!options.three, reduced_trafos)
 
         val read = System.nanoTime()
-        println("read: " + (read - solved) / 1e9 + " seconds")
+        log.info ("read: " + (read - solved) / 1e9 + " seconds")
 
         val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
         prepared_results.flatMap(analyse)
@@ -582,16 +589,16 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             t.experiments
         }
         val experiments = trafokreise.flatMap (doit).cache
-        println ("created: " + experiments.count + " experiments")
+        log.info ("created: " + experiments.count + " experiments")
 
         val write = System.nanoTime()
-        println("export: " + (write - start) / 1e9 + " seconds")
+        log.info ("export: " + (write - start) / 1e9 + " seconds")
 
         var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
         if (!options.export_only)
         {
             val c = experiments.map (generate_player_file (gridlabd)_).count
-            println (c.toString + " experiments")
+            log.info (c.toString + " experiments")
 
             val reduced_trafos = trafokreise.map (t ⇒ {
                 val transformers = t.transformers.map(_.end1.ratedS).sum
@@ -600,7 +607,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             }).cache
 
             val max_values = solve_and_analyse(gridlabd, reduced_trafos, experiments)
-            println("read results: " + max_values.count)
+            log.info ("read results: " + max_values.count)
 
             val b4_experiment = System.nanoTime()
             val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house ⇒ {
@@ -633,29 +640,24 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             }).cache
 
             val experiment_adjusted = System.nanoTime()
-            println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
+            log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
             trafokreise.map(t ⇒ gridlabd.cleanup (t.trafo, false)).count
-
-            val filedelete = System.nanoTime()
-            println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
-
             val d = experiments2.map (generate_player_file (gridlabd)_).count
-            println (d.toString + " experiments")
+            log.info (d.toString + " experiments")
 
             val export2 = System.nanoTime()
-            println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
+            log.info ("export2: " + (export2 - experiment_adjusted) / 1e9 + " seconds")
 
-            ret = solve_and_analyse(gridlabd, reduced_trafos, experiments2).cache
-            println("ret: " + ret.count)
+            ret = solve_and_analyse (gridlabd, reduced_trafos, experiments2).cache
 
             val analyse = System.nanoTime()
-            println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
+            log.info ("solve and analyse: " + (analyse - export2) / 1e9 + " seconds " + ret.count + " results")
 
             val b4_db = System.nanoTime()
             Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
             val dbsave = System.nanoTime()
-            println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
+            log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
             if (options.erase)
                 trafokreise.map(t ⇒ gridlabd.cleanup(t.trafo, true)).count
@@ -664,7 +666,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         ret
     }
 
-    def run ()
+    def run (): Long =
     {
         val start = System.nanoTime ()
 
@@ -679,7 +681,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             null
         if ((null != trafos) && (0 == trafos.length))
         {
-            println ("no transformers to process")
+            log.error  ("no transformers to process")
             sys.exit (1)
         }
 
@@ -695,10 +697,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
             elements.explain
         else
-            println (elements.count () + " elements")
+            log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
-        println ("read : " + (read - start) / 1e9 + " seconds")
+        log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
         {
@@ -709,10 +711,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // identify topological nodes
         val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
         val ele = ntp.process (false)
-        println (ele.count () + " elements")
+        log.info (ele.count () + " elements")
 
         val topo = System.nanoTime ()
-        println ("topology : " + (topo - read) / 1e9 + " seconds")
+        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
         val gridlabd = new GridLABD (session, !options.three, storage_level)
@@ -733,7 +735,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val sdata = getSolarInstallations (true, storage_level)
+        val sdata = getSolarInstallations (gridlabd.USE_TOPOLOGICAL_NODES, storage_level)
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
@@ -750,7 +752,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         val prepare = System.nanoTime ()
-        println ("prepare: " + (prepare - topo) / 1e9 + " seconds")
+        log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
 
         // do the pre-calculation
         val precalc_results =
@@ -779,10 +781,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has.filter(_.eea != null)
 
         val trafo_list = houses.keyBy (a => gridlabd.trafokreis_key (a.source_obj)).groupByKey.map (_._2.head.source_obj)
-        println ("" + trafo_list.count + " transformers to process")
+        log.info ("" + trafo_list.count + " transformers to process")
 
         val precalc = System.nanoTime ()
-        println ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
+        log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
         // do gridlab simulation if not just pre-calculation
         if (!options.precalculation)
@@ -796,13 +798,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
             val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0)_)
-            println("filtered_trafos: " + filtered_trafos.count)
+            log.info ("filtered_trafos: " + filtered_trafos.count)
             einspeiseleistung (gridlabd, filtered_trafos)
 
-            println ("finished " + trafo_list.count + " trafokreis")
+            log.info ("finished " + trafo_list.count + " trafokreis")
         }
 
         val calculate = System.nanoTime ()
-        println ("calculate: " + (calculate - precalc) / 1e9 + " seconds")
+        log.info ("calculate: " + (calculate - precalc) / 1e9 + " seconds")
+
+        trafo_list.count
     }
 }
