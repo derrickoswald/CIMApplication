@@ -494,41 +494,49 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val trafo_name = trafo._1
 
         val complexDataElements = trafo._2._2._1
-        val experiments = trafo._2._2._2
+        if (!complexDataElements.isEmpty)
+        {
+            val experiments = trafo._2._2._2
 
-        val v = voltcheck(experiments, complexDataElements, max)
-        val i = ampcheck(experiments, complexDataElements, cdata)
-        val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
+            val v = voltcheck(experiments, complexDataElements, max)
+            val i = ampcheck(experiments, complexDataElements, cdata)
+            val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
 
-        // establish a "no limit found" default
-        val s = experiments.map(
-            (x) ⇒
-                {
-                    (
-                        x,
-                        ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                        "no limit",
-                        "")
-                })
+            // establish a "no limit found" default
+            val s = experiments.map(
+                (x) ⇒
+                    {
+                        (
+                            x,
+                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                            "no limit",
+                            "")
+                    })
 
-        val ret = s ++ v ++ i ++ p groupBy (k ⇒ k._1.house)
-        ret.values.map(v ⇒ finder(v)).toList
+            val ret = s ++ v ++ i ++ p groupBy (k ⇒ k._1.house)
+            ret.values.map (v ⇒ finder(v)).toList
+        }
+        else
+            List[MaxEinspeiseleistung]()
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
     {
-        val b4_solve = System.nanoTime()
-        val success = gridlabd.solve(reduced_trafos.map(_._1))
-        val solved = System.nanoTime()
-        log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds " + (if (success) "successful" else "failed"))
-
+        val b4_solve = System.nanoTime ()
+        val success = gridlabd.solve (reduced_trafos.map (_._1))
+        val solved = System.nanoTime ()
+        if (success)
+            log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds successful")
+        else
+            log.error ("solve: " + (solved - b4_solve) / 1e9 + " seconds failed")
         val output = gridlabd.read_output_files (!options.three, reduced_trafos)
-
-        val read = System.nanoTime()
+        val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
-
-        val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
-        prepared_results.flatMap(analyse)
+        val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
+        val ret = prepared_results.flatMap (analyse)
+        val anal = System.nanoTime ()
+        log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
+        ret
     }
 
     def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
@@ -606,8 +614,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 (t.trafo, (transformers, cdata_iter))
             }).cache
 
-            val max_values = solve_and_analyse(gridlabd, reduced_trafos, experiments)
-            log.info ("read results: " + max_values.count)
+            val max_values = solve_and_analyse (gridlabd, reduced_trafos, experiments)
+            log.info ("results: " + max_values.count)
 
             val b4_experiment = System.nanoTime()
             val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house ⇒ {

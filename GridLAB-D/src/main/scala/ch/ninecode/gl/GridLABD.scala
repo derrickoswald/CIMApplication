@@ -451,7 +451,7 @@ class GridLABD (
 
     def check (input: String): Boolean =
     {
-        if (input.contains ("FATAL") || input.contains("ERROR") || input.contains("FAIL"))
+        if (input.contains ("FATAL") || input.contains ("ERROR") || input.contains ("FAIL") || input.contains ("command not found"))
         {
             log.error ("gridlabd failed, message is: " + input)
             false
@@ -503,8 +503,8 @@ class GridLABD (
                             "done < /dev/stdin")
             }
 
-        val out = files.pipe(gridlabd)
-        out.map(check).fold(true)(_ && _)
+        val out = files.pipe (gridlabd)
+        out.map (check).fold (true)(_ && _)
     }
 
     def read_output_files (one_phase: Boolean, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))]): RDD[(String, ThreePhaseComplexDataElement)] =
