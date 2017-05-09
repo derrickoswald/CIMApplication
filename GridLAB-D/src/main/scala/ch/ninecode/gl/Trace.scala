@@ -1,5 +1,6 @@
 package ch.ninecode.gl
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -9,7 +10,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
 
-class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
+case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
 
@@ -58,7 +59,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     }
 
     // trace the graph with the Pregel algorithm
-    def run (starting_nodes: Array[VertexId]) =
+    def run (starting_nodes: Array[VertexId]): (RDD[PreNode], RDD[PreEdge]) =
     {
         log.info ("trace([" + starting_nodes.mkString (",") +"]) begin")
         val begin = System.nanoTime ()

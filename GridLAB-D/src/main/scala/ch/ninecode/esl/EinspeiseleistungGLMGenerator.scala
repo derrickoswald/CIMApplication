@@ -21,7 +21,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def swing_node_voltage: Double = trafokreis.swing_node_voltage
 
-    override def nodes: Iterable[PowerFeedingNode] = trafokreis.nodes
+    override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
     override def extra (): Iterable[String] =
     {
