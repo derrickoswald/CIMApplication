@@ -117,17 +117,26 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
         val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
 
         // determine the set of transformers to work on
+        /**
+         * The name of the node associated with a terminal.
+         * @param terminal The terminal object to get the node for.
+         * @return The name of the TopologicalNode or ConnectivityNode.
+         */
+        def node_name (t: TData): String =
+        {
+            return (if (gridlabd.USE_TOPOLOGICAL_NODES) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode)
+        }
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+            selected.groupBy (node_name).values.map (_.toArray)
         }
         else
         {
             // do all medium voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0))
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+            niederspannug.groupBy (node_name).values.map (_.toArray)
         }
 
         val prepare = System.nanoTime ()

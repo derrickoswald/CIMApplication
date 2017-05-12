@@ -57,7 +57,7 @@ class Line (one_phase: Boolean) extends Serializable
         val z12 = off.toString () + " Ohm/km"
         ret =
             "\n" +
-            (if (default) "#warning WARNING: using default line_configuration for " + config else "") +
+            (if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else "") +
             "        object line_configuration\n" +
             "        {\n" +
             "            name \"" + config + "\";\n" +

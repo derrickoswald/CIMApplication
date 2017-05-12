@@ -81,7 +81,7 @@ class MiddleVoltageSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "NIS_CIM_Export_sias_current_20161220_Wohlen bei Bern_V11"
+        val root = "bkw_cim_export_sias_current_20161220_Wohlen_bei_Bern"
         val filename =
             FILE_DEPOT + root + ".rdf"
 

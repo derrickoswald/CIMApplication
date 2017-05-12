@@ -73,9 +73,15 @@ class Trans (one_phase: Boolean) extends Serializable
                 Complex (r, x)
             }
         )
-        val total_impedance = impedances.map (_.reciprocal).foldLeft (Complex (0.0, 0.0))(_.+(_)).reciprocal
+        val zero = Complex (0.0, 0.0)
+        val sum = impedances.map (_.reciprocal).foldLeft (zero)(_.+(_))
+        val (total_impedance, default) = if (sum == zero)
+            (Complex (2.397460317, 16.07618325), true)
+        else
+            (sum.reciprocal, false)
 
         "\n" +
+        (if (default) "#warning WARNING: using default impedance for " + config + "\n" else "\n") +
         "        object transformer_configuration\n" +
         "        {\n" +
         "            name \"" + config + "\";\n" +

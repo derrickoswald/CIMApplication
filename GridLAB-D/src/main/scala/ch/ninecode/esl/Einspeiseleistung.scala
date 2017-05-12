@@ -517,7 +517,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             ret.values.map (v ⇒ finder(v)).toList
         }
         else
-            List[MaxEinspeiseleistung]()
+            trafo._2._2._2.map ((e) => MaxEinspeiseleistung (e.trafo, e.house, None, "gridlab failed", "no results")).toList
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
