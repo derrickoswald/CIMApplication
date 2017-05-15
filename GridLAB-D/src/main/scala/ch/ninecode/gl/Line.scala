@@ -1,10 +1,6 @@
 package ch.ninecode.gl
 
-import scala.math.sqrt
-
-import org.apache.spark.rdd.RDD
-
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
 
 class Line (one_phase: Boolean) extends Serializable
 {
@@ -61,7 +57,7 @@ class Line (one_phase: Boolean) extends Serializable
         val z12 = off.toString () + " Ohm/km"
         ret =
             "\n" +
-            (if (default) "#warning WARNING: using default line_configuration for " + config else "") +
+            (if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else "") +
             "        object line_configuration\n" +
             "        {\n" +
             "            name \"" + config + "\";\n" +
@@ -81,16 +77,16 @@ class Line (one_phase: Boolean) extends Serializable
 
     // is this an ACLineSegment
     // ToDo: this currently only looks at the first element -- what about combinations?
-    def isACLineSegment (iter: Iterable[PreEdge]): Boolean =
+    def isACLineSegment (iter: Iterable[GLMEdge]): Boolean =
     {
-        iter.head.element.getClass.getName.endsWith ("ACLineSegment")
+        iter.head.el.getClass.getName.endsWith ("ACLineSegment")
     }
 
     // get the configuration name (of the parallel lines)
-    def configurationName (iter: Iterable[PreEdge]): String =
+    def configurationName (iter: Iterable[GLMEdge]): String =
     {
-        val n = iter.map (_.equipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-        .map (x => valid_config_name (x)).toArray.sortWith (_ < _).mkString ("||")
+        val n = iter.map (_.eq.Equipment.PowerSystemResource.IdentifiedObject.name)
+        .map (valid_config_name).toArray.sortWith (_ < _).mkString ("||")
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -116,22 +112,22 @@ class Line (one_phase: Boolean) extends Serializable
         return (new Tuple2 (r, x))
     }
 
-    def configuration (item: Tuple2[String, Iterable[ch.ninecode.gl.PreEdge]]): String =
+    def configuration (item: Tuple2[String, Iterable[GLMEdge]]): String =
     {
         if (1 == item._2.size)
-            make_line_configuration (item._1, item._2.head.element.asInstanceOf[ACLineSegment])
+            make_line_configuration (item._1, item._2.head.el.asInstanceOf[ACLineSegment])
         else
         {
             // compute parallel impedance -- http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html#c3
             val lines = item._2.toArray
-            var line = lines(0).element.asInstanceOf[ACLineSegment]
+            var line = lines(0).el.asInstanceOf[ACLineSegment]
             var rt = if (0 == line.r) DEFAULT_R else line.r
             var xt = if (0 == line.x) DEFAULT_X else line.x
             var r0t = if (0 == line.r0) DEFAULT_R else line.r0
             var x0t = if (0 == line.x0) DEFAULT_X else line.x0
             for (i <- 1 until lines.size)
             {
-                line = lines(i).element.asInstanceOf[ACLineSegment]
+                line = lines(i).el.asInstanceOf[ACLineSegment]
                 val rl = if (0 == line.r) DEFAULT_R else line.r
                 val xl = if (0 == line.x) DEFAULT_X else line.x
                 val rl0 = if (0 == line.r0) DEFAULT_R else line.r0
@@ -148,63 +144,40 @@ class Line (one_phase: Boolean) extends Serializable
     }
 
     // get one of each type of ACLineSegment and emit a configuration for each of them
-    def getACLineSegmentConfigurations (edges: Iterable[Iterable[PreEdge]]): Iterable[String] =
+    def getACLineSegmentConfigurations (edges: Iterable[Iterable[GLMEdge]]): Iterable[String] =
     {
         edges.filter (x => isACLineSegment (x)).groupBy(x => configurationName (x))
              .map(x => configuration((x._1, x._2.head)))
     }
 
-    def emit (edges: Iterable[PreEdge]): String =
+    def emit (edges: Iterable[GLMEdge]): String =
     {
         val edge = edges.head
-        val line = edge.element.asInstanceOf[ACLineSegment]
+        val line = edge.el.asInstanceOf[ACLineSegment]
         val typ = if (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
             "underground_line"
         else
             "overhead_line"
         val config = configurationName (edges)
-        val obj = if (one_phase)
-            "\n" +
-            "        object " + typ + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases AN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            length " + line.Conductor.len + "m;\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object " + typ + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            "            length " + line.Conductor.len + "m;\n" +
-            "            configuration \"" + config + "\";\n" +
-            "        };\n"
-        val rec = if (one_phase)
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
-            "            property current_in_A.real,current_in_A.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-            "        };\n"
-        else
-            "\n" +
-            "        object recorder\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "_current_recorder\";\n" +
-            "            parent \"" + edge.id_equ + "\";\n" +
-            "            property current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag;\n" +
-            "            interval 5;\n" +
-            "            file \"output_data/" + edge.id_equ + "_current.csv\";\n" +
-            "        };\n"
-        return (obj + rec)
+
+        "\n" +
+        "        object " + typ + "\n" +
+        "        {\n" +
+        "            name \"" + edge.id + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            from \"" + edge.cn1 + "\";\n" +
+        "            to \"" + edge.cn2 + "\";\n" +
+        "            length " + line.Conductor.len + "m;\n" +
+        "            configuration \"" + config + "\";\n" +
+        "        };\n" +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + edge.id + "_current_recorder\";\n" +
+        "            parent \"" + edge.id + "\";\n" +
+        "            property " + (if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
+        "            interval 5;\n" +
+        "            file \"output_data/" + edge.id + "_current.csv\";\n" +
+        "        };\n"
     }
 }

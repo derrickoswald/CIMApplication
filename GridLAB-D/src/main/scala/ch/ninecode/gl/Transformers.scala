@@ -2,15 +2,10 @@ package ch.ninecode.gl
 
 import scala.collection.Map
 
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
@@ -34,9 +29,11 @@ case class TData (
     end0: PowerTransformerEnd,
     voltage0: Double,
     terminal0: Terminal,
+    node0: String,
     end1: PowerTransformerEnd,
     voltage1: Double,
-    terminal1: Terminal)
+    terminal1: Terminal,
+    node1: String)
 
 class Transformers (session: SparkSession, storage_level: StorageLevel) extends Serializable
 {
@@ -148,8 +145,18 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         }
     }
 
-    def getTransformerData (shortcircuitdata: String): RDD[TData] =
+    def getTransformerData (topological_nodes: Boolean = true, shortcircuitdata: String = null): RDD[TData] =
     {
+        /**
+         * The name of the node associated with a terminal.
+         * @param terminal The terminal object to get the node for.
+         * @return The name of the TopologicalNode or ConnectivityNode.
+         */
+        def node_name (t: Terminal): String =
+        {
+            return (if (topological_nodes) t.TopologicalNode else t.ConnectivityNode)
+        }
+
         // get all transformers in substations
         val transformers = get ("PowerTransformer").asInstanceOf[RDD[PowerTransformer]]
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
@@ -218,9 +225,8 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
 
         // convert to TData
         val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (
-            (x) => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, x._4._1, x._4._2, x._4._3)
+            (x) => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, node_name (x._3._3), x._4._1, x._4._2, x._4._3, node_name (x._4._3))
             )
-
         transformer_data.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {

@@ -1,10 +1,10 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model._
+import ch.ninecode.model.Switch
 
 class SwitchDevice (val one_phase: Boolean) extends Serializable
 {
-    def emit (edge: PreEdge, switch: Switch, fuse: Boolean = false): String =
+    def emit (edge: GLMEdge, switch: Switch, fuse: Boolean = false): String =
     {
         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
         var current = switch.ratedCurrent
@@ -14,24 +14,15 @@ class SwitchDevice (val one_phase: Boolean) extends Serializable
             "            current_limit " + current + "A;\n"
         else
             "            status \"" + status + "\";\n"
-        val ret = if (one_phase)
-            "        object " + (if (fuse) "fuse" else "switch") + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases AN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            details +
-            "        };\n"
-        else
-            "        object " + (if (fuse) "fuse" else "switch") + "\n" +
-            "        {\n" +
-            "            name \"" + edge.id_equ + "\";\n" +
-            "            phases ABCN;\n" +
-            "            from \"" + edge.id_cn_1 + "\";\n" +
-            "            to \"" + edge.id_cn_2 + "\";\n" +
-            details +
-            "        };\n"
-        return (ret)
+
+        "\n" +
+        "        object " + (if (fuse) "fuse" else "switch") + "\n" +
+        "        {\n" +
+        "            name \"" + edge.id + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            from \"" + edge.cn1 + "\";\n" +
+        "            to \"" + edge.cn2 + "\";\n" +
+        details +
+        "        };\n"
     }
 }

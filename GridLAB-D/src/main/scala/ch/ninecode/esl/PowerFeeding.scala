@@ -1,25 +1,54 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.Calendar
+
+import scala.Iterator
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-
-import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexRDD
-import org.apache.spark.graphx.EdgeRDD
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.Graph.graphToGraphOps
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
+import ch.ninecode.gl._
 
-case class PowerFeedingNode(id_seq: String, voltage: Double, source_obj: StartingTrafos, sum_r: Double, min_ir: Double, multiple_paths: Boolean) extends Serializable
-case class MaxPowerFeedingNodeEEA(id_seq: String, voltage: Double, source_obj: Array[TData], max_power_feeding: Double, eea: Iterable[PV], reason: String, details: String) extends Serializable
+case class PowerFeedingNode (
+    id_seq: String,
+    voltage: Double,
+    source_obj: StartingTrafos,
+    sum_r: Double,
+    min_ir: Double,
+    multiple_paths: Boolean) extends GLMNode
+{
+    override def id () = id_seq
+    override def nominal_voltage () = voltage
+}
+
+case class MaxPowerFeedingNodeEEA (
+    id_seq: String,
+    voltage: Double,
+    source_obj: Array[TData],
+    max_power_feeding: Double,
+    eea: Iterable[PV],
+    reason: String,
+    details: String)
+    extends Serializable
+{
+    def nis_number: String =
+    {
+        val n = id_seq.indexOf("_")
+        if (0 < n)
+            id_seq.substring(0, n)
+        else
+            id_seq
+    }
+}
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
 case class PreCalculationResults (
     simulation: Int,
@@ -178,6 +207,8 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
 object PowerFeeding
 {
+    val log = LoggerFactory.getLogger (getClass)
+
     def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos =
     {
       val pn = PreNode ("", 0.0)
@@ -196,7 +227,7 @@ object PowerFeeding
       StartingTrafos (v0, v1, tdata, r, ratedS)
     }
 
-    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD): PreCalculationResults =
+    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
         val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
@@ -218,13 +249,13 @@ object PowerFeeding
         })
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
-        println ("the simulation number is " + simulation)
+        log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
           val source = triplet.srcAttr.source_obj
           val target = triplet.dstAttr.source_obj
-          
+
           var ret = (null.asInstanceOf[String], triplet.attr)
           if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
             val source_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
@@ -234,19 +265,19 @@ object PowerFeeding
           }
           ret
         }
-        
+
         val vertices = graph.vertices.values
         val edges = graph.triplets.map(mapGraphEdges)
 
-        has.persist (gridlabd.STORAGE_LEVEL)
-        vertices.persist (gridlabd.STORAGE_LEVEL)
-        edges.persist (gridlabd.STORAGE_LEVEL)
+        has.persist (storage_level)
+        vertices.persist (storage_level)
+        edges.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {
             case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
             case None =>
         }
-        
+
         PreCalculationResults (simulation, has, vertices, edges)
     }
 }

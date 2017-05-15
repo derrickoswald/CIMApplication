@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -24,6 +24,10 @@ import ch.ninecode.cim._
 import ch.ninecode.model._
 
 import javax.xml.bind.DatatypeConverter
+import ch.ninecode.gl.GridLABD;
+import ch.ninecode.gl.PreEdge;
+import ch.ninecode.gl.PreNode;
+import ch.ninecode.gl.Transformers;
 
 class PowerFeedingSuite extends FunSuite
 {
@@ -56,9 +60,17 @@ class PowerFeedingSuite extends FunSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
-            classOf[ch.ninecode.gl.Transformer],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        // register Einspeiseleistung classes
+        configuration.registerKryoClasses (Array (
+            classOf[ch.ninecode.esl.Experiment],
+            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
+            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
+            classOf[ch.ninecode.esl.PV],
+            classOf[ch.ninecode.esl.PowerFeedingNode],
+            classOf[ch.ninecode.esl.PreCalculationResults],
+            classOf[ch.ninecode.esl.Trafokreis],
+            classOf[ch.ninecode.esl.StartingTrafos]))
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
@@ -104,23 +116,24 @@ class PowerFeedingSuite extends FunSuite
         println ("read : " + (read - begin) / 1e9 + " seconds")
 
         // set up for execution
-        val gridlabd = new GridLABD (session)
+        val gridlabd = new GridLABD (session, true)
         gridlabd.HDFS_URI = "" // local
-        gridlabd.STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK_SER
+        val storage_level = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
         val (xedges, xnodes) = gridlabd.prepare ()
 
-        val _transformers = new Transformers (session, gridlabd.STORAGE_LEVEL)
-        val tdata = _transformers.getTransformerData (null)
-        tdata.persist (gridlabd.STORAGE_LEVEL)
+        val _transformers = new Transformers (session, storage_level)
+        val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, null)
+        tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
-        val solars = gridlabd.getSolarInstallations (use_topological_nodes)
+        val eins = Einspeiseleistung (session, EinspeiseleistungOptions (verbose = true))
+        val solars = eins.getSolarInstallations (use_topological_nodes, storage_level)
         // construct the initial graph from the real edges and nodes
-        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), gridlabd.STORAGE_LEVEL, gridlabd.STORAGE_LEVEL)
+        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
         val power_feeding = new PowerFeeding(initial)
 
         val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))

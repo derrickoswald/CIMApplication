@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.esl
 
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -8,9 +8,13 @@ import java.sql.SQLException
 import java.sql.Timestamp
 import java.sql.Types
 import java.util.Calendar
+
+import scala.collection.mutable.ArrayBuffer
+
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
-import scala.collection.mutable.ArrayBuffer
+
+import ch.ninecode.gl.GridLABD
 
 object Database
 {
@@ -166,7 +170,7 @@ object Database
             {
                 val trafo_id = records(i).source_obj.map(_.transformer.id).sortWith (_ < _).mkString ("_")
                 val has_eea = records(i).eea != null
-                val has_id =  gridlabd.has(records(i).id_seq)
+                val has_id =  records(i).nis_number
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, trafo_id)
