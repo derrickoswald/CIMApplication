@@ -276,7 +276,7 @@ class SmartMeter extends Serializable
            
       val name = get ("Name", sc).asInstanceOf[RDD[Name]]     
       val userAttr = get ("UserAttribute", sc).asInstanceOf[RDD[UserAttribute]]
-      val joinedMst = name.keyBy(_.IdentifiedObj).join(userAttr.keyBy(_.name))
+      val joinedMst = name.keyBy(_.IdentifiedObject).join(userAttr.keyBy(_.name))
       val preparedAoId = joinedMst.map(mst => (mst._2._2.value, mst._2._1.name)).groupByKey
       
       val sapNr = withoutEmptyLeafes.keyBy(_.id_seq)

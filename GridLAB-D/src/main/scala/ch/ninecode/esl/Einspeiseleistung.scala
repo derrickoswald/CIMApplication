@@ -125,7 +125,7 @@ case class Trafokreis
     val log = LoggerFactory.getLogger (getClass)
 
     val window = 3 * 60 // window size in simulated seconds per experiment
-    val margin = 1.25 // check up to 25% over the precalculated value
+    val margin = 1.50 // check up to 50% over the precalculated value
     val step = 10000.0
     def significant (h: MaxPowerFeedingNodeEEA) = (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)) =
