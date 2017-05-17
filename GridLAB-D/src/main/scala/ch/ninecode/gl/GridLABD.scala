@@ -682,6 +682,20 @@ class GridLABD(session: SparkSession) extends Serializable
                             "popd;" +
                             "cat simulation/$FILE/$FILE.out; " +
                             "done < /dev/stdin")
+                else if (HDFS_URI.startsWith ("file:")) // local[*]
+                {
+                    Array[String](
+                        "bash",
+                        "-c",
+                        "while read line; do " +
+                            "export FILE=$line; " +
+                            "pushd /simulation/$FILE; " +
+                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                            "cat output_data/* > output.txt; " +
+                            "cat $FILE.out; " +
+                            "popd; " +
+                            "done < /dev/stdin")
+                }
                 else // cluster
                 {
                     Array[String](
