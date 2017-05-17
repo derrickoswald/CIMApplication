@@ -173,12 +173,12 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/GridLAB-D-2.0.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/GridLAB-D-2.2.2-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/GridLAB-D-2.0.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/bkw_cim_export_haelig.rdf
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/GridLAB-D-2.2.2-jar-with-dependencies.jar "hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11.rdf"
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/GridLAB-D-2.0.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/GridLAB-D-2.2.2-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
     def main (args: Array[String])
     {
