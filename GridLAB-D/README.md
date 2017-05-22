@@ -245,7 +245,7 @@ SQLite version 3.8.7.1 2014-10-29 13:59:56
 Enter ".help" for usage hints.
 sqlite> .schema
 CREATE TABLE simulation (id integer primary key autoincrement, description text, time text);
-CREATE TABLE results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, has_eea boolean, reason text, details text);
+CREATE TABLE results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, eea integer, reason text, details text);
 ```
 
 The SQL query or view to extract the most recent results for each house is TBD
