@@ -28,7 +28,7 @@ object Database
         val exists2 = resultset2.next ()
         resultset2.close ()
         if (!exists2)
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, has_eea boolean, reason text, details text)")
+            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, eea integer, reason text, details text)")
         val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'view' and name = 'feedin'")
         val exists3 = resultset3.next ()
         resultset3.close ()
@@ -161,18 +161,18 @@ object Database
             // insert the results
             val records = results.collect ()
 
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, has_eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
                 val trafo_id = records(i).source_obj.map(_.transformer.id).sortWith (_ < _).mkString ("_")
-                val has_eea = records(i).eea != null
+                val eea = if (records(i).eea != null) records(i).eea.size else 0
                 val has_id =  gridlabd.has(records(i).id_seq)
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, trafo_id)
                 datainsert.setString (4, has_id)
                 datainsert.setDouble (5, records(i).max_power_feeding)
-                datainsert.setBoolean(6, has_eea)
+                datainsert.setInt(6, eea)
                 datainsert.setString (7, records(i).reason)
                 datainsert.setString (8, records(i).details)
                 datainsert.executeUpdate ()
@@ -273,7 +273,7 @@ object Database
                 // create a database connection
                 connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
-                val statement = connection.prepareStatement ("select distinct(trafo) from results where has_eea and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
+                val statement = connection.prepareStatement ("select distinct(trafo) from results where eea > 0 and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
                 statement.setInt (1, simulation)
                 val resultset = statement.executeQuery ()
                 while (resultset.next ())
@@ -322,7 +322,7 @@ object Database
                 // create a database connection
                 connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
-                val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.has_eea != reference.has_eea) or (abs(current.maximum - reference.maximum) > ?))")
+                val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
                 statement.setInt (1, simulation)
                 statement.setInt (2, reference)
                 statement.setDouble (3, delta)
