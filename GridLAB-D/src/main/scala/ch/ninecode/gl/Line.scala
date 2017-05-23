@@ -38,41 +38,47 @@ class Line (one_phase: Boolean) extends Serializable
     // convert the 0/1 sequence values from the CIM format into a Z matrix
     def zMatrixValues (line: ACLineSegment): Tuple3[Complex, Complex, Boolean] =
     {
-        val ret =
-            if ((0.0 != line.r) && (0.0 != line.x))
+        if ((0.0 != line.r) && (0.0 != line.x))
+            if (one_phase)
                 (Complex (line.r, line.x), Complex (0.0, 0.0), false)
             else
-                (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0), true)
-
-        return (ret)
+            {
+                // Zm=(Z0+2*Z1)/3    Zp=(Z0+(a+a2)*Z1)/3
+                // a=-0.5+j(sqrt(3)/2)  a2=-0.5- j(sqrt(3)/2)
+                // Z1=sqrt(R1^2+X1^2)    Z0=sqrt(R0^2+X0^2)
+                val z0 = Math.sqrt ((line.r0 * line.r0) + (line.x0 * line.x0))
+                val z1 = Math.sqrt ((line.r * line.r) + (line.x * line.x))
+                val a = Complex (-0.5, Math.sqrt (3.0) / 2.0)
+                val a2 = Complex (-0.5, -Math.sqrt (3.0) / 2.0)
+                val zm = (z0 + 2.0 * z1) / 3.0
+                val zp = (z0 + ((a.+ (a2)) * z1)) / 3.0
+                (Complex (zm, 0.0), zp, false)
+            }
+        else
+            (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0), true)
     }
 
     // emit a GridLAB-D line_configuration
     def make_line_configuration (config: String, line: ACLineSegment): String =
     {
-        var ret = ""
-
         val (diag, off, default) = zMatrixValues (line)
         val z11 = diag.toString () + " Ohm/km"
         val z12 = off.toString () + " Ohm/km"
-        ret =
-            "\n" +
-            (if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else "") +
-            "        object line_configuration\n" +
-            "        {\n" +
-            "            name \"" + config + "\";\n" +
-            "            z11 " + z11 + ";\n" +
-            "            z12 " + z12 + ";\n" +
-            "            z13 " + z12 + ";\n" +
-            "            z21 " + z12 + ";\n" +
-            "            z22 " + z11 + ";\n" +
-            "            z23 " + z12 + ";\n" +
-            "            z31 " + z12 + ";\n" +
-            "            z32 " + z12 + ";\n" +
-            "            z33 " + z11 + ";\n" +
-            "        };\n"
-
-        return (ret)
+        "\n" +
+        (if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else "") +
+        "        object line_configuration\n" +
+        "        {\n" +
+        "            name \"" + config + "\";\n" +
+        "            z11 " + z11 + ";\n" +
+        "            z12 " + z12 + ";\n" +
+        "            z13 " + z12 + ";\n" +
+        "            z21 " + z12 + ";\n" +
+        "            z22 " + z11 + ";\n" +
+        "            z23 " + z12 + ";\n" +
+        "            z31 " + z12 + ";\n" +
+        "            z32 " + z12 + ";\n" +
+        "            z33 " + z11 + ";\n" +
+        "        };\n"
     }
 
     // is this an ACLineSegment
@@ -109,7 +115,7 @@ class Line (one_phase: Boolean) extends Serializable
         val xp = x1 * x2
         val r = (((rp - xp) * rs) + (((x1 * r2) + (x2 * r1)) * xs)) / ((rs * rs) + (xs * xs))
         val x = ((((x1 * r2) + (x2 * r1)) * rs) - ((rp - xp) * xs)) / ((rs * rs) + (xs * xs))
-        return (new Tuple2 (r, x))
+        new Tuple2 (r, x)
     }
 
     def configuration (item: Tuple2[String, Iterable[GLMEdge]]): String =

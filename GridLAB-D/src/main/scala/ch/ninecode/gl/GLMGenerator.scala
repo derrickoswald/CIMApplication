@@ -31,6 +31,8 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      */
     def name: String = "gridlabd"
 
+    def header: String = "GridLAB-D"
+
     def start_time (): Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-08T12:00:00")
 
     def finish_time (): Calendar = start_time
@@ -181,7 +183,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         val t1 = finish_time
         val prefix =
             "// $Id: " + name + ".glm\n" +
-                "// Einspeiseleistung\n" +
+                "// " + header + "\n" +
                 "//*********************************************\n" +
                 "\n" +
                 "        module tape;\n" +

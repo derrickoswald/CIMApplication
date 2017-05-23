@@ -9,6 +9,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 {
     override def name: String = trafokreis.name
 
+    override def header: String = "Einspeiseleistung"
+
     override def start_time = trafokreis.start_time
 
     override def finish_time = trafokreis.finish_time
