@@ -18,7 +18,7 @@ import ch.ninecode.model._
 object Main
 {
     val APPLICATION_NAME = "GridLAB-D"
-    val APPLICATION_VERSION = "2.2.0"
+    val APPLICATION_VERSION = "2.2.2"
 
     object LogLevels extends Enumeration
     {
@@ -224,13 +224,13 @@ object Main
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.gl.PreNode],
                         classOf[ch.ninecode.gl.PreEdge],
+                        classOf[ch.ninecode.gl.PV],
                         classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
                     // register Einspeiseleistung classes
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.esl.Experiment],
                         classOf[ch.ninecode.esl.MaxEinspeiseleistung],
                         classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-                        classOf[ch.ninecode.esl.PV],
                         classOf[ch.ninecode.esl.PowerFeedingNode],
                         classOf[ch.ninecode.esl.PreCalculationResults],
                         classOf[ch.ninecode.esl.Trafokreis],

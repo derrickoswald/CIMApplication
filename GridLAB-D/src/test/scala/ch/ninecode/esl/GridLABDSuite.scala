@@ -50,13 +50,13 @@ class GridLABDSuite extends FunSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
         // register Einspeiseleistung classes
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.esl.Experiment],
             classOf[ch.ninecode.esl.MaxEinspeiseleistung],
             classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-            classOf[ch.ninecode.esl.PV],
             classOf[ch.ninecode.esl.PowerFeedingNode],
             classOf[ch.ninecode.esl.PreCalculationResults],
             classOf[ch.ninecode.esl.Trafokreis],

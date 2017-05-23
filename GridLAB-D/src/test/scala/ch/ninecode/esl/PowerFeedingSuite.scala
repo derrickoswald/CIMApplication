@@ -27,6 +27,7 @@ import javax.xml.bind.DatatypeConverter
 import ch.ninecode.gl.GridLABD;
 import ch.ninecode.gl.PreEdge;
 import ch.ninecode.gl.PreNode;
+import ch.ninecode.gl.Solar;
 import ch.ninecode.gl.Transformers;
 
 class PowerFeedingSuite extends FunSuite
@@ -60,13 +61,13 @@ class PowerFeedingSuite extends FunSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
         // register Einspeiseleistung classes
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.esl.Experiment],
             classOf[ch.ninecode.esl.MaxEinspeiseleistung],
             classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-            classOf[ch.ninecode.esl.PV],
             classOf[ch.ninecode.esl.PowerFeedingNode],
             classOf[ch.ninecode.esl.PreCalculationResults],
             classOf[ch.ninecode.esl.Trafokreis],
@@ -130,8 +131,10 @@ class PowerFeedingSuite extends FunSuite
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
         val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
 
-        val eins = Einspeiseleistung (session, EinspeiseleistungOptions (verbose = true))
-        val solars = eins.getSolarInstallations (use_topological_nodes, storage_level)
+        // get the existing photo-voltaic installations keyed by terminal
+        val solar = Solar (session, use_topological_nodes, storage_level)
+        val solars = solar.getSolarInstallations
+
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
         val power_feeding = new PowerFeeding(initial)

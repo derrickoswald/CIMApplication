@@ -94,23 +94,6 @@ case class MaxEinspeiseleistung(
     reason: String,
     details: String)
 
-trait Problem
-{
-    import Problem._
-    def node (t: Terminal) = if (USE_TOPOLOGICAL_NODES) t.TopologicalNode else t.ConnectivityNode
-
-    def name (): String
-    def start_time (): Calendar
-    def finish_time (): Calendar
-    def swing_node (): String
-    def swing_node_voltage (): Double
-}
-
-object Problem
-{
-    var USE_TOPOLOGICAL_NODES: Boolean = true
-}
-
 case class Trafokreis
 (
     start: Calendar,
@@ -175,16 +158,6 @@ case class Trafokreis
     def swing_node_voltage (): Double = transformers(0).voltage0 * 1000
 }
 
-/**
- * Photovoltaic attachment.
- * Generating equipment attached to a node.
- * @param node ConnectivityNode or TopologicalNode MRID.
- * @param solar SolarGeneratingUnit object attached to the node.
- */
-case class PV(
-    node: String,
-    solar: SolarGeneratingUnit)
-
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions)
 {
     if (options.verbose)
@@ -222,86 +195,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         return (null)
-    }
-
-    def filterValidSolarUnits(pv: RDD[PV]): RDD[PV] =
-    {
-        val lifecycle = get("LifecycleDate").asInstanceOf[RDD[LifecycleDate]]
-        val asset = get("Asset").asInstanceOf[RDD[Asset]]
-        val lifecycle_per_eea = asset.keyBy(_.lifecycle).join(lifecycle.keyBy(_.id)).map(l ⇒ (l._2._1.IdentifiedObject.name, (l._2._2)))
-        val pv_lifecycle = pv.keyBy(_.solar.id).leftOuterJoin(lifecycle_per_eea)
-
-        def lifecycleValid(lifecycle: LifecycleDate): Boolean =
-        {
-            if (lifecycle.installationDate != null)
-                true
-            else if (lifecycle.receivedDate != null)
-            {
-                val _DateFormat = new SimpleDateFormat("dd.MM.yyyy")
-                val receivedDate = _DateFormat.parse(lifecycle.receivedDate)
-                val now = new Date()
-                val diffTime = now.getTime() - receivedDate.getTime()
-                val diffDays = diffTime / (1000 * 60 * 60 * 24);
-                diffDays < 400
-            }
-            else
-                false
-        }
-
-        val valid_pv = pv_lifecycle.filter(p ⇒ {
-            val lifecycle_option = p._2._2
-            if (lifecycle_option.isDefined)
-                lifecycleValid(lifecycle_option.get)
-            else
-                false
-        })
-
-        valid_pv.map(_._2._1)
-    }
-
-    // get the existing photo-voltaic installations keyed by terminal
-    def getSolarInstallations(topologicalnodes: Boolean, storage_level: StorageLevel): RDD[Tuple2[String, Iterable[PV]]] =
-    {
-        // note there are two independent linkages happening here through the UserAttribute class:
-        // - SolarGeneratingUnit to ServiceLocation
-        // - ServiceLocation to EnergyConsumer
-
-        // link to service location ids via UserAttribute
-        val attributes = get("UserAttribute").asInstanceOf[RDD[UserAttribute]]
-
-        // user attributes link through string quantities
-        val strings = get("StringQuantity").asInstanceOf[RDD[StringQuantity]]
-
-        // get solar to service linkage, e.g. ("EEA5280", "MST115133")
-        // and service to house linkage, e.g. ("MST115133", "HAS138130")
-        val pairs = attributes.keyBy(_.value).join(strings.keyBy(_.id)).values.map(x ⇒ (x._1.name, x._2.value))
-
-        // get a simple list of house to pv id pairs
-        val links = pairs.join(pairs.map(x ⇒ (x._2, x._1))).values
-
-        // get the pv stations
-        val solars = get("SolarGeneratingUnit").asInstanceOf[RDD[SolarGeneratingUnit]]
-
-        // get a simple list of house to pv pairs
-        val house_solars = links.map(x ⇒ (x._2, x._1)).join(solars.keyBy(_.id)).values
-
-        // get the terminals
-        val terminals = get("Terminal").asInstanceOf[RDD[Terminal]]
-
-        // link to the connectivity/topological node through the terminal
-        val t = terminals.keyBy(_.ConductingEquipment).join(house_solars).values.map(
-            (x) ⇒ PV(if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
-
-        val filteredPV = filterValidSolarUnits(t)
-        val pv = filteredPV.groupBy(_.node)
-
-        pv.persist(storage_level)
-        session.sparkContext.getCheckpointDir match {
-            case Some(dir) ⇒ pv.checkpoint()
-            case None ⇒
-        }
-
-        pv
     }
 
     def makeTrafokreis (start: Calendar) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
@@ -743,7 +636,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val sdata = getSolarInstallations (gridlabd.USE_TOPOLOGICAL_NODES, storage_level)
+        val solar = Solar (session, gridlabd.USE_TOPOLOGICAL_NODES, storage_level)
+        val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
