@@ -38,8 +38,69 @@ object Database
         resultset3.close ()
         if (!exists3)
         {
-            statement.executeUpdate ("create view if not exists intermediate as select s.description Analysis, datetime(s.time / 1000, 'unixepoch', 'localtime'), s.time When_Epoc, r.trafo Transformer, r.house House, r.maximum Maximum, r.reason Reason, r.details Details from simulation s, results r where s.id = r.simulation")
-            statement.executeUpdate ("create view if not exists feedin as select i.Analysis, i.Transformer, i.House, i.Maximum, i.Reason, i.Details from intermediate i, (select max(When_Epoc) When_Epoc, House from intermediate group by House) m where i.When_Epoc = m.When_Epoc and i.House = m.House")
+            statement.executeUpdate (
+                """create view if not exists intermediate as
+                |   select
+                |     0 Priority,
+                |     s.description Analysis,
+                |     datetime(s.time / 1000, 'unixepoch', 'localtime') Date,
+                |     s.time When_Epoc,
+                |     r.trafo Transformer,
+                |     r.house House,
+                |     r.maximum Maximum,
+                |     r.reason Reason,
+                |     r.details Details
+                |   from
+                |     simulation s,
+                |     results r
+                |   where
+                |     s.description = 'Threshold Precalculation'and
+                |     s.id = r.simulation
+                | union
+                |   select
+                |     1 Priority,
+                |     s.description Analysis,
+                |     datetime(s.time / 1000, 'unixepoch', 'localtime') Date,
+                |     s.time When_Epoc,
+                |     r.trafo Transformer,
+                |     r.house House,
+                |     r.maximum Maximum,
+                |     r.reason Reason,
+                |     r.details Details
+                |   from
+                |     simulation s,
+                |     results r
+                |   where
+                |     s.description = 'Einspeiseleistung' and
+                |     s.id = r.simulation""".stripMargin)
+            statement.executeUpdate (
+                """create view if not exists feedin as
+                | select
+                |   i.Analysis,
+                |   i.Transformer,
+                |   i.House,
+                |   i.Maximum,
+                |   i.Reason,
+                |   i.Details
+                | from
+                |   intermediate i,
+                |   (select
+                |     Priority,
+                |     max(When_Epoc) When_Epoc,
+                |     House
+                |   from
+                |     (select
+                |       max(Priority) Priority,
+                |       When_Epoc,
+                |       House
+                |     from
+                |       intermediate
+                |     group by House)
+                |   group by House) m
+                | where
+                |   i.Priority = m.Priority and
+                |   i.When_Epoc = m.When_Epoc and
+                |   i.House = m.House""".stripMargin)
         }
         statement.close ()
     }
