@@ -737,7 +737,7 @@ class GridLABD(session: SparkSession) extends Serializable
               if (HDFS_URI == "")
                 base_folder + "/*/output.txt"
               else
-                "/" + base_folder + "/*/output.txt"
+                HDFS_URI + base_folder + "/*/output.txt"
 
             val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
             val files = session.sparkContext.wholeTextFiles(path, executors)
@@ -1016,85 +1016,88 @@ class GridLABD(session: SparkSession) extends Serializable
         {
             val start = System.nanoTime()
             val filtered_trafos = trafokreis.filter(_._2._2.isDefined)
-            println("filtered_trafos: " + filtered_trafos.count)
-
-            val experiments = filtered_trafos.flatMap(export).cache
-            experiments.count
-            val write = System.nanoTime()
-            println("export: " + (write - start) / 1e9 + " seconds")
-            println("number of processed trafos: " + filtered_trafos.count)
-
+            val count = filtered_trafos.count
+            println("filtered_trafos: " + count)
             var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
-            if (!EXPORT_ONLY) {
-              
-                val reduced_trafos = filtered_trafos.mapValues(t => {
-                  val transformers = t._1.map(_.end1.ratedS).sum
-                  val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e => (e.element.id, e.ratedCurrent))
-                  (transformers, cdata_iter)
-                }).cache
-                
-                val max_values = solve_and_analyse(reduced_trafos, experiments)
-                println("read results: " + max_values.count)
-                
-                val b4_experiment = System.nanoTime()
-                val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house => {
-                    val experiment = house._2._1
-                    val max_option = house._2._2
-                    
-                    val step = 1000.0
-                    var riser = step
-                    var to = experiment.to
-                    var from = to - experiment.step
-                    if (max_option.isDefined) {
-                        val max = max_option.get
-                        if (max.reason != "no limit" && max.max.isDefined) {
-                            val max_val = max.max.get
-                            if (max_val > experiment.step) {
-                                to = max_val + step
-                                from = max_val - experiment.step
-                            } else {
-                                to = experiment.step
-                                from = 0
+            if (0 != count)
+            {
+                val experiments = filtered_trafos.flatMap(export).cache
+                experiments.count
+                val write = System.nanoTime()
+                println("export: " + (write - start) / 1e9 + " seconds")
+                println("number of processed trafos: " + filtered_trafos.count)
+
+                if (!EXPORT_ONLY) {
+
+                    val reduced_trafos = filtered_trafos.mapValues(t => {
+                      val transformers = t._1.map(_.end1.ratedS).sum
+                      val cdata_iter = t._2.get._2.filter(_.ratedCurrent < Double.PositiveInfinity).map(e => (e.element.id, e.ratedCurrent))
+                      (transformers, cdata_iter)
+                    }).cache
+
+                    val max_values = solve_and_analyse(reduced_trafos, experiments)
+                    println("read results: " + max_values.count)
+
+                    val b4_experiment = System.nanoTime()
+                    val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house => {
+                        val experiment = house._2._1
+                        val max_option = house._2._2
+
+                        val step = 1000.0
+                        var riser = step
+                        var to = experiment.to
+                        var from = to - experiment.step
+                        if (max_option.isDefined) {
+                            val max = max_option.get
+                            if (max.reason != "no limit" && max.max.isDefined) {
+                                val max_val = max.max.get
+                                if (max_val > experiment.step) {
+                                    to = max_val + step
+                                    from = max_val - experiment.step
+                                } else {
+                                    to = experiment.step
+                                    from = 0
+                                }
+                                val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+                                if (!(steps * step >= (to - from)))
+                                  riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
+
                             }
-                            val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-                            if (!(steps * step >= (to - from)))
-                              riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
-                            
                         }
-                    }                        
-                    experiment.copy(from=from , to=to, step = riser)
-                }).cache
-                    
-                val experiment_adjusted = System.nanoTime()
-                println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
-                
-                filtered_trafos.map(t => cleanup(t._1, false)).count
-                
-                val filedelete = System.nanoTime()
-                println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
-                
-                experiments2.map(experiment => {
-                    fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", fileWriter.ramp_up(experiment, 0.0))
-                }).count
-                
-                val export2 = System.nanoTime()
-                println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
-                
-                ret = solve_and_analyse(reduced_trafos, experiments2).cache
-                println("ret: " + ret.count)
-                
-                val analyse = System.nanoTime()
-                println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
-                
-                val b4_db = System.nanoTime()
-                Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
-                val dbsave = System.nanoTime()
-                println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
-                
-                if (DELETE_SIMULATION_FILES)
-                    filtered_trafos.map(t => cleanup(t._1, true)).count
+                        experiment.copy(from=from , to=to, step = riser)
+                    }).cache
+
+                    val experiment_adjusted = System.nanoTime()
+                    println("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
+
+                    filtered_trafos.map(t => cleanup(t._1, false)).count
+
+                    val filedelete = System.nanoTime()
+                    println("filedelete: " + (filedelete - experiment_adjusted) / 1e9 + " seconds")
+
+                    experiments2.map(experiment => {
+                        fileWriter.writeInputFile(experiment.trafo, "input_data/" + experiment.house + ".csv", fileWriter.ramp_up(experiment, 0.0))
+                    }).count
+
+                    val export2 = System.nanoTime()
+                    println("export2: " + (export2 - filedelete) / 1e9 + " seconds")
+
+                    ret = solve_and_analyse(reduced_trafos, experiments2).cache
+                    println("ret: " + ret.count)
+
+                    val analyse = System.nanoTime()
+                    println("analyse includes solve : " + (analyse - export2) / 1e9 + " seconds")
+
+                    val b4_db = System.nanoTime()
+                    Database.store("Einspeiseleistung", Calendar.getInstance())(ret.collect)
+                    val dbsave = System.nanoTime()
+                    println("dbsave: " + (dbsave - b4_db) / 1e9 + " seconds")
+
+                    if (DELETE_SIMULATION_FILES)
+                        filtered_trafos.map(t => cleanup(t._1, true)).count
+                }
             }
-            
+
             ret
         }
 

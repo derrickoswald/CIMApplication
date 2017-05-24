@@ -289,7 +289,8 @@ object Main
                 {
                     val name = arguments.files (0).replace (" ", "%20")
                     val uri = new URI (name)
-                    uri.getScheme + "://" + uri.getAuthority + "/"
+                    val auth = if (null == uri.getAuthority) "" else uri.getAuthority
+                    uri.getScheme + "://" + auth + "/"
                 }
 
                 gridlabd.DELETE_SIMULATION_FILES = arguments.erase
