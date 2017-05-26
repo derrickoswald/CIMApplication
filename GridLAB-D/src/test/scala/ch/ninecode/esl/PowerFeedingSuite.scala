@@ -117,18 +117,19 @@ class PowerFeedingSuite extends FunSuite
         println ("read : " + (read - begin) / 1e9 + " seconds")
 
         // set up for execution
-        val gridlabd = new GridLABD (session = session, one_phase = true, workdir = ".")
+        val topological_nodes = true
+        val gridlabd = new GridLABD (session = session, topological_nodes = topological_nodes, one_phase = true, workdir = ".")
         val storage_level = StorageLevel.MEMORY_AND_DISK_SER
 
         // prepare the initial graph
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, null)
+        val tdata = _transformers.getTransformerData (topological_nodes, null)
         tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+        val transformers = niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, use_topological_nodes, storage_level)

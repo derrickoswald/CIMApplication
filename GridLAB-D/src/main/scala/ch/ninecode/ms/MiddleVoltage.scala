@@ -100,13 +100,14 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
-        val gridlabd = new GridLABD (session, !options.three, storage_level, options.workdir)
+        val topological_nodes = true
+        val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, options.workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
+        val tdata = _transformers.getTransformerData (topological_nodes, options.short_circuit)
 
         // determine the set of transformers to work on
         /**
@@ -116,7 +117,7 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
          */
         def node_name (t: TData): String =
         {
-            return (if (gridlabd.USE_TOPOLOGICAL_NODES) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode)
+            return (if (topological_nodes) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode)
         }
         val transformers = if (null != trafos)
         {

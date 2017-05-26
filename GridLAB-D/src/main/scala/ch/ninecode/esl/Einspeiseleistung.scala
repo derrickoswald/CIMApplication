@@ -631,31 +631,32 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
+        val topological_nodes = true
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
-        val gridlabd = new GridLABD (session, !options.three, storage_level, workdir)
+        val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (gridlabd.USE_TOPOLOGICAL_NODES, options.short_circuit)
+        val tdata = _transformers.getTransformerData (topological_nodes, options.short_circuit)
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, gridlabd.USE_TOPOLOGICAL_NODES, storage_level)
+        val solar = Solar (session, topological_nodes, storage_level)
         val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
         }
         else
         {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
         }
 
         val prepare = System.nanoTime ()
