@@ -19,7 +19,7 @@ import ch.ninecode.model._
 object Main
 {
     val APPLICATION_NAME = "GridLAB-D"
-    val APPLICATION_VERSION = "2.2.2"
+    val APPLICATION_VERSION = "2.2.5"
 
     object LogLevels extends Enumeration
     {

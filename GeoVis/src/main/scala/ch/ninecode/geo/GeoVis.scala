@@ -53,7 +53,14 @@ class GeoVis extends Serializable
         val positionPoint = get (sc, "PositionPoint").asInstanceOf[RDD[PositionPoint]]
         val acLineSegment = get (sc, "ACLineSegment").asInstanceOf[RDD[ACLineSegment]]
 
-        val line = acLineSegment.map((line: ACLineSegment) ⇒ { SpezificAcLineSegment (line.sup.sup.sup.sup.sup.mRID, line.sup.sup.sup.sup.sup.name, line.sup.sup.sup.sup.sup.aliasName, line.sup.sup.sup.sup.Location, line.sup.sup.BaseVoltage) })
+        val line = acLineSegment.map(
+            (line: ACLineSegment) ⇒
+            {
+                val cnd = line.Conductor.ConductingEquipment
+                val psr = cnd.Equipment.PowerSystemResource
+                val id = psr.IdentifiedObject
+                SpezificAcLineSegment (id.mRID, id.name, id.aliasName, psr.Location, cnd.BaseVoltage)
+            })
         var filteredOrderedPositions = preparePositionPoints(positionPoint, bbox)
 
         if (dougPeuk) {
