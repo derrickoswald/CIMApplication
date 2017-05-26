@@ -652,7 +652,7 @@ class GridLABD (
             eraseInputFile (equipment + "/input_data/")
             eraseInputFile (equipment + "/output_data/")
             eraseInputFile (equipment + "/output.txt")
-            eraseInputFile (equipment + "/" + equipment + ".out")
+            //eraseInputFile (equipment + "/" + equipment + ".out")
             writeInputFile (equipment, "/output_data/dummy", null) // mkdir
         }
     }
