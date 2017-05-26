@@ -39,6 +39,46 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
 
     lazy val use_utc = date_format.getTimeZone == TimeZone.getTimeZone("UTC")
 
+    def prefix (): String =
+    {
+        val t0 = start_time
+        val t1 = finish_time
+
+        "// $Id: " + name + ".glm\n" +
+        "// " + header + "\n" +
+        "//*********************************************\n" +
+        "\n" +
+        "        module tape;\n" +
+        "\n" +
+        "        module powerflow\n" +
+        "        {\n" +
+        "            solver_method NR;\n" +
+        "            default_maximum_voltage_error 10e-6;\n" +
+        "            NR_iteration_limit 5000;\n" +
+        "            NR_superLU_procs 16;\n" +
+        "            nominal_frequency 50;\n" +
+        "        };\n" +
+        "\n" +
+        "        clock\n" +
+        "        {\n" +
+        "            timezone " + (if (use_utc) "UTC0UTC" else tzString) + ";\n" +
+        "            starttime '" + date_format.format (t0.getTime ()) + "';\n" +
+        "            stoptime '" + date_format.format (t1.getTime ()) + "';\n" +
+        "        };\n" +
+        "\n" +
+        "        class player\n" +
+        "        {\n" +
+        "            complex value;\n" +
+        "        };\n" +
+        "\n" +
+        "        object voltdump\n" +
+        "        {\n" +
+        "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
+        "            mode polar;\n" +
+        "            runtime '" + date_format.format (t0.getTime ()) + "';\n" +
+        "        };\n"
+    }
+
     def edge_groups: Iterable[Iterable[GLMEdge]] = List(List[GLMEdge]())
 
     def transformers: Array[TData] = Array()
@@ -179,43 +219,6 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         /**
          * Create the output file.
          */
-        val t0 = start_time
-        val t1 = finish_time
-        val prefix =
-            "// $Id: " + name + ".glm\n" +
-                "// " + header + "\n" +
-                "//*********************************************\n" +
-                "\n" +
-                "        module tape;\n" +
-                "\n" +
-                "        module powerflow\n" +
-                "        {\n" +
-                "            solver_method NR;\n" +
-                "            default_maximum_voltage_error 10e-6;\n" +
-                "            NR_iteration_limit 5000;\n" +
-                "            NR_superLU_procs 16;\n" +
-                "            nominal_frequency 50;\n" +
-                "        };\n" +
-                "\n" +
-                "        clock\n" +
-                "        {\n" +
-                "            timezone " + (if (use_utc) "UTC0UTC" else tzString) + ";\n" +
-                "            starttime '" + date_format.format (t0.getTime ()) + "';\n" +
-                "            stoptime '" + date_format.format (t1.getTime ()) + "';\n" +
-                "        };\n" +
-                "\n" +
-                "        class player\n" +
-                "        {\n" +
-                "            complex value;\n" +
-                "        };\n" +
-                "\n" +
-                "        object voltdump\n" +
-                "        {\n" +
-                "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
-                "            mode polar;\n" +
-                "            runtime '" + date_format.format (t0.getTime ()) + "';\n" +
-                "        };\n"
-
         val result = new StringBuilder()
         result.append(prefix)
         result.append(t_string)
