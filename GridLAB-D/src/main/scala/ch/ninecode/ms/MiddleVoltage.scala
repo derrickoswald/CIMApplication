@@ -30,6 +30,7 @@ case class MiddleVoltageOptions (
     export_only: Boolean = false,
     erase: Boolean = false,
     short_circuit: String = "",
+    workdir: String = "",
     files: Seq[String] = Seq()
 )
 
@@ -99,16 +100,7 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
-        val gridlabd = new GridLABD (session, !options.three, storage_level)
-        gridlabd.HDFS_URI =
-        {
-            val name = options.files (0).replace (" ", "%20")
-            val uri = new URI (name)
-            if (null == uri.getScheme)
-                ""
-            else
-                uri.getScheme + "://" + uri.getAuthority + "/"
-        }
+        val gridlabd = new GridLABD (session, !options.three, storage_level, options.workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()

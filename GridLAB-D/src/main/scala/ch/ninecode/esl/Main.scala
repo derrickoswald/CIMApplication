@@ -2,6 +2,7 @@ package ch.ninecode.esl
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
+import java.net.URI
 
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
@@ -60,6 +61,7 @@ object Main
         delta: Double = 1e-6,
         number: Int = -1,
         short_circuit: String = "",
+        workdir: String = "",
         files: Seq[String] = Seq()
     )
 
@@ -109,7 +111,7 @@ object Main
 
         opt[Unit]('e', "erase").
             action ((_, c) => c.copy (erase = true)).
-            text ("clean up (delete) simulation HDFS files")
+            text ("clean up (delete) simulation files")
 
         opt[LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
@@ -138,6 +140,10 @@ object Main
         opt[String]('c', "csv").valueName ("<file>").
             action ((x, c) => c.copy (short_circuit = x)).
             text ("short circuit power file")
+
+        opt[String]('w', "workdir").valueName ("<file>").
+            action ((x, c) => c.copy (workdir = x)).
+            text ("shared directory (HDFS or NFS share) for work files")
 
         help ("help").text ("prints this usage text")
 
@@ -170,6 +176,19 @@ object Main
         }
 
         return (ret)
+    }
+
+    /**
+     * Generate a working directory matching the files.
+     */
+    def derive_work_dir (files: Seq[String]): String =
+    {
+        val file = files.head.split (",")(0).replace (" ", "%20")
+        val uri = new URI (file)
+        if (null == uri.getScheme)
+            "/simulation/"
+        else
+            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
     }
 
     /**
@@ -249,6 +268,7 @@ object Main
                 val ro = HashMap[String,String] ()
                 ro.put ("StorageLevel", arguments.storage)
                 ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
+                val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = EinspeiseleistungOptions (
                     verbose = !arguments.quiet,
                     cim_reader_options = ro,
@@ -263,6 +283,7 @@ object Main
                     delta = arguments.delta,
                     number = arguments.number,
                     short_circuit = arguments.short_circuit,
+                    workdir = workdir,
                     files = arguments.files
                 )
                 val eins = Einspeiseleistung (session, options)

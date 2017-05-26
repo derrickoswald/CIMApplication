@@ -35,6 +35,7 @@ case class EinspeiseleistungOptions (
     delta: Double = 1e-6,
     number: Int = -1,
     short_circuit: String = "",
+    workdir: String = "",
     files: Seq[String] = Seq()
 )
 
@@ -560,11 +561,23 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val dbsave = System.nanoTime()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
-            if (options.erase)
-                trafokreise.map(t ⇒ gridlabd.cleanup(t.trafo, true)).count
+            trafokreise.map(t ⇒ gridlabd.cleanup(t.trafo, options.erase)).count
         }
 
         ret
+    }
+
+    /**
+     * Generate a working directory matching the files.
+     */
+    def derive_work_dir (files: Seq[String]): String =
+    {
+        val file = files.head.split (",")(0).replace (" ", "%20")
+        val uri = new URI (file)
+        if (null == uri.getScheme)
+            "/simulation/"
+        else
+            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
     }
 
     def run (): Long =
@@ -618,16 +631,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
-        val gridlabd = new GridLABD (session, !options.three, storage_level)
-        gridlabd.HDFS_URI =
-        {
-            val name = options.files (0).replace (" ", "%20")
-            val uri = new URI (name)
-            if (null == uri.getScheme)
-                ""
-            else
-                uri.getScheme + "://" + uri.getAuthority + "/"
-        }
+        val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
+        val gridlabd = new GridLABD (session, !options.three, storage_level, workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
@@ -700,10 +705,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
             val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0)_)
-            log.info ("filtered_trafos: " + filtered_trafos.count)
-            einspeiseleistung (gridlabd, filtered_trafos)
-
-            log.info ("finished " + trafo_list.count + " trafokreis")
+            val count = trafo_list.count
+            log.info ("filtered_trafos: " + count)
+            if (0 != count)
+            {
+                einspeiseleistung (gridlabd, filtered_trafos)
+                log.info ("finished " + count + " trafokreis")
+            }
         }
 
         val calculate = System.nanoTime ()
