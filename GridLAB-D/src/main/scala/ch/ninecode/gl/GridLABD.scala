@@ -22,26 +22,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.BaseVoltage
-import ch.ninecode.model.Breaker
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.ConnectivityNode
-import ch.ninecode.model.Cut
-import ch.ninecode.model.Disconnector
-import ch.ninecode.model.Element
-import ch.ninecode.model.Fuse
-import ch.ninecode.model.GroundDisconnector
-import ch.ninecode.model.Jumper
-import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.PowerTransformerEnd
-import ch.ninecode.model.ProtectedSwitch
-import ch.ninecode.model.Recloser
-import ch.ninecode.model.Sectionaliser
-import ch.ninecode.model.Switch
-import ch.ninecode.model.Terminal
-import ch.ninecode.model.TopologicalNode
-import ch.ninecode.model.WireInfo
+import ch.ninecode.model._
 
 /**
  * Common GraphX functions.
@@ -53,7 +34,7 @@ trait Graphable
      * Compute the vertex id.
      * @param string The CIM MRID.
      */
-    def vertex_id(string: String): VertexId =
+    def vertex_id (string: String): VertexId =
     {
         var h = 2166136261l;
         for (c ← string)
@@ -141,12 +122,53 @@ case class ThreePhaseComplexDataElement(
 class GridLABD (
     session: SparkSession,
     one_phase: Boolean = false,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost().getHostName() + "/simulation/") extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
 
     var USE_TOPOLOGICAL_NODES = true
-    var HDFS_URI = "hdfs://sandbox:8020/"
+
+    /**
+     * Get the working directory ensuring a slash terminator.
+     */
+    val workdir_slash: String = if (workdir.endsWith ("/")) workdir else workdir + "/"
+
+    /**
+     * Get the scheme for the working directory.
+     */
+    val workdir_scheme: String =
+    {
+        val uri = new URI (workdir_slash)
+        if (null == uri.getScheme)
+            ""
+        else
+            uri.getScheme
+    }
+
+    /**
+     * Get the path component of the working directory.
+     */
+    val workdir_path: String =
+    {
+        val uri = new URI (workdir_slash)
+        if (null == uri.getPath)
+            "/"
+        else
+            uri.getPath
+    }
+
+    /**
+     * Get just the URI for the working directory.
+     */
+    val workdir_uri: String =
+    {
+        val uri = new URI (workdir_slash)
+        if (null == uri.getScheme)
+            ""
+        else
+            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
+    }
 
     /**
      * Lookup CIM RDD by name.
@@ -470,33 +492,21 @@ class GridLABD (
         //   sudo dpkg -i gridlabd_3.2.0-2_amd64.deb
 
         val gridlabd =
-            if ("" == HDFS_URI) // local
-                Array[String](
-                    "bash",
-                    "-c",
-                    "while read line; do " +
-                        "export FILE=$line; " +
-                        "pushd simulation/$FILE; " +
-                        "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
-                        "cat output_data/* > output.txt; " +
-                        "popd;" +
-                        "cat simulation/$FILE/$FILE.out; " +
-                        "done < /dev/stdin")
-            else if (HDFS_URI.startsWith ("file:")) // local[*]
+            if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
             {
                 Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
                         "export FILE=$line; " +
-                        "pushd /simulation/$FILE; " +
+                        "pushd " + workdir_path + "$FILE; " +
                         "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                         "cat output_data/* > output.txt; " +
                         "cat $FILE.out; " +
                         "popd; " +
                         "done < /dev/stdin")
             }
-            else // cluster
+            else // cluster, either hdfs://XX or wasb://YY
             {
                 Array[String](
                     "bash",
@@ -505,17 +515,18 @@ class GridLABD (
                         "export FILE=$line; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                         "HADOOP_USER_NAME=$SPARK_USER; " +
-                        "$HDFS_DIR/bin/hdfs dfs -copyToLocal /simulation/$FILE $FILE; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                         "cat output_data/* > output.txt; " +
                         "popd; " +
-                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt /simulation/$FILE; " +
-                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out /simulation/$FILE/$FILE.out; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt " + workdir_path + "$FILE; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                         "cat $FILE/$FILE.out; " +
                             "rm -rf $FILE; " +
                             "done < /dev/stdin")
             }
+
 
         val out = files.pipe (gridlabd)
         out.map (check).fold (true)(_ && _)
@@ -529,75 +540,72 @@ class GridLABD (
             date_format.parse (string).getTime ()
         }
 
-        val base_folder = "simulation"
-        val output_folder = "output_data"
-        val path =
-            if (HDFS_URI == "")
-                base_folder + "/*/output.txt"
-            else
-                "/" + base_folder + "/*/output.txt"
-
+        val path = workdir_slash + "*/output.txt"
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
         val files = session.sparkContext.wholeTextFiles(path, executors)
 
-        files.map(k ⇒ {
+        // extract TRAxxx from the path name
+        def extract_trafo (k: (String, String)): (String, String) =
+        {
             val path = k._1
-            val trafo_pattern = ".*" + base_folder + "/(.*)/output.txt"
-            val trafo = path.replaceAll(trafo_pattern, "$1")
+            val trafo_pattern = ".*/(.*)/output.txt"
+            val trafo = path.replaceAll (trafo_pattern, "$1")
             (trafo, k._2)
-
-        }).flatMapValues(f ⇒ {
-
+        }
+        def read (f: String): TraversableOnce[ThreePhaseComplexDataElement] =
+        {
             var units = ""
             var element = ""
-            val content = f.split("\n").filter(s ⇒ s.startsWith("# file") || s.startsWith("2017"))
-
-            content.map(c ⇒ {
-                if (c.startsWith("# file")) {
-                    val filename_pattern = "# file...... output_data/(.*)"
-                    val filename = c.replaceAll(filename_pattern, "$1")
-                    element = filename.substring(0, filename.indexOf("_"))
-
-                    if (filename.endsWith("_voltage.csv"))
+            val content = f.split ("\n").filter (s ⇒ s.startsWith ("# file") || s.charAt (0).isDigit)
+            def makeResult (c: String): ThreePhaseComplexDataElement =
+            {
+                if (c.startsWith ("# file"))
+                {
+                    val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
+                    val filename = c.replaceAll (filename_pattern, "$1")
+                    element = filename.substring (0, filename.indexOf("_"))
+                    if (filename.endsWith ("_voltage.csv"))
                         units = "Volts"
-                    else if (filename.endsWith("_current.csv"))
+                    else if (filename.endsWith ("_current.csv"))
                         units = "Amps"
                     null.asInstanceOf[ThreePhaseComplexDataElement]
                 }
-                else {
+                else
+                {
                     val c_arr = c.split(",")
-
                     if (one_phase)
                         ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
                     else
                         ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
                 }
-            }).filter(_ != null)
-        })
+            }
+            content.map (makeResult).filter (_ != null)
+        }
+        files.map (extract_trafo).flatMapValues (read)
     }
 
     def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
     {
-        if ("" == HDFS_URI)
+        if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
             // ToDo: check for IOException
-            val file = Paths.get("simulation/" + equipment + "/" + path)
-            Files.createDirectories(file.getParent())
+            val file = Paths.get (workdir_path + equipment + "/" + path)
+            val parent = Files.createDirectories (file.getParent())
             if (null != bytes)
-                Files.write(file, bytes)
+                Files.write (file, bytes)
         }
         else
         {
-            val hdfs_configuration = new Configuration()
-            hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get(URI.create(HDFS_URI), hdfs_configuration)
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
 
-            val file = new Path("/simulation/" + equipment + "/" + path)
+            val file = new Path (workdir_slash + equipment + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs(file.getParent(), new FsPermission("ugoa-rwx"))
-            hdfs.setPermission(file.getParent(), new FsPermission("ugoa-rwx")) // "-"  WTF?
+            hdfs.mkdirs (file.getParent(), new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (file.getParent(), new FsPermission("ugoa-rwx")) // "-"  WTF?
 
             if (null != bytes)
             {
@@ -610,34 +618,31 @@ class GridLABD (
 
     def eraseInputFile (equipment: String)
     {
-        if ("" == HDFS_URI)
-            FileUtils.deleteDirectory(new File("simulation/" + equipment + "/"))
+        if ((workdir_scheme == "file") || (workdir_scheme == ""))
+            FileUtils.deleteQuietly (new File (workdir_path + equipment))
         else
         {
             val hdfs_configuration = new Configuration()
-            hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get(URI.create(HDFS_URI), hdfs_configuration)
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
 
-            val directory = new Path("/simulation/" + equipment + "/")
-            hdfs.delete(directory, true)
+            val directory = new Path (workdir_slash + equipment)
+            hdfs.delete (directory, true)
         }
     }
 
     def cleanup (equipment: String, includes_glm: Boolean): Unit =
     {
         if (includes_glm)
-            eraseInputFile(equipment)
+            eraseInputFile (equipment)
         else
         {
-            eraseInputFile(equipment + "/input_data")
-            eraseInputFile(equipment + "/output_data")
-            writeInputFile(equipment, "/output_data/dummy", null) // mkdir
-            if (!(HDFS_URI == ""))
-            {
-                eraseInputFile(equipment + "/output.txt")
-                eraseInputFile(equipment + "/" + equipment + ".out")
-            }
+            eraseInputFile (equipment + "/input_data/")
+            eraseInputFile (equipment + "/output_data/")
+            eraseInputFile (equipment + "/output.txt")
+            eraseInputFile (equipment + "/" + equipment + ".out")
+            writeInputFile (equipment, "/output_data/dummy", null) // mkdir
         }
     }
 }

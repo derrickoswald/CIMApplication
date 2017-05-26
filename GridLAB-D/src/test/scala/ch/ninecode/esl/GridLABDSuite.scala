@@ -102,6 +102,7 @@ class GridLABDSuite extends FunSuite
             delta = 1e-6,
             number = -1,
             short_circuit = "",
+            workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
             files = List(filename)
         )
         val eins = Einspeiseleistung (session, options)
