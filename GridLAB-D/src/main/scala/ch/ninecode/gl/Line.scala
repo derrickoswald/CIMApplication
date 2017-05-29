@@ -22,46 +22,45 @@ class Line (one_phase: Boolean) extends Serializable
         s.replace (".", "d")
     }
 
-//    def sequence2z (z0: Complex, z1: Complex): Tuple3[Complex, Complex, Boolean] =
-//    {
-//        val Z1, Z2 = z1
-//        val r0rl = z0.re / z1.re
-//        val x0xl = z0.im / z1.im
-//        val Z0 = Complex (z1.re * r0rl, z1.im * x0xl)
-//        val diag = (Z0 + Z1 + Z2) / 3
-//        val x1 = Z1 * Complex (-0.5, sqrt (3.0) / 2.0)
-//        val x2 = Z2 * Complex (-0.5, sqrt (3.0) / -2.0)
-//        val off = (Z0 + x1 + x2) / 3.0
-//        (diag, off, false)
-//    }
+    def sequence2z (z0: Complex, z1: Complex): Tuple3[Complex, Complex, Boolean] =
+    {
+        val Z1, Z2 = z1
+        val Z0 = z0
+        val diag = (Z0 + Z1 + Z2) / 3
+        val x1 = Z1 * Complex (-0.5, Math.sqrt (3.0) / 2.0)
+        val x2 = Z2 * Complex (-0.5, Math.sqrt (3.0) / -2.0)
+        val off = (Z0 + x1 + x2) / 3.0
+        (diag, off, false)
+    }
 
     // convert the 0/1 sequence values from the CIM format into a Z matrix
-    def zMatrixValues (line: ACLineSegment): Tuple3[Complex, Complex, Boolean] =
+    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double): Tuple3[Complex, Complex, Boolean] =
     {
-        if ((0.0 != line.r) && (0.0 != line.x))
+        if ((0.0 != r) && (0.0 != x))
             if (one_phase)
-                (Complex (line.r, line.x), Complex (0.0, 0.0), false)
+                (Complex (r, x), Complex (0.0, 0.0), false)
             else
             {
                 // Zm=(Z0+2*Z1)/3    Zp=(Z0+(a+a2)*Z1)/3
                 // a=-0.5+j(sqrt(3)/2)  a2=-0.5- j(sqrt(3)/2)
                 // Z1=sqrt(R1^2+X1^2)    Z0=sqrt(R0^2+X0^2)
-                val z0 = Math.sqrt ((line.r0 * line.r0) + (line.x0 * line.x0))
-                val z1 = Math.sqrt ((line.r * line.r) + (line.x * line.x))
+                val z0 = Math.sqrt ((r0 * r0) + (x0 * x0))
+                val z1 = Math.sqrt ((r * r) + (x * x))
                 val a = Complex (-0.5, Math.sqrt (3.0) / 2.0)
-                val a2 = Complex (-0.5, -Math.sqrt (3.0) / 2.0)
+                val a2 = Complex (-0.5, -Math.sqrt (3.0) / 2.0) // a2 = a * a
                 val zm = (z0 + 2.0 * z1) / 3.0
-                val zp = (z0 + ((a.+ (a2)) * z1)) / 3.0
-                (Complex (zm, 0.0), zp, false)
+                //val zp = (z0 + ((a.+ (a2)) * z1)) / 3.0
+                val zp = (z0 - z1) / 3.0
+                (Complex (zm, 0.0), Complex (zp, 0.0), false)
             }
         else
             (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0), true)
     }
 
     // emit a GridLAB-D line_configuration
-    def make_line_configuration (config: String, line: ACLineSegment): String =
+    def make_line_configuration (config: String, r: Double, x: Double, r0: Double, x0: Double): String =
     {
-        val (diag, off, default) = zMatrixValues (line)
+        val (diag, off, default) = zMatrixValues (r, x, r0, x0)
         val z11 = diag.toString () + " Ohm/km"
         val z12 = off.toString () + " Ohm/km"
         "\n" +
@@ -121,7 +120,10 @@ class Line (one_phase: Boolean) extends Serializable
     def configuration (item: Tuple2[String, Iterable[GLMEdge]]): String =
     {
         if (1 == item._2.size)
-            make_line_configuration (item._1, item._2.head.el.asInstanceOf[ACLineSegment])
+        {
+            val line = item._2.head.el.asInstanceOf[ACLineSegment]
+            make_line_configuration (item._1, line.r, line.x, line.r0, line.x0)
+        }
         else
         {
             // compute parallel impedance -- http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html#c3
@@ -145,7 +147,7 @@ class Line (one_phase: Boolean) extends Serializable
                 r0t = r0
                 x0t = x0
             }
-            make_line_configuration (item._1, ACLineSegment (null, 0.0, 0.0, 0.0, 0.0, r0t, rt, 0.0, x0t, xt, "", "", ""))
+            make_line_configuration (item._1, rt, xt, r0t, x0t)
         }
     }
 

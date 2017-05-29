@@ -479,6 +479,7 @@ class GridLABD (
         eraseInputFile (name)
         val result = generator.make_glm ()
         writeInputFile (name, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
+        //writeInputFile (name, "input_data/dummy", null) // mkdir
         writeInputFile (name, "output_data/dummy", null) // mkdir
     }
 
@@ -653,6 +654,7 @@ class GridLABD (
             eraseInputFile (equipment + "/output_data/")
             eraseInputFile (equipment + "/output.txt")
             //eraseInputFile (equipment + "/" + equipment + ".out")
+            //writeInputFile (equipment, "/input_data/dummy", null) // mkdir
             writeInputFile (equipment, "/output_data/dummy", null) // mkdir
         }
     }
