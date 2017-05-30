@@ -141,9 +141,9 @@ object Main
             action ((x, c) => c.copy (short_circuit = x)).
             text ("short circuit power file")
 
-        opt[String]('w', "workdir").valueName ("<file>").
+        opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
-            text ("shared directory (HDFS or NFS share) for work files")
+            text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
