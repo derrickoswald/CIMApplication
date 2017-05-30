@@ -14,6 +14,10 @@
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/ShortCircuit</url>
 
+    <properties>
+        <version.dependency.scopt>3.5.0</version.dependency.scopt>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -69,6 +73,12 @@
             <artifactId>spark-graphx_${version.dependency.scala}</artifactId>
             <scope>provided</scope>
             <version>${version.dependency.spark}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.scopt</groupId>
+            <artifactId>scopt_2.11</artifactId>
+            <version>${version.dependency.scopt}</version>
         </dependency>
 
     </dependencies>

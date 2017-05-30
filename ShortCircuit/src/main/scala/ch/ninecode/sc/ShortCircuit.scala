@@ -30,28 +30,90 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
+case class ShortCircuitOptions (
+    verbose: Boolean = true,
+    cim_reader_options: Iterable[(String, String)] = new scala.collection.mutable.HashMap[String, String] (),
+    three: Boolean = false,
+    trafos: String = "",
+    csv_file: String = "",
+    transformer: String = "",
+    workdir: String = "",
+    files: Seq[String] = Seq()
+)
+
 // define case classes that need to be pattern matched
 // due to a flaw in Scala pattern matching with classes defined within another class
 // we have to define these classes external to the main class,
 // otherwise we have to pattern match on Any and then cast it asInstanceOf[whatever]
 
-// create a holder for pre-computed transformer power availability
-case class ShortCircuitData (mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
+/**
+ * Station short circuit power availability (pre-computed).
+ * The available power and phase from the mid-voltage network if the primary is shorted.
+ * @param mRID CIM MRID of the station.
+ * @param Sk Available short circuit power available at the primary of the transformer (MW).
+ * @param Ikw Short circuit phase angle at the primary of the transformer (degrees).
+ * @param valid Indicates if the station was found in the pre-computed list, default values otherwise (and thus not valid).
+ */
+case class ShortCircuitData (
+    mRID: String,
+    Sk: Double,
+    Ikw: Double,
+    valid: Boolean)
 
-// create a basket to hold all transformer data
-case class TransformerData (transformer: PowerTransformer, end1: PowerTransformerEnd, terminal1: Terminal, v1: Double, end2: PowerTransformerEnd, terminal2: Terminal, v2: Double, substation: Substation, short_circuit: ShortCircuitData)
+//// create a basket to hold all transformer data
+//case class TransformerData (transformer: PowerTransformer, end1: PowerTransformerEnd, terminal1: Terminal, v1: Double, end2: PowerTransformerEnd, terminal2: Terminal, v2: Double, substation: Substation, short_circuit: ShortCircuitData)
+/**
+ * Transformer data.
+ * @param transformer The PowerTransformer object.
+ * @param station The Substation object where the transformer is located.
+ * @param shortcircuit The ShortCircuit object with the available short circuit power and phase at the primary.
+ * @param voltage0 The voltage for the transformer high voltage end (kV).
+ * @param end0 The high voltage PowerTransformerEnd.
+ * @param terminal0 The high voltage Terminal.
+ * @param voltage1 The voltage for the transformer low voltage end (kV).
+ * @param end1 The low voltage PowerTransformerEnd.
+ * @param terminal1 The low voltage Terminal.
+ */
+case class TData (
+    transformer: PowerTransformer,
+    station: Substation,
+    shortcircuit: ShortCircuitData,
+    end0: PowerTransformerEnd,
+    voltage0: Double,
+    terminal0: Terminal,
+    node0: String,
+    end1: PowerTransformerEnd,
+    voltage1: Double,
+    terminal1: Terminal,
+    node1: String)
+
 
 // define the message class
 // this is used in the VertexData class to avoid reallocating another object that stores the same information as the message
-case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], valid: Boolean) extends Serializable
+case class Message (transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: List[(String,Double)], valid: Boolean) extends Serializable
 
 // define the data attached to each vertex
-case class VertexData (val id: String, val name: String, val container: String, val start: TransformerData, val stop: Boolean, var message: Message, var valid: Boolean)
+case class VertexData (
+    id: String,
+    name: String,
+    container: String,
+    start: Array[TData],
+    stop: Boolean,
+    var message: Message,
+    var valid: Boolean)
 
-class ShortCircuit extends Serializable
+// define the augmented edge class
+case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
+
+// class to return the transformer id values
+case class TransformerName (id: String)
+
+case class HouseConnection (mRID: String, node: String, transformer: Array[TData], r: Double, x: Double, r0: Double, x0: Double, fuses: List[(String,Double)], wires_valid: Boolean, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, fuse_valid: Boolean = false)
+
+case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, wires_valid:Boolean, transformer_valid: Boolean, fuse_valid: Boolean, location_x: String = "0.0", location_y: String = "0.0")
+
+case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends Serializable
 {
-    var _StorageLevel = StorageLevel.MEMORY_ONLY
-
     // name of file containing short circuit Ikw and Sk values for medium voltage transformers
     // e.g.
     //
@@ -61,17 +123,7 @@ class ShortCircuit extends Serializable
     //
     // this should only be needed until the medium voltage network is fully described and  calculations can
     // be done from the high voltage network "slack bus" connections
-    var csv = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
-
-    // define the augmented edge class
-    case class EdgePlus (id_seq_1: String, id_seq_2: String, id_equ: String, clazz: String, name: String, aliasName: String, container: String, length: Double, voltage: String, normalOpen: Boolean, ratedCurrent: Double, x1: String, y1: String, x2: String, y2: String, r: Double, x: Double, r0: Double, x0: Double, valid: Boolean)
-
-    // class to return the transformer id values
-    case class TransformerName (id: String)
-
-    case class HouseConnection (mRID: String, node: String, transformer: TransformerData, r: Double, x: Double, r0: Double, x0: Double, fuses: List[Tuple2[String,Double]], wires_valid: Boolean, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, fuse_valid: Boolean = false)
-
-    case class Result (mRID: String, node: String, transformer: String, r: Double, x: Double, r0: Double, x0: Double, fuses: String, ik: Double = 0.0, ik3pol: Double = 0.0, ip: Double = 0.0, wires_valid:Boolean, transformer_valid: Boolean, fuse_valid: Boolean, location_x: String = "0.0", location_y: String = "0.0")
+    // var csv = "hdfs://sandbox:8020/data/KS_Leistungen.csv"
 
     def dv (v: BaseVoltage) =
     {
@@ -80,12 +132,15 @@ class ShortCircuit extends Serializable
 
     def vertex_id (string: String): VertexId =
     {
-        string.hashCode().asInstanceOf[VertexId]
+        var h = 2166136261l;
+        for (c ← string)
+            h = (h * 16777619) ^ c
+        h.asInstanceOf[VertexId]
     }
 
-    def get (name: String, context: SparkContext): RDD[Element] =
+    def get (name: String): RDD[Element] =
     {
-        val rdds = context.getPersistentRDDs
+        val rdds = session.sparkContext.getPersistentRDDs
         for (key <- rdds.keys)
         {
             val rdd = rdds (key)
@@ -95,7 +150,7 @@ class ShortCircuit extends Serializable
         return (null)
     }
 
-    def read_csv (sqlContext: SQLContext): RDD[ShortCircuitData] =
+    def read_csv (): RDD[ShortCircuitData] =
     {
         val customSchema = StructType (
             Array
@@ -112,45 +167,31 @@ class ShortCircuit extends Serializable
             )
         )
 
-        val df = sqlContext.read
+        val df = session.sqlContext.read
             .format ("csv")
             .option ("header", "true")
             .schema (customSchema)
-            .csv (csv)
+            .csv (options.csv_file)
 
-        import sqlContext.implicits._
+        import session.sqlContext.implicits._
         df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
     }
 
-    def preparation (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame  =
+    def preparation (): DataFrame  =
     {
-        val arguments = args.split (",").map (
-            (s) =>
-                {
-                    val pair = s.split ("=")
-                    if (2 == pair.length)
-                        (pair(0), pair(1))
-                    else
-                        (pair(0), "")
-                }
-        ).toMap
-
         // gather the set of voltages
         // usage: voltages.getOrElse ("BaseVoltage_400", 0.0)  yields 0.4 as a Double
-        val voltages = get ("BaseVoltage", sc).asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
-
-        // get the name of the csv file
-        csv = arguments.getOrElse ("csv", csv)
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[ch.ninecode.model.BaseVoltage]].map (dv).collectAsMap ()
 
         // get all transformers in substations
-        val transformers = get ("PowerTransformer", sc).asInstanceOf[RDD[PowerTransformer]]
+        val transformers = get ("PowerTransformer").asInstanceOf[RDD[PowerTransformer]]
         val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
 
         // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation", sc).asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
+        val stations = get ("Substation").asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType == "PSRType_TransformerStation")
 
         // the Equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
-        def station_fn (x: Tuple2[String, Any]) =
+        def station_fn (x: (String, Any)) =
         {
             x match
             {
@@ -174,21 +215,15 @@ class ShortCircuit extends Serializable
         }
 
         // create an RDD of transformer-container pairs, e.g. { (TRA13730,KAB8526), (TRA4425,STA4551), ... }
-        val elements = get ("Elements", sc).asInstanceOf[RDD[Element]]
+        val elements = get ("Elements").asInstanceOf[RDD[Element]]
         val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
-//        tpairs.count
-//        tpairs.first
 
-        val short_circuit = read_csv (sqlContext)
-//        short_circuit.count
-//        short_circuit.first
+        val short_circuit = read_csv ()
 
         // only keep the pairs where the transformer is in a substation we have
         val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
-//        transformers_stations.count
-//        transformers_stations.first
 
-        def transformer_fn (x: Tuple2[String, Any]) =
+        def transformer_fn (x: (String, Any)) =
         {
             x match
             {
@@ -212,17 +247,17 @@ class ShortCircuit extends Serializable
         // get all transformers with their end data
 
         // get the ends
-        val ends = get ("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]]
+        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]]
         // Note: if the end count does not equal twice the number of transformers, we have a three (or more) terminal transformer and hence a problem
 
         // get the terminals
-        val terminals = get ("Terminal", sc).asInstanceOf[RDD[Terminal]]
+        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]]
 
         // keep only terminals for transformer ends
         val transformer_terminals = terminals.keyBy (_.id).join (ends.keyBy (_.TransformerEnd.Terminal)).values
 
         // get the list of transformers, with their ends, terminals and voltage
-        def transformer_end_fn (x: Tuple2[String, Any]) =
+        def transformer_end_fn (x: (String, Any)) =
         {
             x match
             {
@@ -233,9 +268,9 @@ class ShortCircuit extends Serializable
                     val v_a = voltages.getOrElse (i1._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
                     val v_b = voltages.getOrElse (i2._2.TransformerEnd.BaseVoltage, 0.0) * 1000.0
                     if (v_a > v_b)
-                        TransformerData (transformer, i1._2, i1._1, v_a, i2._2, i2._1, v_b, substation, short_circuit)
+                        TData (transformer, substation, short_circuit, i1._2, v_a, i1._1, i1._1.ConnectivityNode, i2._2, v_b, i2._1, i2._1.ConnectivityNode)
                     else
-                        TransformerData (transformer, i2._2, i2._1, v_b, i1._2, i1._1, v_a, substation, short_circuit)
+                        TData (transformer, substation, short_circuit, i2._2, v_b, i2._1, i2._1.ConnectivityNode, i1._2, v_a, i1._1, i1._1.ConnectivityNode)
                 }
                 case _ =>
                 {
@@ -247,35 +282,36 @@ class ShortCircuit extends Serializable
         val transformer_and_transformer_terminals = transformer_terminals.keyBy (_._1.ConductingEquipment).groupByKey.join (transformers_short_circuit.keyBy (_._1.id)).map (transformer_end_fn)
 
         // get the low voltage (niederspannung) transformers
-        val ns_transformers = transformer_and_transformer_terminals.filter ((t: TransformerData) => { 400.0 == t.v2 })
+        val ns_transformers = transformer_and_transformer_terminals.filter (t => { 400.0 == t.voltage1 })
 
         // persist RDD so later execution can get at it
         ns_transformers.setName ("graph_transformers")
-        ns_transformers.persist (_StorageLevel)
+        ns_transformers.persist (storage_level)
 
-        def tx_fn (t: TransformerData) =
+        def tx_fn (t: TData) =
         {
             TransformerName (t.transformer.id)
         }
         val tx = ns_transformers.map (tx_fn)
 
-        return (sqlContext.createDataFrame (tx))
+        session.sqlContext.createDataFrame (tx)
     }
 
-    def get_vertices (ns_transformers: RDD[TransformerData], context: SparkContext): RDD[(VertexId, VertexData)] =
+    def get_vertices (ns_transformers: RDD[TData]): RDD[(VertexId, VertexData)] =
     {
         // convert CIM nodes into Graphx vertices as RDD of (key, value) pairs
 
         // get the list of nodes
-        val nodes = get ("ConnectivityNode", context).asInstanceOf[RDD[ConnectivityNode]]
+        val nodes = get ("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
 
-        def node_function (x: Tuple2[String, Any]) =
+        def node_function (x: (String, (ConnectivityNode, Option[TData]))): (VertexId, VertexData) =
         {
             x match
             {
-                case (key: String, (n: ConnectivityNode, Some (t: TransformerData) )) =>
+                case (key: String, (n: ConnectivityNode, Some (t: TData) )) =>
                 {
-                    (vertex_id (key), VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, t, t.v1 > 400.0, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true))
+                    // ToDo: fix TData Array
+                    (vertex_id (key), VertexData (key, n.IdentifiedObject.name, n.ConnectivityNodeContainer, Array(t), t.voltage0 > 400.0, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List(), true), true))
                 }
                 case (key: String, (n: ConnectivityNode, None)) =>
                 {
@@ -289,28 +325,22 @@ class ShortCircuit extends Serializable
         }
 
         // get starting nodes identified by non-null transformer data
-        val vertices = nodes.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal2.ConnectivityNode)).map (node_function)
+        val vertices = nodes.keyBy (_.id).leftOuterJoin (ns_transformers.keyBy (_.terminal1.ConnectivityNode)).map (node_function)
         vertices.setName ("graph_vertices")
-        vertices.persist (_StorageLevel)
+        vertices.persist (storage_level)
     }
 
-    def get_edges (context: SparkContext): RDD[Edge[EdgePlus]] =
+    def get_edges (): RDD[Edge[EdgePlus]] =
     {
-        val cim_edges = get ("Edges", context).asInstanceOf[RDD[PostEdge]]
-//        cim_edges.count
-//        cim_edges.first
+        val cim_edges = get ("Edges").asInstanceOf[RDD[PostEdge]]
 
         // keep only non-self connected and non-singly connected edges
         val someedges =  cim_edges.filter ((e: PostEdge) => { (e.id_seq_1 != e.id_seq_2) && e.id_seq_1 != null && e.id_seq_2 != null && e.id_seq_1 != "" && e.id_seq_2 != "" })
-//        someedges.count
-//        someedges.first
 
         // get the wires
-        val segments = get ("ACLineSegment", context).asInstanceOf[RDD[ACLineSegment]]
-//        segments.count
-//        segments.first
+        val segments = get ("ACLineSegment").asInstanceOf[RDD[ACLineSegment]]
 
-        def fn (x: Tuple2[String, Any]) =
+        def fn (x: (String, Any)) =
         {
             val ep = x match
             {
@@ -337,64 +367,52 @@ class ShortCircuit extends Serializable
         // convert CIM edges into GraphX edges
         val edges = someedges.keyBy(_.id_equ).leftOuterJoin (segments.keyBy (_.id)).map (fn)
         edges.setName ("graph_edges")
-        edges.persist (_StorageLevel)
+        edges.persist (storage_level)
     }
 
-    def stuff (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame =
+    def run (): DataFrame =
     {
-        val arguments = args.split (",").map (
-            (s) =>
-                {
-                    val pair = s.split ("=")
-                    if (2 == pair.length)
-                        (pair(0), pair(1))
-                    else
-                        (pair(0), "")
-                }
-        ).toMap
-
-        var ns_transformers = get ("graph_transformers", sc).asInstanceOf[RDD[TransformerData]]
-        if (null == ns_transformers)
+        val tx = get ("graph_transformers").asInstanceOf[RDD[TData]]
+        val ns_transformers = if (null == tx)
         {
-            preparation (sc, sqlContext, args);
-            ns_transformers = get ("graph_transformers", sc).asInstanceOf[RDD[TransformerData]]
+            preparation ()
+            get ("graph_transformers").asInstanceOf[RDD[TData]]
         }
+        else
+            tx
 
-        val vertices = get_vertices (ns_transformers, sc)
-        val edges = get_edges (sc)
+        val vertices = get_vertices (ns_transformers)
+        val edges = get_edges ()
 
         // get the specified transformer
-        val tran = arguments.getOrElse ("transformer", "")
+        val tran = options.transformer
 
         // filter out all but the specified transformer
-        def filterx (v: Tuple2[VertexId, VertexData]): Tuple2[VertexId, VertexData] =
+        def filterx (v: (VertexId, VertexData)): (VertexId, VertexData) =
         {
-            return ((v._1, VertexData (v._2.id, v._2.name, v._2.container, if ((null != v._2.start) && (v._2.start.transformer.id == tran)) v._2.start else null, v._2.stop, v._2.message, v._2.valid)))
+            // ToDo: fix Array TData
+            (v._1, VertexData (v._2.id, v._2.name, v._2.container, if ((null != v._2.start) && (v._2.start(0).transformer.id == tran)) v._2.start else null, v._2.stop, v._2.message, v._2.valid))
         }
-        var some_vertices: RDD[(VertexId, VertexData)] = null
-        if ((tran != "") && (tran.toLowerCase () != "all"))
-            some_vertices = vertices.map (filterx)
+        val some_vertices = if ((tran != "") && (tran.toLowerCase () != "all"))
+            vertices.map (filterx)
         else
-            some_vertices = vertices
+            vertices
 
         // construct the initial graph from the augmented elements (vertices) and edges
-        val default = VertexData ("", "", "", null, true, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List[Tuple2[String,Double]] (), false), false)
+        val default = VertexData ("", "garbage", "", null, true, Message (null, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, List[(String,Double)] (), false), false)
         val initial = Graph.apply[VertexData, EdgePlus] (some_vertices, edges, default)
 
         // do the Pregel algorithm
         def vprog (id: VertexId, v: VertexData, message: Message): VertexData =
         {
-            var ret = v
-
             if (null == message) // initial message
-            {
                 if (null != v.start) // is this node a low voltage transformer terminal
-                    ret = VertexData (v.id, v.name, v.container, v.start, v.stop, Message (v.start.transformer.id, 0.0, 0.0, 0.0, 0.0, List (), true), v.valid)
-            }
+                    // ToDo: fix Array TData
+                    VertexData (v.id, v.name, v.container, v.start, v.stop, Message (v.start(0).transformer.id, 0.0, 0.0, 0.0, 0.0, List (), true), v.valid)
+                else
+                    v
             else // subsequent messages
-                ret = VertexData (v.id, v.name, v.container, v.start, v.stop, message, v.valid)
-
-            return (ret)
+                VertexData (v.id, v.name, v.container, v.start, v.stop, message, v.valid)
         }
 
         def sendMessage (triplet: EdgeTriplet[VertexData, EdgePlus]): Iterator[(VertexId, Message)] =
@@ -445,43 +463,43 @@ class ShortCircuit extends Serializable
                 }
             }
 
-            return (ret)
+            ret
         }
 
         def mergeMessage (a: Message, b: Message): Message =
         {
-
-            var ret: Message = null
             // throw new Exception ("" + a + " " + b)
             // ToDo: handle multiple sources
             if ((null != a) && (null != b))
                 if (a.r < b.r)
-                    ret = a
+                    a
                 else
-                    ret = b
-            return (ret)
+                    b
+            else
+                null
         }
 
         val graph = initial.pregel (null.asInstanceOf[Message], 50 /* Int.MaxValue */, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
 
         // get the leaf nodes with their data
         val has = graph.vertices.filter (
-            (v: Tuple2[VertexId, VertexData]) =>
+            (v: (VertexId, VertexData)) =>
             {
-                (v._2.name.startsWith ("HAS") || v._2.name.startsWith ("HAK")) && v._2.message.r != Double.PositiveInfinity
+                (v._2.id.startsWith ("HAS") || v._2.id.startsWith ("HAK")) && v._2.message.r != Double.PositiveInfinity
             }
         ).values
         has.setName ("house_connections")
-        has.persist (_StorageLevel)
+        has.persist (storage_level)
 
         // link them to the supplying transformer
-        def house_transformer_fn (x: Tuple2[String, Any]) =
+        def house_transformer_fn (x: (String, Any)) =
         {
             x match
             {
-                case (key: String, (v: VertexData, t: TransformerData)) =>
+                case (key: String, (v: VertexData, t: TData)) =>
                 {
-                    HouseConnection (v.name, v.id, t, v.message.r, v.message.x, v.message.r0, v.message.x0, v.message.fuses, v.message.valid)
+                    // ToDo: fix Array TData
+                    HouseConnection (v.name, v.id, Array(t), v.message.r, v.message.x, v.message.r0, v.message.x0, v.message.fuses, v.message.valid)
                 }
                 case _ =>
                 {
@@ -539,20 +557,21 @@ class ShortCircuit extends Serializable
         {
             val c = 0.90
             val cmin = 0.90
-            val v1 = house.transformer.v1
-            val v2 = house.transformer.v2
-            val sk = house.transformer.short_circuit.Sk * 1e+6
+            // ToDo: fix Array TData
+            val v1 = house.transformer(0).voltage0
+            val v2 = house.transformer(0).voltage1
+            val sk = house.transformer(0).shortcircuit.Sk * 1e+6
             val turns_ratio = v2 / v1
             val zqt = c * v1 * v1 / sk * (turns_ratio * turns_ratio)
-            val wik = house.transformer.short_circuit.Ikw
+            val wik = house.transformer(0).shortcircuit.Ikw
             val wik_radians = Math.PI / 180.0 * wik
             val netz_r1 = zqt * Math.cos (wik_radians)
             val netz_x1 = zqt * Math.sin (wik_radians)
 
-            val r_total = house.r + house.transformer.end2.r + netz_r1 // ToDo: check transformer secondary resistance, that is end2
-            val x_total = house.x + house.transformer.end2.x + Math.abs (netz_x1) // ToDo: check why abs is necessary
-            val r_secondary = house.r + house.transformer.end2.r
-            val x_secondary = house.x + house.transformer.end2.x
+            val r_total = house.r + house.transformer(0).end1.r + netz_r1 // ToDo: check transformer secondary resistance, that is end2
+            val x_total = house.x + house.transformer(0).end1.x + Math.abs (netz_x1) // ToDo: check why abs is necessary
+            val r_secondary = house.r + house.transformer(0).end1.r
+            val x_secondary = house.x + house.transformer(0).end1.x
             val impedance = Math.sqrt (r_total * r_total + x_total * x_total)
 
             // Einpoligen Kurzschlussstrom berechnen
@@ -565,134 +584,30 @@ class ShortCircuit extends Serializable
             val ip = (1.02 + 0.98 * Math.exp (-3.0 * r_total / x_total)) * Math.sqrt (2) * ik3pol
 
             // apply rules for fuses
-            var fuse_valid = false
-            if (2 <= house.fuses.length)
-                fuse_valid = house.fuses.tail.head._2 / house.fuses.head._2 > 1.6
+            val fuse_valid = if (2 <= house.fuses.length)
+                house.fuses.tail.head._2 / house.fuses.head._2 > 1.6
             else if (1 <= house.fuses.length)
-                fuse_valid = ik > current_max (house.fuses.head._2)
+                ik > current_max (house.fuses.head._2)
+            else
+                false
 
             HouseConnection (house.mRID, house.node, house.transformer, house.r, house.x, house.r0, house.x0, house.fuses, house.wires_valid, ik, ik3pol, ip, fuse_valid)
         }
 
         val result = houses.map (calculate_short_circuit)
 
-        def localize (x: Tuple2 [HouseConnection, PositionPoint]) =
+        def localize (x: (HouseConnection, PositionPoint)): Result =
         {
             val house = x._1
             val point = x._2
-            Result (house.mRID, house.node, house.transformer.transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.wires_valid, house.transformer.short_circuit.valid, house.fuse_valid, point.xPosition, point.yPosition)
+            // ToDo: fix Array TData
+            Result (house.mRID, house.node, house.transformer(0).transformer.id, house.r, house.x, house.r0, house.x0, house.fuses.toString (), house.ik, house.ik3pol, house.ip, house.wires_valid, house.transformer(0).shortcircuit.valid, house.fuse_valid, point.xPosition, point.yPosition)
         }
-        val consumers = get ("Fuse", sc).asInstanceOf[RDD[Fuse]]
+        val consumers = get ("Fuse").asInstanceOf[RDD[Fuse]]
         val locs = consumers.map ((f: Fuse) => { (f.id, f.Switch.ConductingEquipment.Equipment.PowerSystemResource.Location) })
-        val points = get ("PositionPoint", sc).asInstanceOf[RDD[PositionPoint]]
+        val points = get ("PositionPoint").asInstanceOf[RDD[PositionPoint]]
         val final_result = locs.join (result.keyBy (_.mRID)).values.join (points.keyBy (_.Location)).values.map (localize)
 
-        return (sqlContext.createDataFrame (final_result))
-    }
-}
-
-object ShortCircuit
-{
-    def jarForObject (obj: Object): String =
-    {
-        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
-        try
-        {
-            ret = URLDecoder.decode (ret, "UTF-8")
-        }
-        catch
-        {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
-        }
-        if (!ret.toLowerCase ().endsWith (".jar"))
-        {
-            // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-            writer.close ()
-            ret = name
-        }
-
-        return (ret)
-    }
-
-    def main (args: Array[String])
-    {
-        val shortcircuit = new ShortCircuit ()
-
-        val filename = if (args.length > 0)
-            args (0)
-        else
-            "hdfs://sandbox:8020/data/" + "NIS_CIM_Export_sias_current_20160816_Kiental_V10" + ".rdf"
-
-        // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName ("ShortCircuit")
-        configuration.setMaster ("spark://sandbox:7077")
-//        configuration.setSparkHome ("/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/")
-        configuration.set ("spark.driver.memory", "1g")
-        configuration.set ("spark.executor.memory", "4g")
-        // get the necessary jar files to send to the cluster
-        val s1 = jarForObject (new DefaultSource ())
-        val s2 = jarForObject (shortcircuit)
-        configuration.setJars (Array (s1, s2))
-
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-        // register short circuit classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
-        // register short circuit inner classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
-
-        // create a Spark session
-        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-
-        val start = System.nanoTime ()
-        val files = filename.split (",")
-        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
-        options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "false");
-        val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-        val count = elements.count
-
-        val read = System.nanoTime ()
-
-        shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=hdfs://sandbox:8020/data/KS_Leistungen.csv")
-
-        val prep = System.nanoTime ()
-
-        val rdd = shortcircuit.stuff (session.sparkContext, session.sqlContext, "transformer=all") // TRA5401
-
-        val graph = System.nanoTime ()
-
-        val results = rdd.collect
-
-        val fetch = System.nanoTime ()
-
-        println (s"""
-        id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,wires_valid,trafo_valid,fuse_valid,x,y,fuses""")
-        for (i <- 0 until results.length)
-        {
-            val h = results (i)
-            println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getBoolean(11) + "," + h.getBoolean(12) + "," + h.getBoolean(13) + "," + h.getString(14) + "," + h.getString(15) + "," + h.getString(7))
-        }
-
-        println ("" + count + " elements")
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("prep : " + (prep - read) / 1e9 + " seconds")
-        println ("graph: " + (graph - prep) / 1e9 + " seconds")
-        println ("fetch: " + (fetch - graph) / 1e9 + " seconds")
-        println ("print: " + (System.nanoTime () - fetch) / 1e9 + " seconds")
-        println ();
+        session.sqlContext.createDataFrame (final_result)
     }
 }
