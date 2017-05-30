@@ -16,7 +16,7 @@ import ch.ninecode.model._
 
 class ShortCircuitSuite extends FunSuite
 {
-    val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
+    val FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
@@ -30,6 +30,7 @@ class ShortCircuitSuite extends FunSuite
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         // register low level classes
         configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
@@ -38,54 +39,50 @@ class ShortCircuitSuite extends FunSuite
         // register edge related classes
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
         // register short circuit classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TransformerData], classOf[Message], classOf[VertexData]))
+        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TData], classOf[Message], classOf[VertexData]))
         // register short circuit inner classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuit#EdgePlus], classOf[ShortCircuit#TransformerName], classOf[ShortCircuit#HouseConnection], classOf[ShortCircuit#Result]))
+        configuration.registerKryoClasses (Array (classOf[EdgePlus], classOf[TransformerName], classOf[HouseConnection], classOf[Result]))
 
-        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+        val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         try
         {
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
-        finally session.stop () // clean up the fixture
+        finally session.stop // clean up the fixture
     }
 
     test ("Basic")
     {
         session: SparkSession ⇒
 
-        // val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V9_Bubenei" + ".rdf"
-        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160608_V9_Preview_CKW_with_filter_EWS_Jessenenstrasse" + ".rdf"
+        val filename = FILE_DEPOT + "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355_or_EEA5287" + ".rdf"
 
-        val start = System.nanoTime ()
+        val start = System.nanoTime
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true"); // backwards compatibility
-        options.put ("ch.ninecode.cim.do_join", "false");
+        options.put ("ch.ninecode.cim.make_edges", "true");
         val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
-        val read = System.nanoTime ()
+        val read = System.nanoTime
 
-        val shortcircuit = new ShortCircuit ()
-        shortcircuit._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        shortcircuit.preparation (session.sparkContext, session.sqlContext, "csv=" + FILE_DEPOT + "KS_Leistungen.csv")
+        val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", transformer="all")
+        val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
 
-        val prep = System.nanoTime ()
+        val prep = System.nanoTime
 
-        val rdd = shortcircuit.stuff (session.sparkContext, session.sqlContext, "transformer=all") // TRA5401
+        val rdd = shortcircuit.run
 
-        val graph = System.nanoTime ()
+        val graph = System.nanoTime
 
         val results = rdd.collect
 
-        val fetch = System.nanoTime ()
+        val fetch = System.nanoTime
 
-        println (s"""
-        id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,wires_valid,trafo_valid,fuse_valid,x,y,fuses""")
+        println (s"""id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,wires_valid,trafo_valid,fuse_valid,x,y,fuses""")
         for (i <- 0 until results.length)
         {
             val h = results (i)
@@ -97,8 +94,8 @@ class ShortCircuitSuite extends FunSuite
         println ("prep : " + (prep - read) / 1e9 + " seconds")
         println ("graph: " + (graph - prep) / 1e9 + " seconds")
         println ("fetch: " + (fetch - graph) / 1e9 + " seconds")
-        println ("print: " + (System.nanoTime () - fetch) / 1e9 + " seconds")
-        println ();
+        println ("print: " + (System.nanoTime - fetch) / 1e9 + " seconds")
+        println;
 
     }
 
