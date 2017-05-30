@@ -85,17 +85,11 @@ object Database
                 | from
                 |   intermediate i,
                 |   (select
-                |     Priority,
+                |     max(Priority) Priority,
                 |     max(When_Epoc) When_Epoc,
                 |     House
                 |   from
-                |     (select
-                |       max(Priority) Priority,
-                |       When_Epoc,
-                |       House
-                |     from
-                |       intermediate
-                |     group by House)
+                |     intermediate
                 |   group by House) m
                 | where
                 |   i.Priority = m.Priority and
