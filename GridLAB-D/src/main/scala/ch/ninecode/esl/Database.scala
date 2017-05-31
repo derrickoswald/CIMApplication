@@ -27,12 +27,19 @@ object Database
         val exists1 = resultset1.next ()
         resultset1.close ()
         if (!exists1)
+        {
             statement.executeUpdate ("create table simulation (id integer primary key autoincrement, description text, time text)")
+            statement.executeUpdate ("create index if not exists epoc on simulation (time)")
+        }
         val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'results'")
         val exists2 = resultset2.next ()
         resultset2.close ()
         if (!exists2)
+        {
             statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, eea integer, reason text, details text)")
+            statement.executeUpdate ("create index if not exists house on results (house)")
+            statement.executeUpdate ("create index if not exists sim on results (simulation)")
+        }
         val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'view' and name = 'feedin'")
         val exists3 = resultset3.next ()
         resultset3.close ()
@@ -54,7 +61,7 @@ object Database
                 |     simulation s,
                 |     results r
                 |   where
-                |     s.description = 'Threshold Precalculation'and
+                |     s.description = 'Threshold Precalculation' and
                 |     s.id = r.simulation
                 | union
                 |   select
@@ -81,20 +88,29 @@ object Database
                 |   i.House,
                 |   i.Maximum,
                 |   i.Reason,
-                |   i.Details
+                |   i.Details,
+                |   max(i.When_Epoc) When_Epoc
                 | from
-                |   intermediate i,
-                |   (select
-                |     max(Priority) Priority,
-                |     max(When_Epoc) When_Epoc,
-                |     House
-                |   from
-                |     intermediate
-                |   group by House) m
+                |   intermediate i
                 | where
-                |   i.Priority = m.Priority and
-                |   i.When_Epoc = m.When_Epoc and
-                |   i.House = m.House""".stripMargin)
+                |   Priority = 1
+                | group by
+                |   House
+                | union
+                | select
+                |   i.Analysis,
+                |   i.Transformer,
+                |   i.House,
+                |   i.Maximum,
+                |   i.Reason,
+                |   i.Details,
+                |   max(i.When_Epoc) When_Epoc
+                | from
+                |   intermediate i
+                | where
+                |   House not in (select House from intermediate where Priority = 1 group By House)
+                | group by
+                |   House""".stripMargin)
         }
         statement.close ()
     }
