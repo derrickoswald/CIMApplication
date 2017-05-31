@@ -25,7 +25,7 @@ import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 import ch.ninecode.cim.connector.CIMResultSet;
-import ch.ninecode.sc.ShortCircuit;
+import ch.ninecode.sc.ShortCircuitOptions;
 
 @Stateless
 @Path("/ShortCircuitCalculation/{file}")
@@ -79,8 +79,7 @@ public class ShortCircuitCalculation
                         input.put ("csv", "hdfs://sandbox:8020/data/" + spreadsheet + ".csv");
 
                         // set up the method call details for the CIMConnector
-                        ShortCircuit sc = new ShortCircuit ();
-                        input.put ("class", sc.getClass ().getName ());
+                        ShortCircuitOptions sc = new ShortCircuitOptions (false, null, false, null, null, null, null, null);
                         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
                         String path = sc.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
                         String decodedPath;
@@ -98,7 +97,7 @@ public class ShortCircuitCalculation
                         if (null == transformer)
                             input.put ("method", "preparation");
                         else
-                            input.put ("method", "stuff");
+                            input.put ("method", "run");
                         if (null != transformer)
                             input.put ("transformer", transformer);
                         final Interaction interaction = connection.createInteraction ();
