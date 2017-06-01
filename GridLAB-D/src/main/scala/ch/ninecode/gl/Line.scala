@@ -22,15 +22,15 @@ class Line (one_phase: Boolean) extends Serializable
         s.replace (".", "d")
     }
 
-    def sequence2z (z0: Complex, z1: Complex): Tuple3[Complex, Complex, Boolean] =
+    def sequence2z (z0: Complex, z1: Complex): (Complex, Complex) =
     {
-        val Z1, Z2 = z1
         val Z0 = z0
+        val Z1, Z2 = z1
         val diag = (Z0 + Z1 + Z2) / 3
         val x1 = Z1 * Complex (-0.5, Math.sqrt (3.0) / 2.0)
         val x2 = Z2 * Complex (-0.5, Math.sqrt (3.0) / -2.0)
         val off = (Z0 + x1 + x2) / 3.0
-        (diag, off, false)
+        (diag, off)
     }
 
     // convert the 0/1 sequence values from the CIM format into a Z matrix
@@ -41,17 +41,10 @@ class Line (one_phase: Boolean) extends Serializable
                 (Complex (r, x), Complex (0.0, 0.0), false)
             else
             {
-                // Zm=(Z0+2*Z1)/3    Zp=(Z0+(a+a2)*Z1)/3
-                // a=-0.5+j(sqrt(3)/2)  a2=-0.5- j(sqrt(3)/2)
-                // Z1=sqrt(R1^2+X1^2)    Z0=sqrt(R0^2+X0^2)
-                val z0 = Math.sqrt ((r0 * r0) + (x0 * x0))
-                val z1 = Math.sqrt ((r * r) + (x * x))
-                val a = Complex (-0.5, Math.sqrt (3.0) / 2.0)
-                val a2 = Complex (-0.5, -Math.sqrt (3.0) / 2.0) // a2 = a * a
-                val zm = (z0 + 2.0 * z1) / 3.0
-                //val zp = (z0 + ((a.+ (a2)) * z1)) / 3.0
-                val zp = (z0 - z1) / 3.0
-                (Complex (zm, 0.0), Complex (zp, 0.0), false)
+                val z0 = Complex (r0, x0)
+                val z1 = Complex (r, x)
+                val (diag, off) = sequence2z (z0, z1)
+                (diag, off, false)
             }
         else
             (Complex (DEFAULT_R, DEFAULT_X), Complex (0.0, 0.0), true)
