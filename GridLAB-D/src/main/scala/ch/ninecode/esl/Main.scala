@@ -18,7 +18,7 @@ import ch.ninecode.model._
 
 object Main
 {
-    val APPLICATION_NAME = "GridLAB-D"
+    val APPLICATION_NAME = "Einspeiseleistung"
     val APPLICATION_VERSION = "2.2.5"
 
     object LogLevels extends Enumeration
@@ -60,7 +60,6 @@ object Main
         reference: Int = -1,
         delta: Double = 1e-6,
         number: Int = -1,
-        short_circuit: String = "",
         workdir: String = "",
         files: Seq[String] = Seq()
     )
@@ -136,10 +135,6 @@ object Main
         opt[Int]('n', "number").valueName ("N").
             action ((x, c) => c.copy (number = x)).
             text ("number of transformers to process")
-
-        opt[String]('c', "csv").valueName ("<file>").
-            action ((x, c) => c.copy (short_circuit = x)).
-            text ("short circuit power file")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -282,7 +277,6 @@ object Main
                     reference = arguments.reference,
                     delta = arguments.delta,
                     number = arguments.number,
-                    short_circuit = arguments.short_circuit,
                     workdir = workdir,
                     files = arguments.files
                 )
