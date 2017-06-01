@@ -34,7 +34,6 @@ case class EinspeiseleistungOptions (
     reference: Int = -1,
     delta: Double = 1e-6,
     number: Int = -1,
-    short_circuit: String = "",
     workdir: String = "",
     files: Seq[String] = Seq()
 )
@@ -639,7 +638,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes, options.short_circuit)
+        val tdata = _transformers.getTransformerData (topological_nodes)
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, topological_nodes, storage_level)
