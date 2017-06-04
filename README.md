@@ -3,6 +3,8 @@ CIMApplication
 
 J2EE access to Spark for Common Information Model (CIM) applications.
 
+A good overview presentation is [Network Analysis and Simulation using Apache Spark on Compute Clusters](https://derrickoswald.github.io/CIMSparkPresentation/index.html?audio), or [without the audio tracks](https://derrickoswald.github.io/CIMSparkPresentation).
+
 # Overview
 
 This set of programs provides a demonstration of using Java EE Connector Architecture

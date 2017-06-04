@@ -3,6 +3,8 @@ GridLAB-D
 
 Distributed load-flow calculations using [GridLAB-D](http://www.gridlabd.org/).
 
+A good overview presentation is [Network Analysis and Simulation using Apache Spark on Compute Clusters](https://derrickoswald.github.io/CIMSparkPresentation/index.html?audio), or [without the audio tracks](https://derrickoswald.github.io/CIMSparkPresentation).
+
 # Overview
 
 This program reads in a [CIM file](http://cimug.ucaiug.org/default.aspx) describing an electrical network
