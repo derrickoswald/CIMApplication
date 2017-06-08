@@ -2,10 +2,11 @@ package ch.ninecode.sc
 
 import java.util.HashMap
 import java.util.Map
+import java.io.File
 
+import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
@@ -39,9 +40,9 @@ class ShortCircuitSuite extends FunSuite
         // register edge related classes
         configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
         // register short circuit classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TData], classOf[Message], classOf[VertexData]))
+        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TData], classOf[ScNode]))
         // register short circuit inner classes
-        configuration.registerKryoClasses (Array (classOf[EdgePlus], classOf[TransformerName], classOf[HouseConnection], classOf[Result]))
+        configuration.registerKryoClasses (Array (classOf[ScEdge], classOf[HouseConnection]))
 
         val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -57,45 +58,53 @@ class ShortCircuitSuite extends FunSuite
         session: SparkSession ⇒
 
         val filename = FILE_DEPOT + "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355_or_EEA5287" + ".rdf"
-
+            
         val start = System.nanoTime
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true");
+        options.put ("ch.ninecode.cim.make_edges", "false");
+        options.put ("ch.ninecode.cim.do_join", "false")
+        options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        
         val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-        val count = elements.count
-
+        println(elements.count + " elements")
         val read = System.nanoTime
+        println("read: " + (read - start) /  1e9 + " seconds")
+        
+        // identify topological nodes
+        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+        val ele = ntp.process (false)
+        println(ele.count () + " elements")
 
-        val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", transformer="all")
+        val topo = System.nanoTime ()
+        println("topology: " + (topo - read) / 1e9 + " seconds")
+
+        // short circuit calculations
+        val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", transformer="TRA5200")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+        val house_connection = shortcircuit.run
 
-        val prep = System.nanoTime
-
-        val rdd = shortcircuit.run
-
-        val graph = System.nanoTime
-
-        val results = rdd.collect
-
-        val fetch = System.nanoTime
-
-        println (s"""id,Name,ik,ik3pol,ip,Transformer,r,x,r0,x0,wires_valid,trafo_valid,fuse_valid,x,y,fuses""")
+        // write output to file and console
+        val output = FILE_DEPOT + "/result"
+        val string = house_connection.sortBy(h => shortcircuit.trafokreis_key(h.transformer)).map(h => {
+           h.node + ";" + shortcircuit.trafokreis_key(h.transformer) + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0
+        })
+        
+        val path = new File(output)
+        FileUtils.deleteQuietly (path)
+        string.saveAsTextFile(output)
+        
+        val results = string.collect        
+        println ("results: " + results.length)
+        println (s"""has;tra;ik;ik3pol;ip;r;r0;x;x0""")
         for (i <- 0 until results.length)
         {
             val h = results (i)
-            println (h.getString(0) + "," + h.getString(1) + "," + h.getDouble(8) + "," + h.getDouble(9) + "," + h.getDouble(10) + "," + h.getString(2) + "," + h.getDouble(3) + "," + h.getDouble(4) + "," + h.getDouble(5) + "," + h.getDouble(6) + "," + h.getBoolean(11) + "," + h.getBoolean(12) + "," + h.getBoolean(13) + "," + h.getString(14) + "," + h.getString(15) + "," + h.getString(7))
+            println(h)
         }
-
-        println ("" + count + " elements")
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("prep : " + (prep - read) / 1e9 + " seconds")
-        println ("graph: " + (graph - prep) / 1e9 + " seconds")
-        println ("fetch: " + (fetch - graph) / 1e9 + " seconds")
-        println ("print: " + (System.nanoTime - fetch) / 1e9 + " seconds")
-        println;
 
     }
 

@@ -16,145 +16,127 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-object Main
-{
+object Main {
     val APPLICATION_NAME = "Short Circuit Current"
     val APPLICATION_VERSION = "2.2.5"
 
-    object LogLevels extends Enumeration
-    {
+    object LogLevels extends Enumeration {
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName (_))
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
-    (s) =>
-        {
-            var ret = Map[String, String] ()
-            val ss = s.split (",")
-            for (p <- ss)
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+        (s) ⇒
             {
-                val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                var ret = Map[String, String] ()
+                val ss = s.split (",")
+                for (p ← ss) {
+                    val kv = p.split ("=")
+                    ret = ret + ((kv(0), kv(1)))
+                }
+                ret
             }
-            ret
-        }
     )
 
-    case class Arguments (
+    case class Arguments(
         quiet: Boolean = false,
         master: String = "",
-        opts: Map[String,String] = Map(),
+        opts: Map[String, String] = Map(),
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
-        three: Boolean = false,
-        trafos: String = "",
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
         csv_file: String = "",
         transformer: String = "",
         workdir: String = "",
-        files: Seq[String] = Seq()
-    )
+        files: Seq[String] = Seq())
 
-    val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
-    {
+    val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME) {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
         opt[Unit]('q', "quiet").
-            action ((_, c) => c.copy (quiet = true)).
+            action ((_, c) ⇒ c.copy (quiet = true)).
             text ("supress informational messages")
 
         opt[String]('m', "master").valueName ("MASTER_URL").
-            action ((x, c) => c.copy (master = x)).
+            action ((x, c) ⇒ c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) => c.copy (opts = x)).
+        opt[Map[String, String]]('o', "opts").valueName ("k1=v1,k2=v2").
+            action ((x, c) ⇒ c.copy (opts = x)).
             text ("other Spark options")
 
         opt[String]('s', "storage_level").
-            action ((x, c) => c.copy (storage = x)).
+            action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
 
         opt[Unit]('u', "deduplicate").
-            action ((_, c) => c.copy (dedup = true)).
+            action ((_, c) ⇒ c.copy (dedup = true)).
             text ("de-duplicate input (striped) files")
 
-        opt[Unit]('3', "three").
-            action ((_, c) => c.copy (three = true)).
-            text ("use three phase computations")
-
-        opt[String]('t', "trafos").valueName ("<TRA file>").
-            action ((x, c) => c.copy (trafos = x)).
-            text ("file of transformer names (one per line) to process")
-
         opt[LogLevels.Value]('l', "logging").
-            action ((x, c) => c.copy (log_level = x)).
+            action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
 
         opt[String]('k', "checkpointdir").valueName ("<dir>").
-            action ((x, c) => c.copy (checkpoint_dir = x)).
+            action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
         opt[String]('c', "csv").valueName ("<file>").
-            action ((x, c) => c.copy (csv_file = x)).
+            action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data (KS_leistungen.csv)")
 
         opt[String]('t', "transformer").valueName ("NIS name").
-            action ((x, c) => c.copy (transformer = x)).
+            action ((x, c) ⇒ c.copy (transformer = x)).
             text ("the transformer to process")
 
         opt[String]('w', "workdir").valueName ("<dir>").
-            action ((x, c) => c.copy (workdir = x)).
+            action ((x, c) ⇒ c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
         arg[String]("<CIM> <CIM> ...").unbounded ().
-            action ((x, c) => c.copy (files = c.files :+ x)).
+            action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
     }
 
-    def jarForObject (obj: Object): String =
-    {
-        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
-        try
+    def jarForObject(obj: Object): String =
         {
-            ret = URLDecoder.decode (ret, "UTF-8")
-        }
-        catch
-        {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
-        }
-        if (!ret.toLowerCase ().endsWith (".jar"))
-        {
-            // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-            writer.close ()
-            ret = name
-        }
+            // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+            var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+            try {
+                ret = URLDecoder.decode (ret, "UTF-8")
+            }
+            catch {
+                case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
+            }
+            if (!ret.toLowerCase ().endsWith (".jar")) {
+                // as an aid to debugging, make jar in tmp and pass that name
+                val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+                val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter ()
+                writer.addDirectory (new scala.reflect.io.Directory(new java.io.File(ret + "ch/")), "ch/")
+                writer.close ()
+                ret = name
+            }
 
-        return (ret)
-    }
+            return (ret)
+        }
 
     /**
      * Generate a working directory matching the files.
      */
-    def derive_work_dir (files: Seq[String]): String =
-    {
-        val file = files.head.split (",")(0).replace (" ", "%20")
-        val uri = new URI (file)
-        if (null == uri.getScheme)
-            "/simulation/"
-        else
-            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
-    }
+    def derive_work_dir(files: Seq[String]): String =
+        {
+            val file = files.head.split (",")(0).replace (" ", "%20")
+            val uri = new URI(file)
+            if (null == uri.getScheme)
+                "/simulation/"
+            else
+                uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
+        }
 
     /**
      * Build jar with dependencies (target/GridLAB-D-2.2.2-jar-with-dependencies.jar):
@@ -163,29 +145,57 @@ object Main
      * invoke (on the cluster) with:
      *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --class ch.ninecode.sc.Main /opt/code/ShortCircuit-2.2.5-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" "hdfs://sandbox:8020/data/bkw_cim_export_wohlen_bei_bern.rdf"
      */
-    def main (args: Array[String])
-    {
+
+    def read_cim(session: SparkSession, arguments: Arguments) {
+        val log = LoggerFactory.getLogger (getClass)
+        val start = System.nanoTime ()
+        val reader_options = new HashMap[String, String]()
+        reader_options.put ("StorageLevel", arguments.storage)
+        reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
+        reader_options.put ("path", arguments.files.mkString (","))
+        reader_options.put ("ch.ninecode.cim.make_edges", "false")
+        reader_options.put ("ch.ninecode.cim.do_join", "false")
+        reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+        reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*)
+
+        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
+            elements.explain
+        else
+            log.info (elements.count () + " elements")
+
+        val read = System.nanoTime ()
+        log.info ("read: " + (read - start) / 1e9 + " seconds")
+
+        // identify topological nodes
+        val ntp = new CIMNetworkTopologyProcessor(session, StorageLevel.fromString (arguments.storage))
+        val ele = ntp.process (false)
+        log.info (ele.count () + " elements")
+
+        val topo = System.nanoTime ()
+        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+    }
+
+    def main(args: Array[String]) {
         // parser.parse returns Option[C]
-        parser.parse (args, Arguments ()) match
-        {
-            case Some (arguments) =>
+        parser.parse (args, Arguments ()) match {
+            case Some(arguments) ⇒
 
                 if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
                 // create the configuration
-                val configuration = new SparkConf (false)
+                val configuration = new SparkConf(false)
                 configuration.setAppName (APPLICATION_NAME)
                 if ("" != arguments.master)
                     configuration.setMaster (arguments.master)
                 if (arguments.opts.size != 0)
-                    arguments.opts.map ((pair: Tuple2[String, String]) => configuration.set (pair._1, pair._2))
+                    arguments.opts.map ((pair: Tuple2[String, String]) ⇒ configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
-                if ("" != arguments.master)
-                {
-                    val s1 = jarForObject (new DefaultSource ())
+                if ("" != arguments.master) {
+                    val s1 = jarForObject (new DefaultSource())
                     val s2 = jarForObject (ShortCircuitOptions ())
                     if (s1 != s2)
                         configuration.setJars (Array (s1, s2))
@@ -194,22 +204,21 @@ object Main
                 }
 
                 val storage = StorageLevel.fromString (arguments.storage)
-                if (storage.useDisk)
-                {
+                if (storage.useDisk) {
                     // register low level classes
                     configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
                     // register CIM case classes
-                    CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
+                    CHIM.apply_to_all_classes { x ⇒ configuration.registerKryoClasses (Array (x.runtime_class)) }
                     // register edge related classes
                     configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
                     // register topological classes
                     configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
                     // register ShortCircuit analysis classes
                     configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.sc.Message],
+                        classOf[ch.ninecode.sc.ScNode],
                         classOf[ch.ninecode.sc.ShortCircuitData],
                         classOf[ch.ninecode.sc.TData],
-                        classOf[ch.ninecode.sc.VertexData]))
+                        classOf[ch.ninecode.sc.ScEdge]))
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
@@ -221,27 +230,31 @@ object Main
 
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-                val ro = HashMap[String,String] ()
-                ro.put ("StorageLevel", arguments.storage)
-                ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
+
+                read_cim(session, arguments)
+
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = ro,
-                    three = arguments.three,
-                    trafos = arguments.trafos,
+                    transformer = arguments.transformer,
                     csv_file = arguments.csv_file,
-                    workdir = workdir,
-                    files = arguments.files
+                    workdir = workdir
                 )
+
                 val shortcircuit = ShortCircuit (session, storage, options)
-                val count = shortcircuit.run ()
+                val house_connection = shortcircuit.run ()
+
+                val string = house_connection.sortBy(h ⇒ shortcircuit.trafokreis_key(h.transformer)).map(h ⇒ {
+                    h.node + ";" + shortcircuit.trafokreis_key(h.transformer) + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0
+                })
+                println("output_path: " + workdir)
+                string.saveAsTextFile(workdir)
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds " + count + " trafokreise")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + house_connection.count + " house connections caclulated")
 
                 sys.exit (0)
-            case None =>
+            case None ⇒
                 sys.exit (1)
         }
     }
