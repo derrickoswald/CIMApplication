@@ -27,7 +27,7 @@ case class ShortCircuitOptions(verbose: Boolean = true, csv_file: String = "", t
  */
 case class ShortCircuitData(mRID: String, Sk: Double, Ikw: Double, valid: Boolean)
 
-case class LineDetails(r_km: Double, r0_km: Double, x_km: Double, x0_km: Double)
+case class Impedanzen(impedanz: Complex, null_impedanz: Complex)
 
 case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
 
@@ -49,10 +49,14 @@ case class ScNode(
     id_seq: String,
     voltage: Double,
     source_obj: StartingTrafos,
-    sum_x: Double,
-    sum_x0: Double,
-    sum_r: Double,
-    sum_r0: Double) extends Graphable
+    parent_cable: Impedanzen,
+    parent_node: Impedanzen) extends Graphable {
+
+    def sum_r = (if (parent_node == null) 0 else parent_node.impedanz.re) + parent_cable.impedanz.re
+    def sum_x = (if (parent_node == null) 0 else parent_node.impedanz.im) + parent_cable.impedanz.im
+    def sum_r0 = (if (parent_node == null) 0 else parent_node.null_impedanz.re) + parent_cable.null_impedanz.re
+    def sum_x0 = (if (parent_node == null) 0 else parent_node.null_impedanz.im) + parent_cable.null_impedanz.im
+}
 
 case class ScEdge(
     id_seq_1: String,
@@ -66,21 +70,22 @@ case class ScEdge(
     element: Element) extends Graphable with Serializable
 
 case class HouseConnection(
-        mRID: String, 
-        node: String, 
-        transformer: Array[TData], 
-        r: Double, 
-        x: Double, 
-        r0: Double, 
-        x0: Double, 
-        ik: Double = 0.0, 
-        ik3pol: Double = 0.0, 
-        ip: Double = 0.0)
+    mRID: String,
+    node: String,
+    transformer: Array[TData],
+    r: Double,
+    x: Double,
+    r0: Double,
+    x0: Double,
+    ik: Double = 0.0,
+    ik3pol: Double = 0.0,
+    ip: Double = 0.0)
 
 case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends Serializable {
 
     val log = LoggerFactory.getLogger (getClass)
-    val default_node = ScNode ("", 0.0, null.asInstanceOf[StartingTrafos], Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity)
+    val default_impendanz = Impedanzen(Complex(Double.PositiveInfinity, Double.PositiveInfinity), Complex(Double.PositiveInfinity, Double.PositiveInfinity))
+    val default_node = ScNode ("", 0.0, null.asInstanceOf[StartingTrafos], default_impendanz, null.asInstanceOf[Impedanzen])
 
     def has(string: String): String =
         {
@@ -179,7 +184,7 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
             val node = arg._1._1
             val term = arg._1._2
             val edge = arg._2
-            ScNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, null.asInstanceOf[StartingTrafos], Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity)
+            ScNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, null.asInstanceOf[StartingTrafos], default_impendanz, null.asInstanceOf[Impedanzen])
         }
 
     def edge_operator(voltages: Map[String, Double])(arg: Tuple2[Tuple2[Element, Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[ScEdge] =
@@ -325,15 +330,15 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
 
     def trace(initial: Graph[ScNode, ScEdge]): Graph[ScNode, ScEdge] =
         {
-                def line_details(edge: ScEdge): LineDetails =
+                def line_details(edge: ScEdge): Impedanzen =
                     {
                         if (edge.element.isInstanceOf[ACLineSegment]) {
                             val lineSeg = edge.element.asInstanceOf[ACLineSegment]
                             val dist_km = lineSeg.Conductor.len / 1000.0
-                            LineDetails(lineSeg.r * dist_km, lineSeg.r0 * dist_km, lineSeg.x * dist_km, lineSeg.x0 * dist_km)
+                            Impedanzen(Complex(lineSeg.r * dist_km, lineSeg.x * dist_km), Complex(lineSeg.r0 * dist_km, lineSeg.x0 * dist_km))
                         }
                         else
-                            LineDetails(0.0, 0.0, 0.0, 0.0)
+                            Impedanzen(Complex(0.0, 0.0), Complex(0.0, 0.0))
                     }
 
                 // do the Pregel algorithm
@@ -351,18 +356,12 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
                             if (shouldContinue (triplet.attr.element)) {
                                 val ld = line_details (triplet.attr)
                                 if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null) {
-                                    val sum_r = triplet.srcAttr.sum_r + ld.r_km
-                                    val sum_r0 = triplet.srcAttr.sum_r + ld.r0_km
-                                    val sum_x = triplet.srcAttr.sum_r + ld.x_km
-                                    val sum_x0 = triplet.srcAttr.sum_r + ld.x0_km
-                                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_x, sum_x0, sum_r, sum_r0)))
+                                    val parent = Impedanzen(Complex(triplet.srcAttr.sum_r, triplet.srcAttr.sum_x), Complex(triplet.srcAttr.sum_r0, triplet.srcAttr.sum_x0))
+                                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, ld, parent)))
                                 }
                                 else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null) {
-                                    val sum_r = triplet.dstAttr.sum_r + ld.r_km
-                                    val sum_r0 = triplet.dstAttr.sum_r + ld.r0_km
-                                    val sum_x = triplet.dstAttr.sum_r + ld.x_km
-                                    val sum_x0 = triplet.dstAttr.sum_r + ld.x0_km
-                                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_x, sum_x0, sum_r, sum_r0)))
+                                    val parent = Impedanzen(Complex(triplet.dstAttr.sum_r, triplet.dstAttr.sum_x), Complex(triplet.dstAttr.sum_r0, triplet.dstAttr.sum_x0))
+                                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, ld, parent)))
                                 }
                                 else
                                     Iterator.empty
@@ -375,7 +374,14 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
 
                 def mergeMessage(a: ScNode, b: ScNode): ScNode =
                     {
-                        a
+                        val a_imp = a.parent_cable.impedanz
+                        val b_imp = b.parent_cable.impedanz
+                        val a_imp_null = a.parent_cable.null_impedanz
+                        val b_imp_null = b.parent_cable.null_impedanz
+
+                        val parent_cable_impedanz = a_imp.parallel_impedanz(b_imp)
+                        val parent_cable_null_impedanz = a_imp_null.parallel_impedanz(b_imp_null)
+                        a.copy(parent_cable = Impedanzen(parent_cable_impedanz, parent_cable_null_impedanz))
                     }
 
             initial.pregel (default_node, 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
@@ -388,20 +394,20 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
             val cmin = 0.90
             val ratioZ0Z1 = 4
             val ratioX0R0 = 10
-            // ToDo: fix Array TData
-            val tData = house.source_obj.trafo_id(0)
-            val v1 = tData.voltage0
-            val v2 = tData.voltage1
-            val sk = tData.shortcircuit.Sk * 1e+6
-            val wik = tData.shortcircuit.Ikw
+
+            val tData = house.source_obj.trafo_id
+            val v1 = tData(0).voltage0 * 1000
+            val v2 = tData(0).voltage1 * 1000
+            val sk = tData(0).shortcircuit.Sk
+            val wik = tData(0).shortcircuit.Ikw
 
             val turns_ratio = v2 / v1
-            val zqt = c * v1 * v1 / (sk * (turns_ratio * turns_ratio))
+            val zqt = (c * v1 * v1) / (sk * 1000000) * (v2 / v1) * (v2 / v1)
             val zqt0 = zqt * ratioZ0Z1
 
             val wik_radians = Math.PI / 180.0 * wik
-            val netz_r1 = zqt * Math.cos (0.017453292519943 * wik_radians)
-            val netz_x1 = zqt * Math.sin (0.017453292519943 * wik_radians)
+            val netz_r1 = zqt * Math.cos (wik_radians)
+            val netz_x1 = zqt * Math.sin (wik_radians)
             val netz_r0 = zqt0 * Math.cos(Math.abs(Math.atan(ratioX0R0)))
             val netz_x0 = zqt0 * Math.sin(Math.abs(Math.atan(ratioX0R0)))
 
@@ -409,19 +415,45 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
             val has_r0 = house.sum_r0
             val has_x1 = house.sum_x
             val has_x0 = house.sum_x0
-            val trafo_r = tData.end1.r
-            val trafo_r0 = tData.end1.r0
-            val trafo_x = tData.end1.x
-            val trafo_x0 = tData.end1.x0
+
+            val t_1 = Complex(tData(0).end1.r, tData(0).end1.x)
+            val t_1_null = Complex(tData(0).end1.r0, tData(0).end1.x0)
+
+            val (trafo_impedanz, trafo_null_impedanz) = if (tData.size == 1) {
+                (t_1, t_1_null)
+            }
+            else if (tData.size == 2) {
+                val t_2 = Complex(tData(1).end1.r, tData(1).end1.x)
+                val t_2_null = Complex(tData(1).end1.r0, tData(1).end1.x0)
+                (t_1.parallel_impedanz(t_2), t_1_null.parallel_impedanz(t_2_null))
+            }
+            else {
+                (Complex(0.0, 0.0), Complex(0.0, 0.0))
+            }
+
+            val trafo_r1 = trafo_impedanz.re
+            val trafo_r0 = trafo_null_impedanz.re
+            val trafo_x1 = trafo_impedanz.im
+            val trafo_x0 = trafo_null_impedanz.im
+
+            val r1_has_tra_netz = has_r1 + trafo_r1 + netz_r1
+            val x1_has_tra_netz = has_x1 + trafo_x1 + netz_x1
+            val r0_has_tra = has_r0 + trafo_r0
+            val x0_has_tra = has_x0 + trafo_x0
 
             // Einpoligen Kurzschlussstrom berechnen
-            val ik = Math.sqrt (3.0) * cmin * v2 / Math.sqrt(Math.pow(2 * has_r1 * trafo_r + has_r0 + trafo_r0 + 2 * netz_r1 + netz_r0, 2) + Math.pow(2 * has_x1 + trafo_x + has_x0 + trafo_x0 + 2 * Math.abs(netz_x1) + netz_x0, 2))
+            val ik_z = Math.sqrt (3.0) * cmin * v2
+            val ik_n_sqrt1 = Math.sqrt(r1_has_tra_netz * r1_has_tra_netz + x1_has_tra_netz * x1_has_tra_netz)
+            val ik_n_sqrt2 = Math.sqrt(r0_has_tra * r0_has_tra + x0_has_tra * x0_has_tra)
+            val ik_n = 2 * ik_n_sqrt1 + ik_n_sqrt2
+            val ik = ik_z / ik_n
 
             // Dreipoligen Kurzschlussstrom berechnen
-            val ik3pol = 1.1 * v2 / (Math.sqrt (3.0) * Math.sqrt(Math.pow(trafo_r + netz_r1, 2) + Math.pow(trafo_x + Math.abs(netz_x1), 2)))
+            val ik3pol_n = Math.sqrt (3.0) * Math.sqrt(r1_has_tra_netz * r1_has_tra_netz + x1_has_tra_netz * x1_has_tra_netz)
+            val ik3pol = c * v2 / ik3pol_n
 
             // Stosskurzschlussstrom berechnen
-            val ip = (1.02 + 0.98 * Math.exp (-3.0 * (trafo_r + netz_r1) / (trafo_x + Math.abs(netz_x1)))) * Math.sqrt (2) * ik3pol
+            val ip = (1.02 + 0.98 * Math.exp (-3.0 * (trafo_r1 + netz_r1) / (trafo_x1 + Math.abs(netz_x1)))) * Math.sqrt (2) * ik3pol
 
             HouseConnection (house.id_seq, has(house.id_seq), house.source_obj.trafo_id, has_r1, has_x1, has_r0, has_x0, ik, ik3pol, ip)
         }
@@ -449,9 +481,10 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
                     {
                         starting_nodes.find (s ⇒ s.nsPin == id) match {
                             case Some(node) ⇒
-                                ScNode (v.id_seq, v.voltage, node, 0.0, 0.0, 0.0, 0.0)
+                                val l_det = Impedanzen(Complex(0.0, 0.0), Complex(0.0, 0.0))
+                                ScNode (v.id_seq, v.voltage, node, l_det, l_det)
                             case None ⇒
-                                ScNode (v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity)
+                                ScNode (v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], default_impendanz, null.asInstanceOf[Impedanzen])
                         }
                     }
 
