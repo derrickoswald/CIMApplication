@@ -83,7 +83,7 @@ class ShortCircuitSuite extends FunSuite
         println("topology: " + (topo - read) / 1e9 + " seconds")
 
         // short circuit calculations
-        val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", transformer="TRA5200")
+        val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", trafos = "private_data/trafo.txt")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
         val house_connection = shortcircuit.run
 
