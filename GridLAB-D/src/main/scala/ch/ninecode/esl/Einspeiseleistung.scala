@@ -35,7 +35,8 @@ case class EinspeiseleistungOptions (
     delta: Double = 1e-6,
     number: Int = -1,
     workdir: String = "",
-    files: Seq[String] = Seq()
+    files: Seq[String] = Seq(),
+    precalc_factor: Double = 1.5
 )
 
 /**
@@ -101,14 +102,15 @@ case class Trafokreis
     transformers: Array[TData],
     nodes: Iterable[PowerFeedingNode],
     edges: Iterable[PreEdge],
-    houses: Iterable[MaxPowerFeedingNodeEEA]
+    houses: Iterable[MaxPowerFeedingNodeEEA],
+    options: EinspeiseleistungOptions
 ) extends Problem
 {
 
     val log = LoggerFactory.getLogger (getClass)
 
     val window = 3 * 60 // window size in simulated seconds per experiment
-    val margin = 1.50 // check up to 50% over the precalculated value
+    val margin = options.precalc_factor // check up to 50% over the precalculated value
     val step = 10000.0
     def significant (h: MaxPowerFeedingNodeEEA) = (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)) =
@@ -197,12 +199,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         return (null)
     }
 
-    def makeTrafokreis (start: Calendar) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
     {
         arg match
         {
             case (trafokreise, (transformers, Some (x))) =>
-                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3)
+                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3, options)
             case _ =>
                 null
         }
@@ -704,7 +706,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
-            val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0)_)
+            val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0, options)_)
             val count = trafo_list.count
             log.info ("filtered_trafos: " + count)
             if (0 != count)
