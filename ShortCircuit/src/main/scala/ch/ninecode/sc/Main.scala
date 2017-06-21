@@ -48,7 +48,7 @@ object Main {
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
         csv_file: String = "",
-        transformer: String = "",
+        trafos: String = "",
         workdir: String = "",
         files: Seq[String] = Seq())
 
@@ -87,9 +87,9 @@ object Main {
             action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data (KS_leistungen.csv)")
 
-        opt[String]('t', "transformer").valueName ("NIS name").
-            action ((x, c) ⇒ c.copy (transformer = x)).
-            text ("the transformer to process")
+        opt[String]('t', "trafos").valueName ("<TRA file>").
+            action ((x, c) => c.copy (trafos = x)).
+            text ("file of transformer names (one per line) to process")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -236,7 +236,7 @@ object Main {
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
-                    transformer = arguments.transformer,
+                    trafos = arguments.trafos,
                     csv_file = arguments.csv_file,
                     workdir = workdir
                 )

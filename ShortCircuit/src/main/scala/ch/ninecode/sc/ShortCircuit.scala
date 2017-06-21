@@ -1,6 +1,7 @@
 package ch.ninecode.sc
 
 import scala.collection.Map
+import scala.io.Source
 import org.slf4j.LoggerFactory
 
 import org.apache.spark.graphx.Edge
@@ -15,7 +16,7 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.model._
 
-case class ShortCircuitOptions(verbose: Boolean = true, csv_file: String = "", transformer: String = "", workdir: String = "")
+case class ShortCircuitOptions(verbose: Boolean = true, csv_file: String = "", trafos: String = "", workdir: String = "")
 
 /**
  * Station short circuit power availability (pre-computed).
@@ -465,8 +466,9 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
             val _transformers = new Transformers(this, session, storage_level)
             val tdata = _transformers.getTransformerData(true, options.csv_file)
 
-            val transformers = if (null != options.transformer && "" != options.transformer && "all" != options.transformer) {
-                val selected = tdata.filter(t ⇒ { options.transformer.split(",").contains(t.transformer.id) })
+            val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
+                val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+                val selected = tdata.filter(t ⇒ { trafos.contains(t.transformer.id) })
                 selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray).collect
             }
             else {
