@@ -63,6 +63,7 @@ define
 
         function add_rules (master_group, worker_group, authorized_ip)
         {
+            authorized_ip = authorized_ip + "/32"
             var pairs = [
                 {
                     GroupName: master_group.GroupName,
@@ -145,7 +146,7 @@ define
         {
             var master_group_name = document.getElementById ("master_security_group").value;
             var worker_group_name = document.getElementById ("worker_security_group").value;
-            var authorized_ip = document.getElementById ("authorized_ip").value;
+            var authorized_ip = document.getElementById ("authorized_ip").value.trim ();
             if ("" == authorized_ip)
                 authorized_ip = "0.0.0.0/0";
 
@@ -156,15 +157,15 @@ define
                 needed.push (master_group_name);
             if (null == worker_group)
                 needed.push (worker_group_name);
-            var count = needed.length;
+            var count = 0;
             var ec2 = new AWS.EC2 ();
-            if (count != 0)
+            if (needed.length != 0)
             {
                 function gather (data, group)
                 {
                     count++;
                     group.GroupId = data.GroupId;
-                    if (count >= needed.length)
+                    if (count == needed.length)
                         add_rules (master_group, worker_group, authorized_ip);
                 }
                 if (null == master_group)
