@@ -61,7 +61,8 @@ object Main
         delta: Double = 1e-6,
         number: Int = -1,
         workdir: String = "",
-        files: Seq[String] = Seq()
+        files: Seq[String] = Seq(),
+        precalc_factor: Double = 1.5
     )
 
     val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
@@ -131,6 +132,10 @@ object Main
         opt[Int]('d', "delta").valueName ("D").
             action ((x, c) => c.copy (delta = x)).
             text ("delta power difference threshold for reference comparison")
+            
+        opt[Double]('f', "precalcfactor").valueName ("D").
+            action ((x, c) => c.copy (precalc_factor = x)).
+            text ("factor to multiply precaclulation results for gridlabd")
 
         opt[Int]('n', "number").valueName ("N").
             action ((x, c) => c.copy (number = x)).
@@ -278,7 +283,8 @@ object Main
                     delta = arguments.delta,
                     number = arguments.number,
                     workdir = workdir,
-                    files = arguments.files
+                    files = arguments.files,
+                    precalc_factor = arguments.precalc_factor
                 )
                 val eins = Einspeiseleistung (session, options)
                 val count = eins.run ()
