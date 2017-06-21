@@ -10,6 +10,7 @@
     <artifactId>GridLAB-D</artifactId>
     <groupId>ch.ninecode.gl</groupId>
     <name>GridLAB-D</name>
+    <version>2.2.7</version>
     <description>Export GridLAB-D file using Spark and Scala</description>
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
