@@ -416,16 +416,18 @@ case class ShortCircuit(session: SparkSession, storage_level: StorageLevel, opti
             val has_x1 = house.sum_x
             val has_x0 = house.sum_x0
 
+            // use r0=r1 & x0=x1 for trafos
             val t_1 = Complex(tData(0).end1.r, tData(0).end1.x)
-            val t_1_null = Complex(tData(0).end1.r0, tData(0).end1.x0)
-
+            // val t_1_null = Complex(tData(0).end1.r0, tData(0).end1.x0)
             val (trafo_impedanz, trafo_null_impedanz) = if (tData.size == 1) {
-                (t_1, t_1_null)
+                (t_1, t_1)
             }
             else if (tData.size == 2) {
                 val t_2 = Complex(tData(1).end1.r, tData(1).end1.x)
-                val t_2_null = Complex(tData(1).end1.r0, tData(1).end1.x0)
-                (t_1.parallel_impedanz(t_2), t_1_null.parallel_impedanz(t_2_null))
+                // val t_2_null = Complex(tData(1).end1.r0, tData(1).end1.x0)
+                val a = t_1.parallel_impedanz(t_2)
+                // val b = t_1_null.parallel_impedanz(t_2_null)
+                (a, a)
             }
             else {
                 (Complex(0.0, 0.0), Complex(0.0, 0.0))
