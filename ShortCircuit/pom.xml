@@ -152,7 +152,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>ch.ninecode.esl.Main</mainClass>
+                            <mainClass>ch.ninecode.sc.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
