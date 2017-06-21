@@ -79,7 +79,7 @@ public class ShortCircuitCalculation
                         input.put ("csv", "hdfs://sandbox:8020/data/" + spreadsheet + ".csv");
 
                         // set up the method call details for the CIMConnector
-                        ShortCircuitOptions sc = new ShortCircuitOptions (false, null, false, null, null, null, null, null);
+                        ShortCircuitOptions sc = new ShortCircuitOptions (false, "hdfs://sandbox:8020/data/" + spreadsheet + ".csv", null, null);
                         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
                         String path = sc.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
                         String decodedPath;
