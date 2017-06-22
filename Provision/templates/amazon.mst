@@ -1,816 +1,902 @@
-<table jcr:primarytype="nt:unstructured" cellspacing="0" cellpadding="1" width="539" border="0" height="1630"> 
-           <tbody> 
-            <tr> 
-             <td style="text-align: center;" width="65">Instance Type</td> 
-             <td style="text-align: center;" width="29">vCPU</td> 
-             <td style="text-align: center;" width="42">Memory (GiB)</td> 
-             <td style="text-align: center;" width="60">&nbsp;Storage (GB)</td> 
-             <td style="text-align: center;" width="200">Networking Performance<br> </td> 
-             <td style="text-align: center;" width="69">Physical Processor</td> 
-             <td style="text-align: center;" width="45">Clock Speed (GHz)</td> 
-             <td style="text-align: center;" width="39"><a href="#intel">Intel AVX<sup>†</sup></a></td> 
-             <td style="text-align: center;" width="32"><a href="#intel" adhocenable="false">Intel AVX2</a><a href="#intel"><sup>†</sup></a></td> 
-             <td style="text-align: center;" width="30"><a href="#intel" adhocenable="false">Intel Turbo</a></td> 
-             <td style="text-align: center;" width="47"><a adhocenable="false" href="#ebs">EBS OPT <br> </a></td> 
-             <td style="text-align: center;" width="57" height="56"><a href="/ec2/details/#enhanced-networking" adhocenable="false">Enhanced Networking</a><a href="#intel"><sup>†</sup></a></td> 
-            </tr> 
-            <tr> 
-             <td>t2.nano</td> 
-             <td style="text-align: center;">1</td> 
-             <td style="text-align: center;">0.5</td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">Low</td> 
-             <td style="text-align: center;">Intel Xeon family</td> 
-             <td style="text-align: center;">up to 3.3</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">-</td> 
-            </tr> 
-            <tr> 
-             <td style="text-align: left;" valign="middle">t2.micro</td> 
-             <td style="text-align: center;" valign="middle">1</td> 
-             <td style="text-align: center;" valign="middle">1</td> 
-             <td style="text-align: center;" valign="middle">EBS Only</td> 
-             <td style="text-align: center;" valign="middle">Low to Moderate</td> 
-             <td style="text-align: center;" valign="middle">Intel Xeon family</td> 
-             <td style="text-align: center;" valign="middle">Up to 3.3<br> </td> 
-             <td style="text-align: center;" valign="middle">Yes</td> 
-             <td style="text-align: center;" valign="middle">-</td> 
-             <td style="text-align: center;" valign="middle">Yes</td> 
-             <td style="text-align: center;" valign="middle">-</td> 
-             <td style="text-align: center;" valign="middle">-</td> 
-            </tr> 
-            <tr> 
-             <td style="text-align: left;" valign="middle">t2.small</td> 
-             <td style="text-align: center;" valign="middle">1<br> </td> 
-             <td style="text-align: center;" valign="middle">2<br> </td> 
-             <td style="text-align: center;" valign="middle">EBS Only<br> </td> 
-             <td style="text-align: center;" valign="middle">Low to Moderate<br> </td> 
-             <td style="text-align: center;" valign="middle">Intel Xeon family<br> </td> 
-             <td style="text-align: center;" valign="middle">Up to 3.3</td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-            </tr> 
-            <tr> 
-             <td style="text-align: left;" valign="middle">t2.medium</td> 
-             <td style="text-align: center;" valign="middle">2</td> 
-             <td style="text-align: center;" valign="middle">4</td> 
-             <td style="text-align: center;" valign="middle">EBS Only</td> 
-             <td style="text-align: center;" valign="middle">Low to Moderate</td> 
-             <td style="text-align: center;" valign="middle">Intel Xeon family<br> </td> 
-             <td style="text-align: center;" valign="middle">Up to 3.3</td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-            </tr> 
-            <tr> 
-             <td valign="middle">t2.large</td> 
-             <td style="text-align: center;" valign="middle">2</td> 
-             <td style="text-align: center;" valign="middle">8<br> </td> 
-             <td style="text-align: center;" valign="middle">EBS Only</td> 
-             <td style="text-align: center;" valign="middle">Low to Moderate</td> 
-             <td style="text-align: center;" valign="middle">Intel Xeon family<br> </td> 
-             <td style="text-align: center;" valign="middle">Up to 3.0<br> </td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">Yes<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-             <td style="text-align: center;" valign="middle">-<br> </td> 
-            </tr> 
-            <tr> 
-             <td>t2.xlarge</td> 
-             <td style="text-align: center;">4</td> 
-             <td style="text-align: center;">16</td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">Moderate</td> 
-             <td style="text-align: center;">Intel Xeon family</td> 
-             <td style="text-align: center;">Up to 3.0</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">-</td> 
-            </tr> 
-            <tr> 
-             <td>t2.2xlarge</td> 
-             <td style="text-align: center;">8</td> 
-             <td style="text-align: center;">32</td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">Moderate</td> 
-             <td style="text-align: center;">Intel Xeon family</td> 
-             <td style="text-align: center;">Up to 3.0</td> 
-             <td>Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td>-</td> 
-             <td style="text-align: center;">-</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m4.large</td> 
-             <td width="29">2</td> 
-             <td width="42">8</td> 
-             <td width="60">EBS Only<br> </td> 
-             <td>Moderate</td> 
-             <td width="69">Intel Xeon E5-2676 v3**</td> 
-             <td width="45">2.4</td> 
-             <td width="39">Yes</td> 
-             <td width="32">Yes</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m4.xlarge</td> 
-             <td width="29">4</td> 
-             <td width="42">16</td> 
-             <td width="60">EBS Only</td> 
-             <td>High</td> 
-             <td width="69">Intel Xeon E5-2676 v3**</td> 
-             <td width="45">2.4</td> 
-             <td width="39">Yes</td> 
-             <td width="32">Yes</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m4.2xlarge</td> 
-             <td width="29">8</td> 
-             <td width="42">32</td> 
-             <td width="60">EBS Only</td> 
-             <td>High</td> 
-             <td width="69">Intel Xeon E5-2676 v3**</td> 
-             <td width="45">2.4</td> 
-             <td width="39">Yes</td> 
-             <td width="32">Yes</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m4.4xlarge</td> 
-             <td width="29">16</td> 
-             <td width="42">64</td> 
-             <td width="60">EBS Only</td> 
-             <td>High</td> 
-             <td width="69">Intel Xeon E5-2676 v3**</td> 
-             <td width="45">2.4</td> 
-             <td width="39">Yes</td> 
-             <td width="32">Yes</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m4.10xlarge</td> 
-             <td width="29">40</td> 
-             <td width="42">160</td> 
-             <td width="60">EBS Only</td> 
-             <td>10 Gigabit<br> </td> 
-             <td width="69">Intel Xeon E5-2676 v3</td> 
-             <td width="45">2.4</td> 
-             <td width="39">Yes</td> 
-             <td width="32">Yes</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>m4.16xlarge</td> 
-             <td>64</td> 
-             <td>256</td> 
-             <td>EBS Only</td> 
-             <td>20 Gigabit</td> 
-             <td>Intel Xeon E5-2686 v4</td> 
-             <td>2.3</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m3.medium</td> 
-             <td width="29">1</td> 
-             <td width="42">3.75</td> 
-             <td width="60">1 x 4 SSD</td> 
-             <td>Moderate</td> 
-             <td width="69">Intel Xeon E5-2670 v2*</td> 
-             <td width="45">2.5</td> 
-             <td width="39">Yes</td> 
-             <td width="32">-</td> 
-             <td width="30">Yes</td> 
-             <td width="47">-</td> 
-             <td width="57" height="28">-</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m3.large</td> 
-             <td width="29">2</td> 
-             <td width="42">7.5</td> 
-             <td width="60">1 x 32 SSD</td> 
-             <td>Moderate</td> 
-             <td width="69">Intel Xeon E5-2670 v2*</td> 
-             <td width="45">2.5</td> 
-             <td width="39">Yes</td> 
-             <td width="32">-</td> 
-             <td width="30">Yes</td> 
-             <td width="47">-</td> 
-             <td width="57" height="28">-</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m3.xlarge</td> 
-             <td width="29">4</td> 
-             <td width="42">15</td> 
-             <td width="60">2 x 40 SSD</td> 
-             <td>High</td> 
-             <td width="69">Intel Xeon E5-2670 v2*</td> 
-             <td width="45">2.5</td> 
-             <td width="39">Yes</td> 
-             <td width="32">-</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">-</td> 
-            </tr> 
-            <tr> 
-             <td width="65">m3.2xlarge</td> 
-             <td width="29">8</td> 
-             <td width="42">30</td> 
-             <td width="60">2 x 80 SSD</td> 
-             <td>High</td> 
-             <td width="69">Intel Xeon E5-2670 v2*</td> 
-             <td width="45">2.5</td> 
-             <td width="39">Yes</td> 
-             <td width="32">-</td> 
-             <td width="30">Yes</td> 
-             <td width="47">Yes</td> 
-             <td width="57" height="28">-</td> 
-            </tr> 
-            <tr> 
-             <td>c4.large<br> </td> 
-             <td style="text-align: center;">2<br> </td> 
-             <td style="text-align: center;">3.75<br> </td> 
-             <td style="text-align: center;">EBS Only<br> </td> 
-             <td style="text-align: center;">Moderate<br> </td> 
-             <td style="text-align: center;">Intel Xeon E5-2666 v3<br> </td> 
-             <td style="text-align: center;">2.9<br> </td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes<br> </td> 
-            </tr> 
-            <tr> 
-             <td>c4.xlarge<br> </td> 
-             <td style="text-align: center;">4<br> </td> 
-             <td style="text-align: center;">7.5<br> </td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">High<br> </td> 
-             <td style="text-align: center;">Intel Xeon E5-2666 v3</td> 
-             <td style="text-align: center;">2.9<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>c4.2xlarge<br> </td> 
-             <td style="text-align: center;">8<br> </td> 
-             <td style="text-align: center;">15<br> </td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">High<br> </td> 
-             <td style="text-align: center;">Intel Xeon E5-2666 v3</td> 
-             <td style="text-align: center;">2.9<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>c4.4xlarge<br> </td> 
-             <td style="text-align: center;">16<br> </td> 
-             <td style="text-align: center;">30<br> </td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">High<br> </td> 
-             <td style="text-align: center;">Intel Xeon E5-2666 v3</td> 
-             <td style="text-align: center;">2.9<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>c4.8xlarge<br> </td> 
-             <td style="text-align: center;">36<br> </td> 
-             <td style="text-align: center;">60<br> </td> 
-             <td style="text-align: center;">EBS Only</td> 
-             <td style="text-align: center;">10 Gigabit<br> </td> 
-             <td style="text-align: center;">Intel Xeon E5-2666 v3</td> 
-             <td style="text-align: center;">2.9<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes<br> </td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">c3.large</td> 
-             <td style="text-align: center;" width="29">2</td> 
-             <td style="text-align: center;" width="42">3.75</td> 
-             <td style="text-align: center;" width="60">2 x 16 SSD</td> 
-             <td>Moderate</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td> 
-             <td style="text-align: center;" width="45">2.8</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">-</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">c3.xlarge</td> 
-             <td style="text-align: center;" width="29">4</td> 
-             <td style="text-align: center;" width="42">7.5</td> 
-             <td style="text-align: center;" width="60">2 x 40 SSD</td> 
-             <td>Moderate</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td> 
-             <td style="text-align: center;" width="45">2.8</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">c3.2xlarge</td> 
-             <td style="text-align: center;" width="29">8</td> 
-             <td style="text-align: center;" width="42">15</td> 
-             <td style="text-align: center;" width="60">2 x 80 SSD</td> 
-             <td>High</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td> 
-             <td style="text-align: center;" width="45">2.8</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">c3.4xlarge</td> 
-             <td style="text-align: center;" width="29">16</td> 
-             <td style="text-align: center;" width="42">30</td> 
-             <td style="text-align: center;" width="60">2 x 160 SSD</td> 
-             <td>High</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td> 
-             <td style="text-align: center;" width="45">2.8</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">c3.8xlarge</td> 
-             <td style="text-align: center;" width="29">32</td> 
-             <td style="text-align: center;" width="42">60</td> 
-             <td style="text-align: center;" width="60">2 x 320 SSD</td> 
-             <td>10 Gigabit</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td> 
-             <td style="text-align: center;" width="45">2.8</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">-</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="79"><p>p2.xlarge</p> </td> 
-             <td width="68"><p style="text-align: center;">4</p> </td> 
-             <td width="70"><p style="text-align: center;">61</p> </td> 
-             <td width="70"><p style="text-align: center;">EBS Only</p> </td> 
-             <td width="86"><p style="text-align: center;">High</p> </td> 
-             <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p> </td> 
-             <td width="69"><p style="text-align: center;">2.3</p> </td> 
-             <td width="67"><p style="text-align: center;">Yes</p> </td> 
-             <td width="69"><p style="text-align: center;">Yes</p> </td> 
-             <td width="68"><p style="text-align: center;">Yes</p> </td> 
-             <td width="66"><p style="text-align: center;">Yes</p> </td> 
-             <td width="81"><p style="text-align: center;">Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="79"><p>p2.8xlarge</p> </td> 
-             <td width="68"><p style="text-align: center;">32</p> </td> 
-             <td width="70"><p style="text-align: center;">488</p> </td> 
-             <td width="70"><p style="text-align: center;">EBS Only</p> </td> 
-             <td width="86"><p style="text-align: center;">10 Gigabit</p> </td> 
-             <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p> </td> 
-             <td width="69"><p style="text-align: center;">2.3</p> </td> 
-             <td width="67"><p style="text-align: center;">Yes</p> </td> 
-             <td width="69"><p style="text-align: center;">Yes</p> </td> 
-             <td width="68"><p style="text-align: center;">Yes</p> </td> 
-             <td width="66"><p style="text-align: center;">Yes</p> </td> 
-             <td width="81"><p style="text-align: center;">Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="79"><p>p2.16xlarge</p> </td> 
-             <td width="68"><p style="text-align: center;">64</p> </td> 
-             <td width="70"><p style="text-align: center;">732</p> </td> 
-             <td width="70"><p style="text-align: center;">EBS Only</p> </td> 
-             <td width="86"><p style="text-align: center;">20 Gigabit</p> </td> 
-             <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p> </td> 
-             <td width="69"><p style="text-align: center;">2.3</p> </td> 
-             <td width="67"><p style="text-align: center;">Yes</p> </td> 
-             <td width="69"><p style="text-align: center;">Yes</p> </td> 
-             <td width="68"><p style="text-align: center;">Yes</p> </td> 
-             <td width="66"><p style="text-align: center;">Yes</p> </td> 
-             <td width="81"><p style="text-align: center;">Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="65">g2.2xlarge</td> 
-             <td style="text-align: center;" width="29">8</td> 
-             <td style="text-align: center;" width="42">15</td> 
-             <td style="text-align: center;" width="60">1 x 60 SSD</td> 
-             <td>High</td> 
-             <td style="text-align: center;" width="69">Intel Xeon &nbsp;E5-2670<br> </td> 
-             <td style="text-align: center;" width="45">2.6</td> 
-             <td style="text-align: center;" width="39">Yes<br> </td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">-</td> 
-            </tr> 
-            <tr> 
-             <td>g2.8xlarge</td> 
-             <td style="text-align: center;">32</td> 
-             <td style="text-align: center;">60</td> 
-             <td style="text-align: center;">2 x 120 SSD</td> 
-             <td style="text-align: center;">10 Gigabit</td> 
-             <td style="text-align: center;">Intel Xeon E5-2670</td> 
-             <td style="text-align: center;">2.6</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">Yes&nbsp;</td> 
-             <td style="text-align: center;">&nbsp;-</td> 
-             <td style="text-align: center;">-&nbsp;</td> 
-            </tr> 
-            <tr> 
-             <td>x1.16large</td> 
-             <td style="text-align: center;">64</td> 
-             <td style="text-align: center;">976</td> 
-             <td style="text-align: center;">1 x 1,920 SSD</td> 
-             <td style="text-align: center;">10 Gigabit</td> 
-             <td style="text-align: center;">Intel Xeon E7-8880 v3</td> 
-             <td style="text-align: center;">2.3</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>x1.32xlarge</td> 
-             <td style="text-align: center;">128</td> 
-             <td style="text-align: center;">1,952</td> 
-             <td style="text-align: center;">2 x 1,920 SSD</td> 
-             <td style="text-align: center;">20 Gigabit</td> 
-             <td style="text-align: center;">Intel Xeon E7-8880 v3</td> 
-             <td style="text-align: center;">2.3</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.large</p> </td> 
-             <td width="64"><p>2</p> </td> 
-             <td width="64"><p>15.25</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>Up to 10 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.xlarge</p> </td> 
-             <td width="64"><p>4</p> </td> 
-             <td width="64"><p>30.5</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>Up to 10 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.2xlarge</p> </td> 
-             <td width="64"><p>8</p> </td> 
-             <td width="64"><p>61</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>Up to 10 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.4xlarge</p> </td> 
-             <td width="64"><p>16</p> </td> 
-             <td width="64"><p>122</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>Up to 10 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.8xlarge</p> </td> 
-             <td width="64"><p>32</p> </td> 
-             <td width="64"><p>244</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>10 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="84"><p>r4.16xlarge</p> </td> 
-             <td width="64"><p>64</p> </td> 
-             <td width="64"><p>488</p> </td> 
-             <td width="64"><p>-</p> </td> 
-             <td width="96"><p>20 Gigabit</p> </td> 
-             <td width="99"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="64"><p>2.3</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="64"><p>Yes</p> </td> 
-             <td width="76"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="65">r3.large</td> 
-             <td style="text-align: center;" width="29">2</td> 
-             <td style="text-align: center;" width="42">15.25</td> 
-             <td style="text-align: center;" width="60">1 x 32 SSD</td> 
-             <td>Moderate</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td> 
-             <td style="text-align: center;" width="45">2.5</td> 
-             <td style="text-align: center;" width="39">Yes</td> 
-             <td style="text-align: center;" width="32">-</td> 
-             <td style="text-align: center;" width="30">Yes</td> 
-             <td style="text-align: center;" width="47">-</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">r3.xlarge</td> 
-             <td style="text-align: center;" width="29">4</td> 
-             <td style="text-align: center;" width="42">30.5</td> 
-             <td style="text-align: center;" width="60">1 x 80 SSD</td> 
-             <td>Moderate</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td> 
-             <td style="text-align: center;" width="45">2.5<br> </td> 
-             <td style="text-align: center;" width="39">Yes<br> </td> 
-             <td style="text-align: center;" width="32">-<br> </td> 
-             <td style="text-align: center;" width="30">Yes<br> </td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">r3.2xlarge</td> 
-             <td style="text-align: center;" width="29">8</td> 
-             <td style="text-align: center;" width="42">61</td> 
-             <td style="text-align: center;" width="60">1 x 160 SSD</td> 
-             <td>High</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td> 
-             <td style="text-align: center;" width="45">2.5<br> </td> 
-             <td style="text-align: center;" width="39">Yes<br> </td> 
-             <td style="text-align: center;" width="32">-<br> </td> 
-             <td style="text-align: center;" width="30">Yes<br> </td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="65">r3.4xlarge</td> 
-             <td style="text-align: center;" width="29">16</td> 
-             <td style="text-align: center;" width="42">122</td> 
-             <td style="text-align: center;" width="60">1 x 320 SSD</td> 
-             <td>High</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td> 
-             <td style="text-align: center;" width="45">2.5<br> </td> 
-             <td style="text-align: center;" width="39">Yes<br> </td> 
-             <td style="text-align: center;" width="32">-<br> </td> 
-             <td style="text-align: center;" width="30">Yes<br> </td> 
-             <td style="text-align: center;" width="47">Yes</td> 
-             <td style="text-align: center;" width="57" height="28">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>r3.8xlarge</td> 
-             <td style="text-align: center;">32</td> 
-             <td style="text-align: center;">244</td> 
-             <td style="text-align: center;">2 x 320 SSD</td> 
-             <td>10 Gigabit</td> 
-             <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td> 
-             <td style="text-align: center;" width="45">2.5<br> </td> 
-             <td style="text-align: center;" width="39">Yes<br> </td> 
-             <td style="text-align: center;" width="32">-<br> </td> 
-             <td style="text-align: center;" width="30">Yes<br> </td> 
-             <td style="text-align: center;">-</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.large</p> </td> 
-             <td width="6%"><p>2</p> </td> 
-             <td width="8%"><p>15.25</p> </td> 
-             <td width="8%"><p>1 x 475 NVMe SSD</p> </td> 
-             <td width="14%"><p>Up to 10 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.xlarge</p> </td> 
-             <td width="6%"><p>4</p> </td> 
-             <td width="8%"><p>30.5</p> </td> 
-             <td width="8%"><p>1 x 950 NVMe SSD</p> </td> 
-             <td width="14%"><p>Up to 10 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.2xlarge</p> </td> 
-             <td width="6%"><p>8</p> </td> 
-             <td width="8%"><p>61</p> </td> 
-             <td width="8%"><p>1 x 1,900 NVMe SSD</p> </td> 
-             <td width="14%"><p>Up to 10 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.4xlarge</p> </td> 
-             <td width="6%"><p>16</p> </td> 
-             <td width="8%"><p>122</p> </td> 
-             <td width="8%"><p>2 x 1,900 NVMe SSD</p> </td> 
-             <td width="14%"><p>Up to 10 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.8xlarge</p> </td> 
-             <td width="6%"><p>32</p> </td> 
-             <td width="8%"><p>244</p> </td> 
-             <td width="8%"><p>4 x 1,900 NVMe SSD</p> </td> 
-             <td width="14%"><p>10 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td width="10%"><p>i3.16large</p> </td> 
-             <td width="6%"><p>64</p> </td> 
-             <td width="8%"><p>488</p> </td> 
-             <td width="8%"><p><a name="_Hlk473067483"></a>8 x 1,900 NVMe SSD</p> </td> 
-             <td width="14%"><p>20 Gigabit</p> </td> 
-             <td width="9%"><p>Intel Xeon E5-2686 v4</p> </td> 
-             <td width="6%"><p>2.3</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="6%"><p>Yes</p> </td> 
-             <td width="5%"><p>Yes</p> </td> 
-             <td width="11%"><p>Yes</p> </td> 
-            </tr> 
-            <tr> 
-             <td>d2.xlarge</td> 
-             <td style="text-align: center;">4</td> 
-             <td style="text-align: center;">30.5</td> 
-             <td style="text-align: center;">3 x 2000</td> 
-             <td style="text-align: center;">Moderate</td> 
-             <td style="text-align: center;">Intel Xeon E5-2676 v3</td> 
-             <td style="text-align: center;">2.4</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>d2.2xlarge</td> 
-             <td style="text-align: center;">8</td> 
-             <td style="text-align: center;">61</td> 
-             <td style="text-align: center;">6 x 2000</td> 
-             <td style="text-align: center;">High</td> 
-             <td style="text-align: center;">Intel Xeon E5-2676 v3</td> 
-             <td style="text-align: center;">2.4</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>d2.4xlarge</td> 
-             <td style="text-align: center;">16</td> 
-             <td style="text-align: center;">122</td> 
-             <td style="text-align: center;">12 x 2000</td> 
-             <td style="text-align: center;">High</td> 
-             <td style="text-align: center;">Intel Xeon E5-2676 v3</td> 
-             <td style="text-align: center;">2.4</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>d2.8xlarge</td> 
-             <td style="text-align: center;">36</td> 
-             <td style="text-align: center;">244</td> 
-             <td style="text-align: center;">24 x 2000</td> 
-             <td style="text-align: center;">10 Gigabit</td> 
-             <td style="text-align: center;">Intel Xeon E5-2676 v3</td> 
-             <td style="text-align: center;">2.4</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-             <td style="text-align: center;">Yes</td> 
-            </tr> 
-            <tr> 
-             <td>f1.2xlarge</td> 
-             <td>8</td> 
-             <td>122</td> 
-             <td>480 SSD</td> 
-             <td>High</td> 
-             <td>Intel Xeon E5-2686 v4</td> 
-             <td>2.3</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-            </tr> 
-            <tr> 
-             <td>f1.16xlarge</td> 
-             <td>64</td> 
-             <td>976</td> 
-             <td>4 x 960</td> 
-             <td>High</td> 
-             <td>Intel Xeon E5-2686 v4</td> 
-             <td>2.3</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-             <td>Yes</td> 
-            </tr> 
-       </tbody> 
-  </table>
+<table jcr:primarytype="nt:unstructured" width="539" height="1630" border="0" cellspacing="0" cellpadding="1">
+    <tbody>
+        <tr>
+            <td style="text-align: center;" width="65">Instance Type</td>
+            <td style="text-align: center;" width="29">vCPU</td>
+            <td style="text-align: center;" width="42">Memory (GiB)</td>
+            <td style="text-align: center;" width="60">&nbsp;Storage (GB)</td>
+            <td style="text-align: center;" width="200">Networking Performance<br>
+            </td>
+            <td style="text-align: center;" width="69">Physical Processor</td>
+            <td style="text-align: center;" width="45">Clock Speed (GHz)</td>
+            <td style="text-align: center;" width="39"><a href="#intel">Intel AVX<sup>†</sup></a></td>
+            <td style="text-align: center;" width="32"><a href="#intel" adhocenable="false">Intel AVX2</a><a href="#intel"><sup>†</sup></a></td>
+            <td style="text-align: center;" width="30"><a href="#intel" adhocenable="false">Intel Turbo</a></td>
+            <td style="text-align: center;" width="47"><a adhocenable="false" href="#ebs">EBS OPT <br>
+            </a></td>
+            <td style="text-align: center;" width="57" height="56"><a href="/ec2/details/#enhanced-networking"
+                adhocenable="false">Enhanced Networking</a><a href="#intel"><sup>†</sup></a></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">t2.nano</td>
+            <td style="text-align: center;">1</td>
+            <td style="text-align: center;">0.5</td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">Low</td>
+            <td style="text-align: center;">Intel Xeon family</td>
+            <td style="text-align: center;">up to 3.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" valign="middle">t2.micro</td>
+            <td style="text-align: center;" valign="middle">1</td>
+            <td style="text-align: center;" valign="middle">1</td>
+            <td style="text-align: center;" valign="middle">EBS Only</td>
+            <td style="text-align: center;" valign="middle">Low to Moderate</td>
+            <td style="text-align: center;" valign="middle">Intel Xeon family</td>
+            <td style="text-align: center;" valign="middle">Up to 3.3<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Yes</td>
+            <td style="text-align: center;" valign="middle">-</td>
+            <td style="text-align: center;" valign="middle">Yes</td>
+            <td style="text-align: center;" valign="middle">-</td>
+            <td style="text-align: center;" valign="middle">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" valign="middle">t2.small</td>
+            <td style="text-align: center;" valign="middle">1<br>
+            </td>
+            <td style="text-align: center;" valign="middle">2<br>
+            </td>
+            <td style="text-align: center;" valign="middle">EBS Only<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Low to Moderate<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Intel Xeon family<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Up to 3.3</td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" valign="middle">t2.medium</td>
+            <td style="text-align: center;" valign="middle">2</td>
+            <td style="text-align: center;" valign="middle">4</td>
+            <td style="text-align: center;" valign="middle">EBS Only</td>
+            <td style="text-align: center;" valign="middle">Low to Moderate</td>
+            <td style="text-align: center;" valign="middle">Intel Xeon family<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Up to 3.3</td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" valign="middle">t2.large</td>
+            <td style="text-align: center;" valign="middle">2</td>
+            <td style="text-align: center;" valign="middle">8<br>
+            </td>
+            <td style="text-align: center;" valign="middle">EBS Only</td>
+            <td style="text-align: center;" valign="middle">Low to Moderate</td>
+            <td style="text-align: center;" valign="middle">Intel Xeon family<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Up to 3.0<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">Yes<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+            <td style="text-align: center;" valign="middle">-<br>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">t2.xlarge</td>
+            <td style="text-align: center;">4</td>
+            <td style="text-align: center;">16</td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;">Intel Xeon family</td>
+            <td style="text-align: center;">Up to 3.0</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">t2.2xlarge</td>
+            <td style="text-align: center;">8</td>
+            <td style="text-align: center;">32</td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;">Intel Xeon family</td>
+            <td style="text-align: center;">Up to 3.0</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m4.large</td>
+            <td style="text-align: center;" width="29">2</td>
+            <td style="text-align: center;" width="42">8</td>
+            <td style="text-align: center;" width="60">EBS Only<br>
+            </td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2676 v3**</td>
+            <td style="text-align: center;" width="45">2.4</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">Yes</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m4.xlarge</td>
+            <td style="text-align: center;" width="29">4</td>
+            <td style="text-align: center;" width="42">16</td>
+            <td style="text-align: center;" width="60">EBS Only</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2676 v3**</td>
+            <td style="text-align: center;" width="45">2.4</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">Yes</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m4.2xlarge</td>
+            <td style="text-align: center;" width="29">8</td>
+            <td style="text-align: center;" width="42">32</td>
+            <td style="text-align: center;" width="60">EBS Only</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2676 v3**</td>
+            <td style="text-align: center;" width="45">2.4</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">Yes</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m4.4xlarge</td>
+            <td style="text-align: center;" width="29">16</td>
+            <td style="text-align: center;" width="42">64</td>
+            <td style="text-align: center;" width="60">EBS Only</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2676 v3**</td>
+            <td style="text-align: center;" width="45">2.4</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">Yes</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m4.10xlarge</td>
+            <td style="text-align: center;" width="29">40</td>
+            <td style="text-align: center;" width="42">160</td>
+            <td style="text-align: center;" width="60">EBS Only</td>
+            <td style="text-align: center;">10 Gigabit<br>
+            </td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2676 v3</td>
+            <td style="text-align: center;" width="45">2.4</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">Yes</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">m4.16xlarge</td>
+            <td style="text-align: center;">64</td>
+            <td style="text-align: center;">256</td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">20 Gigabit</td>
+            <td style="text-align: center;">Intel Xeon E5-2686 v4</td>
+            <td style="text-align: center;">2.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m3.medium</td>
+            <td style="text-align: center;" width="29">1</td>
+            <td style="text-align: center;" width="42">3.75</td>
+            <td style="text-align: center;" width="60">1 x 4 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2*</td>
+            <td style="text-align: center;" width="45">2.5</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">-</td>
+            <td style="text-align: center;" width="57" height="28">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m3.large</td>
+            <td style="text-align: center;" width="29">2</td>
+            <td style="text-align: center;" width="42">7.5</td>
+            <td style="text-align: center;" width="60">1 x 32 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2*</td>
+            <td style="text-align: center;" width="45">2.5</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">-</td>
+            <td style="text-align: center;" width="57" height="28">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m3.xlarge</td>
+            <td style="text-align: center;" width="29">4</td>
+            <td style="text-align: center;" width="42">15</td>
+            <td style="text-align: center;" width="60">2 x 40 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2*</td>
+            <td style="text-align: center;" width="45">2.5</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">m3.2xlarge</td>
+            <td style="text-align: center;" width="29">8</td>
+            <td style="text-align: center;" width="42">30</td>
+            <td style="text-align: center;" width="60">2 x 80 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2*</td>
+            <td style="text-align: center;" width="45">2.5</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">c4.large<br>
+            </td>
+            <td style="text-align: center;">2<br>
+            </td>
+            <td style="text-align: center;">3.75<br>
+            </td>
+            <td style="text-align: center;">EBS Only<br>
+            </td>
+            <td style="text-align: center;">Moderate<br>
+            </td>
+            <td style="text-align: center;">Intel Xeon E5-2666 v3<br>
+            </td>
+            <td style="text-align: center;">2.9<br>
+            </td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">c4.xlarge<br>
+            </td>
+            <td style="text-align: center;">4<br>
+            </td>
+            <td style="text-align: center;">7.5<br>
+            </td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">High<br>
+            </td>
+            <td style="text-align: center;">Intel Xeon E5-2666 v3</td>
+            <td style="text-align: center;">2.9<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">c4.2xlarge<br>
+            </td>
+            <td style="text-align: center;">8<br>
+            </td>
+            <td style="text-align: center;">15<br>
+            </td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">High<br>
+            </td>
+            <td style="text-align: center;">Intel Xeon E5-2666 v3</td>
+            <td style="text-align: center;">2.9<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">c4.4xlarge<br>
+            </td>
+            <td style="text-align: center;">16<br>
+            </td>
+            <td style="text-align: center;">30<br>
+            </td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">High<br>
+            </td>
+            <td style="text-align: center;">Intel Xeon E5-2666 v3</td>
+            <td style="text-align: center;">2.9<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">c4.8xlarge<br>
+            </td>
+            <td style="text-align: center;">36<br>
+            </td>
+            <td style="text-align: center;">60<br>
+            </td>
+            <td style="text-align: center;">EBS Only</td>
+            <td style="text-align: center;">10 Gigabit<br>
+            </td>
+            <td style="text-align: center;">Intel Xeon E5-2666 v3</td>
+            <td style="text-align: center;">2.9<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes<br>
+            </td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">c3.large</td>
+            <td style="text-align: center;" width="29">2</td>
+            <td style="text-align: center;" width="42">3.75</td>
+            <td style="text-align: center;" width="60">2 x 16 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td>
+            <td style="text-align: center;" width="45">2.8</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">-</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">c3.xlarge</td>
+            <td style="text-align: center;" width="29">4</td>
+            <td style="text-align: center;" width="42">7.5</td>
+            <td style="text-align: center;" width="60">2 x 40 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td>
+            <td style="text-align: center;" width="45">2.8</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">c3.2xlarge</td>
+            <td style="text-align: center;" width="29">8</td>
+            <td style="text-align: center;" width="42">15</td>
+            <td style="text-align: center;" width="60">2 x 80 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td>
+            <td style="text-align: center;" width="45">2.8</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">c3.4xlarge</td>
+            <td style="text-align: center;" width="29">16</td>
+            <td style="text-align: center;" width="42">30</td>
+            <td style="text-align: center;" width="60">2 x 160 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td>
+            <td style="text-align: center;" width="45">2.8</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">c3.8xlarge</td>
+            <td style="text-align: center;" width="29">32</td>
+            <td style="text-align: center;" width="42">60</td>
+            <td style="text-align: center;" width="60">2 x 320 SSD</td>
+            <td style="text-align: center;">10 Gigabit</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2680 v2</td>
+            <td style="text-align: center;" width="45">2.8</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">-</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td width="79"><p style="text-align: center;">p2.xlarge</p></td>
+            <td width="68"><p style="text-align: center;">4</p></td>
+            <td width="70"><p style="text-align: center;">61</p></td>
+            <td width="70"><p style="text-align: center;">EBS Only</p></td>
+            <td width="86"><p style="text-align: center;">High</p></td>
+            <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="69"><p style="text-align: center;">2.3</p></td>
+            <td width="67"><p style="text-align: center;">Yes</p></td>
+            <td width="69"><p style="text-align: center;">Yes</p></td>
+            <td width="68"><p style="text-align: center;">Yes</p></td>
+            <td width="66"><p style="text-align: center;">Yes</p></td>
+            <td width="81"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="79"><p style="text-align: center;">p2.8xlarge</p></td>
+            <td width="68"><p style="text-align: center;">32</p></td>
+            <td width="70"><p style="text-align: center;">488</p></td>
+            <td width="70"><p style="text-align: center;">EBS Only</p></td>
+            <td width="86"><p style="text-align: center;">10 Gigabit</p></td>
+            <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="69"><p style="text-align: center;">2.3</p></td>
+            <td width="67"><p style="text-align: center;">Yes</p></td>
+            <td width="69"><p style="text-align: center;">Yes</p></td>
+            <td width="68"><p style="text-align: center;">Yes</p></td>
+            <td width="66"><p style="text-align: center;">Yes</p></td>
+            <td width="81"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="79"><p style="text-align: center;">p2.16xlarge</p></td>
+            <td width="68"><p style="text-align: center;">64</p></td>
+            <td width="70"><p style="text-align: center;">732</p></td>
+            <td width="70"><p style="text-align: center;">EBS Only</p></td>
+            <td width="86"><p style="text-align: center;">20 Gigabit</p></td>
+            <td width="72"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="69"><p style="text-align: center;">2.3</p></td>
+            <td width="67"><p style="text-align: center;">Yes</p></td>
+            <td width="69"><p style="text-align: center;">Yes</p></td>
+            <td width="68"><p style="text-align: center;">Yes</p></td>
+            <td width="66"><p style="text-align: center;">Yes</p></td>
+            <td width="81"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">g2.2xlarge</td>
+            <td style="text-align: center;" width="29">8</td>
+            <td style="text-align: center;" width="42">15</td>
+            <td style="text-align: center;" width="60">1 x 60 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon &nbsp;E5-2670<br>
+            </td>
+            <td style="text-align: center;" width="45">2.6</td>
+            <td style="text-align: center;" width="39">Yes<br>
+            </td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">-</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">g2.8xlarge</td>
+            <td style="text-align: center;">32</td>
+            <td style="text-align: center;">60</td>
+            <td style="text-align: center;">2 x 120 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;">Intel Xeon E5-2670</td>
+            <td style="text-align: center;">2.6</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">Yes&nbsp;</td>
+            <td style="text-align: center;">&nbsp;-</td>
+            <td style="text-align: center;">-&nbsp;</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">x1.16xlarge</td>
+            <td style="text-align: center;">64</td>
+            <td style="text-align: center;">976</td>
+            <td style="text-align: center;">1 x 1,920 SSD</td>
+            <td style="text-align: center;">10 Gigabit</td>
+            <td style="text-align: center;">Intel Xeon E7-8880 v3</td>
+            <td style="text-align: center;">2.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">x1.32xlarge</td>
+            <td style="text-align: center;">128</td>
+            <td style="text-align: center;">1,952</td>
+            <td style="text-align: center;">2 x 1,920 SSD</td>
+            <td style="text-align: center;">20 Gigabit</td>
+            <td style="text-align: center;">Intel Xeon E7-8880 v3</td>
+            <td style="text-align: center;">2.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.large</p></td>
+            <td width="64"><p style="text-align: center;">2</p></td>
+            <td width="64"><p style="text-align: center;">15.25</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.xlarge</p></td>
+            <td width="64"><p style="text-align: center;">4</p></td>
+            <td width="64"><p style="text-align: center;">30.5</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.2xlarge</p></td>
+            <td width="64"><p style="text-align: center;">8</p></td>
+            <td width="64"><p style="text-align: center;">61</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.4xlarge</p></td>
+            <td width="64"><p style="text-align: center;">16</p></td>
+            <td width="64"><p style="text-align: center;">122</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.8xlarge</p></td>
+            <td width="64"><p style="text-align: center;">32</p></td>
+            <td width="64"><p style="text-align: center;">244</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">10 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="84"><p style="text-align: center;">r4.16xlarge</p></td>
+            <td width="64"><p style="text-align: center;">64</p></td>
+            <td width="64"><p style="text-align: center;">488</p></td>
+            <td width="64"><p style="text-align: center;">-</p></td>
+            <td width="96"><p style="text-align: center;">20 Gigabit</p></td>
+            <td width="99"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="64"><p style="text-align: center;">2.3</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="64"><p style="text-align: center;">Yes</p></td>
+            <td width="76"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">r3.large</td>
+            <td style="text-align: center;" width="29">2</td>
+            <td style="text-align: center;" width="42">15.25</td>
+            <td style="text-align: center;" width="60">1 x 32 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td>
+            <td style="text-align: center;" width="45">2.5</td>
+            <td style="text-align: center;" width="39">Yes</td>
+            <td style="text-align: center;" width="32">-</td>
+            <td style="text-align: center;" width="30">Yes</td>
+            <td style="text-align: center;" width="47">-</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">r3.xlarge</td>
+            <td style="text-align: center;" width="29">4</td>
+            <td style="text-align: center;" width="42">30.5</td>
+            <td style="text-align: center;" width="60">1 x 80 SSD</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td>
+            <td style="text-align: center;" width="45">2.5<br>
+            </td>
+            <td style="text-align: center;" width="39">Yes<br>
+            </td>
+            <td style="text-align: center;" width="32">-<br>
+            </td>
+            <td style="text-align: center;" width="30">Yes<br>
+            </td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">r3.2xlarge</td>
+            <td style="text-align: center;" width="29">8</td>
+            <td style="text-align: center;" width="42">61</td>
+            <td style="text-align: center;" width="60">1 x 160 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td>
+            <td style="text-align: center;" width="45">2.5<br>
+            </td>
+            <td style="text-align: center;" width="39">Yes<br>
+            </td>
+            <td style="text-align: center;" width="32">-<br>
+            </td>
+            <td style="text-align: center;" width="30">Yes<br>
+            </td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;" width="65">r3.4xlarge</td>
+            <td style="text-align: center;" width="29">16</td>
+            <td style="text-align: center;" width="42">122</td>
+            <td style="text-align: center;" width="60">1 x 320 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td>
+            <td style="text-align: center;" width="45">2.5<br>
+            </td>
+            <td style="text-align: center;" width="39">Yes<br>
+            </td>
+            <td style="text-align: center;" width="32">-<br>
+            </td>
+            <td style="text-align: center;" width="30">Yes<br>
+            </td>
+            <td style="text-align: center;" width="47">Yes</td>
+            <td style="text-align: center;" width="57" height="28">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">r3.8xlarge</td>
+            <td style="text-align: center;">32</td>
+            <td style="text-align: center;">244</td>
+            <td style="text-align: center;">2 x 320 SSD</td>
+            <td style="text-align: center;">10 Gigabit</td>
+            <td style="text-align: center;" width="69">Intel Xeon E5-2670 v2</td>
+            <td style="text-align: center;" width="45">2.5<br>
+            </td>
+            <td style="text-align: center;" width="39">Yes<br>
+            </td>
+            <td style="text-align: center;" width="32">-<br>
+            </td>
+            <td style="text-align: center;" width="30">Yes<br>
+            </td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.large</p></td>
+            <td width="6%"><p style="text-align: center;">2</p></td>
+            <td width="8%"><p style="text-align: center;">15.25</p></td>
+            <td width="8%"><p style="text-align: center;">1 x 475 NVMe SSD</p></td>
+            <td width="14%"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.xlarge</p></td>
+            <td width="6%"><p style="text-align: center;">4</p></td>
+            <td width="8%"><p style="text-align: center;">30.5</p></td>
+            <td width="8%"><p style="text-align: center;">1 x 950 NVMe SSD</p></td>
+            <td width="14%"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.2xlarge</p></td>
+            <td width="6%"><p style="text-align: center;">8</p></td>
+            <td width="8%"><p style="text-align: center;">61</p></td>
+            <td width="8%"><p style="text-align: center;">1 x 1,900 NVMe SSD</p></td>
+            <td width="14%"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.4xlarge</p></td>
+            <td width="6%"><p style="text-align: center;">16</p></td>
+            <td width="8%"><p style="text-align: center;">122</p></td>
+            <td width="8%"><p style="text-align: center;">2 x 1,900 NVMe SSD</p></td>
+            <td width="14%"><p style="text-align: center;">Up to 10 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.8xlarge</p></td>
+            <td width="6%"><p style="text-align: center;">32</p></td>
+            <td width="8%"><p style="text-align: center;">244</p></td>
+            <td width="8%"><p style="text-align: center;">4 x 1,900 NVMe SSD</p></td>
+            <td width="14%"><p style="text-align: center;">10 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td width="10%"><p style="text-align: center;">i3.16large</p></td>
+            <td width="6%"><p style="text-align: center;">64</p></td>
+            <td width="8%"><p style="text-align: center;">488</p></td>
+            <td width="8%"><p style="text-align: center;">
+                    <a name="_Hlk473067483"></a>8 x 1,900 NVMe SSD
+                </p></td>
+            <td width="14%"><p style="text-align: center;">20 Gigabit</p></td>
+            <td width="9%"><p style="text-align: center;">Intel Xeon E5-2686 v4</p></td>
+            <td width="6%"><p style="text-align: center;">2.3</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="6%"><p style="text-align: center;">Yes</p></td>
+            <td width="5%"><p style="text-align: center;">Yes</p></td>
+            <td width="11%"><p style="text-align: center;">Yes</p></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">d2.xlarge</td>
+            <td style="text-align: center;">4</td>
+            <td style="text-align: center;">30.5</td>
+            <td style="text-align: center;">3 x 2000</td>
+            <td style="text-align: center;">Moderate</td>
+            <td style="text-align: center;">Intel Xeon E5-2676 v3</td>
+            <td style="text-align: center;">2.4</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">d2.2xlarge</td>
+            <td style="text-align: center;">8</td>
+            <td style="text-align: center;">61</td>
+            <td style="text-align: center;">6 x 2000</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;">Intel Xeon E5-2676 v3</td>
+            <td style="text-align: center;">2.4</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">d2.4xlarge</td>
+            <td style="text-align: center;">16</td>
+            <td style="text-align: center;">122</td>
+            <td style="text-align: center;">12 x 2000</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;">Intel Xeon E5-2676 v3</td>
+            <td style="text-align: center;">2.4</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">d2.8xlarge</td>
+            <td style="text-align: center;">36</td>
+            <td style="text-align: center;">244</td>
+            <td style="text-align: center;">24 x 2000</td>
+            <td style="text-align: center;">10 Gigabit</td>
+            <td style="text-align: center;">Intel Xeon E5-2676 v3</td>
+            <td style="text-align: center;">2.4</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">f1.2xlarge</td>
+            <td style="text-align: center;">8</td>
+            <td style="text-align: center;">122</td>
+            <td style="text-align: center;">480 SSD</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;">Intel Xeon E5-2686 v4</td>
+            <td style="text-align: center;">2.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">f1.16xlarge</td>
+            <td style="text-align: center;">64</td>
+            <td style="text-align: center;">976</td>
+            <td style="text-align: center;">4 x 960</td>
+            <td style="text-align: center;">High</td>
+            <td style="text-align: center;">Intel Xeon E5-2686 v4</td>
+            <td style="text-align: center;">2.3</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+            <td style="text-align: center;">Yes</td>
+        </tr>
+    </tbody>
+</table>

@@ -231,9 +231,9 @@ end script\n\
             var worker_price = document.getElementById ("worker_price").value;
             if ("" == worker_price)
                 worker_price = "0.10";
-            var worker_count = Number (document.getElementById ("worker_count").value);
-            if ((0 == worker_count) || isNaN (worker_count))
-                worker_count = 1;
+            var workers = Number (document.getElementById ("workers").value);
+            if ((0 == workers) || isNaN (workers))
+                workers = 1;
 
             var master_disk = adjust_master_disk ();
             var worker_disk = adjust_worker_disk ();
@@ -288,7 +288,7 @@ end script\n\
                 //DryRun = true,
                 SpotPrice: worker_price,
                 //ClientToken; "",
-                InstanceCount: worker_count,
+                InstanceCount: workers,
                 Type: "one-time",
                 //ValidFrom: from,
                 ValidUntil: until,
@@ -417,8 +417,16 @@ end script\n\
             details = this;
             var text = JSON.stringify (this, null, 4);
             document.getElementById ("wizard_data").innerHTML = text;
+            if ("undefined" != typeof (details.costs))
+            {
+                var margin = 1.5;
+                var master = (details.costs.master * margin).toFixed (3);
+                var worker = (details.costs.worker * margin).toFixed (3);
+                document.getElementById ("master_price").value = master.toString ();
+                document.getElementById ("worker_price").value = worker.toString ();
+            }
             if ("undefined" != typeof (details.worker_count))
-                document.getElementById ("worker_count").value = details.worker_count.toString;
+                document.getElementById ("workers").value = details.worker_count.toString ();
         }
 
         function term (event)

@@ -3,36 +3,37 @@
     <strong>Initiate the cluster instances.</strong>
 </p>
 <p>
-In this step we request a spot fleet for the master and slave nodes.
+In this step we request instances for the master and worker nodes.
 </p>
 
 <p>
-
+The suggested price is a 50% margin over the last recorded price.
 </p>
+
 <div class="form-horizontal">
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="master_price">Master price</label>
+        <label class="col-sm-3 control-label" for="master_price">Master limit price</label>
         <div class="col-sm-9">
             <input id="master_price" class="form-control" type="text" name="master_price" aria-describedby="master_price_help">
             <span id="master_price_help" class="help-block">
-                Specify a price for the master instance.
+                Specify a maximum price for the master instance.
             </span>
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="worker_price">Worker price</label>
+        <label class="col-sm-3 control-label" for="worker_price">Worker limit price</label>
         <div class="col-sm-9">
             <input id="worker_price" class="form-control" type="text" name="worker_price" aria-describedby="worker_price_help">
             <span id="worker_price_help" class="help-block">
-                Specify a price for the worker instances.
+                Specify a maximum price for the worker instances.
             </span>
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="worker_count">Number of workers</label>
+        <label class="col-sm-3 control-label" for="workers">Number of workers</label>
         <div class="col-sm-9">
-            <input id="worker_count" class="form-control" type="text" name="worker_count" aria-describedby="worker_count_help">
-            <span id="worker_count_help" class="help-block">
+            <input id="workers" class="form-control" type="text" name="workers" aria-describedby="workers_help">
+            <span id="workers_help" class="help-block">
                 Specify the number of worker instances.
             </span>
         </div>

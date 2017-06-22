@@ -332,35 +332,67 @@ define
             next ();
         }
 
-        function estimate_costs ()
+//        function label_minimum (chart, point, text)
+//        {
+//            var x = point.plotX + chart.plotLeft;
+//            var y = point.plotY + chart.plotTop;
+//            var style =
+//            {
+//                color: "#FFFFFF"
+//            };
+//            var attributes =
+//            {
+//                fill: "rgba(0, 0, 0, 0.75)",
+//                padding: 8,
+//                r: 5,
+//                zIndex: 6
+//            };
+//            chart.renderer.label (text, x - 100, y - 50, "callout", x, y).css (style).attr (attributes).add ();
+//        }
+
+        function dollars_cents (cost)
         {
-            var worker_count = Number (document.getElementById ("worker_count").value);
-            var master = $("#master_chart").highcharts ();
-            var worker = $("#worker_chart").highcharts ();
+            var value;
+            if (cost >= 1.0)
+                value = "$" + cost.toFixed (2)
+            else
+                value = (100 * cost).toFixed (2) + "¢";
+            return (value);
+        }
+
+        function get_minimum_latest_cost (chart)
+        {
             function not_navigator (series)
             {
                 return (!series.name.startsWith ("Navigator"));
             }
             function costs (series)
             {
-                return (series.points[series.points.length - 1].y); // use undocumented points array because data array is zero length
+                return (series.points[series.points.length - 1]); // use undocumented points array because data array is zero length
             }
             function miner (acc, val)
             {
-                var cost = (val < acc.cost) ? val : acc.cost;
-                return ({ cost: cost, count: acc.count + 1 });
+                var cost = (val.y < acc.cost) ? val.y : acc.cost;
+                return ({ cost: cost, count: acc.count + 1, point: val});
             }
-            var master_costs = master.series.filter (not_navigator).map (costs).reduce (miner, { cost: Number.MAX_VALUE, count: 0 });
-            var worker_costs = worker.series.filter (not_navigator).map (costs).reduce (miner, { cost: Number.MAX_VALUE, count: 0 });
+            var cost = chart.series.filter (not_navigator).map (costs).reduce (miner, { cost: Number.MAX_VALUE, count: 0, point: null });
+            return (cost);
+        }
+
+        function estimate_costs ()
+        {
+            var master = $("#master_chart").highcharts ();
+            var worker = $("#worker_chart").highcharts ();
+            var master_costs = get_minimum_latest_cost (master);
+            var worker_costs = get_minimum_latest_cost (worker);
+            var worker_count = Number (document.getElementById ("worker_count").value);
             if ((master_costs.count > 0) && (worker_costs.count > 0))
             {
+//                label_minimum (master, master_costs.point, "last: " + dollars_cents (master_costs.cost));
+//                label_minimum (worker, worker_costs.point, "last: " + dollars_cents (worker_costs.cost));
                 var cost = master_costs.cost + (worker_costs.cost * worker_count);
-                var value;
-                if (cost >= 1.0)
-                    value = '$' + cost.toFixed(2)
-                else
-                    value = (100*cost).toFixed(2) + '¢'
-                document.getElementById ("cost_estimate").innerHTML = "<h1>Estimated cost: " + value + "/hr</h1>";
+                var formula = dollars_cents (master_costs.cost) + " + " + worker_count + " × " + dollars_cents (worker_costs.cost) + " = " + dollars_cents (cost);
+                document.getElementById ("cost_estimate").innerHTML = "<h1>Estimated cost: " + formula + "/hr</h1>";
             }
         }
 
@@ -488,6 +520,11 @@ define
         {
             this.master = lookup_instance (document.getElementById ("master").value);
             this.worker = lookup_instance (document.getElementById ("worker").value);
+            this.costs =
+            {
+                master: get_minimum_latest_cost ($("#master_chart").highcharts ()).cost,
+                worker: get_minimum_latest_cost ($("#worker_chart").highcharts ()).cost
+            };
             this.worker_count = Number (document.getElementById ("worker_count").value);
         }
 
