@@ -8,8 +8,8 @@ define
 (
     [],
     /**
-     * @summary Start master and slave instances.
-     * @description Executes .
+     * @summary Start master and worker instances.
+     * @description Executes requestSpotInstances for master and workers.
      * @name start
      * @exports start
      * @version 1.0
@@ -110,7 +110,8 @@ script\n\
 \n\
     # Get the master public DNS name\n\
     master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
-    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')  \n\
+    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
+    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
 \n\
     # make the overrides JSON file\n\
     cat <<-EOF >/tmp/overrides.json\n\
@@ -131,6 +132,9 @@ script\n\
 		]\n\
 	}\n\
 	EOF\n\
+\n\
+    # Jam the local IP address for sandbox in /etc/hosts\n\
+    echo $master_ip_address	sandbox >> /etc/hosts\n\
 \n\
     # Specify the task definition to run at launch\n\
     task_definition=" + details.taskdefinition.family + "\n\
@@ -153,7 +157,7 @@ cluster=" + details.cluster.clusterName + "\n\
 \n\
 # Write the cluster configuration variables to the ecs.config file\n\
 echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config\n\
-echo ECS_INSTANCE_ATTRIBUTES={\\\"node_type\\\": \\\"slave\\\"} >> /etc/ecs/ecs.config\n\
+echo ECS_INSTANCE_ATTRIBUTES={\\\"node_type\\\": \\\"worker\\\"} >> /etc/ecs/ecs.config\n\
 \n\
 # Install the ftp, unzip and the jq JSON parser\n\
 yum install -y ftp unzip jq\n\
@@ -193,9 +197,10 @@ script\n\
     master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $master_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
     master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')\n\
 \n\
-    # Get the slave public DNS name\n\
-    slave_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
-    slave_dns_name=$(aws ec2 describe-instances --region $region --instance-id $slave_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
+    # Get the worker public DNS name\n\
+    worker_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
+    worker_dns_name=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
+    worker_ip_address=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
 \n\
     # make the overrides JSON file\n\
     cat <<-EOF >/tmp/overrides.json\n\
@@ -209,13 +214,16 @@ script\n\
 				[\n\
 					{\n\
 						\"name\": \"SPARK_PUBLIC_DNS\",\n\
-						\"value\": $slave_dns_name\n\
+						\"value\": $worker_dns_name\n\
 					}\n\
 				]\n\
 			}\n\
 		]\n\
 	}\n\
 	EOF\n\
+\n\
+    # Jam the local IP address for sandbox in /etc/hosts\n\
+    echo $worker_ip_address sandbox >> /etc/hosts\n\
 \n\
     # Specify the task definition to run at launch\n\
     task_definition=" + details.taskdefinition.family + "\n\
@@ -336,7 +344,7 @@ end script\n\
                         {
                             details.worker_request = data.SpotInstanceRequests;
                             console.log (JSON.stringify (data, null, 4));
-                            wait_for_master ();
+                            wait_for_instances ();
                         }
                     });
                 }
@@ -348,60 +356,83 @@ end script\n\
             return new Promise ((resolve) => setTimeout (resolve, ms));
         }
 
-        function wait_for_master ()
+        function node_type (instance)
         {
+            function get_type (element)
+            {
+                return (element.name == "node_type");
+            };
+            var typ = instance.attributes.find (get_type);
+            return (typeof typ === 'undefined' ? "" : typ.value);
+        }
+
+        function wait_for_instances ()
+        {
+            var workers = Number (document.getElementById ("workers").value);
+            if ((0 == workers) || isNaN (workers))
+                workers = 1;
+            var waiting_on = workers + 1;
             var ecs = new AWS.ECS ();
             var params =
             {
-                cluster: details.cluster.clusterName,
-                filter: "attribute:node_type == master"
+                cluster: details.cluster.clusterName
             };
-            var found = false;
-            for (var i = 0; i < 30; i++)
+            sleep (2000).then (() =>
             {
-                sleep (2000).then (() =>
-                {
-                    ecs.listContainerInstances (params, function (err, data) {
-                        if (err) console.log (err, err.stack); // an error occurred
+                ecs.listContainerInstances (params, function (err, data) {
+                    if (err) console.log (err, err.stack); // an error occurred
+                    else
+                    {
+                        var arns = data.containerInstanceArns;
+                        var count = arns.length;
+                        if (0 < count)
+                        {
+                            var params =
+                            {
+                                cluster: details.cluster.clusterName,
+                                containerInstances: arns
+                            };
+                            ecs.describeContainerInstances (params, function (err, data) {
+                                if (err) console.log (err, err.stack); // an error occurred
+                                else
+                                {
+                                    var instances = data.containerInstances.map (function (x) { return (x.ec2InstanceId); });
+                                    var params =
+                                    {
+                                        InstanceIds: instances
+                                    };
+                                    var ec2 = new AWS.EC2 ();
+                                    ec2.describeInstances (params, function (err, data2) {
+                                        if (err) console.log (err, err.stack); // an error occurred
+                                        else
+                                        {
+                                            var text = "";
+                                            data2.Reservations[0].Instances.forEach (
+                                                function (x)
+                                                {
+                                                    var ecs_instance = data.containerInstances.find (function (y) { return (x.InstanceId == y.ec2InstanceId); });
+                                                    var type = node_type (ecs_instance);
+                                                    var dns = x.PublicDnsName;
+                                                    text = text + "<p>" + type + ": ssh -i \"~/.ssh/" + details.keypair.KeyName + ".pem\" ec2-user@" + dns + "</p>";
+                                                }
+                                            )
+                                            document.getElementById ("ssh_command").innerHTML = text;
+                                            if (waiting_on != count)
+                                                wait_for_instances ();
+                                        }
+                                    });
+                                }
+                            });
+                        }
                         else
                         {
-                            var arns = data.containerInstanceArns;
-                            if (0 < arns.length)
-                            {
-                                found = true;
-                                var params =
-                                {
-                                    cluster: details.cluster.clusterName,
-                                    containerInstances: [ arns[0] ]
-                                };
-                                ecs.describeContainerInstances (params, function (err, data) {
-                                    if (err) console.log (err, err.stack); // an error occurred
-                                    else
-                                    {
-                                        var instance = data.containerInstances[0].ec2InstanceId;
-                                        var params =
-                                        {
-                                            InstanceIds: [ instance ]
-                                        };
-                                        var ec2 = new AWS.EC2 ();
-                                        ec2.describeInstances (params, function (err, data) {
-                                            if (err) console.log (err, err.stack); // an error occurred
-                                            else
-                                            {
-                                                var dns = data.Reservations[0].Instances[0].PublicDnsName;
-                                                var text = "ssh -i \"~/.ssh/" + details.keypair.KeyName + ".pem\" ec2-user@" + dns;
-                                                document.getElementById ("ssh_command").innerHTML = text;
-                                            }
-                                        });
-                                    }
-                                });
-                            }
+                            var dots = document.getElementById ("ssh_command").innerHTML + ".";
+                            document.getElementById ("ssh_command").innerHTML = dots;
+                            wait_for_instances ();
                         }
-                    });
+                    }
                 });
-                if (found)
-                    break;
-            }
+            });
         }
 
         /**
