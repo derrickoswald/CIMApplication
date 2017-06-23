@@ -6,13 +6,13 @@
  */
 define
 (
-    ["wizard", "mustache", "overview", "cluster", "task", "image", "instancetype", "iam", "keys", "security", "start"],
+    ["wizard", "mustache", "overview", "cluster", "task", "image", "instancetype", "iam", "keys", "security", "start", "stop"],
     /**
      * @summary Create an ECS cluster by specifying the AMI, instances and containers.
      * @exports ecswizard
      * @version 1.0
      */
-    function (wiz, mustache, overview, cluster, task, image, instancetype, iam, keys, security, start)
+    function (wiz, mustache, overview, cluster, task, image, instancetype, iam, keys, security, start, stop)
     {
         var left;
         var content;
@@ -42,7 +42,8 @@ define
             iam.getStep (),
             keys.getStep (),
             security.getStep (),
-            start.getStep ()
+            start.getStep (),
+            stop.getStep ()
         ];
 
         /**

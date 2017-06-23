@@ -4,12 +4,12 @@
 </p>
 <p>
 To run Spark on ECS, as opposed to some other program, there needs to be a task definition
-that will start a Spark master or slave. An example Docker image is
+that will start a Spark master or worker. An example Docker image is
 <a href="https://hub.docker.com/r/derrickoswald/spark-docker/">spark-docker</a>.
 It is required that the docker container can start with either of the two commands:
 <ul style="font-family: monospace;">
     <li>start-spark master</li>
-    <li>start-spark slave <i>&lt;master dns name&gt;</i></li>
+    <li>start-spark worker <i>&lt;master dns name&gt;</i></li>
 </ul>
 Note: The <i>&lt;master dns name&gt;</i> is filled in with the DNS name of the master;
 </p>

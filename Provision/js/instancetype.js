@@ -9,7 +9,7 @@ define
     ["mustache"],
     /**
      * @summary Get instance types for master and workers.
-     * @description Gets the instance type the user has and chosen for master and slave.
+     * @description Gets the instance type the user has and chosen for master and worker.
      * @name instancetype
      * @exports instancetype
      * @version 1.0

@@ -1,0 +1,14 @@
+<h1>Stop the Cluster</h1>
+<p>
+    <strong>Terminate the cluster instances.</strong>
+</p>
+<p>
+In this step we terminate the master and worker nodes.
+</p>
+<p>
+<em>Note: All unsaved data on the cluster will be lost.</em>
+</p>
+
+<div class="form-horizontal">
+    <button id="stop_cluster" class="btn btn-default" type="button">Stop cluster</button>
+</div>

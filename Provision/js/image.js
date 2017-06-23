@@ -8,7 +8,7 @@ define
 (
     [],
     /**
-     * @summary Get an image for the master and slave instances.
+     * @summary Get an image for the master and worker instances.
      * @description Gets the ECS optimized images and allows the user to choose.
      * @name image
      * @exports image

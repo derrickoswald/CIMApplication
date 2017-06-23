@@ -8,8 +8,8 @@ define
 (
     [],
     /**
-     * @summary Get/create security groups for master and slave.
-     * @description Gets the security groups the user has and choose or create one each for master and slave instances.
+     * @summary Get/create security groups for master and worker.
+     * @description Gets the security groups the user has and choose or create one each for master and worker instances.
      * @name security
      * @exports security
      * @version 1.0
