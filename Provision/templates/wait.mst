@@ -1,0 +1,11 @@
+<h1>Wait for the Cluster</h1>
+<p>
+    <strong>Wait for the cluster instances to initialize.</strong>
+</p>
+<p>
+In this step we wait for the requested master and worker node instances to start up.
+</p>
+
+<p id="ssh_command" style="margin-top=20px;margin-bottom=20px;"></p>
+
+<p id="started" style="margin-top=20px;margin-bottom=20px;"></p>

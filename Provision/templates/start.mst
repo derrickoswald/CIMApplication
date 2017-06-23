@@ -41,7 +41,6 @@ The suggested price is a 50% margin over the last recorded price.
     <button id="start_cluster" class="btn btn-default" type="button">Start cluster</button>
 </div>
 <p></p>
-<p id="ssh_command" style="margin-top=20px;margin-bottom=20px;"></p>
 <p style="margin-top=20px;margin-bottom=20px;">
 JSON Data
 </p>

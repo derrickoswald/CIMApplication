@@ -3,7 +3,61 @@
     <strong>Create/select security groups on EC2.</strong>
 </p>
 <p>
-Yadda.
+The security groups created by this step have the permissions specified by
+<a href="https://spark.apache.org/docs/latest/security.html#configuring-ports-for-network-security" target="_blank">
+Spark Configuring Ports For Network Security
+</a>
+and
+<a href = "https://hadoop.apache.org/docs/r2.7.3/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml" target="_blank">
+Hadoop HDFS Default Port Assignments
+</a>
+to permit ingress for the following services:
+<h2>Master:</h2>
+<ul>
+<li>all icmp traffic from workers to master</li>
+<li>all tcp traffic from workers to master</li>
+<li>all udp traffic from workers to master</li>
+<li>ssh</li>
+<li>Standalone Master Web UI</li>
+<li>Driver to Standalone Master</li>
+<li>Cluster Manager Web UI</li>
+<li>History Server</li>
+<li>Rstudio</li>
+<li>Yarn Resource Manager</li>
+<li>DFS Namenode Web UI</li>
+<li>DFS Datanode Web UI</li>
+<li>DFS Secondary Namenode Web UI</li>
+<li>DFS Backup Node Web UI</li>
+<li>DFS Namenode IPC</li>
+<li>DFS Datanode data transfer</li>
+<li>DFS Datanode IPC</li>
+<li>DFS Backup Node data transfer
+</ul>
+<h2>Worker:</h2>
+<ul>
+<li>all icmp traffic from master to workers</li>
+<li>all tcp traffic from master to workers</li>
+<li>all udp traffic from master to workers</li>
+<li>ssh</li>
+<li>Standalone Worker Web UI</li>
+<li>DFS Namenode IPC</li>
+<li>DFS Datanode data transfer</li>
+<li>DFS Datanode IPC</li>
+<li>DFS Backup Node data transfer
+</ul>
+
+</p>
+
+<p>
+When you first create security groups,
+you can also specify an authorized IP address in IPv4 dot notation,
+which would limit access to be only from the specified address (recommended).
+If not specified (blank) no restrictions are used and hence
+it is available from any IP address on the internet.
+You can usually find this IP address from your router administration page,
+or from public web sites such as
+<a href="https://www.whatismyip.com/" target="_blank">WhatIsMyIp.com</a> or
+<a href="http://ipaddress.com/" target="_blank">IPAddress.com</a>.
 </p>
 
 <p>

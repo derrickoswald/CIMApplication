@@ -18,14 +18,21 @@ define
     {
         var taskdefinitions = null;
 
-        function show_tasks (data)
+        function show_tasks ()
         {
             function wrap (taskdef)
             {
                 return ("<option value=\"" + taskdef.family + "\">" + taskdef.family + " (" + taskdef.taskDefinitionArn + ")" + "</option>")
             }
-            var options = data.map (wrap).join ("\n");
+            var options = taskdefinitions.map (wrap).join ("\n");
             document.getElementById ("taskdefinition_list").innerHTML = options;
+            // if there is only one task definition, select it
+            if (1 == taskdefinitions.length)
+            {
+                document.getElementById ("taskdefinition").value = taskdefinitions[0].family;
+                change_taskdefinition (null);
+                this.taskdefinition = taskdefinitions[0];
+            }
         }
 
         function describe_tasks (data)
@@ -66,7 +73,7 @@ define
                     for (x in this)
                         taskdefs.push (this[x])
                     taskdefinitions = taskdefs;
-                    show_tasks (taskdefinitions);
+                    show_tasks ();
                 }
             }
             var ecs = new AWS.ECS ();

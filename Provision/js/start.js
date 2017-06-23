@@ -242,6 +242,7 @@ end script\n\
             var workers = Number (document.getElementById ("workers").value);
             if ((0 == workers) || isNaN (workers))
                 workers = 1;
+            details.worker_count = workers;
 
             var master_disk = adjust_master_disk ();
             var worker_disk = adjust_worker_disk ();
@@ -344,94 +345,9 @@ end script\n\
                         {
                             details.worker_request = data.SpotInstanceRequests;
                             console.log (JSON.stringify (data, null, 4));
-                            wait_for_instances ();
                         }
                     });
                 }
-            });
-        }
-
-        function sleep (ms)
-        {
-            return new Promise ((resolve) => setTimeout (resolve, ms));
-        }
-
-        function node_type (instance)
-        {
-            function get_type (element)
-            {
-                return (element.name == "node_type");
-            };
-            var typ = instance.attributes.find (get_type);
-            return (typeof typ === 'undefined' ? "" : typ.value);
-        }
-
-        function wait_for_instances ()
-        {
-            var workers = Number (document.getElementById ("workers").value);
-            if ((0 == workers) || isNaN (workers))
-                workers = 1;
-            var waiting_on = workers + 1;
-            var ecs = new AWS.ECS ();
-            var params =
-            {
-                cluster: details.cluster.clusterName
-            };
-            sleep (2000).then (() =>
-            {
-                ecs.listContainerInstances (params, function (err, data) {
-                    if (err) console.log (err, err.stack); // an error occurred
-                    else
-                    {
-                        var arns = data.containerInstanceArns;
-                        var count = arns.length;
-                        if (0 < count)
-                        {
-                            var params =
-                            {
-                                cluster: details.cluster.clusterName,
-                                containerInstances: arns
-                            };
-                            ecs.describeContainerInstances (params, function (err, data) {
-                                if (err) console.log (err, err.stack); // an error occurred
-                                else
-                                {
-                                    var instances = data.containerInstances.map (function (x) { return (x.ec2InstanceId); });
-                                    var params =
-                                    {
-                                        InstanceIds: instances
-                                    };
-                                    var ec2 = new AWS.EC2 ();
-                                    ec2.describeInstances (params, function (err, data2) {
-                                        if (err) console.log (err, err.stack); // an error occurred
-                                        else
-                                        {
-                                            var text = "";
-                                            data2.Reservations[0].Instances.forEach (
-                                                function (x)
-                                                {
-                                                    var ecs_instance = data.containerInstances.find (function (y) { return (x.InstanceId == y.ec2InstanceId); });
-                                                    var type = node_type (ecs_instance);
-                                                    var dns = x.PublicDnsName;
-                                                    text = text + "<p>" + type + ": ssh -i \"~/.ssh/" + details.keypair.KeyName + ".pem\" ec2-user@" + dns + "</p>";
-                                                }
-                                            )
-                                            document.getElementById ("ssh_command").innerHTML = text;
-                                            if (waiting_on != count)
-                                                wait_for_instances ();
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                        else
-                        {
-                            var dots = document.getElementById ("ssh_command").innerHTML + ".";
-                            document.getElementById ("ssh_command").innerHTML = dots;
-                            wait_for_instances ();
-                        }
-                    }
-                });
             });
         }
 

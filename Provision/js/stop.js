@@ -16,8 +16,6 @@ define
      */
     function ()
     {
-        var details;
-
         function stop ()
         {
             var details = this;

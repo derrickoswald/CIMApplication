@@ -28,7 +28,6 @@ define
             {
                 return ({"clusterArn": cluster.clusterArn, "clusterName": cluster.clusterName, "registeredContainerInstancesCount": cluster.registeredContainerInstancesCount });
             }
-//            { "clusters": [ { "clusterArn": "arn:aws:ecs:eu-west-1:115120041846:cluster/playpen", "clusterName": "playpen", "status": "ACTIVE", "registeredContainerInstancesCount": 0, "runningTasksCount": 0, "pendingTasksCount": 0, "activeServicesCount": 0 } ], "failures": [] }
             clusters = data.clusters.filter (active).map (extract)
             function wrap (cluster)
             {
@@ -36,6 +35,13 @@ define
             }
             var options = clusters.map (wrap).join ("\n");
             document.getElementById ("cluster_list").innerHTML = options;
+            // if there is only one cluster, select it
+            if (1 == clusters.length)
+            {
+                document.getElementById ("cluster").value = clusters[0].clusterName;
+                change_cluster (null);
+                this.cluster = clusters[0];
+            }
         }
 
         function describe_clusters (data)
@@ -65,7 +71,7 @@ define
         {
             var cluster = lookup_cluster ();
             var name = document.getElementById ("cluster").value;
-            var creatable = ((null != cluster) && ("" != name))
+            var creatable = ((null != cluster) && ("" != name));
             document.getElementById ("create_cluster").disabled = creatable;
         }
 

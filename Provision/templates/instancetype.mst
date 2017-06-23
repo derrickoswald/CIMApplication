@@ -4,10 +4,10 @@
 </p>
 <p>
 The instances shown in the list have sufficient disk in the form of 
-<a href="https://aws.amazon.com/ebs/">Elastic Block Store (EBS)</a>
+<a href="https://aws.amazon.com/ebs/" target="_blank">Elastic Block Store (EBS)</a>
 to be used as ECS instances,
 since 8GB is used by the system and 22GB is used by ECS image caching.
-If you require HDFS storage you should probably choose an instance with more than the minimum.
+If you require more HDFS storage you should probably choose an instance with more than the minimum.
 </p>
 <p>
 The estimated cost is based on the current minimum prices for 1 master and N workers.
