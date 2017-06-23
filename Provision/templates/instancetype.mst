@@ -43,7 +43,7 @@ Choose from the drop down lists.
     <div class="form-group">
         <label class="col-sm-3 control-label" for="worker_count">Number of workers</label>
         <div class="col-sm-9">
-            <input id="worker_count" class="form-control" type="text" name="worker_count" value="2" aria-describedby="worker_count_help">
+            <input id="worker_count" class="form-control" type="text" name="worker_count" value="1" aria-describedby="worker_count_help">
             <span id="worker_count_help" class="help-block">
                 Specify the number of worker instances.
             </span>

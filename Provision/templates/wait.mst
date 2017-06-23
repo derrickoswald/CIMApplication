@@ -8,4 +8,10 @@ In this step we wait for the requested master and worker node instances to start
 
 <p id="ssh_command" style="margin-top=20px;margin-bottom=20px;"></p>
 
+<p id="spark_shell" style="margin-top=20px;margin-bottom=20px;"></p>
+<p id="spark_submit" style="margin-top=20px;margin-bottom=20px;"></p>
+<p id="sparkR" style="margin-top=20px;margin-bottom=20px;"></p>
+<p id="spark_sql" style="margin-top=20px;margin-bottom=20px;"></p>
+<p id="pyspark" style="margin-top=20px;margin-bottom=20px;"></p>
+
 <p id="started" style="margin-top=20px;margin-bottom=20px;"></p>
