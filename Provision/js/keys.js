@@ -27,6 +27,13 @@ define
             }
             var options = keys.map (wrap).join ("\n");
             document.getElementById ("keypair_list").innerHTML = options;
+            // if there is only one key pair, select it
+            if (1 == keys.length)
+            {
+                document.getElementById ("keypair").value = keys[0].KeyName;
+                change_keypair (null);
+                this.keypair = keys[0];
+            }
         }
 
         function lookup_keypair ()

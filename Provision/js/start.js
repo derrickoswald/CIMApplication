@@ -119,7 +119,7 @@ script\n\
 		\"containerOverrides\":\n\
 		[\n\
 			{\n\
-				\"name\": \"sandbox\",\n\
+				\"name\": \"master\",\n\
 				\"command\": [\"start-spark\", \"master\"],\n\
 				\"environment\":\n\
 				[\n\
@@ -133,11 +133,11 @@ script\n\
 	}\n\
 	EOF\n\
 \n\
-    # Jam the local IP address for sandbox in /etc/hosts\n\
-    echo $master_ip_address	sandbox >> /etc/hosts\n\
+    # Jam the local IP address for master in /etc/hosts\n\
+    echo $master_ip_address	master >> /etc/hosts\n\
 \n\
     # Specify the task definition to run at launch\n\
-    task_definition=" + details.taskdefinition.family + "\n\
+    task_definition=" + details.master_taskdefinition.family + "\n\
 \n\
     # Run the AWS CLI start-task command to start your task on this container instance\n\
     aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json\n\
@@ -196,6 +196,7 @@ script\n\
     until [ -n \"$master_ecs_arn\" ]; do master_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == master' | jq '.containerInstanceArns|.[0]' | awk -F'\"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;\n\
     master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $master_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
     master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')\n\
+    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
 \n\
     # Get the worker public DNS name\n\
     worker_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
@@ -208,7 +209,7 @@ script\n\
 		\"containerOverrides\":\n\
 		[\n\
 			{\n\
-				\"name\": \"sandbox\",\n\
+				\"name\": \"worker\",\n\
 				\"command\": [\"start-spark\", \"worker\", $master_dns_name],\n\
 				\"environment\":\n\
 				[\n\
@@ -222,11 +223,12 @@ script\n\
 	}\n\
 	EOF\n\
 \n\
-    # Jam the local IP address for sandbox in /etc/hosts\n\
-    echo $worker_ip_address sandbox >> /etc/hosts\n\
+    # Jam the local IP address for master and worker in /etc/hosts\n\
+    echo $master_ip_address	master >> /etc/hosts\n\
+    echo $worker_ip_address	worker >> /etc/hosts\n\
 \n\
     # Specify the task definition to run at launch\n\
-    task_definition=" + details.taskdefinition.family + "\n\
+    task_definition=" + details.worker_taskdefinition.family + "\n\
 \n\
     # Run the AWS CLI start-task command to start your task on this container instance\n\
     aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json\n\

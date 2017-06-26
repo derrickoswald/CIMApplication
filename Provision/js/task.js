@@ -9,7 +9,7 @@ define
     [],
     /**
      * @summary Get/create the Spark task.
-     * @description Gets the task called Spark that the user has and choose or create a new task.
+     * @description Gets the task that the user chooses or create a new task for both master and worker.
      * @name task
      * @exports task
      * @version 1.0
@@ -25,13 +25,18 @@ define
                 return ("<option value=\"" + taskdef.family + "\">" + taskdef.family + " (" + taskdef.taskDefinitionArn + ")" + "</option>")
             }
             var options = taskdefinitions.map (wrap).join ("\n");
-            document.getElementById ("taskdefinition_list").innerHTML = options;
-            // if there is only one task definition, select it
-            if (1 == taskdefinitions.length)
+            document.getElementById ("master_taskdefinition_list").innerHTML = options;
+            document.getElementById ("worker_taskdefinition_list").innerHTML = options;
+            // if there are exactly one task definition named master and the other named worker, then select them
+            var masters = taskdefinitions.filter (function (taskdef) { return ("master" == taskdef.containerDefinitions[0].name); });
+            var workers = taskdefinitions.filter (function (taskdef) { return ("worker" == taskdef.containerDefinitions[0].name); });
+            if ((1 == masters.length) && (1 == workers.length))
             {
-                document.getElementById ("taskdefinition").value = taskdefinitions[0].family;
+                document.getElementById ("master_taskdefinition").value = masters[0].family;
+                document.getElementById ("worker_taskdefinition").value = workers[0].family;
                 change_taskdefinition (null);
-                this.taskdefinition = taskdefinitions[0];
+                this.master_taskdefinition = masters[0];
+                this.worker_taskdefinition = workers[0];
             }
         }
 
@@ -92,9 +97,8 @@ define
             }
         }
 
-        function lookup_task ()
+        function lookup_task (name)
         {
-            var name = document.getElementById ("taskdefinition").value;
             var found = null;
             function find (taskdef)
             {
@@ -106,19 +110,35 @@ define
             return (found);
         }
 
+        function lookup_tasks ()
+        {
+            return (
+                {
+                    master_taskdefinition: lookup_task (document.getElementById ("master_taskdefinition").value),
+                    worker_taskdefinition: lookup_task (document.getElementById ("worker_taskdefinition").value)
+                }
+            );
+        }
+
         function change_taskdefinition (event)
         {
-            var task = lookup_task ();
+            var tasks = lookup_tasks ();
             var image = document.getElementById ("dockerimage").value;
-            var creatable = ((null != task) && (image != ""))
-            document.getElementById ("create_taskdefinition").disabled = creatable;
-            if (null != task)
-                document.getElementById ("dockerimage").value = task.containerDefinitions[0].image
+            var master_creatable = ((null != tasks.master_taskdefinition) && (image != ""))
+            document.getElementById ("create_master_taskdefinition").disabled = master_creatable;
+            var worker_creatable = ((null != tasks.worker_taskdefinition) && (image != ""))
+            document.getElementById ("create_worker_taskdefinition").disabled = worker_creatable;
+            if (null != tasks.master_taskdefinition)
+                document.getElementById ("dockerimage").value = tasks.master_taskdefinition.containerDefinitions[0].image
+            else if (null != tasks.worker_taskdefinition)
+                    document.getElementById ("dockerimage").value = tasks.worker_taskdefinition.containerDefinitions[0].image
         }
 
         function create_taskdefinition (event)
         {
-            var name = document.getElementById ("taskdefinition").value;
+            var target = event.currentTarget.id;
+            var master = ("create_master_taskdefinition" == target);
+            var name = document.getElementById (master ? "master_taskdefinition" : "worker_taskdefinition").value;
             var image = document.getElementById ("dockerimage").value;
             var params =
             {
@@ -127,7 +147,7 @@ define
                 "containerDefinitions":
                 [
                     {
-                        "name": "sandbox", 
+                        "name": (master ? "master" : "worker"),
                         "image": image, 
                         "memoryReservation": 4096, 
                         "essential": true,
@@ -139,7 +159,7 @@ define
                                 "readOnly": false
                             }
                         ], 
-                        "hostname": "sandbox", 
+                        "hostname": (master ? "master" : "worker"),
                         "disableNetworking": false, 
                         "privileged": true, 
                         "readonlyRootFilesystem": false
@@ -188,7 +208,9 @@ define
 
         function term (event)
         {
-            this.taskdefinition = lookup_task ();
+            var tasks = lookup_tasks ();
+            this.master_taskdefinition = tasks.master_taskdefinition;
+            this.worker_taskdefinition = tasks.worker_taskdefinition;
         }
 
         return (
@@ -202,9 +224,12 @@ define
                             template: "templates/task.mst",
                             hooks:
                             [
-                                { id: "taskdefinition", event: "change", code: change_taskdefinition },
-                                { id: "taskdefinition", event: "input", code: change_taskdefinition },
-                                { id : "create_taskdefinition", event : "click", code : create_taskdefinition }
+                                { id: "master_taskdefinition", event: "change", code: change_taskdefinition },
+                                { id: "master_taskdefinition", event: "input", code: change_taskdefinition },
+                                { id: "create_master_taskdefinition", event : "click", code : create_taskdefinition },
+                                { id: "worker_taskdefinition", event: "change", code: change_taskdefinition },
+                                { id: "worker_taskdefinition", event: "input", code: change_taskdefinition },
+                                { id: "create_worker_taskdefinition", event : "click", code : create_taskdefinition }
                             ],
                             transitions:
                             {

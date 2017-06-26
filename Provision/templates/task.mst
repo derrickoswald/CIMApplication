@@ -1,6 +1,6 @@
-<h1>Create or Select a Task Definition</h1>
+<h1>Create or Select Task Definitions</h1>
 <p>
-    <strong>Create a Spark Docker task definition on ECS.</strong>
+    <strong>Create a Spark Docker task definition for master and worker on ECS.</strong>
 </p>
 <p>
 To run Spark on ECS, as opposed to some other program, there needs to be a task definition
@@ -15,32 +15,48 @@ Note: The <i>&lt;master dns name&gt;</i> is filled in with the DNS name of the m
 </p>
 
 <p>
-In this step we choose an existing task definition (choose from the drop down menu by clicking twice in the text input area)
-or create a new task definition (recommended).
+In this step we choose existing task definitions (choose from the drop down menu by clicking twice in the text input area)
+or create new task definitions (recommended).
 </p>
 <p>
-A task definition created by this step will have the following parameters (intended to consume all resources of the EC2 instance):
+Task definitions created by this step will have the following parameters (intended to consume all resources of the EC2 instance):
 <ul>
     <li>networkMode: "host" (all ports on the docker image are exposed on the host instance)</li>
-    <li>name: "sandbox" (not really important since the DNS name assigned by Amazon is completely different)</i></li>
+    <li>name: "master" or "worker"</i></li>
     <li>memoryReservation: 4096 (minimum memory, no upper limit)</li>
     <li>a disk mapping from the host instance /tmp directory to /host_tmp in the Docker image</li> 
 </ul>
 </p>
 <div class="form-horizontal">
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="cluster">Task Definition</label>
+        <label class="col-sm-3 control-label" for="master_taskdefinition">Master Task Definition</label>
         <div class="col-sm-9">
-            <div class="input-group" aria-describedby="taskdefinition_help">
-                <input id="taskdefinition" class="form-control" type="text" name="taskdefinition" list="taskdefinition_list">
+            <div class="input-group" aria-describedby="master_taskdefinition_help">
+                <input id="master_taskdefinition" class="form-control" type="text" name="master_taskdefinition" list="master_taskdefinition_list">
                 <span class="input-group-btn">
-                    <button id="create_taskdefinition" class="btn btn-default" type="button">Create</button>
+                    <button id="create_master_taskdefinition" class="btn btn-default" type="button">Create</button>
                 </span>
             </div>
-            <datalist id="taskdefinition_list">
+            <datalist id="master_taskdefinition_list">
             </datalist>
-            <span id="taskdefinition_help" class="help-block">
-                Use this task definition. If it does not exist yet, click the Create button.
+            <span id="master_taskdefinition_help" class="help-block">
+                Use this task definition for the master node. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="worker_taskdefinition">Worker Task Definition</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="worker_taskdefinition_help">
+                <input id="worker_taskdefinition" class="form-control" type="text" name="worker_taskdefinition" list="worker_taskdefinition_list">
+                <span class="input-group-btn">
+                    <button id="create_worker_taskdefinition" class="btn btn-default" type="button">Create</button>
+                </span>
+            </div>
+            <datalist id="worker_taskdefinition_list">
+            </datalist>
+            <span id="worker_taskdefinition_help" class="help-block">
+                Use this task definition for the worker nodes. If it does not exist yet, click the Create button.
             </span>
         </div>
     </div>
@@ -49,7 +65,7 @@ A task definition created by this step will have the following parameters (inten
         <div class="col-sm-9">
             <input id="dockerimage" class="form-control" type="text" name="dockerimage" placeholder="e.g. derrickoswald/spark-docker" aria-describedby="dockerimage_help">
             <span id="dockerimage_help" class="help-block">
-                Enter the name of the public Docker image to be used in the task definition.
+                Enter the name of the public Docker image to be used when creating a task definition.
             </span>
         </div>
     </div>

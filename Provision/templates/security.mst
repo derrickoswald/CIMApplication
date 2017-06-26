@@ -93,7 +93,7 @@ or create new security groups for master and worker instances (recommended).
         <div class="col-sm-9">
             <input id="authorized_ip" class="form-control" type="text" name="authorized_ip" aria-describedby="authorized_ip_help">
             <span id="authorized_ip_help" class="help-block">
-                Allow only access from this IP address (dot notation: www.xx.yy.zz). Default is all IP addresses.
+                Allow only access from this IP address (dot notation: ww.xx.yy.zz). Default is all IP addresses.
             </span>
         </div>
     </div>
