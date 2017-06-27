@@ -40,6 +40,16 @@ class Trans (one_phase: Boolean) extends Serializable
             n
     }
 
+    // get the transformer name (of the parallel transformers)
+    def transformer_name (transformers: Array[TData]): String =
+    {
+        val n = transformers.map (_.transformer.id).map (valid_config_name).toArray.sortWith (_ < _).mkString ("_")
+        if (n.getBytes.length > 63)
+            "_" + Math.abs (n.hashCode())
+        else
+            n
+    }
+
     /**
      * Make one or more transformer configurations.
      * Most transformers have only two ends, so this should normally make one configurations

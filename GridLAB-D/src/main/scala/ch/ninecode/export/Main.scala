@@ -1,8 +1,8 @@
-package ch.ninecode.esl
+package ch.ninecode.export
 
 import java.io.UnsupportedEncodingException
-import java.net.URLDecoder
 import java.net.URI
+import java.net.URLDecoder
 import java.util.Properties
 
 import scala.collection.mutable.HashMap
@@ -27,7 +27,7 @@ object Main
         in.close
         p
     }
-    val APPLICATION_NAME = "Einspeiseleistung"
+    val APPLICATION_NAME = "Export"
     val APPLICATION_VERSION = properties.getProperty ("version")
     val SPARK = properties.getProperty ("spark")
 
@@ -59,20 +59,11 @@ object Main
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
         three: Boolean = false,
-        precalculation: Boolean = false,
         trafos: String = "",
-        export_only: Boolean = false,
-        all: Boolean = false,
-        erase: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
-        simulation: Int = -1,
-        reference: Int = -1,
-        delta: Double = 1e-6,
-        number: Int = -1,
         workdir: String = "",
-        files: Seq[String] = Seq(),
-        precalc_factor: Double = 1.5
+        files: Seq[String] = Seq()
     )
 
     val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
@@ -91,7 +82,7 @@ object Main
             action ((x, c) => c.copy (opts = x)).
             text ("other Spark options")
 
-        opt[String]('g', "storage_level").
+        opt[String]('s', "storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
 
@@ -103,25 +94,9 @@ object Main
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
 
-        opt[Unit]('p', "precalculation").
-            action ((_, c) => c.copy (precalculation = true)).
-            text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
-
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
-
-        opt[Unit]('x', "export_only").
-            action ((_, c) => c.copy (export_only = true)).
-            text ("generates glm files only - no solve or analyse operations")
-
-        opt[Unit]('a', "all").
-            action ((_, c) => c.copy (all = true)).
-            text ("process all transformers (not just those with EEA)")
-
-        opt[Unit]('e', "erase").
-            action ((_, c) => c.copy (erase = true)).
-            text ("clean up (delete) simulation files")
 
         opt[LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
@@ -130,26 +105,6 @@ object Main
         opt[String]('k', "checkpointdir").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
-
-        opt[Int]('s', "simulation").valueName ("N").
-            action ((x, c) => c.copy (simulation = x)).
-            text ("simulation number (precalc) to use for transformer list")
-
-        opt[Int]('r', "reference").valueName ("N").
-            action ((x, c) => c.copy (reference = x)).
-            text ("simulation number (precalc) to use as reference for transformer list")
-
-        opt[Int]('d', "delta").valueName ("D").
-            action ((x, c) => c.copy (delta = x)).
-            text ("delta power difference threshold for reference comparison")
-            
-        opt[Double]('f', "precalcfactor").valueName ("D").
-            action ((x, c) => c.copy (precalc_factor = x)).
-            text ("factor to multiply precaclulation results for gridlabd")
-
-        opt[Int]('n', "number").valueName ("N").
-            action ((x, c) => c.copy (number = x)).
-            text ("number of transformers to process")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -202,12 +157,11 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/Einspeiseleistung-2.2.8-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/Export-2.2.6-jar-with-dependencies.jar):
      *     mvn package
-     * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Einspeiseleistung-2.2.8-jar-with-dependencies.jar "hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11.rdf"
-     * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/Einspeiseleistung-2.2.8-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     * Assuming the data files and csv files exist on hdfs in the data directory,
+     * invoke (on the cluster) with:
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Export-2.2.6-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
      */
     def main (args: Array[String])
     {
@@ -216,7 +170,7 @@ object Main
         {
             case Some (arguments) =>
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.export.Main$").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
@@ -232,14 +186,15 @@ object Main
                 if ("" != arguments.master)
                 {
                     val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (EinspeiseleistungOptions ())
+                    val s2 = jarForObject (ExportOptions ())
                     if (s1 != s2)
                         configuration.setJars (Array (s1, s2))
                     else
                         configuration.setJars (Array (s1))
                 }
 
-                if (StorageLevel.fromString (arguments.storage).useDisk)
+                val storage = StorageLevel.fromString (arguments.storage)
+                if (storage.useDisk)
                 {
                     // register low level classes
                     configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
@@ -283,25 +238,16 @@ object Main
                 ro.put ("StorageLevel", arguments.storage)
                 ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
-                val options = EinspeiseleistungOptions (
+                val options = ExportOptions (
                     verbose = !arguments.quiet,
                     cim_reader_options = ro,
                     three = arguments.three,
-                    precalculation = arguments.precalculation,
                     trafos = arguments.trafos,
-                    export_only = arguments.export_only,
-                    all = arguments.all,
-                    erase = arguments.erase,
-                    simulation = arguments.simulation,
-                    reference = arguments.reference,
-                    delta = arguments.delta,
-                    number = arguments.number,
                     workdir = workdir,
-                    files = arguments.files,
-                    precalc_factor = arguments.precalc_factor
+                    files = arguments.files
                 )
-                val eins = Einspeiseleistung (session, options)
-                val count = eins.run ()
+                val export = Export (session, storage, options)
+                val count = export.run ()
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds " + count + " trafokreise")
