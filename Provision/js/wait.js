@@ -47,11 +47,11 @@ define
             link.setAttribute ("href", "http://" + master + ":50070");
             var link = document.getElementById ("hdfs_backup_ui");
             link.setAttribute ("href", "http://" + master + ":50105");
-            document.getElementById ("spark_shell").innerHTML = "spark-shell --master=spark://" + master + ":7077";
-            document.getElementById ("spark_submit").innerHTML = "spark-submit --master=spark://" + master + ":7077";
-            document.getElementById ("sparkR").innerHTML = "sparkR --master=spark://" + master + ":7077";
-            document.getElementById ("spark_sql").innerHTML = "spark-sql --master=spark://" + master + ":7077";
-            document.getElementById ("pyspark").innerHTML = "pyspark --master=spark://" + master + ":7077";
+            document.getElementById ("spark_shell").innerHTML = "spark-shell --master spark://" + master + ":7077";
+            document.getElementById ("spark_submit").innerHTML = "spark-submit --master spark://" + master + ":7077";
+            document.getElementById ("sparkR").innerHTML = "sparkR --master spark://" + master + ":7077";
+            document.getElementById ("spark_sql").innerHTML = "spark-sql --master spark://" + master + ":7077";
+            document.getElementById ("pyspark").innerHTML = "pyspark --master spark://" + master + ":7077";
             document.getElementById ("started").innerHTML = "<strong>Cluster successfully started.</strong>";
         }
 

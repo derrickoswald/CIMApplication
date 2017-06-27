@@ -87,6 +87,7 @@ define
                     { IpProtocol:  "tcp", FromPort:    22, ToPort:    22, IpRanges: [ { CidrIp: authorized_ip } ] }, // ssh
                     { IpProtocol:  "tcp", FromPort:  8080, ToPort:  8080, IpRanges: [ { CidrIp: authorized_ip } ] }, // Standalone Master Web UI
                     { IpProtocol:  "tcp", FromPort:  7077, ToPort:  7077, IpRanges: [ { CidrIp: authorized_ip } ] }, // Driver to Standalone Master
+                    { IpProtocol:  "tcp", FromPort:  6066, ToPort:  6066, IpRanges: [ { CidrIp: authorized_ip } ] }, // Standalone Master REST port (spark.master.rest.port)
                     { IpProtocol:  "tcp", FromPort:  4040, ToPort:  4040, IpRanges: [ { CidrIp: authorized_ip } ] }, // Cluster Manager Web UI
                     { IpProtocol:  "tcp", FromPort: 18080, ToPort: 18080, IpRanges: [ { CidrIp: authorized_ip } ] }, // History Server
                     { IpProtocol:  "tcp", FromPort:  8787, ToPort:  8787, IpRanges: [ { CidrIp: authorized_ip } ] }, // Rstudio
