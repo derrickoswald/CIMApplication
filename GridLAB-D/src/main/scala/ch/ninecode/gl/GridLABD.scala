@@ -644,17 +644,17 @@ class GridLABD (
         }
     }
 
-    def cleanup (equipment: String, includes_glm: Boolean): Unit =
+    def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean): Unit =
     {
         if (includes_glm)
             eraseInputFile (equipment)
         else
         {
-            eraseInputFile (equipment + "/input_data/")
+            if (includes_input)
+                eraseInputFile (equipment + "/input_data/")
             eraseInputFile (equipment + "/output_data/")
             eraseInputFile (equipment + "/output.txt")
-            //eraseInputFile (equipment + "/" + equipment + ".out")
-            //writeInputFile (equipment, "/input_data/dummy", null) // mkdir
+            eraseInputFile (equipment + "/" + equipment + ".out")
             writeInputFile (equipment, "/output_data/dummy", null) // mkdir
         }
     }

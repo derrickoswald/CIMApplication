@@ -142,7 +142,7 @@ object Main
         opt[Int]('d', "delta").valueName ("D").
             action ((x, c) => c.copy (delta = x)).
             text ("delta power difference threshold for reference comparison")
-            
+
         opt[Double]('f', "precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
             text ("factor to multiply precaclulation results for gridlabd")

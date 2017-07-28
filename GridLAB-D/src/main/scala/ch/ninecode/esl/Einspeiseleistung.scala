@@ -78,6 +78,17 @@ case class Experiment(
      * The end time of the experiment.
      */
     def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
+
+    override def toString = "Experiment(" +
+        trafo + "," +
+        house + "," +
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime ()) + "[" + t0.getTimeInMillis + "]," +
+        slot + "," +
+        window + "," +
+        interval + "," +
+        from + "," +
+        to + "," +
+        step + ")"
 }
 
 /**
@@ -224,7 +235,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val reason = arg._3
             val details = arg._4
             val steps = Math.round((data.millis - experiment.t1.getTimeInMillis()) / (experiment.interval * 1000))
-            val ok_steps = if (0 < steps) steps - 1 else 0 // the step before the limit was exceeded is the maximum value
+            val ok_steps = if (0 < steps) steps - 1 else 0 // subtract off the mandatory first zero step required by GridLAB-D
             val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match {
                 case None ⇒
@@ -279,7 +290,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             for (e ← experiments) {
                 if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
-                    return (List ((e, r, limit, e.house + " > " + max + " Volts")))
+                    return (List ((e, r, limit, r.element + " > " + max + " Volts")))
             }
             List()
         }
@@ -410,6 +421,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             val ret = s ++ v ++ i ++ p groupBy (k ⇒ k._1.house)
             ret.values.map (v ⇒ finder(v)).toList
+            // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
             trafo._2._2._2.map ((e) => MaxEinspeiseleistung (e.trafo, e.house, None, "gridlab failed", "no results")).toList
@@ -456,7 +468,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val time = exp.t1
         addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
         var power = exp.from
-        while (power < exp.to) {
+        while (power <= exp.to)
+        {
             addrow(time, power, angle)
             power = power + exp.step
         }
@@ -509,11 +522,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 (t.trafo, (transformers, cdata_iter))
             }).cache
 
-            val max_values = solve_and_analyse (gridlabd, reduced_trafos, experiments)
-            log.info ("results: " + max_values.count)
+            ret = solve_and_analyse (gridlabd, reduced_trafos, experiments).cache
+            log.info ("results: " + ret.count)
 
             val b4_experiment = System.nanoTime()
-            val experiments2 = experiments.keyBy(_.house).leftOuterJoin(max_values.keyBy(_.house)).map(house ⇒ {
+            val experiments2 = experiments.keyBy(_.house).leftOuterJoin(ret.keyBy(_.house)).map(house ⇒ {
                 val experiment = house._2._1
                 val max_option = house._2._2
 
@@ -545,7 +558,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val experiment_adjusted = System.nanoTime()
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
-            trafokreise.map(t ⇒ gridlabd.cleanup (t.trafo, false)).count
+            trafokreise.map(t ⇒ gridlabd.cleanup (t.trafo, false, true)).count
             val d = experiments2.map (generate_player_file (gridlabd)_).count
             log.info (d.toString + " experiments")
 
@@ -562,7 +575,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val dbsave = System.nanoTime()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
-            trafokreise.map(t ⇒ gridlabd.cleanup(t.trafo, options.erase)).count
+            trafokreise.map(t ⇒ gridlabd.cleanup(t.trafo, options.erase, options.erase)).count
         }
 
         ret

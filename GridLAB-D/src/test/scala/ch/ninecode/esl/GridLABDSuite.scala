@@ -101,6 +101,7 @@ class GridLABDSuite extends FunSuite
             reference = -1,
             delta = 1e-6,
             number = -1,
+            precalc_factor = 1.5,
             workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
             files = List(filename)
         )
