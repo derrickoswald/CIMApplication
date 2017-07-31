@@ -71,23 +71,23 @@ extends
             (if (one_phase)
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_voltage_A\";\n" +
+                "                property \"voltage_A\";\n" +
                 "                file \"input_data/" + trafo + ".csv\";\n" +
                 "            };\n"
             else
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_voltage_A\";\n" +
+                "                property \"voltage_A\";\n" +
                 "                file \"input_data/" + trafo + "_R.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_voltage_B\";\n" +
+                "                property \"voltage_B\";\n" +
                 "                file \"input_data/" + trafo + "_S.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_voltage_C\";\n" +
+                "                property \"voltage_C\";\n" +
                 "                file \"input_data/" + trafo + "_T.csv\";\n" +
                 "            };\n") +
             "        };\n"
