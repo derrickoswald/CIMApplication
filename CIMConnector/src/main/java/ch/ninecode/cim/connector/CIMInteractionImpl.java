@@ -1,10 +1,17 @@
 package ch.ninecode.cim.connector;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -99,23 +106,59 @@ public class CIMInteractionImpl implements Interaction
                         if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
                         {
                             ((CIMMappedRecord) output).clear ();
+                            String directory = "/";
                             try
                             {
-                                CIMConnection connection = (CIMConnection)getConnection ();
+                                // build a file system configuration, including core-site.xml
                                 Configuration hdfs_configuration = new Configuration ();
-                                hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-                                hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem");
-                                String prefix = connection._ManagedConnection._Adapter.getInputFilePrefix ();
-                                String suffix = connection._ManagedConnection._Adapter.getInputFileSuffix ();
-                                FileSystem hdfs = FileSystem.get (URI.create (prefix), hdfs_configuration);
-                                Path root = new Path (prefix);
-                                RemoteIterator<LocatedFileStatus> iterator = hdfs.listFiles (root, false); // ToDo: recursive
-                                StringBuilder sb = new StringBuilder ();
-                                sb.append (
-                                    "{\n" +
-                                    "    \"files\":\n" +
-                                    "    [\n");
-                                boolean have = false;
+                                if (null == hdfs_configuration.getResource ("core-site.xml"))
+                                {
+                                    String hadoop_conf = System.getenv ("HADOOP_CONF_DIR");
+                                    if (null != hadoop_conf)
+                                    {
+                                        Path site = new Path (hadoop_conf, "core-site.xml");
+                                        File f = new File (site.toString ());
+                                        if (f.exists () && !f.isDirectory ())
+                                            hdfs_configuration.addResource (site);
+                                    }
+                                }
+
+                                // get the file system
+                                URI uri = FileSystem.getDefaultUri (hdfs_configuration);
+                                // or: URI uri = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY));
+                                FileSystem hdfs = FileSystem.get (uri, hdfs_configuration);
+                                Path root = new Path (hdfs.getUri ().toString (), directory);
+
+                                // form the response
+                                JsonObjectBuilder response = Json.createObjectBuilder ();
+                                response.add ("filesystem", uri.toString ());
+                                response.add ("root", root.toString ());
+// debug:
+                                JsonObjectBuilder configuration = Json.createObjectBuilder ();
+                                Iterator<Entry<String, String>> i = hdfs_configuration.iterator ();
+                                while (i.hasNext())
+                                {
+                                    Entry<String, String> pair = i.next ();
+                                    String key = pair.getKey ();
+                                    String value = pair.getValue ();
+                                    configuration.add (key, value);
+                                }
+                                response.add ("configuration", configuration);
+
+// debug:
+                                JsonObjectBuilder environment = Json.createObjectBuilder ();
+                                Map<String, String> env = System.getenv ();
+                                for (String key: env.keySet ())
+                                {
+                                    String value = env.get (key);
+                                    environment.add (key, value);
+                                }
+                                response.add ("environment", environment);
+
+                                // read the list of files
+                                RemoteIterator<LocatedFileStatus> iterator = hdfs.listFiles (root, false); // ToDo: handle recursive
+                                JsonArrayBuilder files = Json.createArrayBuilder ();
+                                String prefix = root.toString ();
                                 while (iterator.hasNext())
                                 {
                                     // "LocatedFileStatus{path=hdfs://sandbox:8020/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
@@ -125,32 +168,16 @@ public class CIMInteractionImpl implements Interaction
                                     String path = fs.getPath ().toString ();
                                     if (path.startsWith (prefix))
                                         path = path.substring (prefix.length ());
-                                    if (path.endsWith (suffix))
-                                        path = path.substring (0, path.length () - suffix.length ());
-                                    if (have)
-                                        sb.append (",\n");
-                                    sb.append ("        {\n");
-                                    sb.append ("            \"path\": ");
-                                    sb.append ("\"");
-                                    sb.append (path);
-                                    sb.append ("\",\n");
-                                    sb.append ("            \"length\": ");
-                                    sb.append (fs.getLen ());
-                                    sb.append (",\n");
-                                    sb.append ("            \"modification_time\": ");
-                                    sb.append (fs.getModificationTime ());
-                                    sb.append (",\n");
-                                    sb.append ("            \"access_time\": ");
-                                    sb.append (fs.getAccessTime ());
-                                    sb.append ("\n");
-                                    sb.append ("        }");
-                                    have = true;
+                                    JsonObjectBuilder file = Json.createObjectBuilder ();
+                                    file.add ("path", path);
+                                    file.add ("length", fs.getLen ());
+                                    file.add ("modification_time", fs.getModificationTime ());
+                                    file.add ("access_time", fs.getAccessTime ());
+                                    file.add ("is_directory", fs.isDirectory ());
+                                    files.add (file);
                                 }
-                                sb.append (
-                                    "\n" +
-                                    "    ]\n" +
-                                    "}");
-                                ((CIMMappedRecord) output).put ("files", sb.toString ());
+                                response.add ("files", files);
+                                ((CIMMappedRecord) output).put ("files", response.build ());
                                 ret = true;
                             }
                             catch (Exception exception)

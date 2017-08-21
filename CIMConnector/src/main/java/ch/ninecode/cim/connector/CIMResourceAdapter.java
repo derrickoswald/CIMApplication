@@ -54,8 +54,6 @@ public class CIMResourceAdapter implements ResourceAdapter
     protected String _YarnConfigurationPath = "/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/conf/";
     protected String _SparkDriverMemory = "1g";
     protected String _SparkExecutorMemory = "4g";
-    protected String _InputFilePrefix = "hdfs://sandbox:8020/data/";
-    protected String _InputFileSuffix = ".rdf";
 
     @Override
     public void endpointActivation (MessageEndpointFactory arg0, ActivationSpec arg1) throws ResourceException
@@ -176,43 +174,4 @@ public class CIMResourceAdapter implements ResourceAdapter
     {
         return (_SparkExecutorMemory);
     }
-
-    @ConfigProperty
-    (
-        type = String.class,
-        description = "Input file prefix - where machines on the cluster should look for input files.",
-        defaultValue = "hdfs://sandbox:8020/data/",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
-    )
-    public void setInputFilePrefix (String prefix)
-    {
-        _InputFilePrefix = prefix;
-    }
-
-    public String getInputFilePrefix ()
-    {
-        return (_InputFilePrefix);
-    }
-
-    @ConfigProperty
-    (
-        type = String.class,
-        description = "Input file suffix - input file type or extension.",
-        defaultValue = ".rdf",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
-    )
-    public void setInputFileSuffix (String suffix)
-    {
-        _InputFileSuffix = suffix;
-    }
-
-    public String getInputFileSuffix ()
-    {
-        return (_InputFileSuffix);
-    }
-
 }

@@ -65,7 +65,7 @@ public class Spatial
                         {
                             if (0 != sb.length ())
                                 sb.append (",");
-                            sb.append (factory.InputPath (file));
+                            sb.append (file);
                         }
 
                         final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();

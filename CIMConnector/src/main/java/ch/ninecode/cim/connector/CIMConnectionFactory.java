@@ -133,16 +133,4 @@ public class CIMConnectionFactory implements ConnectionFactory
 
         return (ret);
     }
-
-    public String InputPath (String filestub)
-    {
-        StringBuilder ret;
-
-        ret = new StringBuilder ();
-        ret.append (_ManagedConnectionFactory._ResourceAdapter.getInputFilePrefix ());
-        ret.append (filestub);
-        ret.append (_ManagedConnectionFactory._ResourceAdapter.getInputFileSuffix ());
-
-        return (ret.toString ());
-    }
 }

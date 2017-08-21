@@ -37,7 +37,7 @@ public class RESTful
     @Resource
     (
         description = "Connection factory for Spark connection using CIMConnector",
-        lookup = "java:app/eis/SparkConnectionFactory", // "openejb:Resource/CIMConnector.rar"
+        lookup = "openejb:Resource/CIMConnector.rar", // "java:app/eis/SparkConnectionFactory"
         authenticationType = Resource.AuthenticationType.APPLICATION
     )
     protected CIMConnectionFactory _ConnectionFactory = null;
@@ -65,6 +65,11 @@ public class RESTful
             _Status = status;
             _Message = message;
             _Result = result;
+        }
+
+        public void setResult (JsonStructure structure)
+        {
+            _Result = structure;
         }
 
         public void setResult (String result)

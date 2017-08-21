@@ -3,6 +3,7 @@ package ch.ninecode.cim.cimweb;
 import java.util.logging.Logger;
 
 import javax.ejb.Stateless;
+import javax.json.JsonStructure;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -41,7 +42,13 @@ public class ListFiles extends RESTful
                 if (interaction.execute (spec, null, output))
                 {
                     if (!output.isEmpty ())
-                        ret.setResult (output.get ("files").toString ());
+                    {
+                        Object result = output.get ("files");
+                        if (result instanceof JsonStructure)
+                            ret.setResult ((JsonStructure)result);
+                        else
+                            ret.setResult (result.toString ());
+                    }
                     else
                         ret._Message += "interaction returned empty";
                 }
