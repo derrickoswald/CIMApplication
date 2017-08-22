@@ -103,27 +103,27 @@
                         <jarModule>
                             <groupId>ch.ninecode.gl</groupId>
                             <artifactId>GridLAB-D</artifactId>
-                            <bundleFileName>GridLAB-D-${version.dependency.project}.jar</bundleFileName>
+                            <bundleFileName>GridLAB-D-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sc</groupId>
                             <artifactId>ShortCircuit</artifactId>
-                            <bundleFileName>ShortCircuit-${version.dependency.project}.jar</bundleFileName>
+                            <bundleFileName>ShortCircuit-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sp</groupId>
                             <artifactId>Spatial</artifactId>
-                            <bundleFileName>Spatial-${version.dependency.project}.jar</bundleFileName>
+                            <bundleFileName>Spatial-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.geo</groupId>
                             <artifactId>GeoVis</artifactId>
-                            <bundleFileName>GeoVis-${version.dependency.project}.jar</bundleFileName>
+                            <bundleFileName>GeoVis-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sm</groupId>
                             <artifactId>SmartMeter</artifactId>
-                            <bundleFileName>SmartMeter-${version.dependency.project}.jar</bundleFileName>
+                            <bundleFileName>SmartMeter-${project.version}}.jar</bundleFileName>
                         </jarModule>
                     </modules>
                 </configuration>
