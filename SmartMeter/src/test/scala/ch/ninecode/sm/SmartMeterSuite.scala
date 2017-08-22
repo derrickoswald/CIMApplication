@@ -1,30 +1,15 @@
 package ch.ninecode.sm
 
-import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.Calendar
 import java.util.HashMap
-import java.util.Map
-import javax.xml.bind.DatatypeConverter
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.Types
-import java.sql.ResultSet
-import java.sql.SQLException
-import java.sql.Statement
-import java.sql.Timestamp
-import java.util.Random
 
-import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
@@ -33,7 +18,7 @@ import ch.ninecode.model._
 
 class SmartMeterSuite extends FunSuite
 {
-    val FILE_DEPOT = "src/test/"
+    val FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
@@ -82,9 +67,7 @@ class SmartMeterSuite extends FunSuite
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", use_topolocial_nodes.toString)
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-
-        return (element)
+        context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
     }
 
     test ("Basic")
@@ -93,7 +76,7 @@ class SmartMeterSuite extends FunSuite
 
         val start = System.nanoTime ()
 
-        val filename = FILE_DEPOT + "resources/" + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
+        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
         val use_topological_nodes = true
         val starting_node = "SAM10106"
             
@@ -110,8 +93,7 @@ class SmartMeterSuite extends FunSuite
         println (text)
         
         val out_content = "smartmeter_tree = " + text
-        val out_path = FILE_DEPOT + "output/" + "smartmeter_tree.js"
-        Files.write(Paths.get(out_path), out_content.getBytes(StandardCharsets.UTF_8))
+        Files.write (Paths.get (FILE_DEPOT, "smartmeter_tree.js"), out_content.getBytes(StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 
