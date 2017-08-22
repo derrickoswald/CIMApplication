@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# not sure about this: source /etc/bash.bashrc
+
+# Set default HDFS user if not set
+if [[ -z "${HDFS_USER}" ]]; then
+  export HDFS_USER=spark
+fi
+
+# from start-hadoop:
+
+# Create user for HDFS
+adduser --no-create-home --disabled-password --gecos "" $HDFS_USER
+# Fix directory permissions
+chown -R $HDFS_USER:$HDFS_USER /opt/hdfs
+chown -R $HDFS_USER:$HDFS_USER $HADOOP_HOME
+
+# from start-hadoop-datanode (edited), expects the name node host as a parameter:
+
+if [[ -z "${1}" ]]; then
+  echo "Name node host not specified" >&2
+  exit 1
+fi
+# Wait for the name node to be online
+while ! nc -z $1 50070; do
+  sleep 2;
+done;
+# edit configuration
+sed -i.bak "s|\[NAMENODE_HOST\]|${1}|g" $HADOOP_CONF_DIR/core-site.xml
+rm -f $HADOOP_CONF_DIR/core-site.xml.bak
+
+catalina.sh run

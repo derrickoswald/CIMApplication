@@ -78,11 +78,6 @@ public class RESTful
             {
                 _Result = Json.createReader (new StringReader (result)).readObject ();
             }
-            catch (JsonParsingException jpe)
-            {
-                _Status = FAIL;
-                _Message = jpe.getMessage ();
-            }
             catch (JsonException je)
             {
                 _Status = FAIL;

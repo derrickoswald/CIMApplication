@@ -11,20 +11,22 @@
 .idea
 *~
 
-# eclipse specific git ignore
+# Eclipse #
 .project
 .metadata
 .classpath
 .settings/
 
-# Maven files #
-data/
-private_data/
+# Maven #
 target/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.next
 release.properties
+
+# Test Data #
+data/
+private_data/
 
 # Misc #
 glslogs/
