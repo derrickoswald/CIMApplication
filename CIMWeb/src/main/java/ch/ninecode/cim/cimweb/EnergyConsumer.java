@@ -1,7 +1,11 @@
 package ch.ninecode.cim.cimweb;
 
-import javax.annotation.Resource;
 import javax.ejb.Stateless;
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -16,6 +20,7 @@ import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
 import javax.resource.cci.Record;
 
+import ch.ninecode.cim.cimweb.RESTful.RESTfulResult;
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
@@ -25,130 +30,103 @@ import ch.ninecode.cim.connector.CIMResultSet;
 
 @Stateless
 @Path("/EnergyConsumer")
-public class EnergyConsumer
+public class EnergyConsumer extends RESTful
 {
-    @Resource (lookup="openejb:Resource/CIMConnector.rar")
-    CIMConnectionFactory factory;
-
-    /**
-     * Build a connection specification used by all the tests.
-     * @return
-     */
-    CIMConnectionSpec remoteConfig ()
-    {
-        CIMConnectionSpec ret;
-
-        ret = new CIMConnectionSpec ();
-        ret.setUserName ("derrick"); // not currently used
-        ret.setPassword ("secret"); // not currently used
-        ret.getProperties ().put ("spark.driver.memory", "1g");
-        ret.getProperties ().put ("spark.executor.memory", "4g");
-
-        return (ret);
-    }
-
     @SuppressWarnings ("unchecked")
     @GET
     @Produces({"text/plain", "application/json"})
     public String GetEnergyConsumers()
     {
-        StringBuffer out = new StringBuffer ();
-        if (null != factory)
+        RESTfulResult ret = new RESTfulResult ();
+
+        Connection connection = getConnection (ret);
+        if (null != connection)
         {
-            Connection connection;
             try
             {
-                connection = factory.getConnection (remoteConfig ());
-                if (null != connection)
+                final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
+                spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
+                final MappedRecord input = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+                input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
+                input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
+                input.put ("query", "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0");
+                final Interaction interaction = connection.createInteraction ();
+                final Record output = interaction.execute (spec, input);
+                if ((null == output) || !output.getClass ().isAssignableFrom (CIMResultSet.class))
+                    throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
+                else
                 {
+                    CIMResultSet resultset = (CIMResultSet)output;
                     try
                     {
-                        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-                        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
-                        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-                        input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
-                        input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-                        input.put ("query", "select s.sup.sup.sup.sup.mRID mRID, s.sup.sup.sup.sup.aliasName aliasName, s.sup.sup.sup.sup.name name, s.sup.sup.sup.sup.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.sup.sup.sup.Location = p.Location and p.sequenceNumber = 0");
-                        final Interaction interaction = connection.createInteraction ();
-                        final Record output = interaction.execute (spec, input);
-                        if ((null == output) || !output.getClass ().isAssignableFrom (CIMResultSet.class))
-                            throw new ResourceException ("object of class " + output.getClass ().toGenericString () + " is not a ResultSet");
-                        else
+                        // form the response
+                        JsonArrayBuilder features = Json.createArrayBuilder ();
+                        while (resultset.next ())
                         {
-                            CIMResultSet resultset = (CIMResultSet)output;
-                            try
-                            {
-                                out.append ("{ \"type\": \"FeatureCollection\",\n\"features\": [");
-                                while (resultset.next ())
-                                {
-                                    out.append ("\n{ \"type\": \"Feature\",\n" +
-                                        "\"geometry\": {\"type\": \"Point\", \"coordinates\": [" + resultset.getDouble (5) + ", " + resultset.getDouble (6) + "]},\n" +
-                                        "\"properties\": {" +
-                                        "\"mRID\": \"" + resultset.getString (1) + "\", " +
-                                        "\"aliasName\": \"" + resultset.getString (2) + "\", " +
-                                        "\"name\": \"" + resultset.getString (3) + "\", " +
-                                        "\"description\": \"" + resultset.getString (4) + "\"" +
-                                            "}\n" +
-                                        "},");
-                                }
-                                out.deleteCharAt (out.length () - 1); // get rid of trailing comma
-                                out.append ("\n] }\n");
-                                resultset.close ();
-                            }
-                            catch (SQLException sqlexception)
-                            {
-                                out.append ("SQLException on ResultSet");
-                                out.append ("\n");
-                                StringWriter string = new StringWriter ();
-                                PrintWriter writer = new PrintWriter (string);
-                                sqlexception.printStackTrace (writer);
-                                out.append (string.toString ());
-                                writer.close ();
-                            }
+                            JsonObjectBuilder feature = Json.createObjectBuilder ();
+                            feature.add ("type", "Feature");
+                            JsonObjectBuilder geometry = Json.createObjectBuilder ();
+                            geometry.add ("type", "Point");
+                            JsonArrayBuilder coordinates = Json.createArrayBuilder ();
+                            coordinates.add (resultset.getDouble (5));
+                            coordinates.add (resultset.getDouble (6));
+                            geometry.add ("coordinates", coordinates);
+                            feature.add ("geometry", geometry);
+                            JsonObjectBuilder properties = Json.createObjectBuilder ();
+                            properties.add ("mRID", resultset.getString (1));
+                            properties.add ("aliasName", resultset.getString (2));
+                            properties.add ("name", resultset.getString (3));
+                            properties.add ("description", resultset.getString (4));
+                            feature.add ("properties", properties);
+                            features.add (feature);
                         }
-                        interaction.close ();
-                        connection.close ();
+                        resultset.close ();
+                        JsonObjectBuilder response = Json.createObjectBuilder ();
+                        response.add ("type", "FeatureCollection");
+                        response.add ("features", features);
+                        ret.setResult (response.build ());
                     }
-                    catch (ResourceException resourceexception)
+                    catch (SQLException sqlexception)
                     {
-                        out.append ("ResourceException on interaction");
-                        out.append ("\n");
                         StringWriter string = new StringWriter ();
+                        string.append ("SQLException on ResultSet\n");
+                        string.append ("SQLException on ResultSet");
                         PrintWriter writer = new PrintWriter (string);
-                        resourceexception.printStackTrace (writer);
-                        out.append (string.toString ());
+                        sqlexception.printStackTrace (writer);
+                        ret._Message = string.toString ();
                         writer.close ();
                     }
-                    finally
-                    {
-                        try
-                        {
-                            connection.close ();
-                        }
-                        catch (ResourceException resourceexception)
-                        {
-                            out.append ("ResourceException on close");
-                            out.append ("\n");
-                            StringWriter string = new StringWriter ();
-                            PrintWriter writer = new PrintWriter (string);
-                            resourceexception.printStackTrace (writer);
-                            out.append (string.toString ());
-                            writer.close ();
-                        }
-                    }
                 }
+                interaction.close ();
+                connection.close ();
             }
-            catch (ResourceException exception)
+            catch (ResourceException resourceexception)
             {
-                out.append ("ResourceException");
-                out.append ("\n");
                 StringWriter string = new StringWriter ();
+                string.append ("ResourceException on interaction\n");
                 PrintWriter writer = new PrintWriter (string);
-                exception.printStackTrace (writer);
-                out.append (string.toString ());
+                resourceexception.printStackTrace (writer);
+                ret._Message = string.toString ();
                 writer.close ();
             }
+            finally
+            {
+                try
+                {
+                    connection.close ();
+                }
+                catch (ResourceException resourceexception)
+                {
+                    StringWriter string = new StringWriter ();
+                    string.append ("ResourceException on close\n");
+                    PrintWriter writer = new PrintWriter (string);
+                    resourceexception.printStackTrace (writer);
+                    ret._Message = string.toString ();
+                    writer.close ();
+                }
+            }
         }
-        return (out.toString ());
+
+        return (ret.toString ());
     }
 }

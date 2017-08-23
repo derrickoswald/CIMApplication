@@ -543,6 +543,7 @@ define
         return (
             {
                 init_map: init_map,
+                do_connect: do_connect,
                 connect: connect,
                 gridlab: gridlab,
                 select: select,

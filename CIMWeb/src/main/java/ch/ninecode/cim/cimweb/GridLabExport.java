@@ -5,6 +5,8 @@ import java.io.StringWriter;
 
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -27,8 +29,13 @@ import ch.ninecode.gl.Line;
 @Path("/GridLabExport/{file}")
 public class GridLabExport
 {
-    @Resource (lookup="openejb:Resource/CIMConnector.rar")
-    CIMConnectionFactory factory;
+    // doesn't fucking work: @Resource (name = "CIMConnector.rar")
+    CIMConnectionFactory factory = null;
+
+    public GridLabExport () throws NamingException
+    {
+        factory = (CIMConnectionFactory) new InitialContext ().lookup("java:openejb/Resource/CIMConnector.rar");
+    }
 
     /**
      * Build a connection specification used by all the tests.

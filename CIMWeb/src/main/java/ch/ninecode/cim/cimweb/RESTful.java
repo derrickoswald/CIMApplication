@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.annotation.Resource;
 import javax.json.Json;
 import javax.json.JsonException;
 import javax.json.JsonObject;
@@ -33,13 +32,26 @@ public class RESTful
     protected static final String OK = "OK";
     protected static final String FAIL = "FAIL";
 
-    @Resource
-    (
-        description = "Connection factory for Spark connection using CIMConnector",
-        lookup = "openejb:Resource/CIMConnector.rar", // "java:app/eis/SparkConnectionFactory"
-        authenticationType = Resource.AuthenticationType.APPLICATION
-    )
+//import javax.annotation.Resource;
+//    @Resource
+//    (
+//        description = "Connection factory for Spark connection using CIMConnector",
+//        name = "CIMConnector.rar", // "java:app/eis/SparkConnectionFactory"
+//        authenticationType = Resource.AuthenticationType.APPLICATION
+//    )
     protected CIMConnectionFactory _ConnectionFactory = null;
+
+    public RESTful ()
+    {
+        try
+        {
+            _ConnectionFactory = (CIMConnectionFactory) new InitialContext ().lookup("java:openejb/Resource/CIMConnector.rar");
+        }
+        catch (NamingException ne)
+        {
+            System.out.println ("fuck this JNDI shit");
+        }
+    }
 
     public class RESTfulResult
     {
