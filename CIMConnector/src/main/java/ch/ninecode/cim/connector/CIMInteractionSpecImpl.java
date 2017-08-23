@@ -49,7 +49,7 @@ public class CIMInteractionSpecImpl implements CIMInteractionSpec, Serializable
      */
     public void setFunctionName (String function)
     {
-        String oldFunctionName = function;
+        String oldFunctionName = _Function;
         _Function = function;
         firePropertyChange ("FunctionName", oldFunctionName, function);
     }

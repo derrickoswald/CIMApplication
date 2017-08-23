@@ -21,8 +21,7 @@ import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
-import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SparkSession;
 
 import ch.ninecode.cim.*;
 import ch.ninecode.model.*;
@@ -47,8 +46,7 @@ public class CIMManagedConnection implements ManagedConnection
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
     protected CIMConnection _Connection;
-    protected SparkContext _SparkContext;
-    protected SQLContext _SqlContext;
+    protected SparkSession _SparkSession;
 
     /**
      * Constructor for CIMManagedConnection
@@ -63,10 +61,9 @@ public class CIMManagedConnection implements ManagedConnection
 
     public void close ()
     {
-        if (null != _SparkContext && !_SparkContext.isStopped ())
-            _SparkContext.stop ();
-        _SparkContext = null;
-        _SqlContext = null;
+        if (null != _SparkSession)
+            _SparkSession.stop ();
+        _SparkSession = null;
         Enumeration<ConnectionEventListener> list = _Listeners.elements ();
         ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
         event.setConnectionHandle (_Connection);
@@ -76,7 +73,7 @@ public class CIMManagedConnection implements ManagedConnection
 
     /**
      * Get the name of the CIMReader jar file.
-     * @see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+     * See <a href="https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file">How to get the path of a running jar</a>
      * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
      */
     protected String CIMReaderJarPath ()
@@ -122,7 +119,7 @@ public class CIMManagedConnection implements ManagedConnection
         else
             _RequestInfo = (CIMConnectionRequestInfo)info;
         if (null != logger)
-            logger.println ("CIMConnectionRequestInfo = " + info.toString ());
+            logger.println ("CIMConnectionRequestInfo = " + _RequestInfo.toString ());
 
         // create the configuration
         SparkConf configuration = new SparkConf (false);
@@ -132,7 +129,7 @@ public class CIMManagedConnection implements ManagedConnection
         configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
         // set up the spark master
-        if ("" != _RequestInfo.getMaster ())
+        if (!_RequestInfo.getMaster ().equals (""))
             configuration.setMaster (_RequestInfo.getMaster ());
         else
             // run Spark locally with as many worker threads as logical cores on the machine
@@ -167,8 +164,9 @@ public class CIMManagedConnection implements ManagedConnection
         // this is really Byzantine, all I need is the apply() method,
         // but all the rest are required for some reason,
         // ToDo: will have to fix this soon
-        scala.Function1<CIMSubsetter<?>, BoxedUnit> fn = new scala.Function1<CIMSubsetter<?>, BoxedUnit> ()
+        Function1<CIMSubsetter<?>, BoxedUnit> fn = new Function1<CIMSubsetter<?>, BoxedUnit> ()
         {
+            @Override
             public BoxedUnit apply (CIMSubsetter<?> sub)
             {
                 Class<?>[] array = {sub.runtime_class ()};
@@ -299,28 +297,24 @@ public class CIMManagedConnection implements ManagedConnection
             public void apply$mcVD$sp (double arg0)
             {
                 // TODO Auto-generated method stub
-
             }
 
             @Override
             public void apply$mcVF$sp (float arg0)
             {
                 // TODO Auto-generated method stub
-
             }
 
             @Override
             public void apply$mcVI$sp (int arg0)
             {
                 // TODO Auto-generated method stub
-
             }
 
             @Override
             public void apply$mcVJ$sp (long arg0)
             {
                 // TODO Auto-generated method stub
-
             }
 
             @Override
@@ -357,7 +351,6 @@ public class CIMManagedConnection implements ManagedConnection
                 // TODO Auto-generated method stub
                 return null;
             }
-
         };
         CHIM.apply_to_all_classes (fn);
 
@@ -375,14 +368,11 @@ public class CIMManagedConnection implements ManagedConnection
             configuration.registerKryoClasses (classes);
         }
 
-        // make a Spark context and SQL context
-        _SparkContext = SparkContext.getOrCreate (configuration);
-        _SparkContext.setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        // make a Spark session
+        _SparkSession = SparkSession.builder ().config (configuration).getOrCreate ();
+        _SparkSession.sparkContext ().setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         if (null != logger)
-            logger.println ("SparkContext = " + _SparkContext.toString ());
-        _SqlContext = SQLContext.getOrCreate (_SparkContext);
-        if (null != logger)
-            logger.println ("SQLContext = " + _SqlContext.toString ());
+            logger.println ("SparkSession = " + _SparkSession.toString ());
     }
 
     /**

@@ -10,14 +10,18 @@ import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;
 
+/**
+ * List the files in HDFS.
+ */
 @Stateless
-@Path("/list")
+@Path("list")
 public class ListFiles extends RESTful
 {
     static protected String LOGGER_NAME = ListFiles.class.getName ();
@@ -26,6 +30,14 @@ public class ListFiles extends RESTful
     @GET
     @Produces ({"application/json"})
     public String listFiles ()
+    {
+        return (listFiles ("/"));
+    }
+
+    @SuppressWarnings ("unchecked")
+    @GET @Path("{path}")
+    @Produces ({"application/json"})
+    public String listFiles (@PathParam("path") String path)
     {
         RESTfulResult ret = new RESTfulResult ();
 
@@ -36,10 +48,13 @@ public class ListFiles extends RESTful
             {
                 final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
                 spec.setFunctionName (CIMInteractionSpec.LIST_FILES);
+                final MappedRecord input = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+                input.setRecordShortDescription ("the directory path to list");
+                input.put ("path", path);
                 final MappedRecord output = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
                 output.setRecordShortDescription ("the results of the list operation");
                 final Interaction interaction = connection.createInteraction ();
-                if (interaction.execute (spec, null, output))
+                if (interaction.execute (spec, input, output))
                 {
                     if (!output.isEmpty ())
                     {

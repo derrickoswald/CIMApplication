@@ -81,10 +81,14 @@ define
 
         /**
          * Make a select option list of the files.
-         * @param files The array of files on HDFS, each object has a name and details.
+         * @param response The response with the array of files on HDFS, each object has a name and details.
          */
-        function make_file_list (files)
+        function make_file_list (response)
         {
+            // {
+            //    filesystem: "hdfs://server:8020",
+            //    root: "hdfs://server:8020/",
+            //    files:
             //    [
             //      {
             //        "path":"KS_Leistungen.csv",
@@ -93,14 +97,16 @@ define
             //        "access_time":1479825255110
             //      },
             //      {
-            //        "path":"NIS_CIM_Export_sias_current_20160816_Kiental_V9",
+            //        "path":"NIS_CIM_Export_sias_current_20160816_Kiental_V9.rdf",
             //        "length":14432564,
             //        "modification_time":1479825253185,
             //        "access_time":1479825252379
             //      }
             //    ]
+            // }
             var options = ""
-            files.forEach (function (s) { options += "<option value='" + s.path + "'>" + s.path + " " + s.length + "</option>\n" } );
+            var root = response.root;
+            response.files.forEach (function (s) { options += "<option value='" + root + s.path + "'>" + s.path + " " + s.length + "</option>\n" } );
             document.getElementById ("cim_file").innerHTML = options;
             document.getElementById ("cim_file2").innerHTML = options;
         }
@@ -236,7 +242,7 @@ define
                         if (resp.status != "OK")
                             alert (resp.message);
                         else
-                            make_file_list (resp.result.files);
+                            make_file_list (resp.result);
                     }
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
@@ -254,14 +260,9 @@ define
         function connect (event)
         {
             var file;
-            var transformer;
-            var url;
-            var xmlhttp;
 
             file = document.getElementById ("cim_file").value;
-            if ("" == file)
-                do_connect (event);
-            else
+            if ("" != file)
                 do_short_circuit (event);
         }
 

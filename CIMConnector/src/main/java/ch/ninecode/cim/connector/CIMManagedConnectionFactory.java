@@ -118,7 +118,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         while (iterator.hasNext ())
         {
             CIMManagedConnection connection = (CIMManagedConnection)iterator.next ();
-            if (null == connection._SparkContext) // always match a closed connection
+            if (null == connection._SparkSession) // always match a closed connection
             {
                 ret = connection;
                 break;
@@ -131,7 +131,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
                         break;
                     }
         }
-        if ((null != ret) && (null == ret._SparkContext)) // if it was closed, reopen it
+        if ((null != ret) && (null == ret._SparkSession)) // if it was closed, reopen it
             ret.connect (subject, info);
 
         return (ret);

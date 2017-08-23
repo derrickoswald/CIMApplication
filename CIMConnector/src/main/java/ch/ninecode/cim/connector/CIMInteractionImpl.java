@@ -1,7 +1,6 @@
 package ch.ninecode.cim.connector;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.io.File;
@@ -24,10 +23,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.spark.SparkContext;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
 
 public class CIMInteractionImpl implements Interaction
 {
@@ -47,7 +45,9 @@ public class CIMInteractionImpl implements Interaction
     {
 
         super ();
-        if ((null == connection) || (!connection.getClass ().isAssignableFrom (CIMConnection.class)))
+        if (null == connection)
+            throw new ResourceException ("null cannot be used as a connection object");
+        else if (!connection.getClass ().isAssignableFrom (CIMConnection.class))
             throw new ResourceException ("object of class " + connection.getClass ().toGenericString () + " cannot be used as a connection object");
         else
             _Connection = (CIMConnection)connection;
@@ -71,17 +71,14 @@ public class CIMInteractionImpl implements Interaction
         return (_Connection);
     }
 
-    protected Dataset<Row> readFile (SQLContext context, String filename) throws ResourceException
+    protected Dataset<Row> readFile (SparkSession session, String filename) throws ResourceException
     {
         String[] files = filename.split (",");
         HashMap<String,String> options = new HashMap<> ();
         options.put ("path", filename);
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "true");
-        options.put ("ch.ninecode.cim.do_join", "true");
-        Dataset<Row> element = context.read ().format ("ch.ninecode.cim").options (options).load (files);
 
-        return (element);
+        return (session.read ().format ("ch.ninecode.cim").options (options).load (files));
     }
 
     /**
@@ -107,6 +104,8 @@ public class CIMInteractionImpl implements Interaction
                         {
                             ((CIMMappedRecord) output).clear ();
                             String directory = "/";
+                            if ((null != input) && (null != ((CIMMappedRecord)input).get ("path")))
+                                directory = ((CIMMappedRecord)input).get ("path").toString ();
                             try
                             {
                                 // build a file system configuration, including core-site.xml
@@ -135,13 +134,11 @@ public class CIMInteractionImpl implements Interaction
                                 response.add ("root", root.toString ());
 // debug:
                                 JsonObjectBuilder configuration = Json.createObjectBuilder ();
-                                Iterator<Entry<String, String>> i = hdfs_configuration.iterator ();
-                                while (i.hasNext())
+                                for (Entry<String, String> pair : hdfs_configuration)
                                 {
-                                    Entry<String, String> pair = i.next ();
-                                    String key = pair.getKey ();
-                                    String value = pair.getValue ();
-                                    configuration.add (key, value);
+                                    String key = pair.getKey();
+                                    String value = pair.getValue();
+                                    configuration.add(key, value);
                                 }
                                 response.add ("configuration", configuration);
 
@@ -197,9 +194,9 @@ public class CIMInteractionImpl implements Interaction
                                 try
                                 {
                                     String filename = (String)((CIMMappedRecord) input).get ("filename");
-                                    SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
-                                    long num = readFile (sql, filename).count ();
-                                    ((CIMMappedRecord) output).put ("count", new Long (num));
+                                    SparkSession session = ((CIMConnection)getConnection ())._ManagedConnection._SparkSession;
+                                    long num = readFile (session, filename).count ();
+                                    ((CIMMappedRecord) output).put ("count", num);
                                     ret = true;
                                 }
                                 catch (Exception exception)
@@ -224,21 +221,21 @@ public class CIMInteractionImpl implements Interaction
                                     String filename = record.get ("filename").toString ();
                                     String cls = record.get ("class").toString ();
                                     String method = record.get ("method").toString ();
-                                    SparkContext sc = connection._ManagedConnection._SparkContext;
-                                    SQLContext sql = connection._ManagedConnection._SqlContext;
+                                    SparkSession session = connection._ManagedConnection._SparkSession;
                                     Object jars = record.get ("jars");
                                     if (null != jars)
                                         for (String jar: jars.toString ().split (","))
-                                            if (!sc.jars().contains (jar))
-                                                sc.addJar (jar);
-                                    String args = "";
-                                    for (Object key: record.keySet ())
-                                        if ((key != "filename") && (key != "class") && (key != "method"))
-                                            args +=
-                                                ((0 == args.length ()) ? "" : ",")
-                                                + key.toString ()
-                                                + "="
-                                                + record.get (key).toString ();
+                                            if (!session.sparkContext ().jars().contains (jar))
+                                                session.sparkContext ().addJar (jar);
+                                    StringBuilder args = new StringBuilder();
+                                    for (Object key : record.keySet ())
+                                        if ((key != "filename") && (key != "class") && (key != "method") && (key != "jars"))
+                                        {
+                                            args.append ((0 == args.length ()) ? "" : ",");
+                                            args.append (key.toString ());
+                                            args.append ("=");
+                                            args.append (record.get (key).toString ());
+                                        }
                                     try
                                     {
                                         Class<?> c = Class.forName (cls);
@@ -252,9 +249,9 @@ public class CIMInteractionImpl implements Interaction
                                             {
                                                 try
                                                 {
-                                                    readFile (sql, filename);
+                                                    readFile (session, filename);
                                                     _method.setAccessible (true);
-                                                    Object o = _method.invoke (_obj, sc, sql, args);
+                                                    Object o = _method.invoke (_obj, session, args.toString());
                                                     String result = (String)o;
                                                     ((CIMMappedRecord) output).put ("result", result);
                                                     ret = true;
@@ -271,15 +268,6 @@ public class CIMInteractionImpl implements Interaction
                                     {
                                         throw new ResourceException ("problem", cnfe);
                                     }
-                                    catch (InstantiationException ie)
-                                    {
-                                        throw new ResourceException ("problem", ie);
-                                    }
-                                    catch (IllegalAccessException iae)
-                                    {
-                                        throw new ResourceException ("problem", iae);
-                                    }
-
                                 }
                                 catch (Exception exception)
                                 {
@@ -326,9 +314,10 @@ public class CIMInteractionImpl implements Interaction
                                 CIMMappedRecord record = (CIMMappedRecord)input;
                                 String filename = record.get ("filename").toString ();
                                 String query = record.get ("query").toString ();
-                                SQLContext sql = ((CIMConnection)getConnection ())._ManagedConnection._SqlContext;
-                                readFile (sql, filename);
-                                Dataset<Row> result = sql.sql (query);
+                                SparkSession session = ((CIMConnection)getConnection ())._ManagedConnection._SparkSession;
+                                Dataset<Row> elements = readFile (session, filename);
+                                elements.count ();
+                                Dataset<Row> result = session.sqlContext ().sql (query);
                                 ret = new CIMResultSet (result.schema (), result.collectAsList ());
                             }
                             catch (Exception exception)
@@ -347,26 +336,26 @@ public class CIMInteractionImpl implements Interaction
                                 String filename = record.get ("filename").toString ();
                                 String cls = record.get ("class").toString ();
                                 String method = record.get ("method").toString ();
-                                SparkContext sc = connection._ManagedConnection._SparkContext;
-                                SQLContext sql = connection._ManagedConnection._SqlContext;
+                                SparkSession session = connection._ManagedConnection._SparkSession;
                                 Object jars = record.get ("jars");
                                 if (null != jars)
                                     for (String jar: jars.toString ().split (","))
-                                        if (!sc.jars().contains (jar))
-                                            sc.addJar (jar);
+                                        if (!session.sparkContext ().jars().contains (jar))
+                                            session.sparkContext ().addJar (jar);
 //                                ToDo: don't know the mapping from Java world to Scala world
 //                                HashMap<String,String> map = new HashMap<String,String> ();
 //                                for (Object key: record.keySet ())
 //                                    if ((key != "filename") && (key != "class") && (key != "method"))
 //                                        map.put (key.toString (), (String)record.get (key));
-                                String args = "";
+                                StringBuilder args = new StringBuilder ();
                                 for (Object key: record.keySet ())
-                                    if ((key != "filename") && (key != "class") && (key != "method"))
-                                        args +=
-                                            ((0 == args.length ()) ? "" : ",")
-                                            + key.toString ()
-                                            + "="
-                                            + record.get (key).toString ();
+                                    if ((key != "filename") && (key != "class") && (key != "method") && (key != "jars"))
+                                    {
+                                        args.append ((0 == args.length ()) ? "" : ",");
+                                        args.append (key.toString ());
+                                        args.append ("=");
+                                        args.append (record.get (key).toString ());
+                                    }
                                 try
                                 {
                                     Class<?> c = Class.forName (cls);
@@ -381,15 +370,15 @@ public class CIMInteractionImpl implements Interaction
                                             try
                                             {
                                                 System.out.println ("readFile " + filename);
-                                                readFile (sql, filename);
+                                                readFile (session, filename);
                                                 _method.setAccessible (true);
                                                 System.out.println (method + " (sc, sql, \"" + args + "\")");
-                                                Object o = _method.invoke (_obj, sc, sql, args);
+                                                Object o = _method.invoke (_obj, session, args.toString ());
                                                 System.out.println ("got a result");
                                                 @SuppressWarnings ("unchecked")
                                                 Dataset<Row> result = (Dataset<Row>)o;
                                                 System.out.println ("it's a DataFrame with " + result.count () + " rows");
-                                                ret = new CIMResultSet (result.schema (), result.collectAsList ());;
+                                                ret = new CIMResultSet (result.schema (), result.collectAsList ());
                                             }
                                             catch (InvocationTargetException ite)
                                             {
@@ -403,15 +392,6 @@ public class CIMInteractionImpl implements Interaction
                                 {
                                     throw new ResourceException ("problem", cnfe);
                                 }
-                                catch (InstantiationException ie)
-                                {
-                                    throw new ResourceException ("problem", ie);
-                                }
-                                catch (IllegalAccessException iae)
-                                {
-                                    throw new ResourceException ("problem", iae);
-                                }
-
                             }
                             catch (Exception exception)
                             {

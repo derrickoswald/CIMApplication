@@ -2,8 +2,8 @@
 <project
     xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>ch.ninecode.cim</groupId>
@@ -11,62 +11,62 @@
         <version>2.2.9</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-	<artifactId>CIMConnector</artifactId>
-	<packaging>rar</packaging>
+    <artifactId>CIMConnector</artifactId>
+    <packaging>rar</packaging>
 
-	<name>CIM Resource Adapter (RAR)</name>
+    <name>CIM Resource Adapter (RAR)</name>
 
-	<properties>
+    <properties>
 
-		<!-- plugins versions -->
-		<version.plugin.compiler>3.2</version.plugin.compiler>
-		<version.plugin.jar>3.0.0</version.plugin.jar>
-		<version.plugin.rar>2.4</version.plugin.rar>
+        <!-- plugins versions -->
+        <version.plugin.compiler>3.6.2</version.plugin.compiler>
+        <version.plugin.jar>3.0.2</version.plugin.jar>
+        <version.plugin.rar>2.4</version.plugin.rar>
 
-		<!-- test dependencies versions -->
-		<version.dependency.tomee>7.0.0</version.dependency.tomee>
-		<version.dependency.shrinkwrap>2.2.2</version.dependency.shrinkwrap>
-	</properties>
+        <!-- test dependencies versions -->
+        <version.dependency.tomee>7.0.3</version.dependency.tomee>
+        <version.dependency.shrinkwrap>2.2.6</version.dependency.shrinkwrap>
+    </properties>
 
-	<build>
-		<defaultGoal>install</defaultGoal>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>${version.plugin.compiler}</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<version>${version.plugin.jar}</version>
-				<configuration>
-					<classifier>lib</classifier>
-					<archive>
-						<addMavenDescriptor>false</addMavenDescriptor>
-					</archive>
-				</configuration>
-				<executions>
-					<execution>
+    <build>
+        <defaultGoal>install</defaultGoal>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.plugin.compiler}</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${version.plugin.jar}</version>
+                <configuration>
+                    <classifier>lib</classifier>
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
                         <phase>prepare-package</phase>
-						<id>jar-package</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-rar-plugin</artifactId>
-				<version>${version.plugin.rar}</version>
-				<configuration>
-					<finalName>${project.build.finalName}</finalName>
-					<rarSourceDirectory>${basedir}/target/classes</rarSourceDirectory>
+                        <id>jar-package</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-rar-plugin</artifactId>
+                <version>${version.plugin.rar}</version>
+                <configuration>
+                    <finalName>${project.build.finalName}</finalName>
+                    <rarSourceDirectory>${basedir}/target/classes</rarSourceDirectory>
                     <includeJar>true</includeJar>
                     <rarResources>
                         <rarResource>
@@ -78,17 +78,28 @@
                     <archive>
                         <addMavenDescriptor>false</addMavenDescriptor>
                     </archive>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
-	<dependencies>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.20</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <tomee.embedded.httpPort>-1</tomee.embedded.httpPort>
+                        <tomee.embedded.stopPort>-1</tomee.embedded.stopPort>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <dependencies>
 
-		<dependency>
-			<groupId>javax</groupId>
-			<artifactId>javaee-api</artifactId>
-			<scope>provided</scope>
-		</dependency>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
@@ -102,6 +113,18 @@
             <artifactId>spark-core_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>2.7.3</version>
         </dependency>
 
         <dependency>
@@ -118,28 +141,28 @@
             <scope>compile</scope>
         </dependency>
 
-		<!-- Test Dependencies -->
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>${version.dependency.junit}</version>
-			<scope>test</scope>
-		</dependency>
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.dependency.junit}</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.apache.tomee</groupId>
-			<artifactId>arquillian-tomee-embedded</artifactId>
-			<version>${version.dependency.tomee}</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.apache.tomee</groupId>
+            <artifactId>arquillian-tomee-embedded</artifactId>
+            <version>${version.dependency.tomee}</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.jboss.shrinkwrap.resolver</groupId>
-			<artifactId>shrinkwrap-resolver-impl-maven</artifactId>
-			<version>${version.dependency.shrinkwrap}</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.jboss.shrinkwrap.resolver</groupId>
+            <artifactId>shrinkwrap-resolver-impl-maven</artifactId>
+            <version>${version.dependency.shrinkwrap}</version>
+            <scope>test</scope>
+        </dependency>
 
-	</dependencies>
+    </dependencies>
 
 </project>

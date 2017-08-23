@@ -94,6 +94,8 @@ public class ShortCircuitCalculation
                         if (decodedPath.endsWith (".jar"))
                             input.put ("jars", decodedPath);
                         input.put ("class", "ch.ninecode.sc.ShortCircuit");
+                        // this will never work
+                        // ToDo: unified calling method
                         if (null == transformer)
                             input.put ("method", "preparation");
                         else

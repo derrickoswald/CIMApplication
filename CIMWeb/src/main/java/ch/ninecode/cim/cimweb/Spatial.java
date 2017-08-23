@@ -75,6 +75,8 @@ public class Spatial
 
                         // set up the method call details for the CIMConnector
                         SpatialOperations ops = new SpatialOperations ();
+                        // this will never work
+                        // ToDo: unified calling method
                         input.put ("method", method);
                         input.put ("class", ops.getClass ().getName ());
                         String jar = factory.JarPath (ops);

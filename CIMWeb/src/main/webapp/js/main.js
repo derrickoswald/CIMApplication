@@ -15,6 +15,8 @@ requirejs
         document.getElementById ("export").onclick = cimapp.gridlab;
         document.getElementById ("unhighlight").onclick = cimapp.unhighlight;
 
+        // populate the file list
+        cimapp.do_connect ();
         cimapp.init_map ();
     }
 );
