@@ -2,12 +2,13 @@ package ch.ninecode.sp
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
-
-import scala.reflect.runtime.universe
-import scala.tools.nsc.io.Jar
-import scala.util.Random
 import java.util.HashMap
 import java.util.Map
+
+import scala.tools.nsc.io.Jar
+import scala.reflect.ClassTag
+import scala.reflect.classTag
+import scala.util.Random
 
 import org.apache.spark.sql.Row
 import org.apache.spark.SparkConf
@@ -22,31 +23,30 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-
 case class PositionedEnergyConsumer
 (
     override val sup: ConductingEquipment,
-    val customerCount: Int,
-    val grounded: Boolean,
-    val p: Double,
-    val pfixed: Double,
-    val pfixedPct: Double,
-    val phaseConnection: String,
-    val q: Double,
-    val qfixed: Double,
-    val qfixedPct: Double,
-    val LoadDynamics: String,
-    val LoadResponse: String,
-    val PowerCutZone: String,
-    val xPosition: String,
-    val yPosition: String
+    customerCount: Int,
+    grounded: Boolean,
+    p: Double,
+    pfixed: Double,
+    pfixedPct: Double,
+    phaseConnection: String,
+    q: Double,
+    qfixed: Double,
+    qfixedPct: Double,
+    LoadDynamics: String,
+    LoadResponse: String,
+    PowerCutZone: String,
+    xPosition: String,
+    yPosition: String
 )
 extends
     Element
 {
     def this () = { this (null, 0, false, 0.0, 0.0, 0.0, null, 0.0, 0.0, 0.0, null, null, null, "", "") }
     def ConductingEquipment: ConductingEquipment = sup.asInstanceOf[ConductingEquipment]
-    override def copy (): Row = { return (clone ().asInstanceOf[PositionedEnergyConsumer]); }
+    override def copy (): Row = { clone ().asInstanceOf[PositionedEnergyConsumer] }
     override def get (i: Int): Object =
     {
         if (i < productArity)
@@ -58,37 +58,41 @@ extends
 }
 
 case class HouseService (
-    val mRID: String,
-    val name: String,
-    val aliasName: String,
-    val xPosition: String,
-    val yPosition: String,
-    val PSRType: String,
-    val BaseVoltage: String,
-    val EquipmentContainer: String,
-    val phaseConnection: String,
-    val ao_name: String,
-    val ao_aliasName: String,
-    val ao_description: String,
-    val ao_mainAddress: String,
-    val ao_secondaryAddress: String)
+    mRID: String,
+    name: String,
+    aliasName: String,
+    xPosition: String,
+    yPosition: String,
+    PSRType: String,
+    BaseVoltage: String,
+    EquipmentContainer: String,
+    phaseConnection: String,
+    ao_name: String,
+    ao_aliasName: String,
+    ao_description: String,
+    ao_mainAddress: String,
+    ao_secondaryAddress: String)
 
 class SpatialOperations extends Serializable
 {
-    var _StorageLevel = StorageLevel.MEMORY_ONLY
+    var _StorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY
 
-    def get (name: String, context: SparkContext): RDD[Element] =
+    def get[T : ClassTag](context: SparkContext): RDD[T] =
     {
-        val rdds = context.getPersistentRDDs
-        for (key <- rdds.keys)
-        {
-            val rdd = rdds (key)
-            if (rdd.name == name)
-                return (rdd.asInstanceOf[RDD[Element]])
-        }
-        return (null)
-    }
 
+        val classname = classTag[T].runtimeClass.getName
+        val name = classname.substring (classname.lastIndexOf (".") + 1)
+        val rdds: collection.Map[Int, RDD[_]] = context.getPersistentRDDs
+        rdds.find (_._2.name == name) match
+        {
+            case Some ((_: Int, rdd: RDD[_])) =>
+                rdd.asInstanceOf[RDD[T]]
+            case Some (_) =>
+                null
+            case None =>
+                null
+        }
+    }
 
 //        <cim:EnergyConsumer rdf:ID="HAS3047">
 //                <cim:IdentifiedObject.name>HAS3047</cim:IdentifiedObject.name>
@@ -107,7 +111,7 @@ class SpatialOperations extends Serializable
 //                <cim:Location.type>geographic</cim:Location.type>
 //        </cim:ServiceLocation>
 
-    def position_consumers (a: Tuple2[EnergyConsumer, PositionPoint]): PositionedEnergyConsumer =
+    def position_consumers (a: (EnergyConsumer, PositionPoint)): PositionedEnergyConsumer =
     {
         PositionedEnergyConsumer (
             a._1.ConductingEquipment,
@@ -127,49 +131,43 @@ class SpatialOperations extends Serializable
             a._2.yPosition)
     }
 
-    def shrink (a: Tuple2[PositionedEnergyConsumer, Option[ServiceLocation]]): HouseService =
+    def shrink (a: (PositionedEnergyConsumer, Option[ServiceLocation])): HouseService =
     {
-        return (
-            a._2 match
-            {
-                case (Some (x: ServiceLocation)) ⇒
-                {
-                    HouseService (
-                        x.id,
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
-                        a._1.xPosition,
-                        a._1.yPosition,
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.PSRType,
-                        a._1.ConductingEquipment.BaseVoltage,
-                        a._1.ConductingEquipment.Equipment.EquipmentContainer,
-                        a._1.phaseConnection,
-                        x.WorkLocation.Location.IdentifiedObject.name,
-                        x.WorkLocation.Location.IdentifiedObject.aliasName,
-                        x.WorkLocation.Location.IdentifiedObject.description,
-                        x.WorkLocation.Location.mainAddress,
-                        x.WorkLocation.Location.secondaryAddress)
-                }
-                case (None) ⇒
-                {
-                    HouseService (
-                        "",
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
-                        a._1.xPosition,
-                        a._1.yPosition,
-                        a._1.ConductingEquipment.Equipment.PowerSystemResource.PSRType,
-                        a._1.ConductingEquipment.BaseVoltage,
-                        a._1.ConductingEquipment.Equipment.EquipmentContainer,
-                        a._1.phaseConnection,
-                        "",
-                        "",
-                        "",
-                        "",
-                        "")
-                }
-            }
-        )
+        a._2 match
+        {
+            case (Some (x: ServiceLocation)) ⇒
+                HouseService (
+                    x.id,
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
+                    a._1.xPosition,
+                    a._1.yPosition,
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.PSRType,
+                    a._1.ConductingEquipment.BaseVoltage,
+                    a._1.ConductingEquipment.Equipment.EquipmentContainer,
+                    a._1.phaseConnection,
+                    x.WorkLocation.Location.IdentifiedObject.name,
+                    x.WorkLocation.Location.IdentifiedObject.aliasName,
+                    x.WorkLocation.Location.IdentifiedObject.description,
+                    x.WorkLocation.Location.mainAddress,
+                    x.WorkLocation.Location.secondaryAddress)
+            case (None) ⇒
+                HouseService (
+                    "",
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name,
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName,
+                    a._1.xPosition,
+                    a._1.yPosition,
+                    a._1.ConductingEquipment.Equipment.PowerSystemResource.PSRType,
+                    a._1.ConductingEquipment.BaseVoltage,
+                    a._1.ConductingEquipment.Equipment.EquipmentContainer,
+                    a._1.phaseConnection,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "")
+        }
     }
 
     def nearest (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame =
@@ -199,18 +197,18 @@ class SpatialOperations extends Serializable
         // maybe use PowerSysemResource RDD (which has the Location), and then join to Elements via mRID, and then filter elements by class name
 
         // get all house connections (energy consumers with a base voltage of 400 volts, eliminates the 230 volt public lighting)
-        val consumers = get ("EnergyConsumer", sc).asInstanceOf[RDD[EnergyConsumer]].filter (_.ConductingEquipment.BaseVoltage == "BaseVoltage_400")
+        val consumers = get[EnergyConsumer] (sc).filter (_.ConductingEquipment.BaseVoltage == "BaseVoltage_400")
 
         // get the points
-        val points = get ("PositionPoint", sc).asInstanceOf[RDD[PositionPoint]]
+        val points = get[PositionPoint] (sc)
 
         // attach the locations to the house connections to get RDD[PositionedEnergyConsumer]
         val located_consumers = consumers.keyBy (_.ConductingEquipment.Equipment.PowerSystemResource.Location).join (points.keyBy (_.Location)).values.map (position_consumers)
 
         // try and join the EnergyConsumer to a ServicePoint
-        val attributes = get ("UserAttribute", sc).asInstanceOf[RDD[UserAttribute]]
-        val locations = get ("ServiceLocation", sc).asInstanceOf[RDD[ServiceLocation]]
-        def pull (a: Tuple2[UserAttribute, ServiceLocation]): Tuple2[String, ServiceLocation] =
+        val attributes = get[UserAttribute] (sc)
+        val locations = get[ServiceLocation] (sc)
+        def pull (a: (UserAttribute, ServiceLocation)): (String, ServiceLocation) =
         {
             (a._1.value, a._2)
         }
@@ -219,16 +217,12 @@ class SpatialOperations extends Serializable
 
         def ordering (item: HouseService) =
         {
-            val dx = lon - item.xPosition.toDouble;
-            val dy = lat - item.yPosition.toDouble;
-            dx * dx + dy * dy;
+            val dx = lon - item.xPosition.toDouble
+            val dy = lat - item.yPosition.toDouble
+            dx * dx + dy * dy
         }
 
-        val closest = all.sortBy (ordering) // ToDo: takeOrdered in one step?
-        val df = sqlContext.createDataFrame (closest.take (n))
-        val schema = df.schema
-
-        return (df)
+        sqlContext.createDataFrame (all.sortBy (ordering).take (n))
     }
 }
 
@@ -237,7 +231,7 @@ object SpatialOperations
     def jarForObject (obj: Object): String =
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
             ret = URLDecoder.decode (ret, "UTF-8")
@@ -256,7 +250,7 @@ object SpatialOperations
             ret = name
         }
 
-        return (ret)
+        ret
     }
 
     def main (args: Array[String])
@@ -272,7 +266,6 @@ object SpatialOperations
         val configuration = new SparkConf (false)
         configuration.setAppName ("ShortCircuit")
         configuration.setMaster ("spark://sandbox:7077")
-        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
         // get the necessary jar files to send to the cluster
@@ -295,9 +288,7 @@ object SpatialOperations
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "false");
-        options.put ("ch.ninecode.cim.do_join", "false");
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
         val count = elements.count
 
@@ -306,15 +297,14 @@ object SpatialOperations
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 //        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
         val results = spatial.nearest (session.sparkContext, session.sqlContext, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
-        val s = results.schema
         val stuff = results.collect ()
 
         println ("" + count + " elements")
         println ("read : " + (read - start) / 1e9 + " seconds")
         println ("execute: " + (System.nanoTime () - read) / 1e9 + " seconds")
 
-        for (i <- 0 until stuff.length)
+        for (i <- stuff.indices)
             println (stuff(i))
-        println ();
+        println ()
     }
 }

@@ -4,8 +4,6 @@ import java.util.HashMap
 import java.util.Map
 
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
@@ -13,13 +11,12 @@ import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode._
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
 class SpatialSuite extends FunSuite
 {
-    val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
+    val FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
@@ -59,12 +56,9 @@ class SpatialSuite extends FunSuite
         val files = filename.split (",")
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER");
-        options.put ("ch.ninecode.cim.make_edges", "false");
-        options.put ("ch.ninecode.cim.do_join", "true");
-        val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-
-        return (element)
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        //options.put ("ch.ninecode.cim.do_join", "true")
+        context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
     }
 
     test ("Basic")
@@ -74,9 +68,9 @@ class SpatialSuite extends FunSuite
         val start = System.nanoTime ()
 
         val filename =
-        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_V8_Bruegg" + ".rdf" +
-        "," +
-        FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
+        FILE_DEPOT + "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11" + ".rdf"
+        //  "," +
+        // FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
         val elements = readFile (session.sqlContext, filename)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
