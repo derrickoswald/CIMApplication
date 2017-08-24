@@ -77,12 +77,12 @@ class SpatialSuite extends FunSuite
 
         val spatial = new ch.ninecode.sp.SpatialOperations ()
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        val results = spatial.nearest (session.sparkContext, session.sqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
+        val results = spatial.nearest (session, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
         val array = results.collect ()
 
         val process1 = System.nanoTime ()
 
-        val results2 = spatial.nearest (session.sparkContext, session.sqlContext, "psr=EnergyConsumer,lon=7.301368,lat=47.104892,n=5")
+        val results2 = spatial.nearest (session, "psr=EnergyConsumer,lon=7.301368,lat=47.104892,n=5")
         val array2 = results2.collect ()
 
         val process2 = System.nanoTime ()

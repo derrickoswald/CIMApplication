@@ -249,7 +249,7 @@ public class CIMInteractionImpl implements Interaction
                                             {
                                                 try
                                                 {
-                                                    readFile (session, filename);
+                                                    long num = readFile (session, filename).count ();
                                                     _method.setAccessible (true);
                                                     Object o = _method.invoke (_obj, session, args.toString());
                                                     String result = (String)o;
@@ -370,7 +370,8 @@ public class CIMInteractionImpl implements Interaction
                                             try
                                             {
                                                 System.out.println ("readFile " + filename);
-                                                readFile (session, filename);
+                                                long num = readFile (session, filename).count ();
+                                                System.out.println ("" + num + " elements");
                                                 _method.setAccessible (true);
                                                 System.out.println (method + " (sc, sql, \"" + args + "\")");
                                                 Object o = _method.invoke (_obj, session, args.toString ());

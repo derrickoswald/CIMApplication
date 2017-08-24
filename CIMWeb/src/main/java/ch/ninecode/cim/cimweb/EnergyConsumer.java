@@ -93,6 +93,7 @@ public class EnergyConsumer extends RESTful
                         string.append ("SQLException on ResultSet");
                         PrintWriter writer = new PrintWriter (string);
                         sqlexception.printStackTrace (writer);
+                        ret._Status = FAIL;
                         ret._Message = string.toString ();
                         writer.close ();
                     }
@@ -106,6 +107,7 @@ public class EnergyConsumer extends RESTful
                 string.append ("ResourceException on interaction\n");
                 PrintWriter writer = new PrintWriter (string);
                 resourceexception.printStackTrace (writer);
+                ret._Status = FAIL;
                 ret._Message = string.toString ();
                 writer.close ();
             }
@@ -121,6 +123,7 @@ public class EnergyConsumer extends RESTful
                     string.append ("ResourceException on close\n");
                     PrintWriter writer = new PrintWriter (string);
                     resourceexception.printStackTrace (writer);
+                    ret._Status = FAIL;
                     ret._Message = string.toString ();
                     writer.close ();
                 }

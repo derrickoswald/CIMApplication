@@ -12,11 +12,9 @@ import scala.util.Random
 
 import org.apache.spark.sql.Row
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
@@ -77,12 +75,12 @@ class SpatialOperations extends Serializable
 {
     var _StorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY
 
-    def get[T : ClassTag](context: SparkContext): RDD[T] =
+    def get[T : ClassTag](session: SparkSession): RDD[T] =
     {
 
         val classname = classTag[T].runtimeClass.getName
         val name = classname.substring (classname.lastIndexOf (".") + 1)
-        val rdds: collection.Map[Int, RDD[_]] = context.getPersistentRDDs
+        val rdds: collection.Map[Int, RDD[_]] = session.sparkContext.getPersistentRDDs
         rdds.find (_._2.name == name) match
         {
             case Some ((_: Int, rdd: RDD[_])) =>
@@ -170,7 +168,7 @@ class SpatialOperations extends Serializable
         }
     }
 
-    def nearest (sc: SparkContext, sqlContext: SQLContext, args: String): DataFrame =
+    def nearest (session: SparkSession, args: String): DataFrame =
     {
         val arguments = args.split (",").map (
             (s) =>
@@ -197,17 +195,17 @@ class SpatialOperations extends Serializable
         // maybe use PowerSysemResource RDD (which has the Location), and then join to Elements via mRID, and then filter elements by class name
 
         // get all house connections (energy consumers with a base voltage of 400 volts, eliminates the 230 volt public lighting)
-        val consumers = get[EnergyConsumer] (sc).filter (_.ConductingEquipment.BaseVoltage == "BaseVoltage_400")
+        val consumers = get[EnergyConsumer] (session).filter (_.ConductingEquipment.BaseVoltage == "BaseVoltage_400")
 
         // get the points
-        val points = get[PositionPoint] (sc)
+        val points = get[PositionPoint] (session)
 
         // attach the locations to the house connections to get RDD[PositionedEnergyConsumer]
         val located_consumers = consumers.keyBy (_.ConductingEquipment.Equipment.PowerSystemResource.Location).join (points.keyBy (_.Location)).values.map (position_consumers)
 
         // try and join the EnergyConsumer to a ServicePoint
-        val attributes = get[UserAttribute] (sc)
-        val locations = get[ServiceLocation] (sc)
+        val attributes = get[UserAttribute] (session)
+        val locations = get[ServiceLocation] (session)
         def pull (a: (UserAttribute, ServiceLocation)): (String, ServiceLocation) =
         {
             (a._1.value, a._2)
@@ -222,7 +220,7 @@ class SpatialOperations extends Serializable
             dx * dx + dy * dy
         }
 
-        sqlContext.createDataFrame (all.sortBy (ordering).take (n))
+        session.sqlContext.createDataFrame (all.sortBy (ordering).take (n))
     }
 }
 
@@ -296,7 +294,7 @@ object SpatialOperations
 
         spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
 //        val results = spatial.nearest (_Context, _SqlContext, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
-        val results = spatial.nearest (session.sparkContext, session.sqlContext, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
+        val results = spatial.nearest (session, "psr=EnergyConsumer,lon=7.486344,lat=46.929949,n=5")
         val stuff = results.collect ()
 
         println ("" + count + " elements")
