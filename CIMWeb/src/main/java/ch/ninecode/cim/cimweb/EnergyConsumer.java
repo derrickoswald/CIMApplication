@@ -129,6 +129,11 @@ public class EnergyConsumer extends RESTful
                 }
             }
         }
+        else
+        {
+            ret._Status = FAIL;
+            ret._Message += "getConnection failed";
+        }
 
         return (ret.toString ());
     }

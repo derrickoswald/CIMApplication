@@ -1,5 +1,7 @@
 package ch.ninecode.cim.cimweb;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.logging.Logger;
 
 import javax.ejb.Stateless;
@@ -8,10 +10,7 @@ import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
@@ -29,15 +28,15 @@ public class ListFiles extends RESTful
 
     @GET
     @Produces ({"application/json"})
-    public String listFiles ()
+    public String listFiles (@DefaultValue("false") @MatrixParam ("debug") String debug)
     {
-        return (listFiles ("/"));
+        return (listFiles ("", debug));
     }
 
     @SuppressWarnings ("unchecked")
     @GET @Path("{path}")
     @Produces ({"application/json"})
-    public String listFiles (@PathParam("path") String path)
+    public String listFiles (@PathParam("path") String path, @DefaultValue("false") @MatrixParam ("debug") String debug)
     {
         RESTfulResult ret = new RESTfulResult ();
 
@@ -50,7 +49,9 @@ public class ListFiles extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.LIST_FILES);
                 final MappedRecord input = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                 input.setRecordShortDescription ("the directory path to list");
-                input.put ("path", path);
+                input.put ("path", path.startsWith ("/") ? path : "/" + path);
+                if (!debug.equals ("false"))
+                    input.put ("debug", debug);
                 final MappedRecord output = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
                 output.setRecordShortDescription ("the results of the list operation");
                 final Interaction interaction = connection.createInteraction ();
@@ -76,11 +77,16 @@ public class ListFiles extends RESTful
                 interaction.close ();
                 connection.close ();
             }
-            catch (ResourceException re)
+            catch (ResourceException resourceexception)
             {
                 _Logger.severe ("interaction resource exception");
+                StringWriter string = new StringWriter ();
+                string.append ("ResourceException on interaction\n");
+                PrintWriter writer = new PrintWriter (string);
+                resourceexception.printStackTrace (writer);
                 ret._Status = FAIL;
-                ret._Message += re.getMessage ();
+                ret._Message = string.toString ();
+                writer.close ();
             }
             finally
             {
@@ -88,11 +94,16 @@ public class ListFiles extends RESTful
                 {
                     connection.close ();
                 }
-                catch (ResourceException re)
+                catch (ResourceException resourceexception)
                 {
                     _Logger.severe ("close resource exception");
+                    StringWriter string = new StringWriter ();
+                    string.append ("ResourceException on close\n");
+                    PrintWriter writer = new PrintWriter (string);
+                    resourceexception.printStackTrace (writer);
                     ret._Status = FAIL;
-                    ret._Message += re.getMessage ();
+                    ret._Message = string.toString ();
+                    writer.close ();
                 }
             }
         }

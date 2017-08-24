@@ -19,10 +19,7 @@ import javax.resource.cci.Record;
 import javax.resource.cci.ResourceWarning;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.*;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -108,6 +105,9 @@ public class CIMInteractionImpl implements Interaction
                                 directory = ((CIMMappedRecord)input).get ("path").toString ();
                             try
                             {
+                                Object deb = (null != input) ? ((CIMMappedRecord)input).get ("debug") : "false";
+                                boolean debug = (null == deb) ? false : Boolean.valueOf (deb.toString ());
+
                                 // build a file system configuration, including core-site.xml
                                 Configuration hdfs_configuration = new Configuration ();
                                 if (null == hdfs_configuration.getResource ("core-site.xml"))
@@ -132,36 +132,34 @@ public class CIMInteractionImpl implements Interaction
                                 JsonObjectBuilder response = Json.createObjectBuilder ();
                                 response.add ("filesystem", uri.toString ());
                                 response.add ("root", root.toString ());
-// debug:
-                                JsonObjectBuilder configuration = Json.createObjectBuilder ();
-                                for (Entry<String, String> pair : hdfs_configuration)
-                                {
-                                    String key = pair.getKey();
-                                    String value = pair.getValue();
-                                    configuration.add(key, value);
-                                }
-                                response.add ("configuration", configuration);
 
-// debug:
-                                JsonObjectBuilder environment = Json.createObjectBuilder ();
-                                Map<String, String> env = System.getenv ();
-                                for (String key: env.keySet ())
+                                if (debug)
                                 {
-                                    String value = env.get (key);
-                                    environment.add (key, value);
+                                    JsonObjectBuilder configuration = Json.createObjectBuilder ();
+                                    for (Entry<String, String> pair : hdfs_configuration)
+                                    {
+                                        String key = pair.getKey ();
+                                        String value = pair.getValue ();
+                                        configuration.add (key, value);
+                                    }
+                                    response.add ("configuration", configuration);
+
+                                    JsonObjectBuilder environment = Json.createObjectBuilder ();
+                                    Map<String, String> env = System.getenv ();
+                                    for (String key : env.keySet ())
+                                    {
+                                        String value = env.get (key);
+                                        environment.add (key, value);
+                                    }
+                                    response.add ("environment", environment);
                                 }
-                                response.add ("environment", environment);
 
                                 // read the list of files
-                                RemoteIterator<LocatedFileStatus> iterator = hdfs.listFiles (root, false); // ToDo: handle recursive
+                                FileStatus[] statuses = hdfs.listStatus (root);
                                 JsonArrayBuilder files = Json.createArrayBuilder ();
                                 String prefix = root.toString ();
-                                while (iterator.hasNext())
+                                for (FileStatus fs: statuses)
                                 {
-                                    // "LocatedFileStatus{path=hdfs://sandbox:8020/data/KS_Leistungen.csv; isDirectory=false; length=403242; replication=1; blocksize=134217728; modification_time=1478602451352; access_time=1478607251538; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
-                                    // "LocatedFileStatus{path=hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20160816_V9_Kiental.rdf; isDirectory=false; length=14360795; replication=1; blocksize=134217728; modification_time=1478607196243; access_time=1478607196018; owner=root; group=supergroup; permission=rw-r--r--; isSymlink=false}"
-
-                                    LocatedFileStatus fs = iterator.next ();
                                     String path = fs.getPath ().toString ();
                                     if (path.startsWith (prefix))
                                         path = path.substring (prefix.length ());
@@ -250,6 +248,7 @@ public class CIMInteractionImpl implements Interaction
                                                 try
                                                 {
                                                     long num = readFile (session, filename).count ();
+                                                    System.out.println ("" + num + " elements");
                                                     _method.setAccessible (true);
                                                     Object o = _method.invoke (_obj, session, args.toString());
                                                     String result = (String)o;
