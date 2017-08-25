@@ -34,16 +34,19 @@ public class ApplicationConfig extends Application
 {
     /**
      * Get the list of known handler classes.
-     * This list should inlude all classes with @Path annotation.
-     * @return the set of url handler classes
+     * This list should include all classes with @Path annotation.
+     * @return the set of URL handler classes
      */
     public Set<Class<?>> getClasses ()
     {
+        Class<?> pong = null;
+        try { pong = Class.forName ("ch.ninecode.cim.cimweb.Pong"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         return new HashSet<>
         (
             Arrays.asList
             (
                 Ping.class,
+                pong,
                 ListFiles.class,
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,

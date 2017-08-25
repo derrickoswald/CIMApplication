@@ -21,6 +21,11 @@
         <version.plugin.compiler>3.6.2</version.plugin.compiler>
         <version.plugin.war>3.1.0</version.plugin.war>
 
+        <!-- scala versions -->
+        <version.dependency.scala>2.11</version.dependency.scala>
+        <version.dependency.scalalibrary>2.11.8</version.dependency.scalalibrary>
+        <version.dependency.scalatest>3.0.3</version.dependency.scalatest>
+
         <!-- test dependencies versions -->
         <version.dependency.tomee>7.0.3</version.dependency.tomee>
         <version.dependency.arquillian>1.1.13.Final</version.dependency.arquillian>
@@ -87,6 +92,19 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${version.dependency.scalalibrary}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.scalatest}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Test Dependencies -->
 
         <dependency>
@@ -142,15 +160,61 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <scalaCompatVersion>${version.dependency.scala}</scalaCompatVersion>
+                    <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <args>
+                                <arg>-deprecation</arg>
+                                <arg>-dependencyfile</arg>
+                                <arg>${project.build.directory}/.scala_dependencies</arg>
+                            </args>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- disable surefire -->
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.19.1</version>
                 <configuration>
                     <systemPropertyVariables>
-                      <tomee.classifier>${tomee.classifier}</tomee.classifier>
-                      <tomee.version>${version.dependency.tomee}</tomee.version>
+                        <tomee.classifier>${tomee.classifier}</tomee.classifier>
+                        <tomee.version>${version.dependency.tomee}</tomee.version>
                     </systemPropertyVariables>
+                    <skipTests>true</skipTests>
                 </configuration>
+            </plugin>
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>TestSuite.txt</filereports>
+                    <suites>ch.ninecode.cim.TestSuite</suites>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
