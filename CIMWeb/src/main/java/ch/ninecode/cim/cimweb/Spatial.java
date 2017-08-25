@@ -5,7 +5,6 @@ import java.io.StringWriter;
 import java.sql.SQLException;
 import java.util.List;
 
-import javax.annotation.Resource;
 import javax.ejb.Stateless;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;

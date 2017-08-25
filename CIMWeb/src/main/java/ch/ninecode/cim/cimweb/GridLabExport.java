@@ -3,7 +3,6 @@ package ch.ninecode.cim.cimweb;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import javax.annotation.Resource;
 import javax.ejb.Stateless;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;

@@ -170,13 +170,8 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             throw new ResourceException ("the ResourceAdapter association must not change during the lifetime of a ManagedConnectionFactory JavaBean");
     }
 
-    // requires a running standalone Spark instance with current user added to supergroup, for example:
-    // docker run -it -p 8032:8032 -p 8088:8088 -p 8042:8042 -p 4040:4040 -p 9000:9000 -p 10000:10000 -p 10001:10001 -p 50010:50010 -p 7077:7077 -v /home/derrick/code/CIMReader/target:/opt/code -v /home/derrick/code/CIMReader/data:/opt/data --rm -h sandbox sequenceiq/spark:1.6.0 bash
-    // sudo groupadd supergroup
-    // sudo useradd derrick
-    // sudo usermod --append --groups supergroup derrick
-    // /usr/local/spark-1.6.0-bin-hadoop2.6/sbin/start-master.sh
-    // /usr/local/spark-1.6.0-bin-hadoop2.6/sbin/start-slave.sh spark://sandbox:7077
+    // requires a running standalone Spark instance with current user added to supergroup
+    // see https://github.com/derrickoswald/CIMReader/blob/master/src/test/resources/sandbox.yaml
 
     @ConfigProperty
     (

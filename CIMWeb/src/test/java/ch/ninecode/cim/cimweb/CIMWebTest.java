@@ -13,8 +13,10 @@ import javax.resource.cci.ConnectionFactory;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.FileAsset;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -24,33 +26,33 @@ import org.junit.runner.RunWith;
 @RunWith (Arquillian.class)
 public class CIMWebTest
 {
-//    private static final String WEBEAR_SRC = "src/main";
-//    private static final String WEBAPP_SRC = WEBEAR_SRC + "/webapp";
+    private static final String WEBEAR_SRC = "src/main";
+    private static final String WEBAPP_SRC = WEBEAR_SRC + "/webapp";
 
     @Deployment
     public static EnterpriseArchive createDeployment ()
     {
-//        final WebArchive war = ShrinkWrap.create (WebArchive.class, "CIMWeb.war");
-//        war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"));
-//        war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")); // getClass().getPackage()
-//        war.deleteClass (CIMWebTest.class);
-//        war.addAsWebResource (new File (WEBAPP_SRC, "index.html"));
-//        war.addManifest ();
-//        System.out.println (war.toString (true));
-//        war.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.war"), true);
-//
-//        final EnterpriseArchive ear = ShrinkWrap.create (EnterpriseArchive.class, "CIMWeb.ear");
-//        ear.addAsModules (war);
-//        ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-1.0-SNAPSHOT.rar")), "CIMConnector.rar");
-//        ear.addManifest ();
-//        ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"));
-//
-//        System.out.println (ear.toString (true));
-//        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
+        final WebArchive war = ShrinkWrap.create (WebArchive.class, "CIMWeb.war");
+        war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"));
+        war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")); // getClass().getPackage()
+        war.deleteClass (CIMWebTest.class);
+        war.addAsWebResource (new File (WEBAPP_SRC, "index.html"));
+        war.addManifest ();
+        System.out.println (war.toString (true));
+        war.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.war"), true);
 
-        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
+        final EnterpriseArchive ear = ShrinkWrap.create (EnterpriseArchive.class, "CIMWeb.ear");
+        ear.addAsModules (war);
+        ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.2.9.rar")), "CIMConnector.rar");
+        ear.addManifest ();
+        ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"));
+
         System.out.println (ear.toString (true));
         ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
+
+//        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
+//        System.out.println (ear.toString (true));
+//        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
 
         return (ear);
     }

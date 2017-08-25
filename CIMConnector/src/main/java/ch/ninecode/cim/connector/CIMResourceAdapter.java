@@ -51,7 +51,7 @@ import javax.transaction.xa.XAResource;
 )
 public class CIMResourceAdapter implements ResourceAdapter
 {
-    protected String _YarnConfigurationPath = "/home/derrick/spark/spark-2.0.2-bin-hadoop2.7/conf/";
+    protected String _YarnConfigurationPath = "/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/conf/";
     protected String _SparkDriverMemory = "1g";
     protected String _SparkExecutorMemory = "4g";
 

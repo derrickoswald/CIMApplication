@@ -4,8 +4,6 @@ import javax.ejb.Stateless;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -20,9 +18,6 @@ import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
 import javax.resource.cci.Record;
 
-import ch.ninecode.cim.cimweb.RESTful.RESTfulResult;
-import ch.ninecode.cim.connector.CIMConnectionFactory;
-import ch.ninecode.cim.connector.CIMConnectionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpec;
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
 import ch.ninecode.cim.connector.CIMMappedRecord;

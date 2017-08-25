@@ -39,7 +39,6 @@ new parallel applications running on a cluster of machines.
 # Caveats
 
 - currently only works within [Tomee](https://tomee.apache.org/) the [openejb](https://en.wikipedia.org/wiki/Apache_OpenEJB) container hosted in [Tomcat](https://tomcat.apache.org/).
-- currently only works with [Spark standalone](https://spark.apache.org/docs/1.6.0/spark-standalone.html) version 1.6.0
 
 # TomEE Setup
 

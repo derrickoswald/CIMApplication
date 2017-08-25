@@ -29,11 +29,11 @@ import ch.ninecode.model.*;
 /**
  * Connection to Apache Spark (http://spark.apache.org).
  * Assumes access to maven packages like:
- * org.apache.spark:spark-core_2.10:1.6.0
- * org.apache.spark:spark-sql_2.10:1.6.0
- * org.apache.spark:spark-hive-thriftserver_2.10:1.6.0
- * org.apache.spark:spark-graphx_2.10:1.6.0
- * org.apache.spark:spark-yarn_2.10:1.6.0
+ * org.apache.spark:spark-core_2.11-2.2.0
+ * org.apache.spark:spark-sql_2.11-2.2.0
+ * org.apache.spark:spark-hive-thriftserver_2.11-2.2.0
+ * org.apache.spark:spark-graphx_2.11-2.2.0
+ * org.apache.spark:spark-yarn_2.11-2.2.0
  *
  */
 public class CIMManagedConnection implements ManagedConnection
@@ -153,8 +153,8 @@ public class CIMManagedConnection implements ManagedConnection
         // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
         // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
 //      configuration.setMaster ("yarn-client"); // assumes a resource manager is specified in yarn-site.xml, e.g. sandbox:8032
-//      configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6"); // ("/usr/local/spark")
-//      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark-1.6.0-bin-hadoop2.6/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
+//      configuration.setSparkHome ("/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/"); // ("/usr/local/spark")
+//      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
 
         // register low level classes
         Class<?>[] c1 = { Element.class, BasicElement.class, Unknown.class };
