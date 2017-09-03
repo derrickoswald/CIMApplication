@@ -34,7 +34,7 @@ class Line (one_phase: Boolean) extends Serializable
     }
 
     // convert the 0/1 sequence values from the CIM format into a Z matrix
-    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double): Tuple3[Complex, Complex, Boolean] =
+    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double): (Complex, Complex, Boolean) =
     {
         if ((0.0 != r) && (0.0 != x))
             if (one_phase)

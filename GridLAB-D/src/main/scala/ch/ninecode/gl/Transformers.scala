@@ -10,31 +10,6 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
 
-/**
- * Transformer data.
- * @param transformer The PowerTransformer object.
- * @param station The Substation object where the transformer is located.
- * @param shortcircuit The ShortCircuit object with the available short circuit power and phase at the primary.
- * @param voltage0 The voltage for the transformer high voltage end (kV).
- * @param end0 The high voltage PowerTransformerEnd.
- * @param terminal0 The high voltage Terminal.
- * @param voltage1 The voltage for the transformer low voltage end (kV).
- * @param end1 The low voltage PowerTransformerEnd.
- * @param terminal1 The low voltage Terminal.
- */
-case class TData (
-    transformer: PowerTransformer,
-    station: Substation,
-    shortcircuit: ShortCircuitData,
-    end0: PowerTransformerEnd,
-    voltage0: Double,
-    terminal0: Terminal,
-    node0: String,
-    end1: PowerTransformerEnd,
-    voltage1: Double,
-    terminal1: Terminal,
-    node1: String)
-
 class Transformers (session: SparkSession, storage_level: StorageLevel) extends Serializable
 {
     val log = LoggerFactory.getLogger (getClass)
@@ -149,12 +124,12 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
     {
         /**
          * The name of the node associated with a terminal.
-         * @param terminal The terminal object to get the node for.
+         * @param t The terminal object to get the node for.
          * @return The name of the TopologicalNode or ConnectivityNode.
          */
         def node_name (t: Terminal): String =
         {
-            return (if (topological_nodes) t.TopologicalNode else t.ConnectivityNode)
+            if (topological_nodes) t.TopologicalNode else t.ConnectivityNode
         }
 
         // get all transformers in substations

@@ -127,8 +127,8 @@ case class ThreePhaseComplexDataElement(
  * @param workdir The working directory for .glm and input_file generation. If the scheme is file:// or none,
  * the gridlabd processes will assume that this is local and will try to execute in that directory.
  * If the scheme is hdfs:// or wasb:// (or something else) the gridlab processes will copy the files locally
- * (either to $SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
- * or to $HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
+ * (either to \$SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
+ * or to \$HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
  * to execute and then copy the output files back to this location (workdir) when complete.
  */
 class GridLABD (

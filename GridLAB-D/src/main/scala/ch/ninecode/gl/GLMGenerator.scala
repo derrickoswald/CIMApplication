@@ -1,45 +1,78 @@
 package ch.ninecode.gl
 
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.TimeZone
+import java.util.{Calendar, TimeZone}
 
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Element
 import ch.ninecode.model.Switch
 
-trait GLMNode extends Serializable
-{
-    def id (): String
-    def nominal_voltage (): Double
-}
-
-trait GLMEdge extends Serializable
-{
-    def id (): String
-    def cn1 (): String
-    def cn2 (): String
-    def eq (): ConductingEquipment
-    def el (): Element
-}
-
+/**
+ * The .glm file generator.
+ *
+ * Base class for .glm export. The derived classes must provide specific
+ * details for the actual export to be valid, such as edges, nodes, swing node,
+ * simulation start and stop times, etc.
+ *
+ * @param one_phase If <code>true</code> generate a single phase .glm file.
+ * @param date_format The date format to use in
+ */
 class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends Serializable
 {
     /**
-     * Get the name of the generated GLM file
+     * The internal name of the generated GLM file.
+     *
+     * Currently, this name is used as metadata for a file name within the generated .glm file,
+     * and as the hard-coded name of a voltage dump file at t0 (the start of simulation).
+     *
+     * This metadata file name is an erroneous holdover from a CVS keyword expansion of \$Id\$ observed
+     * in supplied .glm samples, and therefore should be removed.
+     *
+     * Unfortunately, other code in uses this name as the name of the directory in which to
+     * save the .glm file and as the name of the .glm file ganerated.
+     *
+     * @todo Remove this def and the \$Id: name comment from the header.
+     *
      * @return The unique name for the generated file and directory structure.
      */
     def name: String = "gridlabd"
 
+    /**
+     * The .glm header comment.
+     *
+     * @return A single line of text for the comment header.
+     */
     def header: String = "GridLAB-D"
 
-    def start_time (): Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-08T12:00:00")
+    /**
+     * Simulation clock start time.
+     *
+     * Beginning time for the GridLAB-d simulation run.
+     *
+     * @return The date and time of the simulation start with time zone.
+     */
+    def start_time: Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-08T12:00:00")
 
-    def finish_time (): Calendar = start_time
+    /**
+     * Simulation clock stop time.
+     *
+     * Ending time for the GridLAB-d simulation run.
+     * Default is the same as the start time.
+     *
+     * @return The date and time of the simulation finish with time zone.
+     */
+    def finish_time: Calendar = start_time
 
-    lazy val use_utc = date_format.getTimeZone == TimeZone.getTimeZone("UTC")
-
-    def prefix (): String =
+    /**
+     * Generate the .glm header.
+     *
+     * This includes the meta-data comments, tape and powerflow modules, clock, and player definitions.
+     *
+     * It also currently includes a node voltage dump at time t0.
+     *
+     * @todo Remove name_voltdump.csv.
+     *
+     * @return The text for the .glm file header.
+     */
+    def prefix: String =
     {
         val t0 = start_time
         val t1 = finish_time
@@ -61,9 +94,9 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "\n" +
         "        clock\n" +
         "        {\n" +
-        "            timezone " + (if (use_utc) "UTC0UTC" else tzString) + ";\n" +
-        "            starttime '" + date_format.format (t0.getTime ()) + "';\n" +
-        "            stoptime '" + date_format.format (t1.getTime ()) + "';\n" +
+        "            timezone " + tzString + ";\n" +
+        "            starttime '" + date_format.format (t0.getTime) + "';\n" +
+        "            stoptime '" + date_format.format (t1.getTime) + "';\n" +
         "        };\n" +
         "\n" +
         "        class player\n" +
@@ -75,29 +108,103 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "        {\n" +
         "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
         "            mode polar;\n" +
-        "            runtime '" + date_format.format (t0.getTime ()) + "';\n" +
+        "            runtime '" + date_format.format (t0.getTime) + "';\n" +
         "        };\n"
     }
 
+    /**
+     * The edges to include in the .glm file.
+     *
+     * The edges may have parallel elements, and thus this is a "list of lists"
+     * in the form of the generic Scala trait Iterable for iterable collections.
+     *
+     * Only edges defined by this mehod are exported, so it is important to include
+     * exactly the edges required by the network, no more, no less.
+     *
+     * @return The edges to be included in the export.
+     */
     def edge_groups: Iterable[Iterable[GLMEdge]] = List(List[GLMEdge]())
 
-    def transformers: Array[TData] = Array()
-
-    def swing_node: String = ""
-
-    def swing_node_voltage: Double = 0.0
-
+    /**
+     * The nodes to be included in the .glm file.
+     *
+     * @return The ConnectivityNode or TopologicalNode elements to include in the export.
+     */
     def nodes: Iterable[GLMNode] = List()
 
+    /**
+     * Details about transformers used in the edges list.
+     *
+     * Transformer data is very rich and hence cannot be contained in a simple edge.
+     * This method provides a richer set of details about the transformers in the network.
+     * The link is between the GLMEdge.edge.id and TData.transformer.id.
+     *
+     * @return The details about pertinent transformers.
+     */
+    def transformers: Array[TData] = Array()
+
+    /**
+     * The ID of the SWING or slack bus node.
+     *
+     * The swing bus is used to provide for system losses by emitting or absorbing active and/or reactive power
+     * to and from the system, acting as an infinite source or sink.
+     *
+     * @return The id of the node that is the swing bus (or slack bus).
+     */
+    def swing_node: String = ""
+
+    /**
+     * The swing node nominal voltage.
+     *
+     * @return The nominal voltage of the swing bus (or slack bus) (volts).
+     */
+    def swing_node_voltage: Double = 0.0
+
+    /**
+     * Additional text to add to the .glm file.
+     *
+     * This is sort of an escape hatch to provide the means to inject arbitrary lines of text into the
+     * exported .glm file.
+     *
+     * @return Text to add to the .glm file.
+     */
     def extra: Iterable[String] = List()
 
+    /**
+     * Time zone.
+     *
+     * Form the time zone into an appropriate string, e.g. "CET-1CEST".
+     *
+     * @todo fractional hour time zones
+     *
+     * @return A formatted time zone string.
+     */
     def tzString: String =
     {
-        // "CET-1CEST"
-        val t = Calendar.getInstance()
-        val tz = t.getTimeZone
-        // ToDo: fractional hour time zones
-        tz.getDisplayName(false, TimeZone.SHORT) + (-tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName(true, TimeZone.SHORT)
+        val t = Calendar.getInstance
+        val tz = start_time.getTimeZone
+        if (tz == TimeZone.getTimeZone ("UTC"))
+            "UTC0UTC"
+        else
+            tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName (true, TimeZone.SHORT)
+    }
+
+    /**
+     * Get the NIS database id of a node.
+     *
+     * The NIS id is suffixed with "_node" or "_topo", and this just gets the prefix.
+     * For example "ABG123401_node" is converted to "ABG123401".
+     *
+     * @param string The node id to split.
+     * @return The NIS number from the node id.
+     */
+    def nis_number (string: String): String =
+    {
+        val n = string.indexOf ("_")
+        if (0 < n)
+            string.substring (0, n)
+        else
+            string
     }
 
     // emitting classes
@@ -105,46 +212,55 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     val trans = new Trans (one_phase)
     val switch = new SwitchDevice (one_phase)
 
-    def nis_number (string: String): String =
-    {
-        val n = string.indexOf("_")
-        if (0 < n)
-            string.substring(0, n)
-        else
-            string
-    }
-
+    /**
+     * Combine the iterable over strings into one string.
+     *
+     * Note: This is very inifficient for large numbers of text strings.
+     *
+     * @param rdd The elements to gather.
+     * @return The combined string.
+     */
     def gather (rdd: Iterable[String]): String =
     {
         rdd.fold("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
     }
 
-    // emit one GridLAB-D edge
+    /**
+     * Emit one GridLAB-D edge.
+     *
+     * Generate the text for an edge.
+     * Uses the Line and SwitchDevice handlers to create the text,
+     * using possibley parallel edges for lines but only the head element for switch edges.
+     * Transformers are handled separately.
+     *
+     * @param edges The edge element(s).
+     * @return The .glm file text for the edge.
+     */
     def make_link (edges: Iterable[GLMEdge]): String =
     {
         val edge = edges.head
         val cls = edge.el.getClass.getName
         val clazz = cls.substring (cls.lastIndexOf(".") + 1)
-        val ret = clazz match {
+        clazz match {
             case "ACLineSegment" ⇒
                 line.emit (edges)
             case "PowerTransformer" ⇒
                 "" // handled specially
             case "Switch" ⇒
-                switch.emit(edge, edge.el.asInstanceOf[Switch])
+                switch.emit (edge, edge.el.asInstanceOf[Switch])
             case "Cut" |
                 "Disconnector" |
                 "GroundDisconnector" |
                 "Jumper" |
                 "ProtectedSwitch" |
                 "Sectionaliser" ⇒
-                switch.emit(edge, edge.el.sup.asInstanceOf[Switch])
+                switch.emit (edge, edge.el.sup.asInstanceOf[Switch])
             case "Breaker" |
                 "LoadBreakSwitch" |
                 "Recloser" ⇒
-                switch.emit(edge, edge.el.sup.sup.asInstanceOf[Switch])
+                switch.emit (edge, edge.el.sup.sup.asInstanceOf[Switch])
             case "Fuse" ⇒
-                switch.emit(edge, edge.el.sup.asInstanceOf[Switch], true)
+                switch.emit (edge, edge.el.sup.asInstanceOf[Switch], fuse = true)
             case _ ⇒
                 // by default, make a link
                 "\n" +
@@ -156,9 +272,16 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
                     "            to \"" + edge.cn2 + "\";\n" +
                     "        };\n"
         }
-        return (ret)
     }
 
+    /**
+     * Emit one GridLAB-D node.
+     *
+     * Emits a meter object for the node.
+     *
+     * @param node The node element.
+     * @return The .glm file text for the node.
+     */
     def emit_node (node: GLMNode): String =
     {
         "\n" +
@@ -171,6 +294,13 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "        };\n"
     }
 
+    /**
+     * Emit the swing node.
+     *
+     * @param name The ID of the swing node.
+     * @param voltage The nominal voltage of the swing node (volts).
+     * @return The .glm file text for the swing bus.
+     */
     def emit_slack (name: String, voltage: Double): String =
     {
         "\n" +
@@ -190,6 +320,14 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "        };\n"
     }
 
+    /**
+     * Combine all .glm pieces into a complete network.
+     *
+     * Combines the header, transformer and line configurations, swing bus, nodes edges and any extra text
+     * into the complete .glm text.
+     *
+     * @return The .glm file contents ready for saving.
+     */
     def make_glm (): String =
     {
         // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
@@ -216,19 +354,17 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         // get the extra strings
         val e_strings = extra
 
-        /**
-         * Create the output file.
-         */
+        // create the output file.
         val result = new StringBuilder()
-        result.append(prefix)
-        result.append(t_string)
-        result.append(gather(l_strings))
-        result.append(o_string)
-        result.append(gather(n_strings))
-        result.append(t_edges)
-        result.append(gather(l_edges))
-        result.append(gather(e_strings))
+        result.append (prefix)
+        result.append (t_string)
+        result.append (gather (l_strings))
+        result.append (o_string)
+        result.append (gather (n_strings))
+        result.append (t_edges)
+        result.append (gather (l_edges))
+        result.append (gather (e_strings))
 
-        result.toString()
+        result.toString
     }
 }
