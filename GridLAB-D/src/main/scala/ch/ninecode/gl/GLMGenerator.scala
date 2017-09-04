@@ -94,9 +94,9 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "\n" +
         "        clock\n" +
         "        {\n" +
-        "            timezone " + tzString + ";\n" +
-        "            starttime '" + date_format.format (t0.getTime) + "';\n" +
-        "            stoptime '" + date_format.format (t1.getTime) + "';\n" +
+        "            timezone \"" + tzString + "\";\n" +
+        "            starttime \"" + date_format.format (t0.getTime) + "\";\n" +
+        "            stoptime \"" + date_format.format (t1.getTime) + "\";\n" +
         "        };\n" +
         "\n" +
         "        class player\n" +
@@ -108,7 +108,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "        {\n" +
         "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
         "            mode polar;\n" +
-        "            runtime '" + date_format.format (t0.getTime) + "';\n" +
+        "            runtime \"" + date_format.format (t0.getTime) + "\";\n" +
         "        };\n"
     }
 
@@ -181,12 +181,14 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      */
     def tzString: String =
     {
-        val t = Calendar.getInstance
-        val tz = start_time.getTimeZone
-        if (tz == TimeZone.getTimeZone ("UTC"))
+        if (date_format.getTimeZone == TimeZone.getTimeZone("UTC"))
             "UTC0UTC"
         else
+        {
+            val t = Calendar.getInstance
+            val tz = t.getTimeZone
             tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName (true, TimeZone.SHORT)
+        }
     }
 
     /**
