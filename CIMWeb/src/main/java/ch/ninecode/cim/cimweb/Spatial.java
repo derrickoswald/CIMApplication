@@ -3,7 +3,6 @@ package ch.ninecode.cim.cimweb;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.SQLException;
-import java.util.List;
 
 import javax.ejb.Stateless;
 import javax.json.Json;
@@ -12,6 +11,7 @@ import javax.json.JsonObjectBuilder;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.MatrixParam;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -21,11 +21,8 @@ import javax.resource.cci.Interaction;
 import javax.resource.cci.MappedRecord;
 import javax.resource.cci.Record;
 
-import ch.ninecode.cim.connector.CIMInteractionSpec;
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl;
-import ch.ninecode.cim.connector.CIMMappedRecord;
-import ch.ninecode.cim.connector.CIMResultSet;
-import ch.ninecode.sp.SpatialOperations;
+import ch.ninecode.cim.connector.*;
+import ch.ninecode.sp.SpatialOperationParameters;
 
 @Stateless
 @Path("Spatial/")
@@ -34,11 +31,10 @@ public class Spatial extends RESTful
     @SuppressWarnings ("unchecked")
     @GET
     @Path ("{method}")
-    @Produces ({"text/plain", "application/json"})
+    @Produces ({MediaType.APPLICATION_JSON})
     public String Operation
     (
         @PathParam ("method") String method, // "nearest"
-        @MatrixParam ("file") List<String> files,
         @DefaultValue ("EnergyConsumer") @MatrixParam ("psr") String psr,
         @DefaultValue ("7.281558") @MatrixParam ("lon") String lon,
         @DefaultValue ("47.124142") @MatrixParam ("lat") String lat,
@@ -52,37 +48,20 @@ public class Spatial extends RESTful
         {
             try
             {
-                // allow for multiple file names like
-                // localhost:8080/cimweb/cim/Spatial/nearest;file=NIS_CIM_Export_b4_Bruegg;file=ISU_CIM_Export_20160505
-                StringBuilder sb = new StringBuilder ();
-                for (String file: files)
-                {
-                    if (0 != sb.length ())
-                        sb.append (",");
-                    sb.append (file);
-                }
-
                 final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_METHOD_FUNCTION);
+                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION);
                 final MappedRecord input = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
                 input.setRecordShortDescription ("record containing the file names and class and method to run");
-
-                // set up the method call details for the CIMConnector
-                SpatialOperations ops = new SpatialOperations ();
-                input.put ("method", method);
-                input.put ("class", ops.getClass ().getName ());
-                String jar = getConnectionFactory ().JarPath (ops);
-                if (null != jar)
-                    input.put ("jars", jar);
-                ops = null;
-
-                // set up the parameters
-                input.put ("filename", sb.toString ());
-                input.put ("psr", psr);
-                input.put ("lon", lon);
-                input.put ("lat", lat);
-                input.put ("n", n);
-
+                if (method.equals ("nearest"))
+                {
+                    // set up the parameters
+                    SpatialOperationParameters parameters = new SpatialOperationParameters (psr, Double.parseDouble (lon), Double.parseDouble (lat), Integer.parseInt (n));
+                    SpatialNearestFunction near = new SpatialNearestFunction ();
+                    near.setSpatialOperationParameters (parameters);
+                    input.put ("function", near);
+                }
+                else
+                    throw new ResourceException ("method " + method + " not recognized");
                 final Interaction interaction = connection.createInteraction ();
                 final Record output = interaction.execute (spec, input);
                 if (null == output)
@@ -117,7 +96,6 @@ public class Spatial extends RESTful
                         }
                         resultset.close ();
                         JsonObjectBuilder response = Json.createObjectBuilder ();
-                        response.add ("filename", sb.toString ());
                         response.add ("psr", psr);
                         response.add ("lon", lon);
                         response.add ("lat", lat);

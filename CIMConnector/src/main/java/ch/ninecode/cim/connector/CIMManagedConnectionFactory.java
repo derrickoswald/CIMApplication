@@ -41,7 +41,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     {
         super ();
         _PropertyChangeSupport = null;
-        _PrintWriter = null;
+        _PrintWriter = new PrintWriter (System.out);
         _ResourceAdapter = null;
         _ConnectionURL = null;
     }
@@ -89,14 +89,18 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     @Override
     public ManagedConnection createManagedConnection (Subject subject, ConnectionRequestInfo info) throws ResourceException
     {
+        PrintWriter logger;
         final CIMConnectionRequestInfo _info;
         final CIMManagedConnection connection;
 
+        logger = getLogWriter ();
         if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
             _info = new CIMConnectionRequestInfo ();
         else
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
+        if (null != logger)
+            logger.println ("allocating new CIMManagedConnection");
         connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter (), getLogWriter ());
         connection.connect (subject, _info);
 
@@ -113,8 +117,13 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     @Override
     public ManagedConnection matchManagedConnections (Set connections, Subject subject, ConnectionRequestInfo info) throws ResourceException
     {
-        CIMManagedConnection ret = null;
-        Iterator iterator = connections.iterator ();
+        PrintWriter logger;
+        Iterator iterator;
+        CIMManagedConnection ret;
+
+        ret = null;
+        logger = getLogWriter ();
+        iterator = connections.iterator ();
         while (iterator.hasNext ())
         {
             CIMManagedConnection connection = (CIMManagedConnection)iterator.next ();
@@ -131,8 +140,21 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
                         break;
                     }
         }
-        if ((null != ret) && (null == ret._SparkSession)) // if it was closed, reopen it
-            ret.connect (subject, info);
+        if (null != ret)
+        {
+            if (null != logger)
+                logger.println ("matched CIMManagedConnection");
+            if (null == ret._SparkSession) // if it was closed, reopen it
+            {
+                if (null != logger)
+                    logger.println ("reopening Spark connection");
+                ret.connect (subject, info);
+            }
+        }
+        else if (null != logger)
+            logger.println ("CIMManagedConnection not matched");
+
+
 
         return (ret);
     }

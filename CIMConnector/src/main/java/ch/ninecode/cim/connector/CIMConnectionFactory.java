@@ -24,7 +24,7 @@ public class CIMConnectionFactory implements ConnectionFactory
 
     /**
      * An implementation class for ConnectionFactory must provide a default constructor.
-     * @throws ResourceException
+     * @throws ResourceException <em>not used</em>
      */
     public CIMConnectionFactory () throws ResourceException
     {
@@ -33,8 +33,9 @@ public class CIMConnectionFactory implements ConnectionFactory
     public CIMConnectionFactory (ManagedConnectionFactory mcf, ConnectionManager cm)
         throws ResourceException
     {
-        super ();
-        if ((null == mcf) || (!mcf.getClass ().isAssignableFrom (CIMManagedConnectionFactory.class)))
+        if (null == mcf)
+            throw new ResourceException ("null cannot be used as a managed connection factory");
+        else if (!mcf.getClass ().isAssignableFrom (CIMManagedConnectionFactory.class))
             throw new ResourceException ("object of class " + mcf.getClass ().toGenericString () + " cannot be used as a managed connection factory");
         else
             _ManagedConnectionFactory = (CIMManagedConnectionFactory)mcf;

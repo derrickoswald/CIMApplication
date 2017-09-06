@@ -112,16 +112,6 @@ public class RESTful
         }
     }
 
-    public static String asString (final JsonStructure data)
-    {
-        final StringWriter string = new StringWriter ();
-        final JsonWriter writer = getPrettyJsonWriterFactory ().createWriter (string);
-        writer.write (data);
-        writer.close ();
-
-        return (string.toString());
-    }
-
     protected static JsonWriterFactory getPrettyJsonWriterFactory ()
     {
         if (null == FACTORY_INSTANCE)
@@ -139,9 +129,10 @@ public class RESTful
 
     void print_context_r (StringBuffer out, Context context, String name, int depth)
     {
-        String indent = "";
+        StringBuilder s = new StringBuilder ();
         for (int i = 0; i < depth; i++)
-            indent += "    ";
+            s.append ("    ");
+        String indent = s.toString ();
         try
         {
             NamingEnumeration<NameClassPair> values = context.list (name);
@@ -150,7 +141,9 @@ public class RESTful
                 {
                     NameClassPair pair = values.next ();
                     out.append (indent);
-                    out.append (pair.getName () + " : " + pair.getClassName ());
+                    out.append (pair.getName ());
+                    out.append (" : ");
+                    out.append (pair.getClassName ());
                     out.append ("\n");
                     print_context_r (out, context, name + "/" + pair.getName (), depth + 1);
                 }
@@ -158,7 +151,8 @@ public class RESTful
         catch (NameNotFoundException nnfe)
         {
             out.append (indent);
-            out.append ("NameNotFoundException " + name);
+            out.append ("NameNotFoundException ");
+            out.append (name);
             out.append ("\n");
         }
         catch (NamingException ne)
@@ -242,4 +236,5 @@ public class RESTful
         result._Message = out.toString ();
         return (connection);
     }
+
 }

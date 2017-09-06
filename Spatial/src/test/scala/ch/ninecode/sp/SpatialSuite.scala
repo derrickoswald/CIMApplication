@@ -7,7 +7,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
@@ -27,7 +26,7 @@ class SpatialSuite extends FunSuite
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("ShortCircuitSuite")
+        configuration.setAppName ("SpatialOperationsSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
@@ -76,13 +75,12 @@ class SpatialSuite extends FunSuite
         val read = System.nanoTime ()
 
         val spatial = new ch.ninecode.sp.SpatialOperations ()
-        spatial._StorageLevel = StorageLevel.MEMORY_AND_DISK_SER
-        val results = spatial.nearest (session, "psr=EnergyConsumer,lon=7.281558,lat=47.124142,n=5")
+        val results = spatial.nearest (session, SpatialOperationParameters (lon=7.281558,lat=47.124142))
         val array = results.collect ()
 
         val process1 = System.nanoTime ()
 
-        val results2 = spatial.nearest (session, "psr=EnergyConsumer,lon=7.301368,lat=47.104892,n=5")
+        val results2 = spatial.nearest (session, SpatialOperationParameters (lon=7.301368,lat=47.104892))
         val array2 = results2.collect ()
 
         val process2 = System.nanoTime ()

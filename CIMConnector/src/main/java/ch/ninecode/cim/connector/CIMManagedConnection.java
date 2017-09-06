@@ -3,6 +3,7 @@ package ch.ninecode.cim.connector;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Vector;
 
@@ -45,7 +46,7 @@ public class CIMManagedConnection implements ManagedConnection
     protected Vector<ConnectionEventListener> _Listeners;
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
-    protected CIMConnection _Connection;
+    protected ArrayList<CIMConnection> _Connections;
     protected SparkSession _SparkSession;
 
     /**
@@ -57,18 +58,28 @@ public class CIMManagedConnection implements ManagedConnection
         _Adapter = adapter;
         _PrintWriter = writer;
         _Listeners = new Vector<> ();
+        _Subject = null;
+        _RequestInfo = null;
+        _Connections = new ArrayList<> ();
+        _SparkSession = null;
     }
 
-    public void close ()
+    /**
+     * Close a connection if it isn't already closed.
+     * @param connection The connection to close.
+     */
+    public void close (CIMConnection connection)
     {
-        if (null != _SparkSession)
-            _SparkSession.stop ();
-        _SparkSession = null;
-        Enumeration<ConnectionEventListener> list = _Listeners.elements ();
-        ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
-        event.setConnectionHandle (_Connection);
-        while (list.hasMoreElements ())
-            list.nextElement ().connectionClosed (event);
+        if (null != connection)
+            if (connection._Valid)
+            {
+                connection.invalidate ();
+                Enumeration<ConnectionEventListener> list = _Listeners.elements ();
+                ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
+                event.setConnectionHandle (connection);
+                while (list.hasMoreElements ())
+                    list.nextElement ().connectionClosed (event);
+            }
     }
 
     /**
@@ -107,272 +118,308 @@ public class CIMManagedConnection implements ManagedConnection
         return (ret);
     }
 
-    public void connect (Subject subject, ConnectionRequestInfo info)
+    /**
+     * Check and save the subject and connection request information.
+     * @param subject The principal under which to connect.
+     * @param info The connection request information.
+     * @see CIMConnectionRequestInfo
+     * @throws ResourceException if the subject or request info are not the same as this managed connection has already.
+     */
+    public void check (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
     {
         PrintWriter logger;
 
         logger = getLogWriter ();
-        _Subject = subject;
-        if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
-            _RequestInfo = new CIMConnectionRequestInfo ();
+        if (null == _Subject)
+            _Subject = subject;
         else
-            _RequestInfo = (CIMConnectionRequestInfo)info;
+            if ((null != subject) && !_Subject.equals (subject))
+                throw new ResourceException ("subject " + subject.toString () + " not equal to current subject " + _Subject.toString ());
+        if ((null != logger) && (null != _Subject))
+            logger.println ("Subject = " + _Subject.toString ());
+        if (null == _RequestInfo)
+            if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
+                _RequestInfo = new CIMConnectionRequestInfo ();
+            else
+                _RequestInfo = (CIMConnectionRequestInfo)info;
+        else
+            if ((null != info) && !_RequestInfo.equals (info))
+                throw new ResourceException ("connection request info " + info.toString () + " not equal to current info " + _RequestInfo.toString ());
         if (null != logger)
             logger.println ("CIMConnectionRequestInfo = " + _RequestInfo.toString ());
+    }
 
-        // create the configuration
-        SparkConf configuration = new SparkConf (false);
-        configuration.setAppName ("CIMConnector");
-        configuration.set ("spark.driver.userClassPathFirst", "false"); // default
-        configuration.set ("spark.executor.userClassPathFirst", "false"); // default
-        configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
+    /**
+     * Connect to Spark.
+     * @param subject The principal under which to connect.
+     * @param info The connection request information.
+     * @see CIMConnectionRequestInfo
+     * @throws ResourceException
+     */
+    public void connect (Subject subject, ConnectionRequestInfo info)
+        throws ResourceException
+    {
+        PrintWriter logger;
 
-        // set up the spark master
-        if (!_RequestInfo.getMaster ().equals (""))
-            configuration.setMaster (_RequestInfo.getMaster ());
-        else
-            // run Spark locally with as many worker threads as logical cores on the machine
-            configuration.setMaster ("local[*]");
-
-        // add the other properties
-        for (String key : _RequestInfo.getProperties ().keySet ())
-            configuration.set (key, _RequestInfo.getProperties ().get (key));
-
-        // set up the list of jars to send with the connection request
-        String jar = CIMReaderJarPath ();
-        String[] jars = new String[_RequestInfo.getJars ().size () + (null == jar ? 0 : 1)];
-        jars = _RequestInfo.getJars ().toArray (jars);
-        if (null != jar)
-            jars[jars.length - 1] = jar;
-        configuration.setJars (jars);
-
-        if (null != logger)
-            logger.println ("SparkConf = " + configuration.toDebugString ());
-
-        // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
-        // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
-//      configuration.setMaster ("yarn-client"); // assumes a resource manager is specified in yarn-site.xml, e.g. sandbox:8032
-//      configuration.setSparkHome ("/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/"); // ("/usr/local/spark")
-//      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
-
-        // register low level classes
-        Class<?>[] c1 = { Element.class, BasicElement.class, Unknown.class };
-        configuration.registerKryoClasses (c1);
-
-        // register CIM case classes
-        // this is really Byzantine, all I need is the apply() method,
-        // but all the rest are required for some reason,
-        // ToDo: will have to fix this soon
-        Function1<CIMSubsetter<?>, BoxedUnit> fn = new Function1<CIMSubsetter<?>, BoxedUnit> ()
+        if (null == _SparkSession)
         {
-            @Override
-            public BoxedUnit apply (CIMSubsetter<?> sub)
+            logger = getLogWriter ();
+            check (subject, info);
+
+            // create the configuration
+            SparkConf configuration = new SparkConf (false);
+            configuration.setAppName ("CIMConnector");
+            configuration.set ("spark.driver.userClassPathFirst", "false"); // default
+            configuration.set ("spark.executor.userClassPathFirst", "false"); // default
+            configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
+
+            // set up the spark master
+            if (!_RequestInfo.getMaster ().equals (""))
+                configuration.setMaster (_RequestInfo.getMaster ());
+            else
+                // run Spark locally with as many worker threads as logical cores on the machine
+                configuration.setMaster ("local[*]");
+
+            // add the other properties
+            for (String key : _RequestInfo.getProperties ().keySet ())
+                configuration.set (key, _RequestInfo.getProperties ().get (key));
+
+            // set up the list of jars to send with the connection request
+            String jar = CIMReaderJarPath ();
+            String[] jars = new String[_RequestInfo.getJars ().size () + (null == jar ? 0 : 1)];
+            jars = _RequestInfo.getJars ().toArray (jars);
+            if (null != jar)
+                jars[jars.length - 1] = jar;
+            configuration.setJars (jars);
+
+            if (null != logger)
+                logger.println ("SparkConf = " + configuration.toDebugString ());
+
+            // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
+            // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
+    //      configuration.setMaster ("yarn-client"); // assumes a resource manager is specified in yarn-site.xml, e.g. sandbox:8032
+    //      configuration.setSparkHome ("/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/"); // ("/usr/local/spark")
+    //      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
+
+            // register low level classes
+            Class<?>[] c1 = { Element.class, BasicElement.class, Unknown.class };
+            configuration.registerKryoClasses (c1);
+
+            // register CIM case classes
+            // this is really Byzantine, all I need is the apply() method,
+            // but all the rest are required for some reason,
+            // ToDo: will have to fix this soon
+            Function1<CIMSubsetter<?>, BoxedUnit> fn = new Function1<CIMSubsetter<?>, BoxedUnit> ()
             {
-                Class<?>[] array = {sub.runtime_class ()};
-                configuration.registerKryoClasses (array);
-                return (BoxedUnit.UNIT);
+                @Override
+                public BoxedUnit apply (CIMSubsetter<?> sub)
+                {
+                    Class<?>[] array = {sub.runtime_class ()};
+                    configuration.registerKryoClasses (array);
+                    return (BoxedUnit.UNIT);
+                }
+
+                @Override
+                public <A> Function1<CIMSubsetter<?>, A> andThen (Function1<BoxedUnit, A> arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return null;
+                }
+
+                @Override
+                public double apply$mcDD$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public double apply$mcDF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public double apply$mcDI$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public double apply$mcDJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public float apply$mcFD$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public float apply$mcFF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public float apply$mcFI$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public float apply$mcFJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public int apply$mcID$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public int apply$mcIF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public int apply$mcII$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public int apply$mcIJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public long apply$mcJD$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public long apply$mcJF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public long apply$mcJI$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public long apply$mcJJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return 0;
+                }
+
+                @Override
+                public void apply$mcVD$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                }
+
+                @Override
+                public void apply$mcVF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                }
+
+                @Override
+                public void apply$mcVI$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                }
+
+                @Override
+                public void apply$mcVJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                }
+
+                @Override
+                public boolean apply$mcZD$sp (double arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+
+                @Override
+                public boolean apply$mcZF$sp (float arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+
+                @Override
+                public boolean apply$mcZI$sp (int arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+
+                @Override
+                public boolean apply$mcZJ$sp (long arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+
+                @Override
+                public <A> Function1<A, BoxedUnit> compose (Function1<A, CIMSubsetter<?>> arg0)
+                {
+                    // TODO Auto-generated method stub
+                    return null;
+                }
+            };
+            CHIM.apply_to_all_classes (fn);
+
+            // register edge related classes
+            if (configuration.getBoolean ("ch.ninecode.cim.make_edges", false))
+            {
+                Class<?>[] classes = { PreEdge.class, Extremum.class, PostEdge.class };
+                configuration.registerKryoClasses (classes);
             }
 
-            @Override
-            public <A> Function1<CIMSubsetter<?>, A> andThen (Function1<BoxedUnit, A> arg0)
+            // register topological classes
+            if (configuration.getBoolean ("ch.ninecode.cim.do_topo", false))
             {
-                // TODO Auto-generated method stub
-                return null;
+                Class<?>[] classes = { CuttingEdge.class, TopologicalData.class };
+                configuration.registerKryoClasses (classes);
             }
 
-            @Override
-            public double apply$mcDD$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public double apply$mcDF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public double apply$mcDI$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public double apply$mcDJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public float apply$mcFD$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public float apply$mcFF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public float apply$mcFI$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public float apply$mcFJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public int apply$mcID$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public int apply$mcIF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public int apply$mcII$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public int apply$mcIJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public long apply$mcJD$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public long apply$mcJF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public long apply$mcJI$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public long apply$mcJJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public void apply$mcVD$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-            }
-
-            @Override
-            public void apply$mcVF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-            }
-
-            @Override
-            public void apply$mcVI$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-            }
-
-            @Override
-            public void apply$mcVJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-            }
-
-            @Override
-            public boolean apply$mcZD$sp (double arg0)
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public boolean apply$mcZF$sp (float arg0)
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public boolean apply$mcZI$sp (int arg0)
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public boolean apply$mcZJ$sp (long arg0)
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public <A> Function1<A, BoxedUnit> compose (Function1<A, CIMSubsetter<?>> arg0)
-            {
-                // TODO Auto-generated method stub
-                return null;
-            }
-        };
-        CHIM.apply_to_all_classes (fn);
-
-        // register edge related classes
-        if (configuration.getBoolean ("ch.ninecode.cim.make_edges", false))
-        {
-            Class<?>[] classes = { PreEdge.class, Extremum.class, PostEdge.class };
-            configuration.registerKryoClasses (classes);
+            // make a Spark session
+            _SparkSession = SparkSession.builder ().config (configuration).getOrCreate ();
+            _SparkSession.sparkContext ().setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+            if (null != logger)
+                logger.println ("SparkSession = " + _SparkSession.toString ());
         }
-
-        // register topological classes
-        if (configuration.getBoolean ("ch.ninecode.cim.do_topo", false))
-        {
-            Class<?>[] classes = { CuttingEdge.class, TopologicalData.class };
-            configuration.registerKryoClasses (classes);
-        }
-
-        // make a Spark session
-        _SparkSession = SparkSession.builder ().config (configuration).getOrCreate ();
-        _SparkSession.sparkContext ().setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        if (null != logger)
-            logger.println ("SparkSession = " + _SparkSession.toString ());
     }
 
     /**
@@ -381,8 +428,10 @@ public class CIMManagedConnection implements ManagedConnection
     public Object getConnection (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
     {
-        _Connection = new CIMConnection (this);
-        return (_Connection);
+        check (subject, info);
+        CIMConnection connection = new CIMConnection (this);
+        _Connections.add (connection);
+        return (connection);
     }
 
     /**
@@ -390,11 +439,31 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void destroy () throws ResourceException
     {
-        close ();
-        if (null != _Connection)
-            _Connection.invalidate ();
-        _Connection = null;
-        _Listeners.clear ();
+        cleanup ();
+        // Note:
+        //
+        // Since there can be only one SparkSession per JVM,
+        // and we wish the state of the cluster to persist across stateless ejb calls,
+        // and the Geronimo ConnectionManager used by TomEE handles each request independently
+        // (https://geronimo.apache.org/GMOxDOC30/connectors-and-transaction-management.html)
+        // which means this destroy method is called a lot (when connection count exceeds 4 I think),
+        // to reclaim connections, we cannot shut down the SparkContext here.
+        //
+        // There may be a way to use a persistent local transaction in the entire application
+        // to cause the ConnectionManager to use only one ManagedConnection
+        // according to the local transaction contract that specifies all ejbs can see the same
+        // resource adapter state
+        // (http://download.oracle.com/otn-pub/jcp/connector_architecture-1.6-fr-oth-JSpec/connector-1_6-final-spec.pdf),
+        // but it needs implementation at the CIMReasourceAdapter level
+        // (TransactionSupport.TransactionSupportLevel transactionSupport() default TransactionSupport.TransactionSupportLevel.LocalTransaction;)
+        // and a way for the javax.ws.rs.core.Application to specify the ConnectionFactoryDefinition with
+        // transactionSupport = TransactionSupportLevel.LocalTransaction
+        // and open a LocalTransaction at application start,
+        // and commit/rollback at application shutdown.
+        // So, for now we comment this out:
+//        if (null != _SparkSession)
+//            _SparkSession.stop ();
+        _SparkSession = null;
     }
 
     /**
@@ -402,7 +471,16 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void cleanup () throws ResourceException
     {
-        // no client state, right?
+        for (CIMConnection connection : _Connections)
+            close (connection);
+    }
+
+    public void disssociateConnection (Object connection) throws ResourceException
+    {
+        if (null != connection)
+            _Connections.remove (connection);
+        else
+            throw new ResourceException ("null cannot be dissociated as a connection object");
     }
 
     /**
@@ -410,10 +488,20 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public void associateConnection (Object connection) throws ResourceException
     {
-        if ((null == connection) || (connection.getClass ().isAssignableFrom (CIMConnection.class)))
-            _Connection = (CIMConnection)connection;
+        if (null != connection)
+        {
+            if (connection.getClass ().isAssignableFrom (CIMConnection.class))
+            {
+                CIMConnection c = (CIMConnection)connection;
+                c._ManagedConnection.disssociateConnection (c);
+                if (!_Connections.contains (c))
+                    _Connections.add (c);
+            }
+            else
+                throw new ResourceException ("object of class " + connection.getClass ().toGenericString () + " cannot be associated as a connection object");
+        }
         else
-            throw new ResourceException ("object of class " + connection.getClass ().toGenericString () + " cannot be associated as a connection object");
+            throw new ResourceException ("null cannot be associated as a connection object");
     }
 
     /**
@@ -453,7 +541,7 @@ public class CIMManagedConnection implements ManagedConnection
      */
     public ManagedConnectionMetaData getMetaData () throws ResourceException
     {
-        return (new CIMManagedConnectionMetaData (_Connection.getMetaData ()));
+        return (new CIMManagedConnectionMetaData ((new CIMConnection (this)).getMetaData ()));
     }
 
     /**

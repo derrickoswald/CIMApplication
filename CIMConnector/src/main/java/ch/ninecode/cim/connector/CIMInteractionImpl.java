@@ -294,7 +294,7 @@ public class CIMInteractionImpl implements Interaction
      */
     public Record execute (InteractionSpec ispec, Record input) throws ResourceException
     {
-        CIMResultSet ret;
+        Record ret;
 
         ret = null;
         if (_Valid)
@@ -306,6 +306,40 @@ public class CIMInteractionImpl implements Interaction
                 CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
                 switch (_spec.getFunctionName ())
                 {
+                    case CIMInteractionSpec.EXECUTE_CIM_FUNCTION:
+                        if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
+                            try
+                            {
+                                CIMMappedRecord record = (CIMMappedRecord)input;
+                                CIMFunction function = (CIMFunction)record.get ("function");
+                                SparkSession session = ((CIMConnection)getConnection ())._ManagedConnection._SparkSession;
+                                for (String jar: function.getJars ())
+                                    if (!session.sparkContext ().jars().contains (jar))
+                                        session.sparkContext ().addJar (jar);
+                                switch (function.getReturnType ())
+                                {
+                                    case Dataset:
+                                    {
+                                        Dataset<Row> result = function.execute (session);
+                                        ret = new CIMResultSet (result.schema (), result.collectAsList ());
+                                        break;
+                                    }
+                                    case String:
+                                    {
+                                        String result = function.execute (session, function.getMimeType ());
+                                        ret = new CIMMappedRecord ();
+                                        ((CIMMappedRecord)ret).put ("result", result);
+                                        break;
+                                    }
+                                }
+                            }
+                            catch (Exception exception)
+                            {
+                                throw new ResourceException ("problem", exception);
+                            }
+                        else
+                            throw new ResourceException (INVALID_INPUT_ERROR);
+                        break;
                     case CIMInteractionSpec.GET_DATAFRAME_FUNCTION:
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             try

@@ -4,13 +4,14 @@ import javax.resource.cci.InteractionSpec;
 
 public interface CIMInteractionSpec extends InteractionSpec
 {
-    public static final String LIST_FILES = "listFiles";
-    public static final String READ_FUNCTION = "read";
-    public static final String GET_DATAFRAME_FUNCTION = "getDataFrame";
-    public static final String EXECUTE_METHOD_FUNCTION = "executeMethodReturningDataFrame";
-    public static final String GET_STRING_FUNCTION = "getString";
+    static final String LIST_FILES = "listFiles";
+    static final String READ_FUNCTION = "read";
+    static final String GET_DATAFRAME_FUNCTION = "getDataFrame";
+    static final String EXECUTE_METHOD_FUNCTION = "executeMethodReturningDataFrame";
+    static final String GET_STRING_FUNCTION = "getString";
+    static final String EXECUTE_CIM_FUNCTION = "executeCIMFunction";
 
-    public String getFunctionName ();
+    String getFunctionName ();
 
-    public void setFunctionName (String functionName);
+    void setFunctionName (String functionName);
 }

@@ -1,7 +1,6 @@
 package ch.ninecode.cim.cimweb
 
 import javax.ejb._
-import javax.persistence._
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.GET
 import javax.ws.rs.Path
