@@ -41,6 +41,8 @@ public class ApplicationConfig extends Application
     {
         Class<?> pong = null;
         try { pong = Class.forName ("ch.ninecode.cim.cimweb.Pong"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
+        Class<?> spatial = null;
+        try { spatial = Class.forName ("ch.ninecode.cim.cimweb.Spatial"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         return new HashSet<>
         (
             Arrays.asList
@@ -52,7 +54,7 @@ public class ApplicationConfig extends Application
                 EnergyConsumer.class,
                 GridLabExport.class,
                 ShortCircuitCalculation.class,
-                Spatial.class,
+                spatial,
                 TimeSeries.class,
                 Visualize.class
             )

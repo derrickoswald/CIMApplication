@@ -11,11 +11,11 @@ import ch.ninecode.cim.connector.CIMFunction.Return
 
 abstract class CIMWebFunction extends CIMFunction
 {
-    protected var _Jars: Array[String] = new Array[String] (0)
+    var jars: Array[String] = new Array[String] (0)
 
-    def setJars (jars: Array[String] ): Unit = _Jars = jars
+    def setJars (newjars: Array[String]): Unit = jars = newjars
 
-    override def getJars: Array[String] = _Jars
+    override def getJars: Array[String] = jars
 
     def jarForObject (obj: Object): String =
     {
@@ -49,7 +49,7 @@ abstract class CIMWebFunction extends CIMFunction
         sb.append (" execute (session")
         sb.append (getReturnType match { case Return.Dataset => "" case Return.String => ", " + getMimeType })
         sb.append (") [")
-        sb.append (_Jars.mkString (","))
+        sb.append (jars.mkString (","))
         sb.append ("]")
         sb.toString
     }

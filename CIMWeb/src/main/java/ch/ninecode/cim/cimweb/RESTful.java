@@ -1,5 +1,6 @@
 package ch.ninecode.cim.cimweb;
 
+import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -21,9 +22,11 @@ import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
+import javax.resource.cci.MappedRecord;
 
 import ch.ninecode.cim.connector.CIMConnectionFactory;
 import ch.ninecode.cim.connector.CIMConnectionSpec;
+import ch.ninecode.cim.connector.CIMMappedRecord;
 
 public class RESTful
 {
@@ -94,6 +97,19 @@ public class RESTful
                 _Status = FAIL;
                 _Message = je.getMessage ();
             }
+        }
+
+        public void setResultException (Exception e, String message)
+        {
+            StringWriter string = new StringWriter ();
+            string.append (message);
+            string.append ("\n");
+            PrintWriter writer = new PrintWriter (string);
+            e.printStackTrace (writer);
+            writer.flush ();
+            writer.close ();
+            _Message = string.toString ();
+            _Status = FAIL;
         }
 
         public String toString ()
@@ -237,4 +253,13 @@ public class RESTful
         return (connection);
     }
 
+    protected MappedRecord getInputRecord (String description) throws ResourceException
+    {
+        MappedRecord ret;
+
+        ret = getConnectionFactory ().getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+        ret.setRecordShortDescription (description);
+
+        return (ret);
+    }
 }
