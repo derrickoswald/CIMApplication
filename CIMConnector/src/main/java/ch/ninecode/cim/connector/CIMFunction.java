@@ -22,7 +22,7 @@ public interface CIMFunction extends Serializable
          * Text such as JSON, GeoJSON, XML, plain text, etc.
          * See getMimeType.
          */
-        String,
+        String
     }
 
     /**

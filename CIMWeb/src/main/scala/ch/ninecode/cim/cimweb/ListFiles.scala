@@ -2,6 +2,7 @@ package ch.ninecode.cim.cimweb
 
 import java.util.logging.Logger
 import javax.ejb.Stateless
+import javax.json.JsonObject
 import javax.resource.ResourceException
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.DefaultValue
@@ -57,6 +58,9 @@ class ListFiles extends RESTful
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get ("result").asInstanceOf [String])
+                    val error: String = ret._Result.asInstanceOf[JsonObject].getString ("error")
+                    if (null != error)
+                        ret._Status = RESTful.FAIL
                 }
             }
             catch

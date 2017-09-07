@@ -4,7 +4,9 @@ import java.io.{File, StringWriter}
 import java.net.URI
 import java.util
 import java.util.{HashMap, Map}
-import javax.json._
+import javax.json.Json
+import javax.json.JsonStructure
+import javax.json.JsonWriterFactory
 import javax.json.stream.JsonGenerator
 import javax.ws.rs.core.MediaType
 
@@ -12,6 +14,7 @@ import ch.ninecode.cim.connector.CIMFunction.Return
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.apache.hadoop.security.AccessControlException
 
 case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
 {
@@ -93,24 +96,32 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
             response.add ("environment", environment)
         }
         // read the list of files
-        val statuses: Array[FileStatus] = hdfs.listStatus (root)
         val files = Json.createArrayBuilder
-        val prefix: String = root.toString
-        for (fs <- statuses)
+        try
         {
-            var path: String = fs.getPath.toString
-            if (path.startsWith (prefix))
-                path = path.substring (prefix.length)
-            val file = Json.createObjectBuilder
-            file.add ("path", path)
-            file.add ("length", fs.getLen)
-            file.add ("modification_time", fs.getModificationTime)
-            file.add ("access_time", fs.getAccessTime)
-            file.add ("is_directory", fs.isDirectory)
-            files.add (file)
+            val statuses: Array[FileStatus] = hdfs.listStatus (root)
+            val prefix: String = root.toString
+            for (fs <- statuses)
+            {
+                var path: String = fs.getPath.toString
+                if (path.startsWith (prefix))
+                    path = path.substring (prefix.length)
+                val file = Json.createObjectBuilder
+                file.add ("path", path)
+                file.add ("length", fs.getLen)
+                file.add ("modification_time", fs.getModificationTime)
+                file.add ("access_time", fs.getAccessTime)
+                file.add ("is_directory", fs.isDirectory)
+                files.add (file)
+            }
+        }
+        catch
+        {
+            case access: AccessControlException =>
+                response.add ("error", access.getMessage) // Permission denied: user=root, access=READ_EXECUTE, inode=\"/tmp\":derrick:derrick:drwx-wx-wx
         }
         response.add ("files", files)
-        jsonString (response.build);
+        jsonString (response.build)
     }
 
     override def toString: String =
