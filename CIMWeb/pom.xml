@@ -21,11 +21,6 @@
         <version.plugin.compiler>3.6.2</version.plugin.compiler>
         <version.plugin.war>3.1.0</version.plugin.war>
 
-        <!-- scala versions -->
-        <version.dependency.scala>2.11</version.dependency.scala>
-        <version.dependency.scalalibrary>2.11.8</version.dependency.scalalibrary>
-        <version.dependency.scalatest>3.0.3</version.dependency.scalatest>
-
         <!-- test dependencies versions -->
         <version.dependency.tomee>7.0.3</version.dependency.tomee>
         <version.dependency.arquillian>1.1.13.Final</version.dependency.arquillian>
@@ -43,7 +38,14 @@
             <classifier>lib</classifier>
             <scope>provided</scope>
         </dependency>
-
+<!--
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${version.dependency.hadoop}</version>
+            <scope>compile</scope>
+        </dependency>
+-->
         <dependency>
             <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>

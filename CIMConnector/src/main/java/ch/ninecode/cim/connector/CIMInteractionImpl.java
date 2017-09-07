@@ -1,16 +1,8 @@
 package ch.ninecode.cim.connector;
 
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URI;
-
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObjectBuilder;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -18,8 +10,6 @@ import javax.resource.cci.InteractionSpec;
 import javax.resource.cci.Record;
 import javax.resource.cci.ResourceWarning;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -96,94 +86,6 @@ public class CIMInteractionImpl implements Interaction
                 CIMInteractionSpecImpl _spec = (CIMInteractionSpecImpl) ispec;
                 switch (_spec.getFunctionName ())
                 {
-                    case CIMInteractionSpec.LIST_FILES:
-                        if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))
-                        {
-                            ((CIMMappedRecord) output).clear ();
-                            String directory = "/";
-                            if ((null != input) && (null != ((CIMMappedRecord)input).get ("path")))
-                                directory = ((CIMMappedRecord)input).get ("path").toString ();
-                            try
-                            {
-                                Object deb = (null != input) ? ((CIMMappedRecord)input).get ("debug") : "false";
-                                boolean debug = (null == deb) ? false : Boolean.valueOf (deb.toString ());
-
-                                // build a file system configuration, including core-site.xml
-                                Configuration hdfs_configuration = new Configuration ();
-                                if (null == hdfs_configuration.getResource ("core-site.xml"))
-                                {
-                                    String hadoop_conf = System.getenv ("HADOOP_CONF_DIR");
-                                    if (null != hadoop_conf)
-                                    {
-                                        Path site = new Path (hadoop_conf, "core-site.xml");
-                                        File f = new File (site.toString ());
-                                        if (f.exists () && !f.isDirectory ())
-                                            hdfs_configuration.addResource (site);
-                                    }
-                                }
-
-                                // get the file system
-                                URI uri = FileSystem.getDefaultUri (hdfs_configuration);
-                                // or: URI uri = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY));
-                                FileSystem hdfs = FileSystem.get (uri, hdfs_configuration);
-                                Path root = new Path (hdfs.getUri ().toString (), directory);
-
-                                // form the response
-                                JsonObjectBuilder response = Json.createObjectBuilder ();
-                                response.add ("filesystem", uri.toString ());
-                                response.add ("root", root.toString ());
-
-                                if (debug)
-                                {
-                                    JsonObjectBuilder configuration = Json.createObjectBuilder ();
-                                    for (Entry<String, String> pair : hdfs_configuration)
-                                    {
-                                        String key = pair.getKey ();
-                                        String value = pair.getValue ();
-                                        configuration.add (key, value);
-                                    }
-                                    response.add ("configuration", configuration);
-
-                                    JsonObjectBuilder environment = Json.createObjectBuilder ();
-                                    Map<String, String> env = System.getenv ();
-                                    for (String key : env.keySet ())
-                                    {
-                                        String value = env.get (key);
-                                        environment.add (key, value);
-                                    }
-                                    response.add ("environment", environment);
-                                }
-
-                                // read the list of files
-                                FileStatus[] statuses = hdfs.listStatus (root);
-                                JsonArrayBuilder files = Json.createArrayBuilder ();
-                                String prefix = root.toString ();
-                                for (FileStatus fs: statuses)
-                                {
-                                    String path = fs.getPath ().toString ();
-                                    if (path.startsWith (prefix))
-                                        path = path.substring (prefix.length ());
-                                    JsonObjectBuilder file = Json.createObjectBuilder ();
-                                    file.add ("path", path);
-                                    file.add ("length", fs.getLen ());
-                                    file.add ("modification_time", fs.getModificationTime ());
-                                    file.add ("access_time", fs.getAccessTime ());
-                                    file.add ("is_directory", fs.isDirectory ());
-                                    files.add (file);
-                                }
-                                response.add ("files", files);
-                                ((CIMMappedRecord) output).put ("files", response.build ());
-                                ret = true;
-                            }
-                            catch (Exception exception)
-                            {
-                                throw new ResourceException ("problem", exception);
-                            }
-                        }
-                        else
-                            throw new ResourceException (INVALID_OUTPUT_ERROR);
-                        break;
-
                     case CIMInteractionSpec.READ_FUNCTION:
                         if (input.getRecordName ().equals (CIMMappedRecord.INPUT))
                             if (output.getRecordName ().equals (CIMMappedRecord.OUTPUT))

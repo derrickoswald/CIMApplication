@@ -19,14 +19,14 @@ class Pong extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def pong (): String =
     {
-        val date = new Date ().toString ()
+        val date = new Date ().toString
         _Logger.info ("pong @ %s".format (date))
-        return (new RESTfulResult ("OK", date).toString ())
+        new RESTfulResult ("OK", date).toString
     }
 }
 
 object Pong
 {
-    val LOGGER_NAME = Pong.getClass.getName ()
-    val _Logger = Logger.getLogger (LOGGER_NAME)
+    val LOGGER_NAME: String = Pong.getClass.getName
+    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }
