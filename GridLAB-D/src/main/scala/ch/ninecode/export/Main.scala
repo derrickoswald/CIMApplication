@@ -19,24 +19,24 @@ import ch.ninecode.model._
 
 object Main
 {
-    val properties =
+    val properties: Properties =
     {
-        val in = this.getClass.getResourceAsStream ("/app.properties")
-        val p = new Properties ();
+        val in = this.getClass.getResourceAsStream ("/application.properties")
+        val p = new Properties ()
         p.load (in)
-        in.close
+        in.close ()
         p
     }
-    val APPLICATION_NAME = "Export"
-    val APPLICATION_VERSION = properties.getProperty ("version")
-    val SPARK = properties.getProperty ("spark")
+    val APPLICATION_NAME: String = "Export"
+    val APPLICATION_VERSION: String = properties.getProperty ("version")
+    val SPARK: String = properties.getProperty ("spark")
 
     object LogLevels extends Enumeration
     {
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
-    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName (_))
+    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
     (s) =>
@@ -121,7 +121,7 @@ object Main
     def jarForObject (obj: Object): String =
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
             ret = URLDecoder.decode (ret, "UTF-8")
@@ -140,7 +140,7 @@ object Main
             ret = name
         }
 
-        return (ret)
+        ret
     }
 
     /**
@@ -179,8 +179,8 @@ object Main
                 configuration.setAppName (APPLICATION_NAME)
                 if ("" != arguments.master)
                     configuration.setMaster (arguments.master)
-                if (arguments.opts.size != 0)
-                    arguments.opts.map ((pair: Tuple2[String, String]) => configuration.set (pair._1, pair._2))
+                if (arguments.opts.nonEmpty)
+                    arguments.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
                 if ("" != arguments.master)
@@ -224,7 +224,7 @@ object Main
 
                 // make a Spark session
                 val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (arguments.log_level.toString ())
+                session.sparkContext.setLogLevel (arguments.log_level.toString)
                 if ("" != arguments.checkpoint_dir)
                     session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
                 val version = session.version

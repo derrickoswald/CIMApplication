@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ch.ninecode.cim</groupId>
     <artifactId>CIMApplication</artifactId>
-    <version>2.2.9</version>
+    <version>2.3.0</version>
     <packaging>pom</packaging>
     <name>CIM Application Multimodule</name>
 
@@ -22,8 +22,8 @@
 
         <!-- Spark versions -->
         <version.dependency.hadoop>2.7.3</version.dependency.hadoop>
-        <version.dependency.spark>2.2.0</version.dependency.spark>
-        <version.dependency.cimreader>2.11-2.2.0-2.2.0</version.dependency.cimreader>
+        <version.dependency.spark>2.1.1</version.dependency.spark>
+        <version.dependency.cimreader>2.11-2.1.1-2.2.0</version.dependency.cimreader>
 
         <version.dependency.junit>4.12</version.dependency.junit>
 
