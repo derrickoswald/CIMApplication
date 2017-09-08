@@ -1,44 +1,30 @@
 package ch.ninecode.ms
 
-import java.net.URI
-import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.gl._
-import ch.ninecode.model._
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.TData
+import ch.ninecode.gl.Trace
+import ch.ninecode.gl.Transformers
 
-case class MiddleVoltageOptions (
-    verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
-    three: Boolean = false,
-    trafos: String = "",
-    export_only: Boolean = false,
-    erase: Boolean = false,
-    short_circuit: String = "",
-    workdir: String = "",
-    files: Seq[String] = Seq()
-)
-
-case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
+case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 {
     if (options.verbose)
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.ms.MiddleVoltage").setLevel (org.apache.log4j.Level.INFO)
-    val log = LoggerFactory.getLogger (getClass)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.ms.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -91,10 +77,14 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
             case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
         }
 
-        // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-        val ele = ntp.process (false)
-        log.info (ele.count () + " elements")
+        // identify topological nodes if necessary
+        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        if (tns.isEmpty || tns.head._2.isEmpty)
+        {
+            val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
+            val ele = ntp.process (false)
+            log.info (ele.count () + " elements")
+        }
 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
@@ -111,14 +101,15 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
 
         // determine the set of transformers to work on
         /**
-         * The name of the node associated with a terminal.
-         * @param terminal The terminal object to get the node for.
+         * The name of the node associated with the low voltage terminal.
+         * @param t The transformer information object to get the node for.
          * @return The name of the TopologicalNode or ConnectivityNode.
          */
         def node_name (t: TData): String =
         {
-            return (if (topological_nodes) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode)
+            if (topological_nodes) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode
         }
+
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
@@ -138,7 +129,7 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
         log.info ("" + transformers.count + " transformers to process")
 
         val tx = transformers.collect
-        tx.map ((x) => println (x(0)))
+        println (tx.map (x => x(0).toString).mkString ("\n"))
         def doit (transformers: Array[TData]): Int =
         {
             // get the transformer low voltage pin topological node
@@ -151,11 +142,11 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
             val trace = Trace (initial)
             val (nodes, edges) = trace.run (starting_nodes)
             val ynodes = nodes.collect
-            val yedges = edges.groupBy (_.key).values.collect
+            val yedges = edges.groupBy (_.key ()).values.collect
             // create the GLMGenerator
             val ust = USTKreis (transformers, ynodes, yedges)
             println (ust.trafokreis_key + " traced " + ynodes.length + " nodes and " + yedges.length + " edges")
-            val generator = MiddleVoltageGLMGenerator (!options.three, date_format, ust)
+            val generator = MediumVoltageGLMGenerator (!options.three, date_format, ust)
             gridlabd.export (generator)
             1
         }
@@ -167,5 +158,4 @@ case class MiddleVoltage (session: SparkSession, options: MiddleVoltageOptions)
 
         transformers.count
     }
-
 }

@@ -3,28 +3,9 @@ package ch.ninecode.ms
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import org.apache.spark.rdd.RDD
-
 import ch.ninecode.gl._
 
-case class USTKreis (
-    transformers: Array[TData],
-    nodes: Iterable[PreNode],
-    edges: Iterable[Iterable[PreEdge]])
-{
-    val start_time = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04T12:00:00")
-    val finish_time = start_time
-
-    def trafokreis_key (): String =
-    {
-        transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
-    }
-
-    def swing_node () = transformers(0).node0
-    def swing_node_voltage () = transformers(0).voltage0 * 1000.0
-}
-
-case class MiddleVoltageGLMGenerator (
+case class MediumVoltageGLMGenerator (
         one_phase: Boolean,
         date_format: SimpleDateFormat,
         ust: USTKreis) extends GLMGenerator (one_phase, date_format)
@@ -32,9 +13,9 @@ case class MiddleVoltageGLMGenerator (
 
     override def name: String = ust.trafokreis_key
 
-    override def start_time = ust.start_time
+    override def start_time: Calendar = ust.start_time
 
-    override def finish_time = ust.finish_time
+    override def finish_time: Calendar = ust.finish_time
 
     override def edge_groups: Iterable[Iterable[PreEdge]] = ust.edges
 
@@ -46,10 +27,7 @@ case class MiddleVoltageGLMGenerator (
 
     override def nodes: Iterable[GLMNode] = ust.nodes
 
-    override def extra (): Iterable[String] =
-    {
-        List ("")
-    }
+    override def extra: Iterable[String] = List ("")
 
     override def emit_node (node: GLMNode): String =
     {

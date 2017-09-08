@@ -1,24 +1,13 @@
 package ch.ninecode.ms
 
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.util.Calendar
-import java.util.HashMap
-
 import org.apache.spark.SparkConf
-import org.apache.spark.graphx.Graph
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
 
 import ch.ninecode.cim._
 import ch.ninecode.model._
 
-import javax.xml.bind.DatatypeConverter
-
-class MiddleVoltageSuite extends FunSuite
+class MediumVoltageSuite extends FunSuite
 {
     val FILE_DEPOT = "private_data/"
 
@@ -31,7 +20,7 @@ class MiddleVoltageSuite extends FunSuite
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("MiddleVoltageSuite")
+        configuration.setAppName ("MediumVoltageSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
@@ -52,15 +41,6 @@ class MiddleVoltageSuite extends FunSuite
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
-        // register Einspeiseleistung classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.esl.Experiment],
-            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
-            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-            classOf[ch.ninecode.esl.PowerFeedingNode],
-            classOf[ch.ninecode.esl.PreCalculationResults],
-            classOf[ch.ninecode.esl.Trafokreis],
-            classOf[ch.ninecode.esl.StartingTrafos]))
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
@@ -81,11 +61,11 @@ class MiddleVoltageSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "bkw_cim_export_sias_current_20161220_Wohlen_bei_Bern"
+        val root = "MediumVoltage2"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
-        val options = MiddleVoltageOptions (
+        val options = MediumVoltageOptions (
             verbose = true,
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
@@ -95,7 +75,7 @@ class MiddleVoltageSuite extends FunSuite
             short_circuit = "",
             files = List(filename)
         )
-        val ms = MiddleVoltage (session, options)
+        val ms = MediumVoltage (session, options)
         val count = ms.run ()
 
         val total = System.nanoTime ()
