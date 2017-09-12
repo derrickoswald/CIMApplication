@@ -3,6 +3,7 @@ package ch.ninecode.cim.cimweb
 import java.util.logging.Logger
 import javax.ejb.Stateless
 import javax.json.JsonObject
+import javax.json.Json
 import javax.resource.ResourceException
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.DefaultValue
@@ -11,6 +12,8 @@ import javax.ws.rs.MatrixParam
 import javax.ws.rs.Path
 import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
+
+import scala.collection.JavaConversions._
 
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
@@ -31,7 +34,7 @@ class ListFiles extends RESTful
         listFiles ("", debug)
 
     @GET
-    @Path ("{path}")
+    @Path ("{path:[^;]*}")
     @Produces (Array (MediaType.APPLICATION_JSON))
     def listFiles (
         @PathParam ("path") path: String,
@@ -40,7 +43,7 @@ class ListFiles extends RESTful
         val ret = new RESTfulResult
         val directory = if (path.startsWith ("/")) path else "/" + path
         _Logger.info ("list %s".format (directory))
-        val function = ListFilesFunction (directory, debug.toBoolean)
+        val function = ListFilesFunction (directory, try { debug.toBoolean } catch { case _: Throwable => false })
         val connection = getConnection (ret)
         if (null != connection)
             try
@@ -58,9 +61,17 @@ class ListFiles extends RESTful
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get ("result").asInstanceOf [String])
-                    val error: String = ret._Result.asInstanceOf[JsonObject].getString ("error")
-                    if (null != error)
+                    val response = ret._Result.asInstanceOf[JsonObject]
+                    if (response.containsKey ("error"))
+                    {
                         ret._Status = RESTful.FAIL
+                        ret._Message = response.getString ("error")
+                        val result = Json.createObjectBuilder
+                        for (key <- response.keySet)
+                            if (key != "error")
+                                result.add (key, response.get (key))
+                        ret.setResult (result.build)
+                    }
                 }
             }
             catch
@@ -82,6 +93,6 @@ class ListFiles extends RESTful
 
 object ListFiles
 {
-    val LOGGER_NAME: String = Pong.getClass.getName
+    val LOGGER_NAME: String = ListFiles.getClass.getName
     val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

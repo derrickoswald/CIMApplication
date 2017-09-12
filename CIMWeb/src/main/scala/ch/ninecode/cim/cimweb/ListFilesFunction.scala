@@ -1,20 +1,30 @@
 package ch.ninecode.cim.cimweb
 
-import java.io.{File, StringWriter}
+import java.io.File
+import java.io.StringWriter
 import java.net.URI
 import java.util
-import java.util.{HashMap, Map}
+import java.util.HashMap
+import java.util.Map
 import javax.json.Json
 import javax.json.JsonStructure
 import javax.json.JsonWriterFactory
 import javax.json.stream.JsonGenerator
 import javax.ws.rs.core.MediaType
 
-import ch.ninecode.cim.connector.CIMFunction.Return
+import scala.collection.JavaConversions._
+
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.apache.hadoop.fs.FileStatus
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.hadoop.security.AccessControlException
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.connector.CIMFunction.Return
 
 case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
 {
@@ -71,47 +81,37 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
         // form the response
         val response = Json.createObjectBuilder
         response.add ("filesystem", uri.toString)
-        response.add ("root", root.toString)
+        val temp: String = root.toString
+        val prefix: String = if (path.endsWith ("/")) if (temp.endsWith ("/")) temp else temp + "/" else temp
+        response.add ("root", prefix)
         if (debug)
         {
             val configuration = Json.createObjectBuilder
-            val i1: util.Iterator[Map.Entry[String, String]] = hdfs_configuration.iterator ()
-            while (i1.hasNext)
-            {
-                val pair: Map.Entry[String, String] = i1.next
-                val key: String = pair.getKey
-                val value: String = pair.getValue
-                configuration.add (key, value)
-            }
+            for (pair <- hdfs_configuration)
+                configuration.add (pair.getKey, pair.getValue)
             response.add ("configuration", configuration)
-            val environment = Json.createObjectBuilder
-            val env: util.Map[String, String] = System.getenv
-            val i2: util.Iterator[String] = env.keySet.iterator ()
-            while (i2.hasNext)
-            {
-                val key = i2.next
-                val value: String = env.get (key)
-                environment.add (key, value)
-            }
-            response.add ("environment", environment)
         }
         // read the list of files
         val files = Json.createArrayBuilder
         try
         {
             val statuses: Array[FileStatus] = hdfs.listStatus (root)
-            val prefix: String = root.toString
             for (fs <- statuses)
             {
-                var path: String = fs.getPath.toString
-                if (path.startsWith (prefix))
-                    path = path.substring (prefix.length)
                 val file = Json.createObjectBuilder
-                file.add ("path", path)
-                file.add ("length", fs.getLen)
+                val name: String = fs.getPath.toString
+                file.add ("path", if (name.startsWith (prefix)) name.substring (prefix.length) else name)
+                file.add ("size", fs.getLen)
                 file.add ("modification_time", fs.getModificationTime)
                 file.add ("access_time", fs.getAccessTime)
+                file.add ("group", fs.getGroup)
+                file.add ("owner", fs.getOwner)
+                val permission: FsPermission = fs.getPermission
+                file.add ("permission", permission.toString)
+                file.add ("replication", fs.getReplication)
+                file.add ("block_size", fs.getBlockSize)
                 file.add ("is_directory", fs.isDirectory)
+                file.add ("is_sym_link", fs.isSymlink)
                 files.add (file)
             }
         }

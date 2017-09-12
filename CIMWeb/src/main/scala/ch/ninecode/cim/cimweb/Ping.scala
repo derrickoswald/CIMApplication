@@ -1,0 +1,49 @@
+package ch.ninecode.cim.cimweb
+
+import java.util
+import java.util.logging.Logger
+
+import javax.ejb.Stateless
+import javax.json.Json
+import javax.ws.rs.core.MediaType
+import javax.ws.rs.DefaultValue
+import javax.ws.rs.GET
+import javax.ws.rs.MatrixParam
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+
+import scala.collection.JavaConversions._
+
+@Stateless
+@Path ("/ping")
+class Ping extends RESTful
+{
+    import Ping._
+
+    @GET
+    @Produces (Array (MediaType.APPLICATION_JSON))
+    def ping (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
+    {
+        val date = new util.Date ().toString
+        _Logger.info ("ping @ %s".format (date))
+        val result = new RESTfulResult ("OK", date)
+        if (try { debug.toBoolean } catch { case _: Throwable => false })
+        {
+            val environment = Json.createObjectBuilder
+            val env: util.Map[String, String] = System.getenv
+            for (xx <- env)
+                environment.add (xx._1, xx._2)
+            val ret = Json.createObjectBuilder
+            ret.add ("environment", environment)
+            result.setResult (ret.build)
+        }
+
+        result.toString
+    }
+}
+
+object Ping
+{
+    val LOGGER_NAME: String = Ping.getClass.getName
+    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
+}

@@ -39,8 +39,8 @@ public class ApplicationConfig extends Application
      */
     public Set<Class<?>> getClasses ()
     {
-        Class<?> pong = null;
-        try { pong = Class.forName ("ch.ninecode.cim.cimweb.Pong"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
+        Class<?> ping = null;
+        try { ping = Class.forName ("ch.ninecode.cim.cimweb.Ping"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         Class<?> list = null;
         try { list = Class.forName ("ch.ninecode.cim.cimweb.ListFiles"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         Class<?> spatial = null;
@@ -49,8 +49,7 @@ public class ApplicationConfig extends Application
         (
             Arrays.asList
             (
-                Ping.class,
-                pong,
+                ping,
                 list,
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,
