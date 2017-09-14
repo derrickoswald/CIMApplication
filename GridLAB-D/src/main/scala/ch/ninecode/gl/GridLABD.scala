@@ -20,6 +20,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
@@ -36,10 +37,10 @@ trait Graphable
      */
     def vertex_id (string: String): VertexId =
     {
-        var h = 2166136261l;
+        var h = 2166136261l
         for (c ← string)
             h = (h * 16777619) ^ c
-        h.asInstanceOf[VertexId]
+        h
     }
 }
 
@@ -54,8 +55,8 @@ case class PreNode(
     id_seq: String,
     voltage: Double) extends GLMNode with Graphable with Serializable
 {
-    override def id () = id_seq
-    override def nominal_voltage () = voltage
+    override def id: String = id_seq
+    override def nominal_voltage: Double = voltage
 }
 
 /**
@@ -92,11 +93,11 @@ case class PreEdge(
     {
         if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
     }
-    override def id (): String = id_equ
-    override def cn1 (): String = id_cn_1
-    override def cn2 (): String = id_cn_2
-    override def eq (): ConductingEquipment = equipment
-    override def el (): Element = element
+    override def id: String = id_equ
+    override def cn1: String = id_cn_1
+    override def cn2: String = id_cn_2
+    override def eq: ConductingEquipment = equipment
+    override def el: Element = element
 }
 
 /**
@@ -136,9 +137,9 @@ class GridLABD (
     topological_nodes: Boolean = true,
     one_phase: Boolean = false,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
-    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost().getHostName() + "/simulation/") extends Serializable
+    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost.getHostName + "/simulation/") extends Serializable
 {
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
      * Get the working directory ensuring a slash terminator.
@@ -193,20 +194,20 @@ class GridLABD (
         {
             val rdd = rdds (key)
             if (rdd.name == name)
-                return (rdd.asInstanceOf[RDD[Element]])
+                return rdd.asInstanceOf [RDD[Element]]
         }
 
-        return (null)
+        null
     }
 
     /**
      * The name of the node associated with a terminal.
-     * @param terminal The terminal object to get the node for.
+     * @param t The terminal object to get the node for.
      * @return The name of the TopologicalNode or ConnectivityNode.
      */
     def node_name (t: Terminal): String =
     {
-        return (if (topological_nodes) t.TopologicalNode else t.ConnectivityNode)
+        if (topological_nodes) t.TopologicalNode else t.ConnectivityNode
     }
 
     /**
@@ -252,7 +253,7 @@ class GridLABD (
         }
     }
 
-    def edge_operator(voltages: Map[String, Double])(arg: Tuple2[Tuple2[(Element, Double), Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
+    def edge_operator(voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
         var ret = List[PreEdge]()
 
@@ -262,7 +263,7 @@ class GridLABD (
         val t_it = arg._2
         // get the ConductingEquipment
         var c = e
-        while ((null != c) && !c.getClass().getName().endsWith(".ConductingEquipment"))
+        while ((null != c) && !c.getClass.getName.endsWith(".ConductingEquipment"))
             c = c.sup
         if (null != c) {
             // sort terminals by sequence number (and hence the primary is index 0)
@@ -288,7 +289,7 @@ class GridLABD (
                 ret = terminals.length match {
                     case 1 ⇒
                         ret :+
-                            new PreEdge(
+                            PreEdge(
                                 terminals(0).ACDCTerminal.id,
                                 node_name(terminals(0)),
                                 volts(0),
@@ -301,32 +302,30 @@ class GridLABD (
                                 e,
                                 false)
                     case _ ⇒
+                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
-                            for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                            {
-                                ret = ret :+ new PreEdge(
-                                    terminals(0).ACDCTerminal.id,
-                                    node_name(terminals(0)),
-                                    volts(0),
-                                    terminals(i).ACDCTerminal.id,
-                                    node_name(terminals(i)),
-                                    volts(i),
-                                    terminals(0).ConductingEquipment,
-                                    ratedCurrent,
-                                    equipment,
-                                    e,
-                                    shouldContinue(e))
-                            }
-                            ret
+                            ret = ret :+ PreEdge(
+                                terminals(0).ACDCTerminal.id,
+                                node_name(terminals(0)),
+                                volts(0),
+                                terminals(i).ACDCTerminal.id,
+                                node_name(terminals(i)),
+                                volts(i),
+                                terminals(0).ConductingEquipment,
+                                ratedCurrent,
+                                equipment,
+                                e,
+                                shouldContinue(e))
                         }
+                        ret
                 }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
-        return (ret)
+        ret
     }
 
-    def topological_node_operator(arg: Tuple2[Tuple2[TopologicalNode, Terminal], PreEdge]): PreNode =
+    def topological_node_operator(arg: ((TopologicalNode, Terminal), PreEdge)): PreNode =
     {
         val node = arg._1._1
         val term = arg._1._2
@@ -334,7 +333,7 @@ class GridLABD (
         PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
-    def connectivity_node_operator(arg: Tuple2[Tuple2[ConnectivityNode, Terminal], PreEdge]): PreNode =
+    def connectivity_node_operator(arg: ((ConnectivityNode, Terminal), PreEdge)): PreNode =
     {
         val node = arg._1._1
         val term = arg._1._2
@@ -342,14 +341,14 @@ class GridLABD (
         PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
-    def base_name(s: String): String =
+    def base_name (s: String): String =
     {
-        if (s.endsWith("_topo_fuse"))
-            s.substring(0, s.length - "_topo_fuse".length)
-        if (s.endsWith("_fuse_topo"))
-            s.substring(0, s.length - "_fuse_topo".length)
-        else if (s.endsWith("_topo"))
-            s.substring(0, s.length - "_topo".length)
+        if (s.endsWith ("_topo_fuse"))
+            s.substring (0, s.length - "_topo_fuse".length)
+        else if (s.endsWith ("_fuse_topo"))
+            s.substring (0, s.length - "_fuse_topo".length)
+        else if (s.endsWith ("_topo"))
+            s.substring (0, s.length - "_topo".length)
         else
             s
     }
@@ -360,7 +359,7 @@ class GridLABD (
         f.exists
     }
 
-    def make_graph_vertices(v: PreNode): Tuple2[VertexId, PreNode] =
+    def make_graph_vertices(v: PreNode): (VertexId, PreNode) =
     {
         (v.vertex_id(v.id_seq), v)
     }
@@ -373,7 +372,7 @@ class GridLABD (
     /**
      * Get pairs of cable id and maximum current.
      */
-    def getCableMaxCurrent(): RDD[Tuple2[String, Double]] =
+    def getCableMaxCurrent: RDD[(String, Double)] =
     {
         val wireinfos = session.sparkContext.getPersistentRDDs.filter(_._2.name == "WireInfo").head._2.asInstanceOf[RDD[WireInfo]]
         val lines = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ACLineSegment").head._2.asInstanceOf[RDD[ACLineSegment]]
@@ -382,7 +381,7 @@ class GridLABD (
 
         cables.persist(storage_level)
         session.sparkContext.getCheckpointDir match {
-            case Some(dir) ⇒ cables.checkpoint()
+            case Some (_) ⇒ cables.checkpoint()
             case None ⇒
         }
 
@@ -390,7 +389,7 @@ class GridLABD (
     }
 
     // Note: we return a bogus value just so there is a time sequential dependence on this by later code
-    def prepare(): Tuple2[RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]] =
+    def prepare(): (RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]) =
     {
         // get a map of voltages
         val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap()
@@ -402,10 +401,10 @@ class GridLABD (
         val terms = terminals.groupBy(_.ConductingEquipment)
 
         // get all elements
-        val elements = get("Elements").asInstanceOf[RDD[Element]]
+        val elements = get("Elements")
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
-        val cableMaxCurrent = getCableMaxCurrent()
+        val cableMaxCurrent = getCableMaxCurrent
         val joined_elements = elements.keyBy(_.id).leftOuterJoin(cableMaxCurrent).map(e ⇒
         {
             val ele = e._2._1
@@ -459,9 +458,9 @@ class GridLABD (
         xnodes.persist(storage_level)
         session.sparkContext.getCheckpointDir match
         {
-            case Some(dir) ⇒
-                xedges.checkpoint()
-                xnodes.checkpoint()
+            case Some (_) ⇒
+                xedges.checkpoint ()
+                xnodes.checkpoint ()
             case None ⇒
         }
 
@@ -549,7 +548,7 @@ class GridLABD (
         val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
         def toTimeStamp (string: String): Long =
         {
-            date_format.parse (string).getTime ()
+            date_format.parse (string).getTime
         }
 
         val path = workdir_slash + "*/output.txt"
@@ -568,7 +567,7 @@ class GridLABD (
         {
             var units = ""
             var element = ""
-            val content = f.split ("\n").filter (s ⇒ s.startsWith ("# file") || s.charAt (0).isDigit)
+            val content = f.split ("\n").filter (s ⇒ s.startsWith ("# file") || ((s.length > 0) && s.charAt (0).isDigit))
             def makeResult (c: String): ThreePhaseComplexDataElement =
             {
                 if (c.startsWith ("# file"))
@@ -586,7 +585,7 @@ class GridLABD (
                 {
                     val c_arr = c.split(",")
                     if (one_phase)
-                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0, 0.0), Complex(0.0, 0.0), units)
+                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0), Complex(0.0), units)
                     else
                         ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
                 }
@@ -596,13 +595,13 @@ class GridLABD (
         files.map (extract_trafo).flatMapValues (read)
     }
 
-    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]) =
+    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]): Any =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
             // ToDo: check for IOException
             val file = Paths.get (workdir_path + equipment + "/" + path)
-            val parent = Files.createDirectories (file.getParent())
+            Files.createDirectories (file.getParent)
             if (null != bytes)
                 Files.write (file, bytes)
         }
@@ -616,8 +615,8 @@ class GridLABD (
             val file = new Path (workdir_slash + equipment + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs (file.getParent(), new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (file.getParent(), new FsPermission("ugoa-rwx")) // "-"  WTF?
+            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
 
             if (null != bytes)
             {
@@ -644,7 +643,7 @@ class GridLABD (
         }
     }
 
-    def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean): Unit =
+    def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean)
     {
         if (includes_glm)
             eraseInputFile (equipment)

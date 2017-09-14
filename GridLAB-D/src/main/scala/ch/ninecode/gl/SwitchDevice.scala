@@ -12,7 +12,8 @@ class SwitchDevice (val one_phase: Boolean) extends Serializable
         val details = if (fuse)
             "            mean_replacement_time 3600.0;\n" + // sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
             "            current_limit " + current + "A;\n"
-
+        else
+            ""
         "\n" +
         "        object " + (if (fuse) "fuse" else "switch") + "\n" +
         "        {\n" +

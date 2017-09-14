@@ -30,9 +30,8 @@ class Ping extends RESTful
         if (try { debug.toBoolean } catch { case _: Throwable => false })
         {
             val environment = Json.createObjectBuilder
-            val env: util.Map[String, String] = System.getenv
-            for (xx <- env)
-                environment.add (xx._1, xx._2)
+            for (pair <- System.getenv)
+                environment.add (pair._1, pair._2)
             val ret = Json.createObjectBuilder
             ret.add ("environment", environment)
             result.setResult (ret.build)

@@ -29,15 +29,15 @@ class ShortCircuit (session: SparkSession, storage_level: StorageLevel) extends 
         val customSchema = StructType (
             Array
             (
-                StructField ("id", StringType, true),
-                StructField ("Fehlerort", StringType, true),
-                StructField ("Un", DoubleType, true),
-                StructField ("Ikw...RST.", DoubleType, true),
-                StructField ("Sk..RST.", DoubleType, true),
-                StructField ("Beschreibung..SAP.Nr..", StringType, true),
-                StructField ("Abgang", StringType, true),
-                StructField ("NIS.ID", StringType, true),
-                StructField ("NIS.Name", StringType, true)
+                StructField ("id", StringType),
+                StructField ("Fehlerort", StringType),
+                StructField ("Un", DoubleType),
+                StructField ("Ikw...RST.", DoubleType),
+                StructField ("Sk..RST.", DoubleType),
+                StructField ("Beschreibung..SAP.Nr..", StringType),
+                StructField ("Abgang", StringType),
+                StructField ("NIS.ID", StringType),
+                StructField ("NIS.Name", StringType)
             )
         )
 
@@ -48,15 +48,15 @@ class ShortCircuit (session: SparkSession, storage_level: StorageLevel) extends 
             .csv (csv)
 
         import session.sqlContext.implicits._
-        val sc = df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), true) ).rdd
+        val sc = df.map ( r => ShortCircuitData (r.getString (7), r.getDouble (4), r.getDouble (3), valid = true) ).rdd
 
         sc.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {
-            case Some (dir) => sc.checkpoint ()
+            case Some (_) => sc.checkpoint ()
             case None =>
         }
 
-        return (sc)
+        sc
     }
 }

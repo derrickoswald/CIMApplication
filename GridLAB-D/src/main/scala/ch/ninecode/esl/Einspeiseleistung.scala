@@ -636,10 +636,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
         }
 
-        // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-        val ele = ntp.process (false)
-        log.info (ele.count () + " elements")
+        // identify topological nodes if necessary
+        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        if (tns.isEmpty || tns.head._2.isEmpty)
+        {
+            val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
+            val ele = ntp.process (false)
+            log.info (ele.count () + " elements")
+        }
 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")

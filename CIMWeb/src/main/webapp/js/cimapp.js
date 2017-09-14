@@ -214,6 +214,38 @@ define
         }
 
         /**
+         * @summary Browser independent CORS setup.
+         * @description Creates the CORS request and opens it.
+         * @param {string} method The method type, e.g. "GET" or "POST"
+         * @param {string} url the URL to open the request on
+         * @param {boolean} synchronous optional parameter for open() call, default <em>true</em>
+         * @returns {object} the request object or <code>null</code> if CORS isn't supported
+         * @memberOf module:instancetype
+         */
+        function createCORSRequest (method, url, synchronous)
+        {
+            var ret;
+
+            if ("undefined" == typeof (synchronous))
+                synchronous = true;
+            ret = new XMLHttpRequest ();
+            if ("withCredentials" in ret) // "withCredentials" only exists on XMLHTTPRequest2 objects
+            {
+                ret.open (method, url, synchronous);
+                ret.withCredentials = true;
+            }
+            else if (typeof XDomainRequest != "undefined") // IE
+            {
+                ret = new XDomainRequest ();
+                ret.open (method, url);
+            }
+            else
+                ret = null; // CORS is not supported by the browser
+
+            return (ret);
+        }
+
+        /**
          * @summary Connect to the server and read the list of files.
          * @description Invoke the server-side function to list files.
          * @param {object} event - optional, the click event
@@ -225,10 +257,14 @@ define
             var url;
             var xmlhttp;
 
-            url = window.location.origin + window.location.pathname + "cim/list/";
-            xmlhttp = new XMLHttpRequest ();
-            xmlhttp.open ("GET", url, true);
-            xmlhttp.setRequestHeader ("Accept", "application/json");
+            if (true)
+                url = window.location.origin + window.location.pathname + "cim/list/";
+            else
+                url = "http://localhost:9080/cimweb/cim/list/data/"
+            // xmlhttp = new XMLHttpRequest ();
+            // xmlhttp.open ("GET", url, true);
+            xmlhttp = createCORSRequest ("GET", url, false);
+            //xmlhttp.setRequestHeader ("Accept", "application/json");
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
