@@ -3,9 +3,7 @@ package ch.ninecode.cim.cimweb
 import java.io.File
 import java.io.StringWriter
 import java.net.URI
-import java.util
 import java.util.HashMap
-import java.util.Map
 import javax.json.Json
 import javax.json.JsonStructure
 import javax.json.JsonWriterFactory
@@ -20,8 +18,6 @@ import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.hadoop.security.AccessControlException
-import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.connector.CIMFunction.Return
@@ -53,9 +49,6 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
     override def getReturnType: Return = Return.String
 
     override def getMimeType: String = MediaType.APPLICATION_JSON
-
-    override def execute (spark: SparkSession): Dataset[Row] =
-        throw new UnsupportedOperationException ("execute called on wrong method signature")
 
     override def execute (spark: SparkSession, mime_type: String): String =
     {

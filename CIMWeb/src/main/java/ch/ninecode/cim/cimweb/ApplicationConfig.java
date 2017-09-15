@@ -43,6 +43,8 @@ public class ApplicationConfig extends Application
         try { ping = Class.forName ("ch.ninecode.cim.cimweb.Ping"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         Class<?> list = null;
         try { list = Class.forName ("ch.ninecode.cim.cimweb.ListFiles"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
+        Class<?> get = null;
+        try { get = Class.forName ("ch.ninecode.cim.cimweb.GetFile"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         Class<?> spatial = null;
         try { spatial = Class.forName ("ch.ninecode.cim.cimweb.Spatial"); } catch (ClassNotFoundException e) { e.printStackTrace(); }
         return new HashSet<>
@@ -51,6 +53,7 @@ public class ApplicationConfig extends Application
             (
                 ping,
                 list,
+                get,
                 SimpleRESTEJB.class,
                 EnergyConsumer.class,
                 GridLabExport.class,

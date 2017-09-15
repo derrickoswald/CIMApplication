@@ -54,9 +54,6 @@ RUN set -x \
 
 EXPOSE 8080
 
-# Copy start script
-COPY start-tomee /opt/util/bin/start-tomee
-
 # Install tools
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install \
@@ -70,12 +67,15 @@ RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
 
 # layers added for CIMApplication (do this last to speed up Docker build)
 
+# Copy start script
+COPY start-tomee /opt/util/bin/start-tomee
+
 ADD CIMEar/target/CIMApplication.ear /usr/local/tomee/apps/
 
 RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak \
   && echo '<?xml version="1.0" encoding="UTF-8"?>' > /usr/local/tomee/conf/tomee.xml \
   && echo '<tomee>' >> /usr/local/tomee/conf/tomee.xml \
-  && echo '  <!-- see http://tomee.apache.org/containers-and-resources.html -->' >> /usr/local/tomee/conf/tomee.xml \
-  && echo '  <Deployments dir="apps" />' >> /usr/local/tomee/conf/tomee.xml \
+  && echo '    <!-- see http://tomee.apache.org/containers-and-resources.html -->' >> /usr/local/tomee/conf/tomee.xml \
+  && echo '    <Deployments dir="apps" />' >> /usr/local/tomee/conf/tomee.xml \
   && echo '</tomee>' >> /usr/local/tomee/conf/tomee.xml
 

@@ -5,9 +5,11 @@ import java.net.URLDecoder
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMFunction.Return
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 
 abstract class CIMWebFunction extends CIMFunction
 {
@@ -41,6 +43,12 @@ abstract class CIMWebFunction extends CIMFunction
 
         ret
     }
+
+    override def execute (spark: SparkSession): Dataset[Row] =
+        throw new UnsupportedOperationException ("execute called on wrong method signature")
+
+    override def execute (spark: SparkSession, mime_type: String): String =
+        throw new UnsupportedOperationException ("execute called on wrong method signature")
 
     override def toString: String =
     {

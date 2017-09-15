@@ -21,12 +21,21 @@ if [[ -z "${1}" ]]; then
   echo "Name node host not specified" >&2
   exit 1
 fi
+
+# if localhost start the name node
+if [[ "localhost" == "${1}" ]]; then
+    export NAMENODE=$(hostname)
+    sed -i "s|\[NAMENODE_HOST\]|$(hostname)|g" $HADOOP_CONF_DIR/core-site.xml
+    start-hadoop-namenode &
+else
+    # just edit the configuration
+    export NAMENODE=${1}
+    sed -i "s|\[NAMENODE_HOST\]|${1}|g" $HADOOP_CONF_DIR/core-site.xml
+fi
+
 # Wait for the name node to be online
-while ! nc -z $1 50070; do
+while ! nc -z $NAMENODE 50070; do
   sleep 2;
 done;
-# edit configuration
-sed -i.bak "s|\[NAMENODE_HOST\]|${1}|g" $HADOOP_CONF_DIR/core-site.xml
-rm -f $HADOOP_CONF_DIR/core-site.xml.bak
 
 catalina.sh run
