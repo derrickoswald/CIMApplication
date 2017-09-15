@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<connector id="CIMConnector"
+    xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/connector_1_6.xsd"
+    version="1.6">
+    <description>Interface to CIM data in Apache Spark.</description>
+    <display-name>CIMConnector</display-name>
+    <vendor-name>9code GmbH</vendor-name>
+    <eis-type>CIM Spark Connector</eis-type>
+    <resourceadapter-version>0.1</resourceadapter-version>
+    <resourceadapter id="CIMResourceAdapter">
+        <resourceadapter-class>ch.ninecode.cim.connector.CIMResourceAdapter</resourceadapter-class>
+        <config-property>
+            <config-property-name>YarnConfigurationPath</config-property-name>
+            <config-property-type>java.lang.String</config-property-type>
+            <config-property-value>/home/derrick/spark/spark-2.2.0-bin-hadoop2.7/conf</config-property-value>
+        </config-property>
+        <config-property>
+            <config-property-name>SparkDriverMemory</config-property-name>
+            <config-property-type>java.lang.String</config-property-type>
+            <config-property-value>1g</config-property-value>
+        </config-property>
+        <config-property>
+            <config-property-name>SparkExecutorMemory</config-property-name>
+            <config-property-type>java.lang.String</config-property-type>
+            <config-property-value>4g</config-property-value>
+        </config-property>
+        <outbound-resourceadapter>
+            <connection-definition>
+                <managedconnectionfactory-class>ch.ninecode.cim.connector.CIMManagedConnectionFactory</managedconnectionfactory-class>
+                <config-property>
+                    <config-property-name>ConnectionURL</config-property-name>
+                    <config-property-type>java.lang.String</config-property-type>
+                    <config-property-value>local[*]</config-property-value>
+                </config-property>
+                <connectionfactory-interface>javax.resource.cci.ConnectionFactory</connectionfactory-interface>
+                <connectionfactory-impl-class>ch.ninecode.cim.connector.CIMConnectionFactory</connectionfactory-impl-class>
+                <connection-interface>javax.resource.cci.Connection</connection-interface>
+                <connection-impl-class>ch.ninecode.cim.connector.CIMConnection</connection-impl-class>
+            </connection-definition>
+            <transaction-support>NoTransaction</transaction-support>
+            <reauthentication-support>false</reauthentication-support>
+        </outbound-resourceadapter>
+    </resourceadapter>
+</connector>
