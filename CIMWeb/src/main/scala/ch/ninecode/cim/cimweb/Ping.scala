@@ -26,7 +26,7 @@ class Ping extends RESTful
     {
         val date = new util.Date ().toString
         _Logger.info ("ping @ %s".format (date))
-        val result = new RESTfulResult ("OK", date)
+        val result = new RESTfulJSONResult ("OK", date)
         if (try { debug.toBoolean } catch { case _: Throwable => false })
         {
             val environment = Json.createObjectBuilder

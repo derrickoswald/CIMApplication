@@ -32,7 +32,7 @@ public class EnergyConsumer extends RESTful
     @Produces({"text/plain", "application/json"})
     public String GetEnergyConsumers()
     {
-        RESTfulResult ret = new RESTfulResult ();
+        RESTfulJSONResult ret = new RESTfulJSONResult ();
 
         Connection connection = getConnection (ret);
         if (null != connection)
@@ -88,8 +88,8 @@ public class EnergyConsumer extends RESTful
                         string.append ("SQLException on ResultSet");
                         PrintWriter writer = new PrintWriter (string);
                         sqlexception.printStackTrace (writer);
-                        ret._Status = FAIL;
-                        ret._Message = string.toString ();
+                        ret.status_$eq (RESTfulJSONResult.FAIL ());
+                        ret.message_$eq (string.toString ());
                         writer.close ();
                     }
                 }
@@ -102,8 +102,8 @@ public class EnergyConsumer extends RESTful
                 string.append ("ResourceException on interaction\n");
                 PrintWriter writer = new PrintWriter (string);
                 resourceexception.printStackTrace (writer);
-                ret._Status = FAIL;
-                ret._Message = string.toString ();
+                ret.status_$eq (RESTfulJSONResult.FAIL ());
+                ret.message_$eq (string.toString ());
                 writer.close ();
             }
             finally
@@ -118,16 +118,16 @@ public class EnergyConsumer extends RESTful
                     string.append ("ResourceException on close\n");
                     PrintWriter writer = new PrintWriter (string);
                     resourceexception.printStackTrace (writer);
-                    ret._Status = FAIL;
-                    ret._Message = string.toString ();
+                    ret.status_$eq (RESTfulJSONResult.FAIL ());
+                    ret.message_$eq (string.toString ());
                     writer.close ();
                 }
             }
         }
         else
         {
-            ret._Status = FAIL;
-            ret._Message += "getConnection failed";
+            ret.status_$eq (RESTfulJSONResult.FAIL ());
+            ret.message_$eq (ret.message() + "getConnection failed");
         }
 
         return (ret.toString ());

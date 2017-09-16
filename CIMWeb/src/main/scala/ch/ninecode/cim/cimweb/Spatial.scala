@@ -29,7 +29,7 @@ class Spatial extends RESTful
         @DefaultValue ("47.124142") @MatrixParam ("lat") lat: String,
         @DefaultValue ("5") @MatrixParam ("n") n: String): String =
     {
-        val ret = new RESTfulResult ()
+        val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
         if (null != connection)
             try

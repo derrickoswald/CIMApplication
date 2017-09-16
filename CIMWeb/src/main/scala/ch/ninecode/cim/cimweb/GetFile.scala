@@ -31,7 +31,7 @@ class GetFile extends RESTful
         val file = if (path.startsWith ("/")) path else "/" + path
         _Logger.info ("get %s".format (file))
         val function = GetFileFunction (file)
-        val ret = new RESTfulResult
+        val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         val response: Response = if (null != connection)
             try

@@ -40,7 +40,7 @@ class ListFiles extends RESTful
         @PathParam ("path") path: String,
         @DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val ret = new RESTfulResult
+        val ret = new RESTfulJSONResult
         val directory = if (path.startsWith ("/")) path else "/" + path
         _Logger.info ("list %s".format (directory))
         val function = ListFilesFunction (directory, try { debug.toBoolean } catch { case _: Throwable => false })
@@ -61,11 +61,11 @@ class ListFiles extends RESTful
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get ("result").asInstanceOf [String])
-                    val response = ret._Result.asInstanceOf[JsonObject]
+                    val response = ret.result.asInstanceOf[JsonObject]
                     if (response.containsKey ("error"))
                     {
-                        ret._Status = RESTful.FAIL
-                        ret._Message = response.getString ("error")
+                        ret.status = RESTfulJSONResult.FAIL
+                        ret.message = response.getString ("error")
                         val result = Json.createObjectBuilder
                         for (key <- response.keySet)
                             if (key != "error")
