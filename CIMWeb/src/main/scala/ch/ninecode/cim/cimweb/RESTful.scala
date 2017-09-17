@@ -17,6 +17,7 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
 {
+    type map = java.util.Map[String,Object]
 
     //import javax.annotation.Resource;
     //    @Resource

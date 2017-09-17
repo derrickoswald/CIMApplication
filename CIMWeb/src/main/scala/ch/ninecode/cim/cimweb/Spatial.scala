@@ -42,7 +42,6 @@ class Spatial extends RESTful
                     {
                         // set up the function with parameters
                         val near = SpatialNearestFunction (SpatialOperationParameters (psr, lon.toDouble, lat.toDouble, n.toInt))
-                        type map = java.util.Map[String,Object]
                         input.asInstanceOf[map].put ("function", near)
                     }
                     catch

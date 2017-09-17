@@ -51,7 +51,6 @@ class ListFiles extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                type map = java.util.Map[String,Object]
                 input.asInstanceOf[map].put ("function", function)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)

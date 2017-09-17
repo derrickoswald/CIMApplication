@@ -2,38 +2,41 @@ package ch.ninecode.cim.cimweb
 
 import java.util.logging.Logger
 import javax.ejb.Stateless
+import javax.json.Json
+import javax.json.JsonObject
 import javax.resource.ResourceException
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.GET
 import javax.ws.rs.Path
 import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
-import javax.ws.rs.core.Response
+
+import scala.collection.JavaConversions._
 
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 /**
- * Get the (XML) file from HDFS.
+ * Load the (RDF) file from HDFS into Spark.
  */
 @Stateless
-@Path ("get/")
-class GetFile extends RESTful
+@Path ("load/")
+class LoadFile extends RESTful
 {
-    import GetFile._
+    import LoadFile._
 
     @GET
     @Path ("{path:[^;]*}")
-    @Produces (Array (MediaType.APPLICATION_XML))
-    def getFile (@PathParam ("path") path: String): Response =
+    @Produces (Array (MediaType.APPLICATION_JSON))
+    def getFile (@PathParam ("path") path: String): String =
     {
         val file = if (path.startsWith ("/")) path else "/" + path
-        _Logger.info ("get %s".format (file))
-        val function = GetFileFunction (file)
+        _Logger.info ("load %s".format (file))
+        val function = LoadFileFunction (file) // , new scala.collection.mutable.HashMap[String, String] ()
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
-        val response: Response = if (null != connection)
+        if (null != connection)
             try
             {
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
@@ -43,18 +46,29 @@ class GetFile extends RESTful
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)
-                    Response.serverError ().entity ("null is not a MappedRecord").build
+                    throw new ResourceException ("null is not a MappedRecord")
                 else
                 {
                     // if not found use Response.Status.NOT_FOUND
                     val record = output.asInstanceOf [CIMMappedRecord]
-                    Response.ok (record.get ("result").asInstanceOf [String], MediaType.APPLICATION_XML).build
+                    ret.setResult (record.get ("result").asInstanceOf [String])
+                    val response = ret.result.asInstanceOf[JsonObject]
+                    if (response.containsKey ("error"))
+                    {
+                        ret.status = RESTfulJSONResult.FAIL
+                        ret.message = response.getString ("error")
+                        val result = Json.createObjectBuilder
+                        for (key <- response.keySet)
+                            if (key != "error")
+                                result.add (key, response.get (key))
+                        ret.setResult (result.build)
+                    }
                 }
             }
             catch
             {
                 case resourceexception: ResourceException =>
-                    Response.serverError ().entity ("ResourceException on interaction").build
+                    ret.setResultException (resourceexception, "ResourceException on interaction")
             }
             finally
                 try
@@ -62,17 +76,15 @@ class GetFile extends RESTful
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity ("ResourceException on close").build
+                        ret.setResultException (resourceexception, "ResourceException on close")
                 }
-        else
-            Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection").build
 
-        response
+        ret.toString
     }
 }
 
-object GetFile
+object LoadFile
 {
-    val LOGGER_NAME: String = GetFile.getClass.getName
+    val LOGGER_NAME: String = LoadFile.getClass.getName
     val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

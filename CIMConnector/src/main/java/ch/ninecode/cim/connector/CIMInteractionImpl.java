@@ -247,11 +247,8 @@ public class CIMInteractionImpl implements Interaction
                             try
                             {
                                 CIMMappedRecord record = (CIMMappedRecord)input;
-                                String filename = record.get ("filename").toString ();
                                 String query = record.get ("query").toString ();
                                 SparkSession session = ((CIMConnection)getConnection ())._ManagedConnection._SparkSession;
-                                Dataset<Row> elements = readFile (session, filename);
-                                elements.count ();
                                 Dataset<Row> result = session.sqlContext ().sql (query);
                                 ret = new CIMResultSet (result.schema (), result.collectAsList ());
                             }

@@ -1,18 +1,36 @@
 package ch.ninecode.cim.cimweb
 
+import java.io.File
+import java.io.StringWriter
 import java.io.UnsupportedEncodingException
+import java.net.URI
 import java.net.URLDecoder
+import java.util.HashMap
+import javax.json.Json
+import javax.json.JsonStructure
+import javax.json.JsonWriterFactory
+import javax.json.stream.JsonGenerator
+import javax.ws.rs.core.MediaType
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMFunction.Return
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 
+import ch.ninecode.cim.connector.CIMFunction
+import ch.ninecode.cim.connector.CIMFunction.Return
+
 abstract class CIMWebFunction extends CIMFunction
 {
+    override def getReturnType: Return = Return.String
+
+    override def getMimeType: String = MediaType.APPLICATION_JSON
+
     var jars: Array[String] = new Array[String] (0)
 
     def setJars (newjars: Array[String]): Unit = jars = newjars
@@ -43,6 +61,53 @@ abstract class CIMWebFunction extends CIMFunction
 
         ret
     }
+
+    // build a file system configuration, including core-site.xml
+    lazy val hdfs_configuration: Configuration =
+    {
+        val configuration = new Configuration ()
+        if (null == configuration.getResource ("core-site.xml"))
+        {
+            val hadoop_conf: String = System.getenv ("HADOOP_CONF_DIR")
+            if (null != hadoop_conf)
+            {
+                val site: Path = new Path (hadoop_conf, "core-site.xml")
+                val f: File = new File (site.toString)
+                if (f.exists && !f.isDirectory)
+                    configuration.addResource (site)
+            }
+        }
+        configuration
+    }
+
+    // get the file system
+    lazy val uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+    // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
+
+    lazy val hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
+
+    /**
+     *
+     * @todo Eliminate the need to convert the JSON to a String and back
+     */
+    protected val FACTORY_INSTANCE: JsonWriterFactory =
+    {
+        val properties = new HashMap[String, Boolean](1)
+        properties.put (JsonGenerator.PRETTY_PRINTING, true)
+        Json.createWriterFactory (properties)
+    }
+
+    protected def getPrettyJsonWriterFactory: JsonWriterFactory = FACTORY_INSTANCE
+
+    protected def jsonString (data: JsonStructure): String =
+    {
+        val string = new StringWriter
+        val writer = getPrettyJsonWriterFactory.createWriter (string)
+        writer.write (data)
+        writer.close ()
+        string.toString
+    }
+
 
     override def execute (spark: SparkSession): Dataset[Row] =
         throw new UnsupportedOperationException ("execute called on wrong method signature")

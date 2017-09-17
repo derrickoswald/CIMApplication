@@ -20,8 +20,6 @@ case class SpatialNearestFunction (var parameters: SpatialOperationParameters) e
 
     override def getReturnType: Return = Return.Dataset
 
-    override def getMimeType = null
-
     override def execute (spark: SparkSession): Dataset[Row] =
     {
         val ops = new SpatialOperations
