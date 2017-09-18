@@ -106,7 +106,7 @@ define
             // }
             var options = ""
             var root = response.root;
-            response.files.forEach (function (s) { options += "<option value='" + root + s.path + "'>" + s.path + " " + s.length + "</option>\n" } );
+            response.files.forEach (function (s) { if (!s.is_directory) options += "<option value='" + root + s.path + "'>" + s.path + " " + s.size + "</option>\n" } );
             document.getElementById ("cim_file").innerHTML = options;
             document.getElementById ("cim_file2").innerHTML = options;
         }
@@ -245,6 +245,14 @@ define
             return (ret);
         }
 
+        function running_local ()
+        {
+            return (
+                ("null" == window.location.origin) // Firefox
+             || ("file://" == window.location.origin) // chromium
+                )
+        }
+
         /**
          * @summary Connect to the server and read the list of files.
          * @description Invoke the server-side function to list files.
@@ -257,14 +265,11 @@ define
             var url;
             var xmlhttp;
 
-            if (true)
-                url = window.location.origin + window.location.pathname + "cim/list/";
+            if (running_local ())
+                url = "http://localhost:9080/cimweb/cim/list/"
             else
-                url = "http://localhost:9080/cimweb/cim/list/data/"
-            // xmlhttp = new XMLHttpRequest ();
-            // xmlhttp.open ("GET", url, true);
+                url = window.location.origin + window.location.pathname + "cim/list/";
             xmlhttp = createCORSRequest ("GET", url, false);
-            //xmlhttp.setRequestHeader ("Accept", "application/json");
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;

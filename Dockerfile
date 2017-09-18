@@ -70,8 +70,8 @@ RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
 # Copy start script
 COPY start-tomee /opt/util/bin/start-tomee
 
+# set up CIMApplication
 ADD CIMEar/target/CIMApplication.ear /usr/local/tomee/apps/
-
 RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak \
   && echo '<?xml version="1.0" encoding="UTF-8"?>' > /usr/local/tomee/conf/tomee.xml \
   && echo '<tomee>' >> /usr/local/tomee/conf/tomee.xml \
@@ -79,3 +79,16 @@ RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak \
   && echo '    <Deployments dir="apps" />' >> /usr/local/tomee/conf/tomee.xml \
   && echo '</tomee>' >> /usr/local/tomee/conf/tomee.xml
 
+# set up CORS
+RUN sed -i.bak "s|</web-app>|\
+  <!-- ==================== CORS support ==================== -->\n\
+  <!-- see http://tomcat.apache.org/tomcat-7.0-doc/config/filter.html#CORS_Filter -->\n\
+    <filter>\n\
+        <filter-name>CorsFilter</filter-name>\n\
+        <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>\n\
+    </filter>\n\
+    <filter-mapping>\n\
+        <filter-name>CorsFilter</filter-name>\n\
+        <url-pattern>/*</url-pattern>\n\
+    </filter-mapping>\n\n\
+</web-app>|g" /usr/local/tomee/conf/web.xml
