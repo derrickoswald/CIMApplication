@@ -292,6 +292,55 @@ define
         }
 
         /**
+         * @summary Put a file on HDFS.
+         * @description Store a user selected file.
+         * @param {object} event - optional, the click event
+         * @function do_put
+         * @memberOf module:cimapp
+         */
+        function do_put (event)
+        {
+            var url;
+            var xmlhttp;
+
+            if (running_local ())
+                url = "http://localhost:9080/cimweb/cim/put/"
+            else
+                url = window.location.origin + window.location.pathname + "cim/put/";
+            var file = document.getElementById ("file");
+            if (file.value != "")
+            {
+                url = url + file.value.replace ("C:\\fakepath\\", "");
+                var data = file.files[0];
+                var reader = new FileReader ();
+                reader.onload = function ()
+                {
+                    xmlhttp = createCORSRequest ("PUT", url, false);
+                    xmlhttp.onreadystatechange = function ()
+                    {
+                        var resp;
+                        var msg;
+                        var reason;
+
+                        if (4 == xmlhttp.readyState)
+                            if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                            {
+                                resp = JSON.parse (xmlhttp.responseText);
+                                if (resp.status == "OK")
+                                    alert (JSON.stringify (resp.result, null, 4));
+                                else
+                                   alert (resp.error);
+                            }
+                            else
+                                alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                    };
+                    xmlhttp.send (reader.result);
+                };
+                reader.readAsArrayBuffer (data)
+            }
+        }
+
+        /**
          * @summary Fetch some data.
          * @description Invoke the server-side function to get some data.
          * @param {object} event - optional, the click event
@@ -585,6 +634,7 @@ define
             {
                 init_map: init_map,
                 do_connect: do_connect,
+                do_put: do_put,
                 connect: connect,
                 gridlab: gridlab,
                 select: select,
