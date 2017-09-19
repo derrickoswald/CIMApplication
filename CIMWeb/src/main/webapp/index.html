@@ -48,31 +48,57 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Options <span class="caret"></span></a>
                         <ul class="dropdown-menu" role="menu">
+                            <li><a id="trace" href="#">Trace</a></li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="trace_through_open_switches">
+                                        <input id="trace_through_open_switches" type="checkbox"/>
+                                        Trace through open switches
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="trace_though_voltage_level_changes">
+                                        <input id="trace_though_voltage_level_changes" type="checkbox"/>
+                                        Trace through voltage level changes
+                                    </label>
+                                </div>
+                            </li>
                             <li><a id="unhighlight" href="#">Un-Highlight</a></li>
+                            <li class="divider"></li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="show_internal_features">
+                                        <input id="show_internal_features" type="checkbox" checked="checked" />
+                                        Include internal features
+                                    </label>
+                                </div>
+                            </li>
                         </ul>
                     </li>
                 </ul>
                 <ul class="nav navbar-nav">
                     <li><a id="coordinates"></a></li>
                 </ul>
-                <form id="put" class="form-inline navbar-right waves-effect waves-light" role="put">
+                <!--
+                <form id="put" class="form-inline navbar-right waves-effect waves-light" role="form">
                     <input id="file" class="form-control" type="file" name="file"  style="color:white"/>
                     <button id="do_put" type="button" class="btn btn-primary">Put</button>
                 </form>
-                <!--
+                -->
                 <form id="search" class="navbar-form navbar-right waves-effect waves-light" role="search">
                     <div class="form-group">
                         <input id="search_text" class="form-control" placeholder="Search">
                     </div>
                 </form>
-                -->
             </div>
         </div>
     </nav>
 
 
     <!-- Content -->
-    <section id="map" class="intro">
+    <section id="main" class="intro">
     </section>
 
     <!-- Server Dialog Modal -->
