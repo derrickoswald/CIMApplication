@@ -39,10 +39,8 @@ class ApplicationConfig extends Application
     {
         new util.HashSet[Class[_]](util.Arrays.asList (
             classOf[Ping],
-            classOf[ListFiles],
-            classOf[GetFile],
+            classOf[FileOperations],
             classOf[LoadFile],
-            classOf[PutFile],
             classOf[SimpleRESTEJB],
             classOf[EnergyConsumer],
             classOf[GridLabExport],
