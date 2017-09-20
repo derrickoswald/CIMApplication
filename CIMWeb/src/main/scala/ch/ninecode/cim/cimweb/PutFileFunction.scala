@@ -1,16 +1,14 @@
 package ch.ninecode.cim.cimweb
 
 import javax.json.Json
-import javax.ws.rs.core.MediaType
+import javax.json.JsonStructure
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 
 case class PutFileFunction (path: String, data: Array[Byte]) extends CIMWebFunction
 {
-    override def getMimeType: String = MediaType.APPLICATION_OCTET_STREAM
-
-    override def execute (spark: SparkSession, mime_type: String): String =
+    override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
         val response = Json.createObjectBuilder
@@ -30,7 +28,7 @@ case class PutFileFunction (path: String, data: Array[Byte]) extends CIMWebFunct
             case e: Exception =>
                 response.add ("error", e.getMessage)
         }
-        jsonString (response.build)
+        response.build
     }
 
     override def toString: String =

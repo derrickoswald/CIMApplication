@@ -3,6 +3,7 @@ package ch.ninecode.cim.connector;
 import java.util.HashMap;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import javax.json.JsonStructure;
 import javax.resource.ResourceException;
 import javax.resource.cci.Connection;
 import javax.resource.cci.Interaction;
@@ -19,6 +20,7 @@ public class CIMInteractionImpl implements Interaction
 
     private static final String CLOSED_ERROR = "Connection closed";
     private static final String INVALID_FUNCTION_ERROR = "Invalid function";
+    private static final String FUNCTION_MISSING_ERROR = "CIMFunction not provided";
     private static final String INVALID_INPUT_ERROR = "Invalid input record for function";
     private static final String INVALID_OUTPUT_ERROR = "Invalid output record for function";
 
@@ -213,7 +215,11 @@ public class CIMInteractionImpl implements Interaction
                             try
                             {
                                 CIMMappedRecord record = (CIMMappedRecord)input;
-                                CIMFunction function = (CIMFunction)record.get ("function");
+                                Object obj = record.get (CIMFunction.FUNCTION);
+                                if ((null == obj) || (!(obj instanceof CIMFunction)))
+                                    throw new ResourceException (FUNCTION_MISSING_ERROR);
+                                CIMFunction function = (CIMFunction)obj;
+                                // set up function call
                                 SparkSession session = ((CIMConnection)getConnection ())._ManagedConnection._SparkSession;
                                 for (String jar: function.getJars ())
                                     if (!session.sparkContext ().jars().contains (jar))
@@ -222,15 +228,22 @@ public class CIMInteractionImpl implements Interaction
                                 {
                                     case Dataset:
                                     {
-                                        Dataset<Row> result = function.execute (session);
+                                        Dataset<Row> result = function.executeResultSet (session);
                                         ret = new CIMResultSet (result.schema (), result.collectAsList ());
                                         break;
                                     }
                                     case String:
                                     {
-                                        String result = function.execute (session, function.getMimeType ());
+                                        String result = function.executeString (session);
                                         ret = new CIMMappedRecord ();
-                                        ((CIMMappedRecord)ret).put ("result", result);
+                                        ((CIMMappedRecord)ret).put (CIMFunction.RESULT, result);
+                                        break;
+                                    }
+                                    case JSON:
+                                    {
+                                        JsonStructure result = function.executeJSON (session);
+                                        ret = new CIMMappedRecord ();
+                                        ((CIMMappedRecord)ret).put (CIMFunction.RESULT, result);
                                         break;
                                     }
                                 }

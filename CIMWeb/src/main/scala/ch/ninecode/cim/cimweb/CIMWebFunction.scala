@@ -1,16 +1,10 @@
 package ch.ninecode.cim.cimweb
 
 import java.io.File
-import java.io.StringWriter
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
-import java.util.HashMap
-import javax.json.Json
 import javax.json.JsonStructure
-import javax.json.JsonWriterFactory
-import javax.json.stream.JsonGenerator
-import javax.ws.rs.core.MediaType
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
@@ -27,9 +21,7 @@ import ch.ninecode.cim.connector.CIMFunction.Return
 
 abstract class CIMWebFunction extends CIMFunction
 {
-    override def getReturnType: Return = Return.String
-
-    override def getMimeType: String = MediaType.APPLICATION_JSON
+    override def getReturnType: Return = Return.JSON
 
     var jars: Array[String] = new Array[String] (0)
 
@@ -86,42 +78,28 @@ abstract class CIMWebFunction extends CIMFunction
 
     lazy val hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
 
-    /**
-     *
-     * @todo Eliminate the need to convert the JSON to a String and back
-     */
-    protected val FACTORY_INSTANCE: JsonWriterFactory =
-    {
-        val properties = new HashMap[String, Boolean](1)
-        properties.put (JsonGenerator.PRETTY_PRINTING, true)
-        Json.createWriterFactory (properties)
-    }
-
-    protected def getPrettyJsonWriterFactory: JsonWriterFactory = FACTORY_INSTANCE
-
-    protected def jsonString (data: JsonStructure): String =
-    {
-        val string = new StringWriter
-        val writer = getPrettyJsonWriterFactory.createWriter (string)
-        writer.write (data)
-        writer.close ()
-        string.toString
-    }
-
-
-    override def execute (spark: SparkSession): Dataset[Row] =
+    override def executeResultSet (spark: SparkSession): Dataset[Row] =
         throw new UnsupportedOperationException ("execute called on wrong method signature")
 
-    override def execute (spark: SparkSession, mime_type: String): String =
+    override def executeString (spark: SparkSession): String =
+        throw new UnsupportedOperationException ("execute called on wrong method signature")
+
+    override def executeJSON (spark: SparkSession): JsonStructure =
         throw new UnsupportedOperationException ("execute called on wrong method signature")
 
     override def toString: String =
     {
         val sb: StringBuilder = new StringBuilder
         sb.append (getReturnType.toString)
-        sb.append (" execute (session")
-        sb.append (getReturnType match { case Return.Dataset => "" case Return.String => ", " + getMimeType })
-        sb.append (") [")
+        sb.append (" ")
+        sb.append (
+            getReturnType match
+            {
+                case Return.Dataset => "executeResultSet"
+                case Return.String => "executeString"
+                case Return.JSON => "executeJSON"
+            })
+        sb.append (" (session) [")
         sb.append (jars.mkString (","))
         sb.append ("]")
         sb.toString

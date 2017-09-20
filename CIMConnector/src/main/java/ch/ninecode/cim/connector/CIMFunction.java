@@ -1,5 +1,7 @@
 package ch.ninecode.cim.connector;
 
+import javax.json.JsonStructure;
+
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -8,6 +10,20 @@ import java.io.Serializable;
 
 public interface CIMFunction extends Serializable
 {
+    /**
+     * The key in the input CIMMappedRecord holding the CIMFunction to execute.
+     */
+    static String FUNCTION = "function";
+
+    /**
+     * The key in the output CIMMappedRecord holding the CIMFunction result.
+     *
+     * For {@link #executeString(SparkSession spark) executeString} and
+     * {@link #executeJSON(SparkSession spark) executeJSON} the returned CIMMappedRecord
+     * holds the result (String or JSONStructure respectively) under this key.
+     */
+    static String RESULT = "result";
+
     /**
      * The return types understood by the CIMConnector interaction implementation.
      */
@@ -19,18 +35,15 @@ public interface CIMFunction extends Serializable
         Dataset,
 
         /**
-         * Text such as JSON, GeoJSON, XML, plain text, etc.
-         * See getMimeType.
+         * Text such as XML, plain text, etc.
          */
-        String
-    }
+        String,
 
-    /**
-     * Provide a list of required jar files.
-     * This list may also include the jar containing the implementation class of this interface.
-     * @return The list of additional jars needed to execute.
-     */
-    String[] getJars ();
+        /**
+         * JSON or GeoJSON text.
+         */
+        JSON
+    }
 
     /**
      * The type of value returned by execute.
@@ -40,25 +53,31 @@ public interface CIMFunction extends Serializable
     Return getReturnType ();
 
     /**
-     * For a String ReturnType, specifies the mime type desired.
-     * @return The mime type. One of the constants in javax.ws.rs.core.MediaType.
+     * Provide a list of required jar files.
+     * This list may also include the jar containing the implementation class of this interface.
+     * @return The list of additional jars needed to execute.
      */
-    String getMimeType ();
+    String[] getJars ();
 
     /**
      * Execute against this class returning a dataset.
      * @param spark The Spark session to use.
      * @return The resultant data set, which will be turned into a ResultSet.
      */
-    Dataset<Row> execute (SparkSession spark);
+    Dataset<Row> executeResultSet (SparkSession spark);
 
     /**
      * Execute against this class returning a string.
-     * The mime type is used mostly to get a different signature so Java is happy.
      * @param spark The Spark session to use.
-     * @param mime_type The mime type expected from this call.
-     * @return The resultant text.
+     * @return The resultantsString.
      */
-    String execute (SparkSession spark, String mime_type);
+    String executeString (SparkSession spark);
+
+    /**
+     * Execute against this class returning a JSON structure (JSONObject or JSONArray).
+     * @param spark The Spark session to use.
+     * @return The resultant JSON.
+     */
+    JsonStructure executeJSON (SparkSession spark);
 
 }

@@ -12,7 +12,10 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.resource.ResourceException
 
-import ch.ninecode.cim.connector._
+import ch.ninecode.cim.connector.CIMFunction
+import ch.ninecode.cim.connector.CIMInteractionSpec
+import ch.ninecode.cim.connector.CIMInteractionSpecImpl
+import ch.ninecode.cim.connector.CIMResultSet
 import ch.ninecode.sp.SpatialOperationParameters
 
 @Stateless
@@ -42,7 +45,7 @@ class Spatial extends RESTful
                     {
                         // set up the function with parameters
                         val near = SpatialNearestFunction (SpatialOperationParameters (psr, lon.toDouble, lat.toDouble, n.toInt))
-                        input.asInstanceOf[map].put ("function", near)
+                        input.asInstanceOf[map].put (CIMFunction.FUNCTION, near)
                     }
                     catch
                     {

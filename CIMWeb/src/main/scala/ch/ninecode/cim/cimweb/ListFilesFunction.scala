@@ -1,6 +1,7 @@
 package ch.ninecode.cim.cimweb
 
 import javax.json.Json
+import javax.json.JsonStructure
 
 import scala.collection.JavaConversions._
 
@@ -12,7 +13,7 @@ import org.apache.spark.sql.SparkSession
 
 case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
 {
-    override def execute (spark: SparkSession, mime_type: String): String =
+    override def executeJSON (spark: SparkSession): JsonStructure =
     {
         val root: Path = new Path (hdfs.getUri.toString, path)
         // form the response
@@ -58,7 +59,7 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
                 response.add ("error", access.getMessage) // Permission denied: user=root, access=READ_EXECUTE, inode=\"/tmp\":derrick:derrick:drwx-wx-wx
         }
         response.add ("files", files)
-        jsonString (response.build)
+        response.build
     }
 
     override def toString: String =

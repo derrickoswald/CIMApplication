@@ -1,17 +1,17 @@
 package ch.ninecode.cim.cimweb
 
 import javax.json.Json
+import javax.json.JsonStructure
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable.HashMap
 
 case class LoadFileFunction (path: String, options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     // load the file
-    override def execute (spark: SparkSession, mime_type: String): String =
+    override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
         val response = Json.createObjectBuilder
@@ -49,7 +49,7 @@ case class LoadFileFunction (path: String, options: Iterable[(String, String)] =
             case e: Exception =>
                 response.add ("error", e.getMessage )
         }
-        jsonString (response.build)
+        response.build
     }
 
     override def toString: String =

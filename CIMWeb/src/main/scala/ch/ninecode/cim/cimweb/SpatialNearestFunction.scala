@@ -20,14 +20,11 @@ case class SpatialNearestFunction (var parameters: SpatialOperationParameters) e
 
     override def getReturnType: Return = Return.Dataset
 
-    override def execute (spark: SparkSession): Dataset[Row] =
+    override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
         val ops = new SpatialOperations
         ops.nearest (spark, parameters)
     }
-
-    override def execute (spark: SparkSession, mime_type: String) =
-        throw new UnsupportedOperationException ("execute called on wrong method signature")
 
     override def toString: String =
     {

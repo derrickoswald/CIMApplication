@@ -1,16 +1,16 @@
 package ch.ninecode.cim.cimweb
 
-import javax.ws.rs.core.MediaType
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.Text
 import org.apache.spark.sql.SparkSession
 
+import ch.ninecode.cim.connector.CIMFunction.Return
+
 case class GetFileFunction (path: String) extends CIMWebFunction
 {
-    override def getMimeType: String = MediaType.APPLICATION_XML
+    override def getReturnType: Return = Return.String
 
-    override def execute (spark: SparkSession, mime_type: String): String =
+    override def executeString (spark: SparkSession): String =
     {
         val file: Path = new Path (hdfs.getUri.toString, path)
         // read the file

@@ -4,6 +4,7 @@ import java.util.logging.Logger
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonObject
+import javax.json.JsonStructure
 import javax.resource.ResourceException
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.PUT
@@ -12,7 +13,7 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 
 import scala.collection.JavaConversions._
-
+import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
@@ -42,7 +43,7 @@ class PutFile extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put ("function", function)
+                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)
@@ -50,7 +51,7 @@ class PutFile extends RESTful
                 else
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get ("result").asInstanceOf [String])
+                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
                     val response = ret.result.asInstanceOf[JsonObject]
                     if (response.containsKey ("error"))
                     {

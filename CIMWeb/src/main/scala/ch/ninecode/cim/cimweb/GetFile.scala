@@ -10,6 +10,7 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.ws.rs.core.Response
 
+import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
@@ -39,7 +40,7 @@ class GetFile extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put ("function", function)
+                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)
@@ -48,7 +49,7 @@ class GetFile extends RESTful
                 {
                     // if not found use Response.Status.NOT_FOUND
                     val record = output.asInstanceOf [CIMMappedRecord]
-                    Response.ok (record.get ("result").asInstanceOf [String], MediaType.APPLICATION_XML).build
+                    Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_XML).build
                 }
             }
             catch
