@@ -4,6 +4,7 @@ import javax.json.Json
 import javax.json.JsonStructure
 
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.sql.SparkSession
 
 case class PutFileFunction (path: String, data: Array[Byte]) extends CIMWebFunction
@@ -19,9 +20,15 @@ case class PutFileFunction (path: String, data: Array[Byte]) extends CIMWebFunct
         // write the file
         try
         {
-            val out = hdfs.create (file)
-            out.write (data)
-            out.close ()
+            hdfs.mkdirs (if (path.endsWith ("/")) file else file.getParent, new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
+
+            if (0 != data.length && !path.endsWith ("/"))
+            {
+                val out = hdfs.create (file)
+                out.write (data)
+                out.close ()
+            }
         }
         catch
         {
