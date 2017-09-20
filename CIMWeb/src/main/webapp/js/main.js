@@ -4,23 +4,57 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimmap"],
-    function (cimapp, cimmap)
+    ["cimapp", "cimfiles", "cimmap"],
+    function (cimapp, cimfiles, cimmap)
     {
         // initialize material design for bootstrap (https://github.com/FezVrasta/bootstrap-material-design)
         $.material.init ();
 
-        // initialize button
+        /**
+         * Page activation function generator.
+         */
+        function activate (fn)
+        {
+            return (
+                /**
+                 * Click event handler.
+                 * @param {object} event - the click event
+                 */
+                function (event)
+                {
+                    var nav;
+                    var parent;
+                    var active;
+
+                    // stop the normal link action
+                    event.preventDefault ();
+                    event.stopPropagation ();
+                    // switch class active
+                    nav = document.getElementById ("functions");
+                    active = nav.getElementsByClassName ("active")[0];
+                    if (active)
+                        active.classList.remove ("active");
+                    parent = event.target.parentElement;
+                    parent.classList.add ("active");
+                    // close the menu (for cell phones)
+                    nav.classList.remove ("in");
+                    // initialize the new nav
+                    fn ();
+                }
+            );
+        }
+
+        document.getElementById ("files").onclick = activate (cimfiles.initialize);
+        document.getElementById ("map").onclick = activate (cimmap.initialize);
         document.getElementById ("connect").onclick = cimapp.connect;
         document.getElementById ("export").onclick = cimapp.gridlab;
-        //document.getElementById ("do_put").onclick = cimapp.do_put;
 
         document.getElementById ("show_internal_features").onchange = cimmap.redraw;
         document.getElementById ("trace").onclick = cimmap.trace;
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;
 
-        cimapp.do_connect (); // populate the file list
-        cimmap.init_map ();
+        cimfiles.initialize (); // populate the file list
+        // cimmap.initialize ();
     }
 );

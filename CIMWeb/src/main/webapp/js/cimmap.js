@@ -47,10 +47,19 @@ define
          * @function set_data
          * @memberOf module:cimmap
          */
-        function set_data (data)
+        async function set_data (data)
         {
             CIM_Data = data;
-            redraw ();
+            function sleep(ms)
+            {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            if (null != TheMap)
+            {
+                while (!TheMap.loaded ())
+                    await sleep (1000);
+                redraw ();
+            }
         }
 
         /**
@@ -875,7 +884,7 @@ define
          * @summary Redraw the map.
          * @description Given some CIM datra has been loaded, redraws the map.
          * @param {object} event - optional, the vector tile checkbox change event
-         * @function init_map
+         * @function redraw
          * @memberOf module:cimmap
          */
         function redraw (event)
@@ -888,10 +897,10 @@ define
          * @summary Initialize the map.
          * @description Create the background map, centered on Bern and showing most of Switzerland.
          * @param {object} event - optional, the vector tile checkbox change event
-         * @function init_map
+         * @function initialize
          * @memberOf module:cimmap
          */
-        function init_map (event)
+        function initialize (event)
         {
             // make the map
             document.getElementById ("main").innerHTML = "";
@@ -970,7 +979,7 @@ define
                 set_data: set_data,
                 get_data: get_data,
                 redraw: redraw,
-                init_map: init_map,
+                initialize: initialize,
                 trace: trace,
                 unhighlight: unhighlight,
                 select: select,
