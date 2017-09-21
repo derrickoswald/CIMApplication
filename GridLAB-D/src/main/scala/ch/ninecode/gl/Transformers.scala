@@ -6,25 +6,16 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 
-class Transformers (session: SparkSession, storage_level: StorageLevel) extends Serializable
+class Transformers (session: SparkSession, storage_level: StorageLevel) extends CIMRDD with Serializable
 {
-    val log = LoggerFactory.getLogger (getClass)
-
-    def get (name: String): RDD[Element] =
-    {
-        val rdds = session.sparkContext.getPersistentRDDs
-        for (key <- rdds.keys)
-        {
-            val rdd = rdds (key)
-            if (rdd.name == name)
-                return (rdd.asInstanceOf[RDD[Element]])
-        }
-        return (null)
-    }
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
      * Handle a join of power transformers and stations with the power transformer ends.
@@ -33,7 +24,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
      * @param x - the list of transformers and stations keyed by transformer id, joined with transformer ends
      * @return a list of a pair of transformer name and a four-tuple of transformer, station, high side end with voltage and low side end with voltage
      */
-    def addEnds (voltages: Map[String, Double]) (x: Tuple2[String,Tuple2[Tuple2[PowerTransformer,Substation],Option[Iterable[PowerTransformerEnd]]]]) =
+    def addEnds (voltages: Map[String, Double]) (x: (String, ((PowerTransformer, Substation), Option[Iterable[PowerTransformerEnd]]))): List[(String, (PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)))] =
     {
         val ends = x._2._2 match
         {
@@ -42,17 +33,17 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
             case None =>
                 Array[PowerTransformerEnd]()
         }
-        if (ends.size > 2)
+        if (ends.length > 2)
             log.warn ("more than two transformer ends for " + x._1)
-        val ret = if (ends.size == 0)
+        val ret = if (ends.length == 0)
         {
             log.error ("no transformer ends for " + x._1)
-            List[Tuple2[String,Tuple4[PowerTransformer,Substation,Tuple2[PowerTransformerEnd,Double],Tuple2[PowerTransformerEnd,Double]]]]()
+            List[(String, (PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)))]()
         }
-        else if (ends.size == 1)
+        else if (ends.length == 1)
         {
             log.error ("less than two transformer ends for " + x._1)
-            List[Tuple2[String,Tuple4[PowerTransformer,Substation,Tuple2[PowerTransformerEnd,Double],Tuple2[PowerTransformerEnd,Double]]]]()
+            List[(String, (PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)))]()
         }
         else
         {
@@ -72,7 +63,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
      * NOTE: Skips transformers with terminals not matching the transformer ends
      * @return a list of four-tuples of transformer, station, and two three-tuples of end, voltage and terminal
      */
-    def addTerminals (x: Tuple2[String,Tuple2[Tuple4[PowerTransformer, Substation, Tuple2[PowerTransformerEnd,Double], Tuple2[PowerTransformerEnd,Double]],Option[Iterable[Terminal]]]]) =
+    def addTerminals (x: (String, ((PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)), Option[Iterable[Terminal]]))): List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))] =
     {
         val terminals = x._2._2 match
         {
@@ -95,28 +86,28 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
                         List((x._2._1._1, x._2._1._2, (end1._1, end1._2, t1), (end2._1, end2._2, t2)))
                     case None =>
                         log.error ("terminal not found for " + end2._1.id)
-                        List[Tuple4[PowerTransformer,Substation,Tuple3[PowerTransformerEnd,Double,Terminal],Tuple3[PowerTransformerEnd,Double,Terminal]]]()
+                        List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                 }
             case None =>
                 match1 match
                 {
-                    case Some (t1) =>
+                    case Some (_) =>
                         log.error ("terminal not found for " + end1._1.id)
-                        List[Tuple4[PowerTransformer,Substation,Tuple3[PowerTransformerEnd,Double,Terminal],Tuple3[PowerTransformerEnd,Double,Terminal]]]()
+                        List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                     case None =>
                         log.error ("no terminals not found for " + x._2._1._1.id)
-                        List[Tuple4[PowerTransformer,Substation,Tuple3[PowerTransformerEnd,Double,Terminal],Tuple3[PowerTransformerEnd,Double,Terminal]]]()
+                        List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                 }
         }
         ret
     }
 
-    def addSC (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[ShortCircuitData])) =
+    def addSC (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[ShortCircuitData])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), ShortCircuitData) =
     {
         arg._2 match
         {
             case Some (sc) => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, sc)
-            case None => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, ShortCircuitData (arg._1._2.id, 200, -70, false))
+            case None => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, ShortCircuitData (arg._1._2.id, 200, -70, valid = false))
         }
     }
 
@@ -133,54 +124,42 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         }
 
         // get all transformers in substations
-        val transformers = get ("PowerTransformer").asInstanceOf[RDD[PowerTransformer]]
-        val substation_transformers = transformers.filter ((t: PowerTransformer) => { (t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern") })
+        val transformers = get[PowerTransformer]
+        val substation_transformers = transformers.filter ((t: PowerTransformer) => t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern")
 
         // get an RDD of substations by filtering out distribution boxes
-        val stations = get ("Substation").asInstanceOf[RDD[Substation]].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox")
+        val stations = get[Substation].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox")
 
         // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
-        def station_fn (x: Tuple2[String, Any]) =
+        def station_fn (x: (String, Any)) =
         {
             x match
             {
-                case (key: String, (t: PowerTransformer, station: Substation)) =>
-                {
-                    (station.id, t)
-                }
-                case (key: String, (t: PowerTransformer, bay: Bay)) =>
-                {
-                    (bay.Substation, t)
-                }
-                case (key: String, (t: PowerTransformer, level: VoltageLevel)) =>
-                {
-                    (level.Substation, t)
-                }
-                case _ =>
-                {
-                    throw new Exception ("this should never happen -- default case")
-                }
+                case (_, (t: PowerTransformer, station: Substation)) => (station.id, t)
+                case (_, (t: PowerTransformer, bay: Bay)) => (bay.Substation, t)
+                case (_, (t: PowerTransformer, level: VoltageLevel)) => (level.Substation, t)
+                case _ => throw new Exception ("this should never happen -- default case")
             }
         }
 
         // create an RDD of container-transformer pairs, e.g. { (KAB8526,TRA13730), (STA4551,TRA4425), ... }
-        val elements = get ("Elements").asInstanceOf[RDD[Element]]
+        val elements = get[Element]("Elements")
         val tpairs = substation_transformers.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join (elements.keyBy (_.id)).map (station_fn)
 
         // only keep the pairs where the transformer is in a substation we have
         val transformers_stations = tpairs.join (stations.keyBy (_.id)).values
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get[BaseVoltage].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // attach PowerTransformerEnd elements
         val transformers_stations_plus_ends = transformers_stations.keyBy (_._1.id).leftOuterJoin (ends).flatMap (addEnds (voltages))
 
         // get the terminals keyed by transformer
-        val terms = get ("Terminal").asInstanceOf[RDD[Terminal]].groupBy (_.ConductingEquipment)
+        val terms = get[Terminal].groupBy (_.ConductingEquipment)
 
         // attach Terminal elements
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).flatMap (addTerminals)
@@ -205,10 +184,11 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         transformer_data.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {
-            case Some (dir) => transformer_data.checkpoint ()
+            case Some (_) => transformer_data.checkpoint ()
             case None =>
         }
 
-        return (transformer_data)
+        transformer_data
     }
 }
+
