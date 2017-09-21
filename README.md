@@ -76,3 +76,13 @@ and then change the password as appropriate
         JdbcUrl jdbc:sqlite:/opt/apache-tomee-plus-7.0.1/database/timeseries.db
       </Resource>
     </tomee>
+
+# REST Services
+
+The CIMApplication (HTML/Javascript) accessed at http://server:8080/cimweb is supported on the backend by
+RESTful services provided by the CIMWeb .war file.
+
+Endpoint | Verb | Parameters | Description|
+------------ | ------------- | ------------- | -------------|
+/cimweb/cim/ping | GET | optional ;debug=true | Simple response EJB to check for proper deployment. The optional boolean debug matrix parameter will return the current set of environment variables on the server.|
+/cimweb/cim/file | GET | optional path | Returns the contents of the directory or file.|
