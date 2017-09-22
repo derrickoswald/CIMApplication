@@ -39,6 +39,7 @@ class ApplicationConfig extends Application
     {
         new util.HashSet[Class[_]](util.Arrays.asList (
             classOf[Ping],
+            classOf[Pong],
             classOf[FileOperations],
             classOf[LoadFile],
             classOf[SimpleRESTEJB],

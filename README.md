@@ -84,5 +84,16 @@ RESTful services provided by the CIMWeb .war file.
 
 Endpoint | Verb | Parameters | Description|
 ------------ | ------------- | ------------- | -------------|
-/cimweb/cim/ping | GET | optional ;debug=true | Simple response EJB to check for proper deployment. The optional boolean debug matrix parameter will return the current set of environment variables on the server.|
-/cimweb/cim/file | GET | optional path | Returns the contents of the directory or file.|
+/cimweb/cim/ping | GET | optional debug | Simple response to check for proper deployment. The optional boolean debug matrix parameter will return the current set of environment variables on the server.|
+/cimweb/cim/pong | GET | optional debug | Response to check for proper connection. The optional boolean debug matrix parameter will return the current set of environment variables on the server and metadata from the connection.|
+/cimweb/cim/file | GET | optional path | Returns the contents of the directory or file from HDFS.|
+/cimweb/cim/file | PUT | path | Stores the byte contents at the path on HDFS.|
+/cimweb/cim/file | DELETE | path |Removes the file or directory at the path on HDFS.|
+/cimweb/cim/load | GET | path | Reads the contents of the HDFS file into Spark via the CIMReader.|
+/cimweb/cim/ejb | GET | | Reads test file /data/NIS_CIM_Export_NS_INITIAL_FILL.rdf and returns the number of elements.|
+/cimweb/cim/EnergyConsumer | GET | | Reads test file /data/NIS_CIM_Export_NS_INITIAL_FILL.rdf and returns the number of elements.|
+/cimweb/cim/GridLabExport | GET | optional file transformer | With no file specified, reads given file into Spark and returns the transformer names. With specified transformer returns the gridlab file.|
+/cimweb/cim/ShortCircuitCalculation | GET | optional file transformer | With no file specified, reads given file into Spark and returns the transformer names. With specified transformer returns the short circuit data for the house connections.|
+/cimweb/cim/Spatial/nearest | GET | optional lat lon n | Finds the n nearest house connections to the given wgs84 lat,long.|
+/cimweb/cim/timeseries | GET | | Sample to read SQLite database and return measurement data.|
+/cimweb/cim/Visualize | GET | files optional xmin ymin, xmax, ymax, reduceLines, maxLines, dougPeuk dougPeukFactor, resolution | Return (simplified) features within the bounding box from the given file.|

@@ -1,12 +1,30 @@
 package ch.ninecode.cim.connector;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 import javax.resource.ResourceException;
 import javax.resource.cci.ConnectionMetaData;
 
 public class CIMConnectionMetaData implements ConnectionMetaData
 {
-
-    private static final String PRODUCT_NAME = "Spark";
+    static Properties properties = null;
+    static
+    {
+        Properties p = new Properties ();
+        InputStream in = CIMConnectionMetaData.class.getResourceAsStream ("/cimconnector.properties");
+        if (null != in)
+            try
+            {
+                p.load (in);
+                in.close ();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace ();
+            }
+        properties = p;
+    }
 
     protected CIMManagedConnection _ManagedConnection;
 
@@ -24,7 +42,7 @@ public class CIMConnectionMetaData implements ConnectionMetaData
      */
     public String getEISProductName () throws ResourceException
     {
-        return (PRODUCT_NAME);
+        return (properties.getProperty ("artifactId"));
     }
 
     /**
@@ -32,7 +50,7 @@ public class CIMConnectionMetaData implements ConnectionMetaData
      */
     public String getEISProductVersion () throws ResourceException
     {
-        return (_ManagedConnection._SparkSession.version ());
+        return (properties.getProperty ("version"));
     }
 
     /**
@@ -43,4 +61,59 @@ public class CIMConnectionMetaData implements ConnectionMetaData
         return (_ManagedConnection._SparkSession.sparkContext ().sparkUser ());
     }
 
+    /**
+     * Get the maven group id.
+     */
+    public String getEISProductGroup () throws ResourceException
+    {
+        return (properties.getProperty ("groupId"));
+    }
+
+    /**
+     * Get the Scala version the connector was compiled for.
+     */
+    public String getScalaVersion () throws ResourceException
+    {
+        return (properties.getProperty ("scala"));
+    }
+
+    /**
+     * Get the Scala library version the connector was compiled for.
+     */
+    public String getScalaLibraryVersion () throws ResourceException
+    {
+        return (properties.getProperty ("scalalibrary"));
+    }
+
+    /**
+     * Get the Spark library version the connector was compiled for.
+     */
+    public String getSparkLibraryVersion () throws ResourceException
+    {
+        return (properties.getProperty ("spark"));
+    }
+
+    /**
+     * Get the Spark version the connector was compiled for.
+     */
+    public String getHadoopLibraryVersion () throws ResourceException
+    {
+        return (properties.getProperty ("hadoop"));
+    }
+
+    /**
+     * Get the Spark version the connector was compiled for.
+     */
+    public String getCIMReaderVersion () throws ResourceException
+    {
+        return (properties.getProperty ("cimreader"));
+    }
+
+    /**
+     * Get the executing spark version.
+     */
+    public String getSparkVersion () throws ResourceException
+    {
+        return (_ManagedConnection._SparkSession.version ());
+    }
 }

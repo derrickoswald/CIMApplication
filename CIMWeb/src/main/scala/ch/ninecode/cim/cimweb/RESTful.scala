@@ -139,6 +139,8 @@ class RESTful ()
                 out.append (re.getMessage)
                 out.append ("\n")
         }
+        if (null == connection)
+            result.status = RESTfulJSONResult.FAIL
         result.message = out.toString
         connection
     }
