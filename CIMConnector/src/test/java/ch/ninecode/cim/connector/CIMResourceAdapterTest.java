@@ -220,7 +220,7 @@ public class CIMResourceAdapterTest
         final Connection connection = getConnection ();
         ConnectionMetaData meta = connection.getMetaData ();
         assertNotNull ("meta data", meta);
-        assertEquals ("Spark", meta.getEISProductName ());
+        assertEquals ("CIMConnector", meta.getEISProductName ());
         assertNotNull ("product version", meta.getEISProductVersion ()); // assertEquals ("1.6.0", meta.getEISProductVersion ());
         assertNotNull ("user name", meta.getUserName ()); // assertEquals ("derrick", meta.getUserName ());
         connection.close ();

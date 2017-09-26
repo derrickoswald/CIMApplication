@@ -29,25 +29,14 @@ extends
 
     override def finish_time = { val t = dup (start_time); t.add (Calendar.HOUR, 24); t }
 
-    override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy(_.key).values
+    override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy (_.key).values
 
-    override def transformers: Array[TData] = trafokreis.transformers
+    override def transformers: Array[TransformerSet] = Array(trafokreis.transformers)
 
     // the swing node is the low voltage pin
-    override def swing_node: String =
-    {
-        transformers.size match
-        {
-            case 0 ⇒
-                throw new IllegalStateException ("no transformers in TData array")
-            case 1 ⇒
-                trafokreis.node (transformers(0).terminal1)
-            case _ ⇒
-                trafokreis.node (transformers(0).terminal1)
-        }
-    }
+    override def swing_node: String = trafokreis.transformers.node1
 
-    override def swing_node_voltage: Double = trafokreis.transformers(0).voltage1 * 1000
+    override def swing_node_voltage: Double = trafokreis.transformers.v1
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
@@ -60,7 +49,7 @@ extends
         if (node.id == swing_node)
         {
             // generate low voltage pin (NSPIN) swing node
-            val trafo = trans.transformer_name (transformers)
+            val trafo = trafokreis.transformers.transformer_name
             "\n" +
             "        object meter\n" +
             "        {\n" +
@@ -113,8 +102,8 @@ extends
      */
     override def emit_slack (name: String, voltage: Double): String =
     {
-        val name = trafokreis.node (transformers(0).terminal0)
-        val voltage = transformers(0).voltage0 * 1000
+        val name = trafokreis.transformers.node0
+        val voltage = trafokreis.transformers.v0
         "\n" +
         "        object meter\n" +
         "        {\n" +

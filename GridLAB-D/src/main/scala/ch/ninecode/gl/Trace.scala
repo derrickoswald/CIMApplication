@@ -7,12 +7,11 @@ import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 import org.slf4j.LoggerFactory
-
-import ch.ninecode.model._
+import org.slf4j.Logger
 
 case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     def vertexProgram (starting_nodes: Array[VertexId]) (id: VertexId, v: Boolean, message: Boolean): Boolean =
     {
@@ -36,7 +35,7 @@ case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
             if (triplet.attr.connected)
                 ret = Iterator ((triplet.srcId, true))
 
-        return (ret)
+        ret
     }
 
     def mergeMessage (a: Boolean, b: Boolean): Boolean = a || b
@@ -44,7 +43,7 @@ case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     // discard leaf edges that aren't transformers
     def keep (arg: Tuple3[PreEdge, Option[PreNode], Option[PreNode]]): Boolean =
     {
-        val ret = arg match
+        arg match
         {
             case (_, Some (_), Some (_)) => // connected on both ends (not a leaf): keep
                 true
@@ -54,8 +53,6 @@ case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
             case (_, None, None) => // not connected (can't happen): discard
                 false
         }
-
-        return (ret)
     }
 
     // trace the graph with the Pregel algorithm

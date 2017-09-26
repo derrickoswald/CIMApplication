@@ -19,6 +19,8 @@ import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.Trace
 import ch.ninecode.gl.Transformers
+import ch.ninecode.gl.TransformerSet
+import org.apache.spark.rdd.RDD
 
 case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 {
@@ -101,27 +103,39 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 
         // determine the set of transformers to work on
         /**
+         * The name of the node associated with the hight voltage terminal.
+         * @param t The transformer information object to get the node for.
+         * @return The name of the TopologicalNode or ConnectivityNode.
+         */
+        def hv_node_name (t: TData): String =
+        {
+            if (topological_nodes) t.terminal0.TopologicalNode else t.terminal1.ConnectivityNode
+        }
+
+        val transformers: RDD[TransformerSet] = if (null != trafos)
+        {
+            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+            selected.groupBy (hv_node_name).values.map (_.toArray).map (TransformerSet)
+        }
+        else
+        {
+            // do all high voltage power transformers
+            // ToDo: fix this 1kV multiplier on the voltages
+            val niederspannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0))
+            niederspannug.groupBy (hv_node_name).values.map (_.toArray).map (TransformerSet)
+        }
+
+        // determine the list of low voltage transformer sets
+        /**
          * The name of the node associated with the low voltage terminal.
          * @param t The transformer information object to get the node for.
          * @return The name of the TopologicalNode or ConnectivityNode.
          */
-        def node_name (t: TData): String =
+        def lv_node_name (t: TData): String =
         {
             if (topological_nodes) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode
         }
-
-        val transformers = if (null != trafos)
-        {
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (node_name).values.map (_.toArray)
-        }
-        else
-        {
-            // do all medium voltage power transformers
-            // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0))
-            niederspannug.groupBy (node_name).values.map (_.toArray)
-        }
+        val lv = tdata.filter (_.voltage1 <= 0.4).groupBy (lv_node_name).values.map (_.toArray).map (TransformerSet)
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
@@ -129,23 +143,24 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         log.info ("" + transformers.count + " transformers to process")
 
         val tx = transformers.collect
-        println (tx.map (x => x(0).toString).mkString ("\n"))
-        def doit (transformers: Array[TData]): Int =
+        println (tx.map (_.transformer_name).mkString ("\n"))
+        def doit (transformers: TransformerSet): Int =
         {
             // get the transformer low voltage pin topological node
             val nothing = PreNode ("", 0.0)
-            val name = gridlabd.node_name (transformers(0).terminal1)
-            val id = nothing.vertex_id (name)
+            val id = nothing.vertex_id (transformers.node1)
             // trace everything from that pin
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, nothing, storage_level, storage_level)
             val starting_nodes = Array[VertexId] (id)
             val trace = Trace (initial)
             val (nodes, edges) = trace.run (starting_nodes)
+            // form the USTKreis data packet to send to the executor
             val ynodes = nodes.collect
-            val yedges = edges.groupBy (_.key ()).values.collect
-            // create the GLMGenerator
-            val ust = USTKreis (transformers, ynodes, yedges)
+            val yedges = edges.groupBy (_.key).values.collect
+            val ust = USTKreis (transformers, ynodes, yedges, lv.collect)
             println (ust.trafokreis_key + " traced " + ynodes.length + " nodes and " + yedges.length + " edges")
+
+            // create the GLMGenerator
             val generator = MediumVoltageGLMGenerator (!options.three, date_format, ust)
             gridlabd.export (generator)
             1

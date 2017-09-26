@@ -44,7 +44,6 @@ case class EinspeiseleistungOptions (
  * @param trafo CIM MRID of the transformer feeding the house.
  * @param house CIM MRID of house being experimented on.
  * @param t0 Origin for all experiments.
- * @param t1 Start time for this experiment.
  * @param slot Unique experiment number (slot in windowed time).
  * @param window Duration of the experiment (seconds).
  * @param interval Duration between steps in the experiment (seconds).
@@ -110,7 +109,7 @@ case class Trafokreis
 (
     start: Calendar,
     trafo: String,
-    transformers: Array[TData],
+    transformers: TransformerSet,
     nodes: Iterable[PowerFeedingNode],
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
@@ -150,25 +149,9 @@ case class Trafokreis
     }
 
     // find the swing node
-    def swing_node (): String =
-    {
-        transformers.size match
-        {
-            case 0 ⇒
-                throw new IllegalStateException ("no transformers in TData array")
-            case 1 ⇒
-                node (transformers(0).terminal0)
-            case _ ⇒
-                val s = (node(transformers(0).terminal0), node(transformers(0).terminal1))
-                if (!transformers.forall((x) ⇒ (node(x.terminal0) == s._1)))
-                    log.error("transformer group " + trafo + " has different nodes on terminal 0 " + transformers.map((x) ⇒ node(x.terminal0)).mkString(" "))
-                if (!transformers.forall((x) ⇒ (node(x.terminal1) == s._2)))
-                    log.error("transformer group " + trafo + " has different nodes on terminal 1 " + transformers.map((x) ⇒ node(x.terminal1)).mkString(" "))
-                node(transformers(0).terminal0)
-        }
-    }
+    def swing_node (): String = transformers.node0
 
-    def swing_node_voltage (): Double = transformers(0).voltage0 * 1000
+    def swing_node_voltage (): Double = transformers.v0
 }
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions)
@@ -210,7 +193,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         return (null)
     }
 
-    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions) (arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
     {
         arg match
         {
@@ -517,7 +500,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info (c.toString + " experiments")
 
             val reduced_trafos = trafokreise.map (t ⇒ {
-                val transformers = t.transformers.map(_.end1.ratedS).sum
+                val transformers = t.transformers.power_rating
                 val cdata_iter = t.edges.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
                 (t.trafo, (transformers, cdata_iter))
             }).cache
@@ -667,14 +650,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
+            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
         else
         {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
+            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
 
         val prepare = System.nanoTime ()

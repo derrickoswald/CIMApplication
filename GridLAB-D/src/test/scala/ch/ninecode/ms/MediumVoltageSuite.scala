@@ -61,7 +61,7 @@ class MediumVoltageSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "MediumVoltage2"
+        val root = "island_TRA15569_TRA15602_terminal_2_topo"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -73,6 +73,7 @@ class MediumVoltageSuite extends FunSuite
             export_only = false,
             erase = false,
             short_circuit = "",
+            workdir = "./target/",
             files = List(filename)
         )
         val ms = MediumVoltage (session, options)

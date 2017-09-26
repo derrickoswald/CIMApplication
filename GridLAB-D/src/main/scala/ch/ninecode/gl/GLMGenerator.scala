@@ -141,7 +141,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      *
      * @return The details about pertinent transformers.
      */
-    def transformers: Array[TData] = Array()
+    def transformers: Array[TransformerSet] = Array()
 
     /**
      * The ID of the SWING or slack bus node.

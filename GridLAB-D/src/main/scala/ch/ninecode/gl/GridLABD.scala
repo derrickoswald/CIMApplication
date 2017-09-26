@@ -89,10 +89,7 @@ case class PreEdge(
      * Ordered key.
      * Provide a key on the two connections, independent of to-from from-to ordering.
      */
-    def key(): String =
-    {
-        if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
-    }
+    def key: String = if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
     override def id: String = id_equ
     override def cn1: String = id_cn_1
     override def cn2: String = id_cn_2
@@ -467,9 +464,9 @@ class GridLABD (
         (xedges, xnodes)
     }
 
-    def trafokreis_key (transformers: Array[TData]): String =
+    def trafokreis_key (transformers: TransformerSet): String =
     {
-        transformers.map(_.transformer.id).sortWith(_ < _).mkString("_")
+        transformers.transformer_name
     }
 
     def export (generator: GLMGenerator): Unit =

@@ -3,32 +3,31 @@ package ch.ninecode.esl
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.SQLException
-import java.sql.Timestamp
-import java.sql.Types
 import java.util.Calendar
 import java.util.HashMap
 
 import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
-
-import javax.xml.bind.DatatypeConverter
-import ch.ninecode.gl.GridLABD;
-import ch.ninecode.gl.PreEdge;
-import ch.ninecode.gl.PreNode;
-import ch.ninecode.gl.Solar;
-import ch.ninecode.gl.Transformers;
+import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CuttingEdge
+import ch.ninecode.cim.Extremum
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.PostEdge
+import ch.ninecode.cim.TopologicalData
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.Solar
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.Transformers
+import ch.ninecode.model.Element
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.Unknown
 
 class PowerFeedingSuite extends FunSuite
 {
@@ -129,17 +128,17 @@ class PowerFeedingSuite extends FunSuite
         tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).collect
+        val transformers = niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).map (TransformerSet).collect
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, use_topological_nodes, storage_level)
-        val solars = solar.getSolarInstallations
+        val solars = solar.getSolarInstallations ()
 
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
         val power_feeding = new PowerFeeding(initial)
 
-        val start_ids = transformers.map (PowerFeeding.trafo_mapping (use_topological_nodes))
+        val start_ids = transformers.map (PowerFeeding.trafo_mapping)
         val graph = power_feeding.trace(start_ids)
         val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
         val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(solars).values

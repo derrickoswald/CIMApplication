@@ -8,7 +8,7 @@
     <parent>
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
-        <version>2.3.2</version>
+        <version>2.3.3</version>
     </parent>
     <artifactId>CIMWeb</artifactId>
     <packaging>war</packaging>
@@ -207,7 +207,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.cim.TestSuite</suites>
+                    <suites>ch.ninecode.cim.cimweb.CIMWebTest</suites>
                 </configuration>
                 <executions>
                     <execution>

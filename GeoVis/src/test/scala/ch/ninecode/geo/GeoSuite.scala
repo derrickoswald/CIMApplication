@@ -19,7 +19,7 @@ import ch.ninecode.model._
 
 class GeoSuite extends FunSuite
 {
-    val FILE_DEPOT = "/home/derrick/Documents/9code/nis/cim/cim_export/"
+    val FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
@@ -76,7 +76,7 @@ class GeoSuite extends FunSuite
         val start = System.nanoTime ()
 
         val filename =
-        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V9" + ".rdf"
+        FILE_DEPOT + "NIS_CIM_Export_sias_current_20160816_Kiental_V10" + ".rdf"
         val elements = readFile (session.sqlContext, filename)
         println (elements.count () + " elements")
         val read = System.nanoTime ()

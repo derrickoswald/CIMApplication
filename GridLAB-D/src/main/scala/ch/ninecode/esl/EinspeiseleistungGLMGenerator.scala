@@ -17,7 +17,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy(_.key).values
 
-    override def transformers: Array[TData] = trafokreis.transformers
+    override def transformers: Array[TransformerSet] = Array (trafokreis.transformers)
 
     override def swing_node: String = trafokreis.swing_node
 

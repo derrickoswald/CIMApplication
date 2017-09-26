@@ -56,9 +56,13 @@ define
                 "    <div class='col-8'>\n" +
                 "      <h1>{{response.result.filesystem}}</h1>\n" +
                 "      <h2>{{dir}}</h2>\n" +
-                "      <form id='put' class='form-inline navbar-right waves-effect waves-light' role='form'>\n" +
+                "      <form id='upload' class='form-inline navbar-right waves-effect waves-light' role='form'>\n" +
                 "          <input id='file' class='form-control' type='file' name='file'/>\n" +
-                "          <button id='do_put' type='button' class='btn btn-primary'>Put</button>\n" +
+                "          <button id='do_put' type='button' class='btn btn-primary'>Upload</button>\n" +
+                "      </form>\n" +
+                "      <form id='sideload' class='form-inline navbar-right waves-effect waves-light' role='form' style='margin-right:10em'>\n" +
+                "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
+                "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
                 "      </form>\n" +
                 "      <table id='file_table' class='table table-striped table-hover'>\n" +
                 "        <thead>\n" +
@@ -300,6 +304,7 @@ define
                         console.log ("finished XML read (" + (Math.round (end - start) / 1000) + " seconds)");
 
                         // display the results on the map
+                        cimmap.terminate ();
                         cimmap.initialize ();
                         cimmap.set_data (result.parsed);
                     }

@@ -2,8 +2,6 @@ package ch.ninecode.esl
 
 import java.util.Calendar
 
-import scala.Iterator
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.graphx.EdgeDirection
@@ -14,9 +12,10 @@ import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
+import org.slf4j.Logger
 
-import ch.ninecode.model._
 import ch.ninecode.gl._
+import ch.ninecode.model._
 
 case class PowerFeedingNode (
     id_seq: String,
@@ -26,14 +25,14 @@ case class PowerFeedingNode (
     min_ir: Double,
     multiple_paths: Boolean) extends GLMNode
 {
-    override def id () = id_seq
-    override def nominal_voltage () = voltage
+    override def id: String = id_seq
+    override def nominal_voltage: Double = voltage
 }
 
 case class MaxPowerFeedingNodeEEA (
     id_seq: String,
     voltage: Double,
-    source_obj: Array[TData],
+    source_obj: TransformerSet,
     max_power_feeding: Double,
     eea: Iterable[PV],
     reason: String,
@@ -49,7 +48,7 @@ case class MaxPowerFeedingNodeEEA (
             id_seq
     }
 }
-case class StartingTrafos(osPin: VertexId, nsPin: VertexId, trafo_id: Array[TData], r: Double, ratedS: Double) extends Serializable
+case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: TransformerSet, z: Complex, ratedS: Double) extends Serializable
 case class PreCalculationResults (
     simulation: Int,
     has: RDD[MaxPowerFeedingNodeEEA],
@@ -63,7 +62,7 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        val ret = cls match {
+        cls match {
             case "Switch" ⇒
                 !element.asInstanceOf[Switch].normalOpen
             case "Cut" ⇒
@@ -91,7 +90,6 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
             case _ ⇒
                 true
         }
-        return (ret)
     }
 
     // return length, resistance and maximum curret for an edge
@@ -174,7 +172,7 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
         val min_ir = node.min_ir
         val trafo_id = node.source_obj.trafo_id
         val trafo_ratedS = node.source_obj.ratedS
-        val trafo_r = node.source_obj.r
+        val trafo_r = node.source_obj.z.re
         val r_summe = math.sqrt(3) * r + trafo_r
 
         val p_max_u = math.sqrt(3) * 1.03 * 0.03 * v * v / r_summe
@@ -207,31 +205,23 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
 object PowerFeeding
 {
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def trafo_mapping(use_topological_nodes: Boolean) (tdata: Array[TData]): StartingTrafos =
+    def trafo_mapping (transformers: TransformerSet): StartingTrafos =
     {
       val pn = PreNode ("", 0.0)
-      val v0 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal0.TopologicalNode else tdata(0).terminal0.ConnectivityNode)
-      val v1 = pn.vertex_id (if (use_topological_nodes) tdata(0).terminal1.TopologicalNode else tdata(0).terminal1.ConnectivityNode)
-      val ratedS = tdata.map(_.end1.ratedS).sum
-      val r = if (tdata.length > 1)
-      {
-          // ToDo: handle 3 or more transformers ganged together
-          val r1 = tdata(0).end1.r
-          val r2 = tdata(1).end1.r
-          (r1 * r2) / (r1 + r2)
-      }
-      else
-          tdata(0).end1.r
-      StartingTrafos (v0, v1, tdata, r, ratedS)
+      val v0 = pn.vertex_id (transformers.node0)
+      val v1 = pn.vertex_id (transformers.node1)
+      val ratedS = transformers.power_rating
+      val impedance = transformers.total_impedance._1
+      StartingTrafos (v0, v1, transformers, impedance, ratedS)
     }
 
-    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[Tuple2[String,Iterable[PV]]], transformers: Array[Array[TData]], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
+    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
         val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
-        val start_ids = transformers.map (trafo_mapping (use_topological_nodes))
+        val start_ids = transformers.map (trafo_mapping)
 
         val graph = power_feeding.trace (start_ids)
         val house_nodes = power_feeding.get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
@@ -274,7 +264,7 @@ object PowerFeeding
         edges.persist (storage_level)
         session.sparkContext.getCheckpointDir match
         {
-            case Some (dir) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
+            case Some (_) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
             case None =>
         }
 

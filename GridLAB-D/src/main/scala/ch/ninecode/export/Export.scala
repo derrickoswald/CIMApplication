@@ -241,14 +241,14 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
         }
         else
         {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
         }
 
         val prepare = System.nanoTime ()
@@ -284,7 +284,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
             Header (Calendar.getInstance(), "generated header", "", "", Calendar.getInstance(), "")
         val t0 = header.scenarioTime
 
-        def makeTrafokreis (start: Calendar) (arg: (String, (Array[TData], Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+        def makeTrafokreis (start: Calendar) (arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
         {
             arg match
             {

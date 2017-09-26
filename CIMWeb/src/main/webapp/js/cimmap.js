@@ -47,19 +47,10 @@ define
          * @function set_data
          * @memberOf module:cimmap
          */
-        async function set_data (data)
+        function set_data (data)
         {
             CIM_Data = data;
-            function sleep(ms)
-            {
-                return new Promise(resolve => setTimeout(resolve, ms));
-            }
-            if (null != TheMap)
-            {
-                while (!TheMap.loaded ())
-                    await sleep (1000);
-                redraw ();
-            }
+            redraw ();
         }
 
         /**
@@ -314,8 +305,16 @@ define
          * @function make_map
          * @memberOf module:cimmap
          */
-        function make_map ()
+        async function make_map ()
         {
+            function sleep(ms)
+            {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            do
+                await sleep (2000);
+            while (!TheMap.loaded ())
+
             // index of position point data by location
             var locations = get_locations ();
             // the lines GeoJSON
@@ -896,7 +895,7 @@ define
         /**
          * @summary Initialize the map.
          * @description Create the background map, centered on Bern and showing most of Switzerland.
-         * @param {object} event - optional, the vector tile checkbox change event
+         * @param {object} event - <em>not used</em>
          * @function initialize
          * @memberOf module:cimmap
          */
@@ -914,8 +913,9 @@ define
                     center: [7.48634000000001, 46.93003],
                     zoom: 8,
                     maxZoom: 25,
-                    //style: "mapbox://styles/mapbox/streets-v8",
+                    // style: "mapbox://styles/mapbox/streets-v9",
                     style: "styles/streets-v8.json",
+                    // style: "https://rawgit.com/derrickoswald/CIMApplication/master/CIMWeb/src/main/webapp/styles/streets-v8.json",
                     hash: true
                 }
             );
@@ -974,6 +974,23 @@ define
             redraw ();
         }
 
+        /**
+         * @summary Shut down the map.
+         * @description Clean up and close the map.
+         * @param {object} event - <em>not used</em>
+         * @function terminate
+         * @memberOf module:cimmap
+         */
+        function terminate (event)
+        {
+            if (null != TheMap)
+            {
+                var map = TheMap;
+                map.remove ();
+                document.getElementById ("main").innerHTML = "";
+            }
+        }
+
         return (
             {
                 set_data: set_data,
@@ -983,7 +1000,8 @@ define
                 trace: trace,
                 unhighlight: unhighlight,
                 select: select,
-                search: search
+                search: search,
+                terminate: terminate
             }
         );
     }
