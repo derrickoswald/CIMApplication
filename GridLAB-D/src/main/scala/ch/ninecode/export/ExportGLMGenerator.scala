@@ -34,7 +34,7 @@ extends
     override def transformers: Array[TransformerSet] = Array(trafokreis.transformers)
 
     // the swing node is the low voltage pin
-    override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.transformers.node1, trafokreis.transformers.v1))
+    override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.transformers.node1, trafokreis.transformers.v1, trafokreis.transformers.transformer_name))
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
@@ -43,27 +43,36 @@ extends
 
     override def emit_node (node: GLMNode): String =
     {
-        val name = nis_number (node.id)
-        swing_nodes.asInstanceOf[Iterable[SwingNode]].find (_.id == node.id) match
+        super.emit_node (node) +
+        (if (name.startsWith ("HAS"))
         {
-            case Some (swing: SwingNode) ⇒
-                // generate low voltage pin (NSPIN) swing node
-                val trafo = trafokreis.transformers.transformer_name
-                "\n" +
-                "        object meter\n" +
-                "        {\n" +
-                "            name \"" + swing.id + "\";\n" +
-                "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                "            bustype SWING;\n" +
-                "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
-                (if (one_phase)
-                    "            object player\n" +
+            generate_recorder (node) +
+            generate_load (node)
+        }
+        else
+            "")
+    }
+
+    override def emit_slack (node: GLMNode): String =
+    {
+        val swing = node.asInstanceOf[SwingNode]
+        // generate low voltage pin (NSPIN) swing node
+        val trafo = swing.name
+        "\n" +
+            "        object meter\n" +
+            "        {\n" +
+            "            name \"" + swing.id + "\";\n" +
+            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+            "            bustype SWING;\n" +
+            "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
+            (if (one_phase)
+                "            object player\n" +
                     "            {\n" +
                     "                property \"voltage_A\";\n" +
                     "                file \"input_data/" + trafo + ".csv\";\n" +
                     "            };\n"
-                else
-                    "            object player\n" +
+            else
+                "            object player\n" +
                     "            {\n" +
                     "                property \"voltage_A\";\n" +
                     "                file \"input_data/" + trafo + "_R.csv\";\n" +
@@ -78,38 +87,7 @@ extends
                     "                property \"voltage_C\";\n" +
                     "                file \"input_data/" + trafo + "_T.csv\";\n" +
                     "            };\n") +
-                "        };\n"
-            case None ⇒
-                super.emit_node (node) +
-                (if (name.startsWith ("HAS"))
-                {
-                    generate_recorder (node) +
-                    generate_load (node)
-                }
-                else
-                    "")
-        }
-
-    }
-
-    /**
-     * This override only emits a normal node, since the low voltage pin of the transformer is included in the trace.
-     * The real slack node is emitted in an 'if' branch of the regular emit_node function.
-     * The transformer is left in the circuit, although theoretically it could also be removed.
-     */
-    override def emit_slack (nodes: Iterable[GLMNode]): String =
-    {
-        val name = trafokreis.transformers.node0
-        val voltage = trafokreis.transformers.v0
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + name + "\";\n" +
-        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            bustype PQ;\n" +
-        "            nominal_voltage " + voltage + "V;\n" +
-        "        };\n"
-
+            "        };\n"
     }
 
     def generate_recorder (node: GLMNode): String =

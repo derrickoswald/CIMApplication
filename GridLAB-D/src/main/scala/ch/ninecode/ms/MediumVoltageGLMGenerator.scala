@@ -22,19 +22,16 @@ case class MediumVoltageGLMGenerator (
     override def transformers: Array[TransformerSet] = ust.transformers
 
     override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
-    lazy val swing_node_names: Array[String] = swing_nodes.map (_.id).toArray
 
-    override def nodes: Iterable[USTNode] = ust.nodes
+    lazy val lv: Array[String] = ust.hv_transformers.map (_.node1)
+    override def nodes: Iterable[USTNode] = ust.nodes.filter (x ⇒ !lv.contains (x.id))
 
     override def extra: Iterable[String] = List ("")
 
     override def emit_node (node: GLMNode): String =
     {
         val n = node.asInstanceOf[USTNode]
-        if (!swing_node_names.contains (node.id))
-            super.emit_node (node) + generate_load (n)
-        else
-            ""
+        super.emit_node (node) + generate_load (n)
     }
 
     def generate_load (node: USTNode): String =
@@ -84,5 +81,42 @@ case class MediumVoltageGLMGenerator (
         }
         else
             ""
+    }
+
+    override def emit_slack (node: GLMNode): String =
+    {
+        val swing = node.asInstanceOf[SwingNode]
+        // generate low voltage pin (NSPIN) swing node
+        val trafo = swing.name
+        "\n" +
+            "        object meter\n" +
+            "        {\n" +
+            "            name \"" + swing.id + "\";\n" +
+            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+            "            bustype SWING;\n" +
+            "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
+            (if (one_phase)
+                "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_A\";\n" +
+                    "                file \"input_data/" + trafo + ".csv\";\n" +
+                    "            };\n"
+            else
+                "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_A\";\n" +
+                    "                file \"input_data/" + trafo + "_R.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_B\";\n" +
+                    "                file \"input_data/" + trafo + "_S.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_C\";\n" +
+                    "                file \"input_data/" + trafo + "_T.csv\";\n" +
+                    "            };\n") +
+            "        };\n"
     }
 }

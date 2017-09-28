@@ -1,47 +1,28 @@
 package ch.ninecode.export
 
 import java.net.URI
-import java.nio.charset.StandardCharsets
-import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.LoggerFactory
-
-import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.esl._
 import ch.ninecode.gl._
 import ch.ninecode.model._
-
-case class ExportOptions (
-    verbose: Boolean = true,
-    cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
-    three: Boolean = false,
-    trafos: String = "",
-    workdir: String = "",
-    files: Seq[String] = Seq()
-)
 
 //  <md:FullModel rdf:about="sias_current">
 //        <md:Model.created>2017-06-01T23:00:20</md:Model.created>
@@ -66,7 +47,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.export.Export").setLevel (org.apache.log4j.Level.INFO)
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
     }
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -90,11 +71,11 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
 
         val raw = if ((gridlabd.workdir_scheme == "file") || (gridlabd.workdir_scheme == ""))
         {
-            val in = Files.newInputStream (java.nio.file.FileSystems.getDefault().getPath (file))
+            val in = Files.newInputStream (java.nio.file.FileSystems.getDefault.getPath (file))
             val buffer = new Array[Byte] (4 * 1024)
             in.read (buffer)
-            in.close ();
-            new String (buffer, java.nio.charset.StandardCharsets.UTF_8);
+            in.close ()
+            new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
         }
         else
         {
@@ -107,7 +88,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
             val buffer = new Array[Byte] (4 * 1024)
             in.read (0L, buffer, 0, buffer.length)
             in.close ()
-            new String (buffer, java.nio.charset.StandardCharsets.UTF_8);
+            new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
         }
         val start = raw.indexOf (lead)
         val end = raw.indexOf (trail)
@@ -125,17 +106,17 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         try
         {
             Header (
-                toDate ((x \\ "Model.created") (0).text),
-                (x \\ "Model.description") (0).text,
-                (x \\ "Model.modelingAuthoritySet") (0).text,
-                (x \\ "Model.profile") (0).text,
-                toDate ((x \\ "Model.scenarioTime") (0).text),
-                (x \\ "Model.version") (0).text
+                toDate ((x \\ "Model.created").head.text),
+                (x \\ "Model.description").head.text,
+                (x \\ "Model.modelingAuthoritySet").head.text,
+                (x \\ "Model.profile").head.text,
+                toDate ((x \\ "Model.scenarioTime").head.text),
+                (x \\ "Model.version").head.text
                 )
         }
         catch 
         {
-            case e: Exception => log.error ("exception caught parsing rdf header: " + e);
+            case e: Exception => log.error ("exception caught parsing rdf header: " + e)
             val now = Calendar.getInstance ()
             Header (now, "no description", "no modeling authority", "no profile", now, "no version")
         }
@@ -163,7 +144,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
             gridlabd.export (generator)
             1
         }
-        val cc = trafokreise.count()
+        log.info ("exporting: " + trafokreise.count() + " transformer service areas")
         val files = trafokreise.map (doit).cache
         val fc = files.fold (0)(_+_)
         log.info ("exported: " + fc + " transformer service areas")
@@ -235,20 +216,19 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, topological_nodes, storage_level)
-        val sdata = solar.getSolarInstallations
+        val sdata = solar.getSolarInstallations ()
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet).collect
         }
         else
         {
             // do all low voltage power transformers
-            // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet).collect
         }
 
         val prepare = System.nanoTime ()
@@ -276,7 +256,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         val has = precalc_results.has.keyBy(_.source_obj)
         val grouped_precalc_results = vertices.groupWith(edges, has)
 
-        val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
+        val trafokreise = trafo_list.keyBy(_.transformer_name).leftOuterJoin(grouped_precalc_results)
 
         val raw = getCIMheader (gridlabd)
         val header = if ("" != raw)
@@ -289,13 +269,13 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         {
             arg match
             {
-                case (trafokreise, (transformers, Some (x))) =>
-                    Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3, EinspeiseleistungOptions ())
+                case (tk, (tx, Some (x))) =>
+                    Trafokreis (start, tk, tx, x._1, x._2, x._3, EinspeiseleistungOptions ())
                 case _ =>
                     null
             }
         }
-        val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0)_)
+        val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0))
         log.info ("filtered_trafos: " + filtered_trafos.count)
         val terminals = session.sparkContext.getPersistentRDDs.filter(_._2.name == "Terminal").head._2.asInstanceOf[RDD[Terminal]]
         generate (gridlabd, filtered_trafos)
