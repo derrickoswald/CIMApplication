@@ -1,7 +1,6 @@
 package ch.ninecode.gl
 
 import scala.collection.Map
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
@@ -10,7 +9,14 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Bay
+import ch.ninecode.model.Element
+import ch.ninecode.model.PowerTransformer
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.Substation
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.VoltageLevel
 
 class Transformers (session: SparkSession, storage_level: StorageLevel) extends CIMRDD with Serializable
 {
@@ -34,25 +40,27 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
                 Array[PowerTransformerEnd]()
         }
         if (ends.length > 2)
-            log.warn ("more than two transformer ends for " + x._1)
+            log.warn ("more than two transformer ends for %s".format (x._1))
         val ret = if (ends.length == 0)
         {
-            log.error ("no transformer ends for " + x._1)
+            log.error ("no transformer ends for %s".format (x._1))
             List[(String, (PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)))]()
         }
         else if (ends.length == 1)
         {
-            log.error ("less than two transformer ends for " + x._1)
+            log.error ("less than two transformer ends for %s".format (x._1))
             List[(String, (PowerTransformer, Substation, (PowerTransformerEnd, Double), (PowerTransformerEnd, Double)))]()
         }
         else
         {
-            val v0 = voltages.getOrElse (ends(0).TransformerEnd.BaseVoltage, 0.0)
+            val hv: String = ends(0).TransformerEnd.BaseVoltage
+            val v0 = voltages.getOrElse (hv, 0.0)
             if (0.0 == v0)
-                log.error ("no voltage for " + ends(0).TransformerEnd.BaseVoltage + " " + x._1)
-            val v1 = voltages.getOrElse (ends(1).TransformerEnd.BaseVoltage, 0.0)
+                log.error ("no high voltage for %s %s".format (hv, x._1))
+            val lv: String = ends(1).TransformerEnd.BaseVoltage
+            val v1 = voltages.getOrElse (lv, 0.0)
             if (0.0 == v1)
-                log.error ("no voltage for " + ends(1).TransformerEnd.BaseVoltage + " " + x._1)
+                log.error ("no low voltage for %s %s".format (lv, x._1))
             List((x._1, (x._2._1._1, x._2._1._2, (ends(0), v0), (ends(1), v1))))
         }
         ret
@@ -85,17 +93,17 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
                     case Some (t2) =>
                         List((x._2._1._1, x._2._1._2, (end1._1, end1._2, t1), (end2._1, end2._2, t2)))
                     case None =>
-                        log.error ("terminal not found for " + end2._1.id)
+                        log.error ("terminal not found for %s".format (end2._1.id))
                         List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                 }
             case None =>
                 match1 match
                 {
                     case Some (_) =>
-                        log.error ("terminal not found for " + end1._1.id)
+                        log.error ("terminal not found for %s".format (end1._1.id))
                         List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                     case None =>
-                        log.error ("no terminals not found for " + x._2._1._1.id)
+                        log.error ("no terminals not found for %s".format (x._2._1._1.id))
                         List[(PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal))]()
                 }
         }
@@ -125,7 +133,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
 
         // get all transformers in substations
         val transformers = get[PowerTransformer]
-        val substation_transformers = transformers.filter ((t: PowerTransformer) => t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern")
+        val substation_transformers = transformers.filter (_.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern")
 
         // get an RDD of substations by filtering out distribution boxes
         val stations = get[Substation].filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox")
@@ -138,7 +146,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
                 case (_, (t: PowerTransformer, station: Substation)) => (station.id, t)
                 case (_, (t: PowerTransformer, bay: Bay)) => (bay.Substation, t)
                 case (_, (t: PowerTransformer, level: VoltageLevel)) => (level.Substation, t)
-                case _ => throw new Exception ("this should never happen -- default case")
+                case _ => throw new Exception ("unknown container type for %s".format (x._1))
             }
         }
 

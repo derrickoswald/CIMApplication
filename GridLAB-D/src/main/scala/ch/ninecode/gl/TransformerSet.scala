@@ -1,6 +1,5 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model.Terminal
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -22,20 +21,38 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // primary and secondary voltage should be the same on all edges - use the first
-    val v0: Double = 1000.0 * transformers.head.voltage0
-    val v1: Double = 1000.0 * transformers.head.voltage1
-    if (!transformers.forall (1000.0 * _.voltage0 == v0))
-        log.error ("transformer set " + configurationName + " has different voltages on terminal 0 " + transformers.map ((x) => x.voltage0).mkString (" "))
-    if (!transformers.forall (1000.0 * _.voltage1 == v1))
-        log.error ("transformer set " + configurationName + " has different voltages on terminal 1 " + transformers.map ((x) => x.voltage1).mkString (" "))
+    lazy val v0: Double =
+    {
+        val v = transformers.head.voltage0
+        if (!transformers.forall (_.voltage0 == v))
+            log.error ("transformer set " + transformer_name + " has different voltages on terminal 0 " + transformers.map ((x) => x.voltage0).mkString (" "))
+        // ToDo: fix this 1kV multiplier on the voltages
+        1000.0 * v
+    }
+    lazy val v1: Double =
+    {
+        val v = transformers.head.voltage1
+        if (!transformers.forall (_.voltage1 == v))
+            log.error ("transformer set " + transformer_name + " has different voltages on terminal 1 " + transformers.map ((x) => x.voltage1).mkString (" "))
+        // ToDo: fix this 1kV multiplier on the voltages
+        1000.0 * v
+    }
 
-    // all primaries and secondaries hould be connected to the same nodes (respectively)
-    val node0: String = transformers.head.node0
-    val node1: String = transformers.head.node1
-    if (!transformers.forall (_.node0 == node0))
-        log.error ("transformer set " + configurationName + " has different nodes on terminal 0 " + transformers.map ((x) => x.node0).mkString (" "))
-    if (!transformers.forall (_.node1 == node1))
-        log.error ("transformer set " + configurationName + " has different nodes on terminal 1 " + transformers.map ((x) => x.node1).mkString (" "))
+    // all primaries and secondaries should be connected to the same nodes (respectively)
+    lazy val node0: String =
+    {
+        val n = transformers.head.node0
+        if (!transformers.forall (_.node0 == n))
+            log.error ("transformer set " + transformer_name + " has different nodes on terminal 0 " + transformers.map ((x) => x.node0).mkString (" "))
+        n
+    }
+    lazy val node1: String =
+    {
+        val n = transformers.head.node1
+        if (!transformers.forall (_.node1 == n))
+            log.error ("transformer set " + transformer_name + " has different nodes on terminal 1 " + transformers.map ((x) => x.node1).mkString (" "))
+        n
+    }
 
     // make a valid configuration name
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
@@ -102,12 +119,9 @@ case class TransformerSet (transformers: Array[TData])
      */
     lazy val total_impedance: (Complex, Boolean) =
     {
-        val zero = Complex (0.0, 0.0)
+        val zero = Complex (0.0)
         if (impedances.foldLeft (zero)(_.+(_)) == zero)
-        {
-            log.error ("zero impedance for transformer %s, using default".format (transformer_name))
             (Complex (2.397460317, 16.07618325), true)
-        }
         else
             (impedances.map (_.reciprocal).foldLeft (zero)(_.+(_)).reciprocal, false)
     }

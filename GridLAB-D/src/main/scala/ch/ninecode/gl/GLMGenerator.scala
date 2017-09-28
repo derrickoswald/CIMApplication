@@ -144,21 +144,14 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     def transformers: Array[TransformerSet] = Array()
 
     /**
-     * The ID of the SWING or slack bus node.
+     * The ID of the SWING or slack bus nodes and their voltages.
      *
      * The swing bus is used to provide for system losses by emitting or absorbing active and/or reactive power
      * to and from the system, acting as an infinite source or sink.
      *
-     * @return The id of the node that is the swing bus (or slack bus).
+     * @return The id and voltage of the node or nodes that are a swing bus (or slack bus).
      */
-    def swing_node: String = ""
-
-    /**
-     * The swing node nominal voltage.
-     *
-     * @return The nominal voltage of the swing bus (or slack bus) (volts).
-     */
-    def swing_node_voltage: Double = 0.0
+    def swing_nodes: Iterable[GLMNode] = List()
 
     /**
      * Additional text to add to the .glm file.
@@ -297,29 +290,37 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     }
 
     /**
-     * Emit the swing node.
+     * Emit the swing node(s).
      *
-     * @param name The ID of the swing node.
-     * @param voltage The nominal voltage of the swing node (volts).
-     * @return The .glm file text for the swing bus.
+     * @param nodes The list of swing nodes.
+     * @return The .glm file text for the swing bus(es).
      */
-    def emit_slack (name: String, voltage: Double): String =
+    def emit_slack (nodes: Iterable[GLMNode]): String =
     {
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + name + "\";\n" +
-        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            bustype SWING;\n" +
-        "            nominal_voltage " + voltage + "V;\n" +
-        (if (one_phase)
-            "            voltage_A " + voltage + ";\n"
-        else
-            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-            "            voltage_A " + voltage + "+30.0d;\n" +
-            "            voltage_B " + voltage + "-90.0d;\n" +
-            "            voltage_C " + voltage + "+150.0d;\n") +
-        "        };\n"
+        val s = new StringBuilder ()
+        for (node ← nodes)
+        {
+            val name = node.id
+            val voltage = node.nominal_voltage
+            s.append (
+                "\n" +
+                "        object meter\n" +
+                "        {\n" +
+                "            name \"" + name + "\";\n" +
+                "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                "            bustype SWING;\n" +
+                "            nominal_voltage " + voltage + "V;\n" +
+                (if (one_phase)
+                    "            voltage_A " + voltage + ";\n"
+                else
+                    // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+                    "            voltage_A " + voltage + "+30.0d;\n" +
+                    "            voltage_B " + voltage + "-90.0d;\n" +
+                    "            voltage_C " + voltage + "+150.0d;\n") +
+                "        };\n"
+            )
+        }
+        s.toString
     }
 
     /**
@@ -342,7 +343,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         val l_strings = line.getACLineSegmentConfigurations (combined_edges)
 
         // emit the swing node
-        val o_string = emit_slack (swing_node, swing_node_voltage)
+        val o_string = emit_slack (swing_nodes)
 
         // get the node strings
         val n_strings = nodes.map (emit_node)

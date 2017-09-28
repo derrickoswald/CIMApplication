@@ -264,15 +264,16 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
 
         val houses = precalc_results.has
 
-        val trafo_list = houses.keyBy (a => gridlabd.trafokreis_key (a.source_obj)).groupByKey.map (_._2.head.source_obj)
+        val tl: RDD[TransformerSet] = session.sparkContext.parallelize (transformers)
+        val trafo_list: RDD[TransformerSet] = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
 
         val precalc = System.nanoTime ()
         log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
-        val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id)) 
+        val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(_.source_obj.trafo_id)
         val edges  = precalc_results.edges.filter(_._1 != null)
-        val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
+        val has = precalc_results.has.keyBy(_.source_obj)
         val grouped_precalc_results = vertices.groupWith(edges, has)
 
         val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)

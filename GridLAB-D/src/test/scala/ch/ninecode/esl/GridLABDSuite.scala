@@ -1,22 +1,18 @@
 package ch.ninecode.esl
 
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.util.Calendar
-import java.util.HashMap
-
 import org.apache.spark.SparkConf
-import org.apache.spark.graphx.Graph
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
-
-import javax.xml.bind.DatatypeConverter
+import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.PreEdge
+import ch.ninecode.cim.PostEdge
+import ch.ninecode.cim.Extremum
+import ch.ninecode.cim.CuttingEdge
+import ch.ninecode.cim.TopologicalData
+import ch.ninecode.model.Element
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.Unknown
 
 class GridLABDSuite extends FunSuite
 {
@@ -64,7 +60,7 @@ class GridLABDSuite extends FunSuite
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-        session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
 
         val end = System.nanoTime ()
         println ("setup : " + (end - start) / 1e9 + " seconds")

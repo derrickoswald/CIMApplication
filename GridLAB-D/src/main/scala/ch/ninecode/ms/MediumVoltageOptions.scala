@@ -7,8 +7,6 @@ case class MediumVoltageOptions (
     cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
     three: Boolean = false,
     trafos: String = "",
-    export_only: Boolean = false,
-    erase: Boolean = false,
     short_circuit: String = "",
     workdir: String = "",
     files: Seq[String] = Seq()

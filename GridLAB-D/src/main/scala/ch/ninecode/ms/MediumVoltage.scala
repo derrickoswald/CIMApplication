@@ -7,6 +7,7 @@ import scala.collection.mutable.HashMap
 import scala.io.Source
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -20,7 +21,7 @@ import ch.ninecode.gl.TData
 import ch.ninecode.gl.Trace
 import ch.ninecode.gl.Transformers
 import ch.ninecode.gl.TransformerSet
-import org.apache.spark.rdd.RDD
+import ch.ninecode.model.TopologicalNode
 
 case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 {
@@ -84,7 +85,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
             val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-            val ele = ntp.process (false)
+            val ele = ntp.process (identify_islands = true)
             log.info (ele.count () + " elements")
         }
 
@@ -92,63 +93,57 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
-        val topological_nodes = true
-        val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, options.workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes, options.short_circuit)
+        val tdata = _transformers.getTransformerData (topological_nodes = true, options.short_circuit)
 
         // determine the set of transformers to work on
         /**
          * The name of the node associated with the hight voltage terminal.
-         * @param t The transformer information object to get the node for.
+         * @param pair The transformer information and topological node pair to get the island for.
          * @return The name of the TopologicalNode or ConnectivityNode.
          */
-        def hv_node_name (t: TData): String =
+        def lv_island_name (pair: (TData, TopologicalNode)): (String, TData) =
         {
-            if (topological_nodes) t.terminal0.TopologicalNode else t.terminal1.ConnectivityNode
+            val transformer = pair._1
+            val island = pair._2.TopologicalIsland
+            (island, transformer)
         }
 
-        val transformers: RDD[TransformerSet] = if (null != trafos)
+        val tnodes = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode").head._2.asInstanceOf[RDD[TopologicalNode]]
+        // do all high voltage power transformer (low voltage) islands
+        val islands = if (null != trafos)
         {
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (hv_node_name).values.map (_.toArray).map (TransformerSet)
+            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
+            selected.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet))
         }
         else
         {
-            // do all high voltage power transformers
-            // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0))
-            niederspannug.groupBy (hv_node_name).values.map (_.toArray).map (TransformerSet)
+            // get the high voltage transformers grouped by low voltage TopologicalIsland
+            val hochpannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
+            // create a TransformerSet for each different low voltage TopologicalNode
+            hochpannug.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet))
         }
 
         // determine the list of low voltage transformer sets
-        /**
-         * The name of the node associated with the low voltage terminal.
-         * @param t The transformer information object to get the node for.
-         * @return The name of the TopologicalNode or ConnectivityNode.
-         */
-        def lv_node_name (t: TData): String =
-        {
-            if (topological_nodes) t.terminal1.TopologicalNode else t.terminal1.ConnectivityNode
-        }
-        val lv = tdata.filter (_.voltage1 <= 0.4).groupBy (lv_node_name).values.map (_.toArray).map (TransformerSet)
+        val lv = tdata.filter (_.voltage1 <= 0.4).groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet)
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
 
-        log.info ("" + transformers.count + " transformers to process")
+        log.info ("" + islands.count + " island(s) to process")
 
-        val tx = transformers.collect
-        println (tx.map (_.transformer_name).mkString ("\n"))
-        def doit (transformers: TransformerSet): Int =
+        val tasks = islands.collect
+        println (tasks.map (_.head.transformer_name).mkString ("\n"))
+        def doit (transformers: Iterable[TransformerSet]): Int =
         {
             // get the transformer low voltage pin topological node
             val nothing = PreNode ("", 0.0)
-            val id = nothing.vertex_id (transformers.node1)
+            val id = nothing.vertex_id (transformers.head.node1)
             // trace everything from that pin
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, nothing, storage_level, storage_level)
             val starting_nodes = Array[VertexId] (id)
@@ -157,7 +152,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
             // form the USTKreis data packet to send to the executor
             val ynodes = nodes.collect
             val yedges = edges.groupBy (_.key).values.collect
-            val ust = USTKreis (transformers, ynodes, yedges, lv.collect)
+            val ust = USTKreis (transformers.toArray, ynodes, yedges, lv.collect)
             println (ust.trafokreis_key + " traced " + ynodes.length + " nodes and " + yedges.length + " edges")
 
             // create the GLMGenerator
@@ -165,12 +160,12 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
             gridlabd.export (generator)
             1
         }
-        val xx = tx.map (doit)
-        println (xx.length.toString + " transformers processed")
+        val done = tasks.map (doit)
+        println (done.length.toString + " transformers processed")
 
         val calculate = System.nanoTime ()
         log.info ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
-        transformers.count
+        islands.count
     }
 }

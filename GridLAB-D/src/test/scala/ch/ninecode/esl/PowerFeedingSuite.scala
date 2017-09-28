@@ -12,7 +12,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
-
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CuttingEdge
 import ch.ninecode.cim.Extremum
@@ -111,6 +110,7 @@ class PowerFeedingSuite extends FunSuite
         val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
         val filename = FILE_DEPOT + root + ".rdf"
         val elements = readFile (session, filename)
+        println (elements.count () + " elements")
 
         val read = System.nanoTime ()
         println ("read : " + (read - begin) / 1e9 + " seconds")
@@ -124,7 +124,7 @@ class PowerFeedingSuite extends FunSuite
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes, null)
+        val tdata = _transformers.getTransformerData (topological_nodes)
         tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
@@ -158,7 +158,7 @@ class PowerFeedingSuite extends FunSuite
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
         println ("the simulation number is " + simulation)
 
-        val trafo_string = has.filter(_.eea != null).map(x => gridlabd.trafokreis_key (x.source_obj)).distinct.collect.mkString("\n")
+        val trafo_string = has.filter(_.eea != null).map(_.source_obj).distinct.collect.mkString("\n")
         Files.write (Paths.get ("simulation/trafos.txt"), trafo_string.getBytes (StandardCharsets.UTF_8))
     }
 

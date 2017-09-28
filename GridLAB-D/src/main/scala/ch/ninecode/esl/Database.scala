@@ -239,7 +239,7 @@ object Database
             val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
             for (i <- 0 until records.length)
             {
-                val trafo_id = records(i).source_obj.transformer_name
+                val trafo_id = records(i).source_obj
                 val eea = if (records(i).eea != null) records(i).eea.size else 0
                 val has_id =  records(i).nis_number
                 datainsert.setNull (1, Types.INTEGER)

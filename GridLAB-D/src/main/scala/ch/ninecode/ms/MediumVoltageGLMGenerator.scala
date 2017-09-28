@@ -21,9 +21,8 @@ case class MediumVoltageGLMGenerator (
 
     override def transformers: Array[TransformerSet] = ust.transformers
 
-    override def swing_node: String = ust.swing_node
-
-    override def swing_node_voltage: Double = ust.swing_node_voltage
+    override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
+    lazy val swing_node_names: Array[String] = swing_nodes.map (_.id).toArray
 
     override def nodes: Iterable[USTNode] = ust.nodes
 
@@ -32,7 +31,7 @@ case class MediumVoltageGLMGenerator (
     override def emit_node (node: GLMNode): String =
     {
         val n = node.asInstanceOf[USTNode]
-        if (node.id != swing_node)
+        if (!swing_node_names.contains (node.id))
             // or load_from_player_file (name, voltage)
             super.emit_node (node) + generate_load (n)
         else
@@ -54,23 +53,23 @@ case class MediumVoltageGLMGenerator (
             (if (one_phase)
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_power_A\";\n" +
+                "                property \"constant_current_A\";\n" +
                 "                file \"input_data/" + trafo + ".csv\";\n" +
                 "            };\n"
             else
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_power_A\";\n" +
+                "                property \"constant_current_A\";\n" +
                 "                file \"input_data/" + trafo + "_R.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_power_B\";\n" +
+                "                property \"constant_current_B\";\n" +
                 "                file \"input_data/" + trafo + "_S.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
-                "                property \"constant_power_C\";\n" +
+                "                property \"constant_current_C\";\n" +
                 "                file \"input_data/" + trafo + "_T.csv\";\n" +
                 "            };\n") +
             "        };\n" +

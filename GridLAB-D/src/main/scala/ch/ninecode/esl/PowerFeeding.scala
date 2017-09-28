@@ -13,7 +13,6 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-
 import ch.ninecode.gl._
 import ch.ninecode.model._
 
@@ -32,7 +31,7 @@ case class PowerFeedingNode (
 case class MaxPowerFeedingNodeEEA (
     id_seq: String,
     voltage: Double,
-    source_obj: TransformerSet,
+    source_obj: String,
     max_power_feeding: Double,
     eea: Iterable[PV],
     reason: String,
@@ -48,7 +47,7 @@ case class MaxPowerFeedingNodeEEA (
             id_seq
     }
 }
-case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: TransformerSet, z: Complex, ratedS: Double) extends Serializable
+case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: String, z: Complex, ratedS: Double) extends Serializable
 case class PreCalculationResults (
     simulation: Int,
     has: RDD[MaxPowerFeedingNodeEEA],
@@ -75,16 +74,18 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
                 !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
             case "Jumper" ⇒
                 !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "MktSwitch" ⇒
+                !element.asInstanceOf[MktSwitch].Switch.normalOpen
             case "ProtectedSwitch" ⇒
                 !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" ⇒
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
             case "Breaker" ⇒
                 !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
             case "LoadBreakSwitch" ⇒
                 !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
             case "Recloser" ⇒
                 !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Sectionaliser" ⇒
+                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
             case "PowerTransformer" ⇒
                 false
             case _ ⇒
@@ -214,7 +215,7 @@ object PowerFeeding
       val v1 = pn.vertex_id (transformers.node1)
       val ratedS = transformers.power_rating
       val impedance = transformers.total_impedance._1
-      StartingTrafos (v0, v1, transformers, impedance, ratedS)
+      StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
     }
 
     def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
@@ -248,8 +249,8 @@ object PowerFeeding
 
           var ret = (null.asInstanceOf[String], triplet.attr)
           if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
-            val source_trafo_id = gridlabd.trafokreis_key(source.trafo_id)
-            val target_trafo_id = gridlabd.trafokreis_key(target.trafo_id)
+            val source_trafo_id = source.trafo_id
+            val target_trafo_id = target.trafo_id
             if (source_trafo_id == target_trafo_id)
               ret = (source_trafo_id, triplet.attr) 
           }

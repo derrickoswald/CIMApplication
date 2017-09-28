@@ -620,13 +620,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         // identify topological nodes if necessary
-//        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
-//        if (tns.isEmpty || tns.head._2.isEmpty)
-//        {
+        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        if (tns.isEmpty || tns.head._2.isEmpty)
+        {
             val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
             val ele = ntp.process (false)
             log.info (ele.count () + " elements")
-//        }
+        }
+        else
+            log.info (session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.count () + " elements")
 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
@@ -636,11 +638,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
         val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, workdir)
 
-        // prepare the initial graph edges and nodes
-        val (xedges, xnodes) = gridlabd.prepare ()
-
+        // get the distribution transformers
         val _transformers = new Transformers (session, storage_level)
         val tdata = _transformers.getTransformerData (topological_nodes)
+
+        // prepare the initial graph edges and nodes
+        val (xedges, xnodes) = gridlabd.prepare ()
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, topological_nodes, storage_level)
@@ -655,7 +658,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
         {
             // do all low voltage power transformers
-            // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
@@ -689,8 +691,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
             precalc_results.has.filter(_.eea != null)
 
-        val trafo_list = houses.keyBy (a => gridlabd.trafokreis_key (a.source_obj)).groupByKey.map (_._2.head.source_obj)
+        val tl = session.sparkContext.parallelize (transformers)
+        val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
+        for (trafo ← trafo_list)
+            log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1))
 
         val precalc = System.nanoTime ()
         log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
@@ -698,12 +703,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // do gridlab simulation if not just pre-calculation
         if (!options.precalculation)
         {
-            val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(v => gridlabd.trafokreis_key(v.source_obj.trafo_id)) 
+            val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(_.source_obj.trafo_id)
             val edges  = precalc_results.edges.filter(_._1 != null)
-            val has = precalc_results.has.keyBy(h => gridlabd.trafokreis_key(h.source_obj))
+            val has = precalc_results.has.keyBy(_.source_obj)
             val grouped_precalc_results = vertices.groupWith(edges, has)
 
-            val trafokreise = trafo_list.keyBy(gridlabd.trafokreis_key(_)).leftOuterJoin(grouped_precalc_results)
+            val trafokreise = trafo_list.keyBy(_.transformer_name).leftOuterJoin(grouped_precalc_results)
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
             val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0, options)_)

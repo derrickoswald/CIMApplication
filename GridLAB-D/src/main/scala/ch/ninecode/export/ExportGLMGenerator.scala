@@ -34,9 +34,7 @@ extends
     override def transformers: Array[TransformerSet] = Array(trafokreis.transformers)
 
     // the swing node is the low voltage pin
-    override def swing_node: String = trafokreis.transformers.node1
-
-    override def swing_node_voltage: Double = trafokreis.transformers.v1
+    override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.transformers.node1, trafokreis.transformers.v1))
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
@@ -46,51 +44,50 @@ extends
     override def emit_node (node: GLMNode): String =
     {
         val name = nis_number (node.id)
-        if (node.id == swing_node)
+        swing_nodes.asInstanceOf[Iterable[SwingNode]].find (_.id == node.id) match
         {
-            // generate low voltage pin (NSPIN) swing node
-            val trafo = trafokreis.transformers.transformer_name
-            "\n" +
-            "        object meter\n" +
-            "        {\n" +
-            "            name \"" + node.id + "\";\n" +
-            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-            "            bustype SWING;\n" +
-            "            nominal_voltage " + swing_node_voltage + "V;\n" +
-            (if (one_phase)
-                "            object player\n" +
-                "            {\n" +
-                "                property \"voltage_A\";\n" +
-                "                file \"input_data/" + trafo + ".csv\";\n" +
-                "            };\n"
-            else
-                "            object player\n" +
-                "            {\n" +
-                "                property \"voltage_A\";\n" +
-                "                file \"input_data/" + trafo + "_R.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"voltage_B\";\n" +
-                "                file \"input_data/" + trafo + "_S.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"voltage_C\";\n" +
-                "                file \"input_data/" + trafo + "_T.csv\";\n" +
-                "            };\n") +
-            "        };\n"
-        }
-        else
-        {
-            super.emit_node (node) +
-            (if (name.startsWith ("HAS"))
-            {
-                generate_recorder (node) +
-                generate_load (node)
-            }
-            else
-                "")
+            case Some (swing: SwingNode) ⇒
+                // generate low voltage pin (NSPIN) swing node
+                val trafo = trafokreis.transformers.transformer_name
+                "\n" +
+                "        object meter\n" +
+                "        {\n" +
+                "            name \"" + swing.id + "\";\n" +
+                "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                "            bustype SWING;\n" +
+                "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
+                (if (one_phase)
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_A\";\n" +
+                    "                file \"input_data/" + trafo + ".csv\";\n" +
+                    "            };\n"
+                else
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_A\";\n" +
+                    "                file \"input_data/" + trafo + "_R.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_B\";\n" +
+                    "                file \"input_data/" + trafo + "_S.csv\";\n" +
+                    "            };\n" +
+                    "            object player\n" +
+                    "            {\n" +
+                    "                property \"voltage_C\";\n" +
+                    "                file \"input_data/" + trafo + "_T.csv\";\n" +
+                    "            };\n") +
+                "        };\n"
+            case None ⇒
+                super.emit_node (node) +
+                (if (name.startsWith ("HAS"))
+                {
+                    generate_recorder (node) +
+                    generate_load (node)
+                }
+                else
+                    "")
         }
 
     }
@@ -100,7 +97,7 @@ extends
      * The real slack node is emitted in an 'if' branch of the regular emit_node function.
      * The transformer is left in the circuit, although theoretically it could also be removed.
      */
-    override def emit_slack (name: String, voltage: Double): String =
+    override def emit_slack (nodes: Iterable[GLMNode]): String =
     {
         val name = trafokreis.transformers.node0
         val voltage = trafokreis.transformers.v0
