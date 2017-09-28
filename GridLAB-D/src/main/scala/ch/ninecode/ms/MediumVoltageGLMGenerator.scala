@@ -32,7 +32,6 @@ case class MediumVoltageGLMGenerator (
     {
         val n = node.asInstanceOf[USTNode]
         if (!swing_node_names.contains (node.id))
-            // or load_from_player_file (name, voltage)
             super.emit_node (node) + generate_load (n)
         else
             ""

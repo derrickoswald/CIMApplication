@@ -16,7 +16,7 @@ case class USTKreis (
     lazy val start_time: Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04T12:00:00")
     lazy val finish_time: Calendar = start_time
     lazy val trafokreis_key: String = raw_transformers.head.transformer_name
-    lazy val swing_nodes: Array[SwingNode] = raw_transformers.map (x ⇒ SwingNode (x.node0, x.v0))
+    lazy val swing_nodes: Array[SwingNode] = raw_transformers.map (x ⇒ SwingNode (x.node1, x.v1))
     // add loads to nodes that are transformer secondary terminals
     def addLoad (raw: PreNode): USTNode =
     {
@@ -26,9 +26,10 @@ case class USTKreis (
             case None ⇒ USTNode (raw.id, raw.voltage, null)
         }
     }
-    lazy val nodes: Iterable[USTNode] = raw_nodes.map (addLoad)
+    lazy val hv: Array[String] = raw_transformers.map (_.node0)
+    lazy val nodes: Iterable[USTNode] = raw_nodes.filter (x ⇒ !hv.contains (x.id)).map (addLoad)
     // get low voltage transformers for our nodes
     lazy val lv_transformers: Array[TransformerSet] = nodes.filter (null != _.load).map (_.load).toArray
     // the transformers to process is the combination of HV and MV transformers
-    lazy val transformers: Array[TransformerSet] = Array.concat (raw_transformers, lv_transformers)
+    lazy val transformers: Array[TransformerSet] = lv_transformers
 }
