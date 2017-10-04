@@ -32,3 +32,6 @@ case class TData (
     voltage1: Double,
     terminal1: Terminal,
     node1: String)
+{
+    def asString: String = "%s:%s %gkVA %g:%g %s:%s".format (station.id, transformer.id, end0.ratedS / 1000.0, voltage0 * 1000.0, voltage1 * 1000.0, node0, node1)
+}

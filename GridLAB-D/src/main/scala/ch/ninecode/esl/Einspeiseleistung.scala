@@ -4,164 +4,42 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.gl._
-import ch.ninecode.model._
-
-case class EinspeiseleistungOptions (
-    verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
-    three: Boolean = false,
-    precalculation: Boolean = false,
-    trafos: String = "",
-    export_only: Boolean = false,
-    all: Boolean = false,
-    erase: Boolean = false,
-    simulation: Int = -1,
-    reference: Int = -1,
-    delta: Double = 1e-6,
-    number: Int = -1,
-    workdir: String = "",
-    files: Seq[String] = Seq(),
-    precalc_factor: Double = 1.5
-)
-
-/**
- * Stepped experiment parameters.
- * @param trafo CIM MRID of the transformer feeding the house.
- * @param house CIM MRID of house being experimented on.
- * @param t0 Origin for all experiments.
- * @param slot Unique experiment number (slot in windowed time).
- * @param window Duration of the experiment (seconds).
- * @param interval Duration between steps in the experiment (seconds).
- * @param from Starting PV power (kW).
- * @param to Ending PV power (kW).
- * @param step Power increment, resolution of the Einspeiseleistung value (kW).
- */
-case class Experiment(
-    trafo: String,
-    house: String,
-    t0: Calendar,
-    slot: Int,
-    window: Int,
-    interval: Int,
-    from: Double,
-    to: Double,
-    step: Double)
-{
-    /**
-     * Calendar duplication utility function.
-     * @param c The Calendar value to be cloned.
-     */
-    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
-
-    /**
-     * The start time of the experiment.
-     */
-    def t1 = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
-
-    /**
-     * The end time of the experiment.
-     */
-    def t2 = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
-
-    override def toString = "Experiment(" +
-        trafo + "," +
-        house + "," +
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime ()) + "[" + t0.getTimeInMillis + "]," +
-        slot + "," +
-        window + "," +
-        interval + "," +
-        from + "," +
-        to + "," +
-        step + ")"
-}
-
-/**
- * Final result record.
- * @param trafo MRID of transformer feeding the house.
- * @param house MRID of the house.
- * @param max Maximum feed in power (kW) or None if no limit was found.
- * @param reason Explanatory reason for the limit (voltage, current or power exceeded).
- * @param details The test which caused the limit including the network element.
- */
-case class MaxEinspeiseleistung(
-    trafo: String,
-    house: String,
-    max: Option[Double],
-    reason: String,
-    details: String)
-
-case class Trafokreis
-(
-    start: Calendar,
-    trafo: String,
-    transformers: TransformerSet,
-    nodes: Iterable[PowerFeedingNode],
-    edges: Iterable[PreEdge],
-    houses: Iterable[MaxPowerFeedingNodeEEA],
-    options: EinspeiseleistungOptions
-) extends Problem
-{
-
-    val log = LoggerFactory.getLogger (getClass)
-
-    val window = 3 * 60 // window size in simulated seconds per experiment
-    val margin = options.precalc_factor // check up to 50% over the precalculated value
-    val step = 10000.0
-    def significant (h: MaxPowerFeedingNodeEEA) = (h.max_power_feeding > 1000.0) // don't do houses where we already know it's less than a kilowatt
-    def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)) =
-    {
-        val house = h._1.nis_number // the house under test
-        val index = h._2 // experiment #
-        def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
-        val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
-        val interval = 5 // seconds per step
-        val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-        val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-        Experiment (trafo, house, start_time (), index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
-    }
-
-    // generate experiments
-    lazy val experiments = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
-
-    def name (): String = trafo
-
-    def start_time (): Calendar = start
-    def finish_time (): Calendar =
-    {
-        val t = start_time ().clone().asInstanceOf[Calendar]
-        t.add (Calendar.SECOND, experiments.length * window)
-        t
-    }
-
-    // find the swing node
-    def swing_node (): String = transformers.node0
-
-    def swing_node_voltage (): Double = transformers.v0
-}
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.Solar
+import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.Transformers
+import ch.ninecode.model.Element
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions)
 {
     if (options.verbose)
     {
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Einspeiseleistung").setLevel (org.apache.log4j.Level.INFO)
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
+        val el = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Einspeiseleistung")
+        if (!el.isInfoEnabled)
+            el.setLevel (org.apache.log4j.Level.INFO)
+        val fl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding")
+        if (!fl.isInfoEnabled)
+            fl.setLevel (org.apache.log4j.Level.INFO)
+        val pl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$")
+        if (!pl.isInfoEnabled)
+            pl.setLevel (org.apache.log4j.Level.INFO)
     }
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -217,7 +95,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val data = arg._2
             val reason = arg._3
             val details = arg._4
-            val steps = Math.round((data.millis - experiment.t1.getTimeInMillis()) / (experiment.interval * 1000))
+            val steps = Math.round((data.millis - experiment.t1.getTimeInMillis) / (experiment.interval * 1000))
             val ok_steps = if (0 < steps) steps - 1 else 0 // subtract off the mandatory first zero step required by GridLAB-D
             val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match {
@@ -255,24 +133,22 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // eliminate current measurements and measurements within tolerance
         def interesting1ph(r: ThreePhaseComplexDataElement): Boolean =
         {
-            return (
-                (r.units == "Volts") &&
-                (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                (r.value_a.abs > max))
+            (r.units == "Volts") &&
+            (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+            (r.value_a.abs > max)
         }
         def interesting3ph(r: ThreePhaseComplexDataElement): Boolean =
         {
-            return (
-                (r.units == "Volts") &&
-                (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
-                ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)))
+            (r.units == "Volts") &&
+            (r.value_a.abs < 1000.0) && // ToDo: remove hard-coded constraint for niederspannung
+            ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
         }
 
         // assign an experiment to each measurement
         def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): List[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             for (e ← experiments) {
-                if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + max + " Volts")))
             }
             List()
@@ -297,7 +173,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             val r = arg._1
             val max = arg._2
-            ((r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max))
+            (r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)
         }
 
         // assign an experiment to each measurement
@@ -306,7 +182,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val r = arg._1
             val max = arg._2
             for (e ← experiments) {
-                if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + max + " Amps")))
             }
             List()
@@ -333,30 +209,28 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // eliminate voltage measurements and measurements below capacity
         def interesting1ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
         {
-            return (
-                if ((r.element == trafo_name) &&
-                    (r.units == "Amps") && // redundant
-                    (r.value_a.abs > i))
-                    true
-                else
-                    false)
+            if ((r.element == trafo_name) &&
+                (r.units == "Amps") && // redundant
+                (r.value_a.abs > i))
+                true
+            else
+                false
         }
         def interesting3ph(i: Double)(r: ThreePhaseComplexDataElement): Boolean =
         {
-            return (
-                if ((r.element == trafo_name) &&
-                    (r.units == "Amps") && // redundant
-                    ((r.value_a.abs > i) || (r.value_b.abs > i) || (r.value_c.abs > i)))
-                    true
-                else
-                    false)
+            if ((r.element == trafo_name) &&
+                (r.units == "Amps") && // redundant
+                ((r.value_a.abs > i) || (r.value_b.abs > i) || (r.value_c.abs > i)))
+                true
+            else
+                false
         }
 
         // assign an experiment to each measurement
         def assign(experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             for (e ← experiments) {
-                if ((e.t1.getTimeInMillis() <= r.millis) && (e.t2.getTimeInMillis() >= r.millis))
+                if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + power + " Watts")))
             }
             List()
@@ -383,7 +257,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val trafo_name = trafo._1
 
         val complexDataElements = trafo._2._2._1
-        if (!complexDataElements.isEmpty)
+        if (complexDataElements.nonEmpty)
         {
             val experiments = trafo._2._2._2
 
@@ -432,9 +306,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
     {
         val ret = new StringBuilder()
-        def addrow(time: Calendar, power: Double, angle: Double) =
+        def addrow(time: Calendar, power: Double, angle: Double): Unit =
         {
-            ret.append(_DateFormat.format(time.getTime()))
+            ret.append(_DateFormat.format(time.getTime))
             ret.append(",")
             if (!options.three) {
                 ret.append(-power)
@@ -458,7 +332,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
         addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
 
-        return (ret.toString().getBytes(StandardCharsets.UTF_8))
+        ret.toString().getBytes(StandardCharsets.UTF_8)
     }
 
     def generate_player_file (gridlabd: GridLABD) (experiment: Experiment): Int =
@@ -496,7 +370,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
         if (!options.export_only)
         {
-            val c = experiments.map (generate_player_file (gridlabd)_).count
+            val c = experiments.map (generate_player_file (gridlabd)).count
             log.info (c.toString + " experiments")
 
             val reduced_trafos = trafokreise.map (t ⇒ {
@@ -542,7 +416,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
             trafokreise.map(t ⇒ gridlabd.cleanup (t.trafo, false, true)).count
-            val d = experiments2.map (generate_player_file (gridlabd)_).count
+            val d = experiments2.map (generate_player_file (gridlabd)).count
             log.info (d.toString + " experiments")
 
             val export2 = System.nanoTime()
@@ -639,31 +513,34 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, workdir)
 
         // get the distribution transformers
-        val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes)
+        val tdata = new Transformers (session, storage_level).getTransformerData (topological_nodes)
+        if (log.isDebugEnabled)
+            tdata.map (_.asString).collect.foreach (log.debug)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, topological_nodes, storage_level)
-        val sdata = solar.getSolarInstallations
+        val sdata = solar.getSolarInstallations ()
 
         // determine the set of transformers to work on
-        val transformers = if (null != trafos)
+        val transformers: Array[TransformerSet] = if (null != trafos)
         {
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
+            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id)).distinct
             selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
+        if (log.isDebugEnabled)
+            transformers.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
 
         // do the pre-calculation
         val precalc_results =
@@ -694,8 +571,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val tl = session.sparkContext.parallelize (transformers)
         val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
-        for (trafo ← trafo_list)
-            log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1))
+        if (log.isDebugEnabled)
+            trafo_list.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
 
         val precalc = System.nanoTime ()
         log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
@@ -711,7 +588,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val trafokreise = trafo_list.keyBy(_.transformer_name).leftOuterJoin(grouped_precalc_results)
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
-            val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0, options)_)
+            val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0, options))
             val count = trafo_list.count
             log.info ("filtered_trafos: " + count)
             if (0 != count)

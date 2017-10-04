@@ -79,7 +79,7 @@ case class TransformerSet (transformers: Array[TData])
         //     int balance; /* unused */
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode())
+            "_" + Math.abs (n.hashCode()) + "_" + n.substring (0, n.indexOf ("||", 32)) + "_etc"
         else
             n
     }
@@ -89,7 +89,7 @@ case class TransformerSet (transformers: Array[TData])
     {
         val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode())
+            "_" + Math.abs (n.hashCode()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
         else
             n
     }

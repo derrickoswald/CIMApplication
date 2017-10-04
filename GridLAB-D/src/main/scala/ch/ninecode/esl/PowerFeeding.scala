@@ -13,49 +13,31 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-import ch.ninecode.gl._
-import ch.ninecode.model._
 
-case class PowerFeedingNode (
-    id_seq: String,
-    voltage: Double,
-    source_obj: StartingTrafos,
-    sum_r: Double,
-    min_ir: Double,
-    multiple_paths: Boolean) extends GLMNode
-{
-    override def id: String = id_seq
-    override def nominal_voltage: Double = voltage
-}
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.PV
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.Breaker
+import ch.ninecode.model.Cut
+import ch.ninecode.model.Disconnector
+import ch.ninecode.model.Element
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.Jumper
+import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.MktSwitch
+import ch.ninecode.model.ProtectedSwitch
+import ch.ninecode.model.Recloser
+import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Switch
 
-case class MaxPowerFeedingNodeEEA (
-    id_seq: String,
-    voltage: Double,
-    source_obj: String,
-    max_power_feeding: Double,
-    eea: Iterable[PV],
-    reason: String,
-    details: String)
-    extends Serializable
+class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
-    def nis_number: String =
-    {
-        val n = id_seq.indexOf("_")
-        if (0 < n)
-            id_seq.substring(0, n)
-        else
-            id_seq
-    }
-}
-case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: String, z: Complex, ratedS: Double) extends Serializable
-case class PreCalculationResults (
-    simulation: Int,
-    has: RDD[MaxPowerFeedingNodeEEA],
-    vertices: RDD[PowerFeedingNode],
-    edges: RDD[(String, PreEdge)])
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
-class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
-{
     // check if messages should pass through and edge
     def shouldContinue(element: Element): Boolean =
     {
@@ -94,16 +76,13 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
     }
 
     // return length, resistance and maximum curret for an edge
-    def line_details (edge: PreEdge): Tuple3[Double, Double, Double] =
+    def line_details (edge: PreEdge): (Double, Double, Double) =
     {
-        if (edge.element.isInstanceOf[ACLineSegment])
-            (
-                edge.element.asInstanceOf[ACLineSegment].Conductor.len / 1000.0,
-                edge.element.asInstanceOf[ACLineSegment].r,
-                edge.ratedCurrent
-            )
-        else
-            (0.0, 0.0, Double.PositiveInfinity)
+        edge.element match
+        {
+            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, line.r, edge.ratedCurrent)
+            case _ ⇒ (0.0, 0.0, Double.PositiveInfinity)
+        }
     }
 
     def vertexProgram (id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
@@ -120,14 +99,20 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.srcAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                    Iterator ((triplet.dstId, PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)))
+                    val message = PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)
+                    if (log.isDebugEnabled)
+                        log.debug ("%s <-- %s".format (triplet.dstId.toString,  message.asString))
+                    Iterator ((triplet.dstId, message))
                 }
                 else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
                 {
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.dstAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                    Iterator ((triplet.srcId, PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)))
+                    val message = PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)
+                    if (log.isDebugEnabled)
+                        log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
+                    Iterator ((triplet.srcId, message))
                 }
                 else
                     Iterator.empty
@@ -139,11 +124,15 @@ class PowerFeeding(initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def mergeMessage(a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
     {
-        a.copy(multiple_paths=true)
+        val node = a.copy (multiple_paths = true)
+        if (log.isDebugEnabled)
+            log.debug ("merge %s & %s".format (a.asString, b.asString))
+        node
     }
 
     def trace(starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
     {
+        log.info ("trace")
         // create the initial Graph with PowerFeedingNode vertecies
         def starting_map (id: VertexId, v: PreNode): PowerFeedingNode =
         {
@@ -220,7 +209,6 @@ object PowerFeeding
 
     def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
-        val use_topological_nodes: Boolean = true
         val power_feeding = new PowerFeeding(initial)
         val start_ids = transformers.map (trafo_mapping)
 

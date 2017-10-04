@@ -8,14 +8,13 @@ import java.util.Properties
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim._
 import ch.ninecode.model._
+import scopt.OptionParser
 
 object Main
 {
@@ -69,13 +68,12 @@ object Main
         simulation: Int = -1,
         reference: Int = -1,
         delta: Double = 1e-6,
-        number: Int = -1,
         workdir: String = "",
         files: Seq[String] = Seq(),
         precalc_factor: Double = 1.5
     )
 
-    val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
@@ -146,10 +144,6 @@ object Main
         opt[Double]('f', "precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
             text ("factor to multiply precaclulation results for gridlabd")
-
-        opt[Int]('n', "number").valueName ("N").
-            action ((x, c) => c.copy (number = x)).
-            text ("number of transformers to process")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -295,7 +289,6 @@ object Main
                     simulation = arguments.simulation,
                     reference = arguments.reference,
                     delta = arguments.delta,
-                    number = arguments.number,
                     workdir = workdir,
                     files = arguments.files,
                     precalc_factor = arguments.precalc_factor

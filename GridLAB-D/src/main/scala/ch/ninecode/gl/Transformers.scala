@@ -18,7 +18,7 @@ import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.VoltageLevel
 
-class Transformers (session: SparkSession, storage_level: StorageLevel) extends CIMRDD with Serializable
+class Transformers (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -199,4 +199,3 @@ class Transformers (session: SparkSession, storage_level: StorageLevel) extends 
         transformer_data
     }
 }
-
