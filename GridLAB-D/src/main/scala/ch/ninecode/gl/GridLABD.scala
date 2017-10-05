@@ -26,95 +26,6 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.model._
 
 /**
- * Common GraphX functions.
- * Used just to get a single copy of the vertex_id function.
- */
-trait Graphable
-{
-    /**
-     * Compute the vertex id.
-     * @param string The CIM MRID.
-     */
-    def vertex_id (string: String): VertexId =
-    {
-        var h = 2166136261l
-        for (c ← string)
-            h = (h * 16777619) ^ c
-        h
-    }
-}
-
-// define the minimal node and edge classes
-
-/**
- * Vertex data.
- * @param id_seq ConnectivityNode or TopologicalNode MRID.
- * @param voltage Node voltage.
- */
-case class PreNode(
-    id_seq: String,
-    voltage: Double) extends GLMNode with Graphable with Serializable
-{
-    override def id: String = id_seq
-    override def nominal_voltage: Double = voltage
-}
-
-/**
- * Edge data.
- * @param id_seq_1 Terminal 1 MRID.
- * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
- * @param v1 Terminal 1 voltage
- * @param id_seq_2 Terminal 2 MRID.
- * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
- * @param v2 Terminal 2 voltage
- * @param id_equ ConductingEquipment MRID.
- * @param ratedCurrent Cable rated current (A).
- * @param equipment ConductingEquipment object for the edge.
- * @param element Element object for the edge.
- * @param connected Flag indicating if there is connectivity through the edge (for tracing).
- */
-case class PreEdge(
-    id_seq_1: String,
-    id_cn_1: String,
-    v1: Double,
-    id_seq_2: String,
-    id_cn_2: String,
-    v2: Double,
-    id_equ: String,
-    ratedCurrent: Double,
-    equipment: ConductingEquipment,
-    element: Element,
-    connected: Boolean) extends GLMEdge with Graphable with Serializable {
-    /**
-     * Ordered key.
-     * Provide a key on the two connections, independent of to-from from-to ordering.
-     */
-    def key: String = if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
-    override def id: String = id_equ
-    override def cn1: String = id_cn_1
-    override def cn2: String = id_cn_2
-    override def eq: ConductingEquipment = equipment
-    override def el: Element = element
-}
-
-/**
- * Recorder time series element.
- * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
- * @param millis Number of milliseconds since the epoc.
- * @param value_a Phase A value.
- * @param value_b Phase B value.
- * @param value_c Phase C value.
- * @param units <code>Volts</code> for a node, <code>Amps</code> for an edge.
- */
-case class ThreePhaseComplexDataElement(
-    element: String,
-    millis: Long,
-    value_a: Complex,
-    value_b: Complex,
-    value_c: Complex,
-    units: String)
-
-/**
  * Compute the maximum feed-in power at house connections in a network.
  * @param session The Spark session.
  * @param topological_nodes If <code>true</code>, use the TopologyNode attribute of Terminal objects, otherwise use the ConnectivityNode attribute.
@@ -207,49 +118,6 @@ class GridLABD (
         if (topological_nodes) t.TopologicalNode else t.ConnectivityNode
     }
 
-    /**
-     * Function to see if the Pregel algorithm should continue tracing or not.
-     * @param element The edge element (subclass of ConductingEquipment).
-     */
-    def shouldContinue(element: Element): Boolean =
-    {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring(clazz.lastIndexOf(".") + 1)
-        cls match {
-            case "Switch" ⇒
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" ⇒
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" ⇒
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" ⇒
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" ⇒
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" ⇒
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "ProtectedSwitch" ⇒
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" ⇒
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "Breaker" ⇒
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" ⇒
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" ⇒
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "Conductor" ⇒
-                true
-            case "ACLineSegment" ⇒
-                true
-            case "PowerTransformer" ⇒
-                false
-            case _ ⇒
-                log.error("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed not conducting")
-                false
-        }
-    }
-
     def edge_operator(voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
         var ret = List[PreEdge]()
@@ -296,8 +164,7 @@ class GridLABD (
                                 terminals(0).ConductingEquipment,
                                 ratedCurrent,
                                 equipment,
-                                e,
-                                false)
+                                e)
                     case _ ⇒
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
@@ -311,8 +178,7 @@ class GridLABD (
                                 terminals(0).ConductingEquipment,
                                 ratedCurrent,
                                 equipment,
-                                e,
-                                shouldContinue(e))
+                                e)
                         }
                         ret
                 }

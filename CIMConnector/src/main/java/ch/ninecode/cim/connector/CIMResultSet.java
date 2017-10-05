@@ -1,9 +1,13 @@
 package ch.ninecode.cim.connector;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -54,6 +58,14 @@ public class CIMResultSet implements Record, ResultSet
     public Object clone () throws CloneNotSupportedException
     {
         throw new CloneNotSupportedException();
+    }
+
+    protected Row getCurrentRow (int columnIndex) throws SQLException
+    {
+        if (null == _Rows) throw new SQLException (INVALID);
+        Row row = _Rows.get (_Index);
+        _LastNull =row.isNullAt (columnIndex - 1);
+        return (row);
     }
 
     @Override
@@ -120,68 +132,57 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public String getString (int columnIndex) throws SQLException
     {
-        if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows.get (_Index);
-        Object value = row.get (columnIndex - 1);
-        _LastNull = null == value;
-        String ret = _LastNull ? "null" : value.toString ();
-        return (ret);
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : row.getString (columnIndex - 1));
     }
 
     @Override
     public boolean getBoolean (int columnIndex) throws SQLException
     {
-        if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows.get (_Index);
-        Object value = row.get (columnIndex - 1);
-        _LastNull = null == value;
-        boolean ret = _LastNull ? false : Boolean.parseBoolean (value.toString ());
-        return (ret);
+        Row row = getCurrentRow (columnIndex);
+        return (!_LastNull && row.getBoolean (columnIndex - 1));
     }
 
     @Override
     public byte getByte (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0 : row.getByte (columnIndex - 1));
     }
 
     @Override
     public short getShort (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0 : row.getShort (columnIndex - 1));
     }
 
     @Override
     public int getInt (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0 : row.getInt (columnIndex - 1));
     }
 
     @Override
     public long getLong (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0L : row.getLong (columnIndex - 1));
     }
 
     @Override
     public float getFloat (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0f : row.getFloat (columnIndex - 1));
     }
 
     @Override
     public double getDouble (int columnIndex) throws SQLException
     {
-        if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows.get (_Index);
-        _LastNull = null == row.get (columnIndex - 1);
-        double ret = Double.parseDouble (row.get (columnIndex - 1).toString ());
-        return (ret);
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? 0 : row.getDouble (columnIndex - 1));
     }
 
     @Override
@@ -195,165 +196,149 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public byte[] getBytes (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : row.getString (columnIndex - 1).getBytes (StandardCharsets.US_ASCII)); // ToDo: bytes?
     }
 
     @Override
     public Date getDate (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : row.getDate (columnIndex - 1));
     }
 
     @Override
     public Time getTime (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : new Time (row.getTimestamp (columnIndex - 1).getTime ()));
     }
 
     @Override
     public Timestamp getTimestamp (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : row.getTimestamp (columnIndex - 1));
     }
 
     @Override
     public InputStream getAsciiStream (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : new ByteArrayInputStream (row.getString (columnIndex - 1).getBytes (StandardCharsets.US_ASCII)));
     }
 
     @Override
     @Deprecated
     public InputStream getUnicodeStream (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : new ByteArrayInputStream (row.getString (columnIndex - 1).getBytes (StandardCharsets.UTF_8)));
     }
 
     @Override
     public InputStream getBinaryStream (int columnIndex) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull ? null : new ByteArrayInputStream (row.getString (columnIndex - 1).getBytes (StandardCharsets.UTF_8))); // ToDo: binary?
     }
 
     @Override
     public String getString (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getString (findColumn (columnLabel)));
     }
 
     @Override
     public boolean getBoolean (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (getBoolean (findColumn (columnLabel)));
     }
 
     @Override
     public byte getByte (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getByte (findColumn (columnLabel)));
     }
 
     @Override
     public short getShort (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getShort (findColumn (columnLabel)));
     }
 
     @Override
     public int getInt (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getInt (findColumn (columnLabel)));
     }
 
     @Override
     public long getLong (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getLong (findColumn (columnLabel)));
     }
 
     @Override
     public float getFloat (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getFloat (findColumn (columnLabel)));
     }
 
     @Override
     public double getDouble (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (getDouble (findColumn (columnLabel)));
     }
 
     @Override
     @Deprecated
     public BigDecimal getBigDecimal (String columnLabel, int scale) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getBigDecimal (findColumn (columnLabel)));
     }
 
     @Override
     public byte[] getBytes (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getBytes (findColumn (columnLabel)));
     }
 
     @Override
     public Date getDate (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getDate (findColumn (columnLabel)));
     }
 
     @Override
     public Time getTime (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getTime (findColumn (columnLabel)));
     }
 
     @Override
     public Timestamp getTimestamp (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getTimestamp (findColumn (columnLabel)));
     }
 
     @Override
     public InputStream getAsciiStream (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getAsciiStream (findColumn (columnLabel)));
     }
 
     @Override
     @Deprecated
     public InputStream getUnicodeStream (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getUnicodeStream (findColumn (columnLabel)));
     }
 
     @Override
     public InputStream getBinaryStream (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getBinaryStream (findColumn (columnLabel)));
     }
 
     @Override
@@ -380,31 +365,35 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public ResultSetMetaData getMetaData () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (new CIMResultSetMetaData (_Schema));
     }
 
     @Override
     public Object getObject (int columnIndex) throws SQLException
     {
-        if (null == _Rows) throw new SQLException (INVALID);
-        Row row = _Rows.get (_Index);
-        _LastNull = null == row.get (columnIndex - 1);
-        return (row.get (columnIndex - 1));
+        Row row = getCurrentRow (columnIndex);
+        return (_LastNull = null == row.get (columnIndex - 1));
     }
 
     @Override
     public Object getObject (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return null;
+        return (getObject (findColumn (columnLabel)));
     }
 
     @Override
     public int findColumn (String columnLabel) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        int index;
+        try
+        {
+            index = _Schema.fieldIndex (columnLabel);
+        }
+        catch (IllegalArgumentException iae)
+        {
+            throw new SQLException ("column label " + columnLabel + " not found", iae);
+        }
+        return (index);
     }
 
     @Override

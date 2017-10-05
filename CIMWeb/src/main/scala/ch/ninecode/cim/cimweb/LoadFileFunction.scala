@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession
 
 import scala.collection.mutable.HashMap
 
-case class LoadFileFunction (path: String, options: Iterable[(String, String)] = null) extends CIMWebFunction
+case class LoadFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     // load the file
     override def executeJSON (spark: SparkSession): JsonStructure =
@@ -19,7 +19,7 @@ case class LoadFileFunction (path: String, options: Iterable[(String, String)] =
         {
             // read the file(s)
             val prefix = hdfs.getUri.toString
-            val files = path.split (",").map (s ⇒ { val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString })
+            val files = paths.map (s ⇒ { val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString })
             val ff = Json.createArrayBuilder
             for (f <- files)
                 ff.add (f)
@@ -55,8 +55,8 @@ case class LoadFileFunction (path: String, options: Iterable[(String, String)] =
     override def toString: String =
     {
         val sb = new StringBuilder (super.toString)
-        sb.append (" (path=")
-        sb.append (path)
+        sb.append (" (paths=")
+        sb.append (paths.mkString (","))
         sb.append (", options=")
         sb.append (if (null != options) options.toString else "null")
         sb.append (")")

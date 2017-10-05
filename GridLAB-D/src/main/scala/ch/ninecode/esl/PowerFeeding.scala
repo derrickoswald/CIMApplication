@@ -38,43 +38,6 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    // check if messages should pass through and edge
-    def shouldContinue(element: Element): Boolean =
-    {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match {
-            case "Switch" ⇒
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" ⇒
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" ⇒
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" ⇒
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" ⇒
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" ⇒
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "MktSwitch" ⇒
-                !element.asInstanceOf[MktSwitch].Switch.normalOpen
-            case "ProtectedSwitch" ⇒
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Breaker" ⇒
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" ⇒
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" ⇒
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "Sectionaliser" ⇒
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "PowerTransformer" ⇒
-                false
-            case _ ⇒
-                true
-        }
-    }
-
     // return length, resistance and maximum curret for an edge
     def line_details (edge: PreEdge): (Double, Double, Double) =
     {
@@ -93,7 +56,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
     def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
     {
         if ((null != triplet.srcAttr.source_obj) || (null != triplet.dstAttr.source_obj))
-            if (shouldContinue (triplet.attr.element))
+            if (triplet.attr.connected)
                 if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
                 {
                     val (dist_km, r, ir) = line_details (triplet.attr)

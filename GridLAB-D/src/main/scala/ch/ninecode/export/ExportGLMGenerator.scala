@@ -4,9 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import ch.ninecode.gl._
-import ch.ninecode.esl.MaxPowerFeedingNodeEEA
 import ch.ninecode.esl.Trafokreis
-import ch.ninecode.model.SolarGeneratingUnit
 
 class ExportGLMGenerator (
     one_phase: Boolean,

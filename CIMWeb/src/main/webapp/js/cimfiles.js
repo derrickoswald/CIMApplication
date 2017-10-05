@@ -64,6 +64,10 @@ define
                 "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
                 "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
                 "      </form>\n" +
+                "      <form id='query' class='form-inline navbar-right waves-effect waves-light' role='form' style='margin-right:10em'>\n" +
+                "          <input id='sql' class='form-control' type='text' name='sql' placeholder='SQL query'/>\n" +
+                "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
+                "      </form>\n" +
                 "      <table id='file_table' class='table table-striped table-hover'>\n" +
                 "        <thead>\n" +
                 "          <tr><td class='center'>Load</td><td class='center'>View</td><td>Path</td><td>Owner:Group</td><td>Permission</td><td>Modified</td><td class='right'>Size</td><td class='center'>Remove</td></tr>\n" +
@@ -153,6 +157,7 @@ define
             );
             document.getElementById ("main").innerHTML = text;
             document.getElementById ("do_put").onclick = do_put;
+            document.getElementById ("do_query").onclick = do_query;
         }
 
         /**
@@ -231,6 +236,10 @@ define
                     };
                     xmlhttp.send (reader.result);
                 };
+                reader.onerror = function (event)
+                {
+                    alert (JSON.stringify (event, null, 4));
+                }
                 reader.readAsArrayBuffer (data)
             }
         }
@@ -315,6 +324,39 @@ define
         }
 
         /**
+         * Get the user's choice for edge table creation.
+         * @returns {boolean} <code>true</code> if the edges tale is required, <code>false</code> otherwise
+         * @function make_edges
+         * @memberOf module:cimfiles
+         */
+        function make_edges ()
+        {
+            return (document.getElementById ("make_edges").checked);
+        }
+
+        /**
+         * Get the user's choice for topology generation.
+         * @returns {boolean} <code>true</code> if a topology should be created, <code>false</code> otherwise
+         * @function do_topo
+         * @memberOf module:cimfiles
+         */
+        function do_topo ()
+        {
+            return (document.getElementById ("do_topo").checked);
+        }
+
+        /**
+         * Get the user's choice for topological island generation.
+         * @returns {boolean} <code>true</code> if a topological islands should be created, <code>false</code> otherwise
+         * @function do_topo_islands
+         * @memberOf module:cimfiles
+         */
+        function do_topo_islands ()
+        {
+            return (document.getElementById ("do_topo_islands").checked);
+        }
+
+        /**
          * @summary Read the file contents in Spark.
          * @description Trigger CIMReader to read in the file.
          * @function do_load
@@ -326,6 +368,12 @@ define
             var xmlhttp;
 
             path = path.startsWith ("/") ? path : "/" + path;
+            if (make_edges ())
+                path += ";make_edges=true";
+            if (do_topo ())
+                path += ";do_topo=true";
+            if (do_topo_islands ())
+                path += ";do_topo_islands=true";
             url = util.home () + "cim/load" + path;
             xmlhttp = util.createCORSRequest ("GET", url, false);
             xmlhttp.onreadystatechange = function ()
@@ -352,6 +400,45 @@ define
         }
 
         /**
+         * @summary Query loaded file.
+         * @description Perform an SQL query on loaded CIM data.
+         * @param {object} event - optional, the click event
+         * @function do_query
+         * @memberOf module:cimfiles
+         */
+        function do_query (event)
+        {
+            var url;
+            var xmlhttp;
+
+            var sql = document.getElementById ("sql").value;
+            if (sql != "")
+            {
+                url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
+                xmlhttp = util.createCORSRequest ("GET", url, false);
+                xmlhttp.onreadystatechange = function ()
+                {
+                    var resp;
+                    var msg;
+                    var reason;
+
+                    if (4 == xmlhttp.readyState)
+                        if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                        {
+                            resp = JSON.parse (xmlhttp.responseText);
+                            if (resp.status == "OK")
+                                alert (JSON.stringify (resp.result, null, 4))
+                            else
+                                alert (resp.message);
+                        }
+                        else
+                            alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                };
+                xmlhttp.send ();
+            }
+        }
+
+        /**
          * @summary Render the file page.
          * @description Uses mustache to create HTML DOM elements that display the HDFS contents.
          * @function initialize
@@ -370,7 +457,8 @@ define
                 do_put: do_put,
                 do_remove: do_remove,
                 do_view, do_view,
-                do_load, do_load
+                do_load, do_load,
+                do_query: do_query
             }
         );
     }

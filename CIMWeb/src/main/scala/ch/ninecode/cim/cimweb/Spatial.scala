@@ -64,7 +64,8 @@ class Spatial extends RESTful
                     {
                         val resultset = output.asInstanceOf [CIMResultSet]
                         try
-                        { // form the response
+                        {
+                            // form the response
                             val houses = Json.createArrayBuilder
                             while (resultset.next)
                             {

@@ -6,8 +6,10 @@ import javax.json.Json
 import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.resource.ResourceException
+import javax.ws.rs.DefaultValue
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.GET
+import javax.ws.rs.MatrixParam
 import javax.ws.rs.Path
 import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
@@ -28,13 +30,26 @@ class LoadFile extends RESTful
     import LoadFile._
 
     @GET
-    @Path ("{path:[^;]*}")
+    @Path ("{path}")
     @Produces (Array (MediaType.APPLICATION_JSON))
-    def getFile (@PathParam ("path") path: String): String =
+    def getFile (
+        @PathParam ("path") path: String,
+        @DefaultValue ("false") @MatrixParam ("do_deduplication") do_deduplication: String,
+        @DefaultValue ("false") @MatrixParam ("make_edges") make_edges: String,
+        @DefaultValue ("false") @MatrixParam ("do_join") do_join: String,
+        @DefaultValue ("false") @MatrixParam ("do_topo") do_topo: String,
+        @DefaultValue ("false") @MatrixParam ("do_topo_islands") do_topo_islands: String
+        ): String =
     {
-        val file = if (path.startsWith ("/")) path else "/" + path
-        _Logger.info ("load %s".format (file))
-        val function = LoadFileFunction (file) // , new scala.collection.mutable.HashMap[String, String] ()
+        val files = path.split (',').map (f ⇒ if (f.startsWith ("/")) f else "/" + f)
+        val options = new scala.collection.mutable.HashMap[String, String] ()
+        options.put ("ch.ninecode.cim.do_deduplication", do_deduplication)
+        options.put ("ch.ninecode.cim.make_edges", make_edges)
+        options.put ("ch.ninecode.cim.do_join", do_join)
+        options.put ("ch.ninecode.cim.do_topo", do_topo)
+        options.put ("ch.ninecode.cim.do_topo_islands", do_topo_islands)
+        _Logger.info ("load %s %s".format (files.mkString (","), options.toString))
+        val function = LoadFileFunction (files, options)
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         if (null != connection)
