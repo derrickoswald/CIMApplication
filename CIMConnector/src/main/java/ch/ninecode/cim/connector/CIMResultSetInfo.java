@@ -29,17 +29,22 @@ public class CIMResultSetInfo implements ResultSetInfo
     @Override
     public boolean supportsResultSetType (int type) throws ResourceException
     {
-        boolean ret = false;
+        boolean ret;
+
         switch (type)
         {
             case ResultSet.TYPE_FORWARD_ONLY:
                 ret = true;
+                break;
             case ResultSet.TYPE_SCROLL_INSENSITIVE:
                 ret = false;
+                break;
             case ResultSet.TYPE_SCROLL_SENSITIVE:
                 ret = false;
+                break;
             default:
                 ret = false;
+                break;
         }
         return (ret);
     }
@@ -47,7 +52,8 @@ public class CIMResultSetInfo implements ResultSetInfo
     @Override
     public boolean supportsResultTypeConcurrency (int type, int concurrency) throws ResourceException
     {
-        boolean ret = false;
+        boolean ret;
+
         switch (type)
         {
             case ResultSet.TYPE_FORWARD_ONLY:
@@ -55,17 +61,24 @@ public class CIMResultSetInfo implements ResultSetInfo
                 {
                     case ResultSet.CONCUR_READ_ONLY:
                         ret = true;
+                        break;
                     case ResultSet.CONCUR_UPDATABLE:
                         ret = false;
+                        break;
                     default:
                         ret = false;
+                        break;
                 }
+                break;
             case ResultSet.TYPE_SCROLL_INSENSITIVE:
                 ret = false;
+                break;
             case ResultSet.TYPE_SCROLL_SENSITIVE:
                 ret = false;
+                break;
             default:
                 ret = false;
+                break;
         }
         return (ret);
     }

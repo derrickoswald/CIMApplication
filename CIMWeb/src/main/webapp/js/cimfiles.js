@@ -8,7 +8,7 @@ define
 (
     ["util", "mustache", "cim", "cimmap"],
     /**
-     * @summary Functions manage CIM files on HDFS.
+     * @summary Functions to manage CIM files on HDFS.
      * @name cimfiles
      * @exports cimfiles
      * @version 1.0
@@ -63,10 +63,6 @@ define
                 "      <form id='sideload' class='form-inline navbar-right waves-effect waves-light' role='form' style='margin-right:10em'>\n" +
                 "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
                 "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
-                "      </form>\n" +
-                "      <form id='query' class='form-inline navbar-right waves-effect waves-light' role='form' style='margin-right:10em'>\n" +
-                "          <input id='sql' class='form-control' type='text' name='sql' placeholder='SQL query'/>\n" +
-                "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
                 "      </form>\n" +
                 "      <table id='file_table' class='table table-striped table-hover'>\n" +
                 "        <thead>\n" +
@@ -157,7 +153,6 @@ define
             );
             document.getElementById ("main").innerHTML = text;
             document.getElementById ("do_put").onclick = do_put;
-            document.getElementById ("do_query").onclick = do_query;
         }
 
         /**
@@ -400,45 +395,6 @@ define
         }
 
         /**
-         * @summary Query loaded file.
-         * @description Perform an SQL query on loaded CIM data.
-         * @param {object} event - optional, the click event
-         * @function do_query
-         * @memberOf module:cimfiles
-         */
-        function do_query (event)
-        {
-            var url;
-            var xmlhttp;
-
-            var sql = document.getElementById ("sql").value;
-            if (sql != "")
-            {
-                url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
-                xmlhttp = util.createCORSRequest ("GET", url, false);
-                xmlhttp.onreadystatechange = function ()
-                {
-                    var resp;
-                    var msg;
-                    var reason;
-
-                    if (4 == xmlhttp.readyState)
-                        if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        {
-                            resp = JSON.parse (xmlhttp.responseText);
-                            if (resp.status == "OK")
-                                alert (JSON.stringify (resp.result, null, 4))
-                            else
-                                alert (resp.message);
-                        }
-                        else
-                            alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-                };
-                xmlhttp.send ();
-            }
-        }
-
-        /**
          * @summary Render the file page.
          * @description Uses mustache to create HTML DOM elements that display the HDFS contents.
          * @function initialize
@@ -457,8 +413,7 @@ define
                 do_put: do_put,
                 do_remove: do_remove,
                 do_view, do_view,
-                do_load, do_load,
-                do_query: do_query
+                do_load, do_load
             }
         );
     }
