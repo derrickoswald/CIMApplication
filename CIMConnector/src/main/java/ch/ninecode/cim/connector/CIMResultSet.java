@@ -1,12 +1,10 @@
 package ch.ninecode.cim.connector;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.Array;
 import java.sql.Blob;
@@ -36,6 +34,8 @@ public class CIMResultSet implements Record, ResultSet
 {
     private static final long serialVersionUID = 1L;
     final String INVALID = "ResultSet is invalid";
+    final String BEFOREFIRST = "ResultSet is before the first row";
+    final String AFTERLAST = "ResultSet is after the last row";
     protected StructType _Schema;
     protected List<Row> _Rows;
     protected int _Index;
@@ -63,6 +63,8 @@ public class CIMResultSet implements Record, ResultSet
     protected Row getCurrentRow (int columnIndex) throws SQLException
     {
         if (null == _Rows) throw new SQLException (INVALID);
+        if (-1 == _Index) throw new SQLException (BEFOREFIRST);
+        if (_Rows.size () <= _Index) throw new SQLException (AFTERLAST);
         Row row = _Rows.get (_Index);
         _LastNull =row.isNullAt (columnIndex - 1);
         return (row);
@@ -133,7 +135,7 @@ public class CIMResultSet implements Record, ResultSet
     public String getString (int columnIndex) throws SQLException
     {
         Row row = getCurrentRow (columnIndex);
-        return (_LastNull ? null : row.getString (columnIndex - 1));
+        return (_LastNull ? null : row.get (columnIndex - 1).toString ()); // getString does a simple cast, use toString to support other objects
     }
 
     @Override
@@ -372,7 +374,7 @@ public class CIMResultSet implements Record, ResultSet
     public Object getObject (int columnIndex) throws SQLException
     {
         Row row = getCurrentRow (columnIndex);
-        return (_LastNull = null == row.get (columnIndex - 1));
+        return (_LastNull ? null : row.get (columnIndex - 1));
     }
 
     @Override
@@ -427,85 +429,112 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public boolean isBeforeFirst () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (-1 == _Index);
     }
 
     @Override
     public boolean isAfterLast () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (_Rows.size () <= _Index);
     }
 
     @Override
     public boolean isFirst () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (0 == _Index);
     }
 
     @Override
     public boolean isLast () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (_Rows.size () - 1 == _Index);
     }
 
     @Override
     public void beforeFirst () throws SQLException
     {
-        // TODO Auto-generated method stub
-
+        _Index = -1;
     }
 
     @Override
     public void afterLast () throws SQLException
     {
-        // TODO Auto-generated method stub
-
+        _Index = _Rows.size ();
     }
 
     @Override
     public boolean first () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        boolean ret = 0 < _Rows.size ();
+
+        if (ret)
+            _Index = 0;
+
+        return (ret);
     }
 
     @Override
     public boolean last () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        boolean ret = 0 < _Rows.size ();
+
+        if (ret)
+            _Index = _Rows.size () - 1;
+
+        return (ret);
     }
 
     @Override
     public int getRow () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        if (null == _Rows) throw new SQLException (INVALID);
+        if (-1 == _Index) throw new SQLException (BEFOREFIRST);
+
+        return (_Index);
     }
 
     @Override
     public boolean absolute (int row) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        boolean ret = false;
+
+        if (0 == row)
+            beforeFirst ();
+        else if (row > 0)
+            if (row > _Rows.size ())
+                afterLast ();
+            else
+            {
+                _Index = row - 1;
+                ret = true;
+            }
+        else
+        {
+            row = _Rows.size () + row;
+            if (row < 0)
+                beforeFirst ();
+            else
+            {
+                _Index = row;
+                ret = true;
+            }
+        }
+
+        return (ret);
     }
 
     @Override
     public boolean relative (int rows) throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (0 == rows ? (_Index >= 0 && _Index < _Rows.size ()) : absolute (_Index + rows));
     }
 
     @Override
     public boolean previous () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        _Index = Math.max (-1, _Index - 1);
+
+        return (_Index >= 0 && _Index < _Rows.size ());
     }
 
     @Override
@@ -539,15 +568,13 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public int getType () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (TYPE_SCROLL_INSENSITIVE);
     }
 
     @Override
     public int getConcurrency () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return (CONCUR_READ_ONLY);
     }
 
     @Override
@@ -1118,8 +1145,7 @@ public class CIMResultSet implements Record, ResultSet
     @Override
     public boolean isClosed () throws SQLException
     {
-        // TODO Auto-generated method stub
-        return false;
+        return (null == _Rows);
     }
 
     @Override

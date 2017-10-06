@@ -241,8 +241,8 @@ public class CIMResultSetMetaData implements ResultSetMetaData
             ret = Types.BOOLEAN;
         else if (type.simpleString ().equals ("byte"))
             ret = Types.TINYINT;
-        else if (type.simpleString ().equals ("calendarinterval"))
-            ret = Types.TIME;
+        else if (type.simpleString ().equals ("calendarinterval")) // there is no interval in JDBC - say it's a string
+            ret = Types.NVARCHAR;
         else if (type.simpleString ().equals ("decimal"))
             ret = Types.DECIMAL;
         else if (type.simpleString ().equals ("double"))

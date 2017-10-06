@@ -77,6 +77,7 @@ import ch.ninecode.cim.connector.CIMResultSet
                         }
                     }
                 interaction.close ()
+                connection.close ()
             }
             catch
             {
