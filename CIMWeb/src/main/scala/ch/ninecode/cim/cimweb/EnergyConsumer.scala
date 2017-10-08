@@ -14,9 +14,9 @@ import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
 
-
 @Stateless
-@Path ("/EnergyConsumer") class EnergyConsumer extends RESTful
+@Path ("/EnergyConsumer")
+class EnergyConsumer extends RESTful
 {
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))

@@ -31,7 +31,7 @@ define
             if (sql != "")
             {
                 url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
-                xmlhttp = util.createCORSRequest ("GET", url, false);
+                xmlhttp = util.createCORSRequest ("GET", url);
                 xmlhttp.onreadystatechange = function ()
                 {
                     var resp;

@@ -168,7 +168,7 @@ define
 
             path = path.startsWith ("/") ? path : "/" + path;
             url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("GET", url, false);
+            xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
@@ -190,6 +190,30 @@ define
             xmlhttp.send ();
         }
 
+        function put (url, data)
+        {
+            var xmlhttp = util.createCORSRequest ("PUT", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+                var msg;
+                var reason;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status == "OK")
+                            do_fetch (LAST_DIRECTORY);
+                        else
+                            alert (resp.error);
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            xmlhttp.send (data);
+        }
+
         /**
          * @summary Put a file on HDFS.
          * @description Store a user selected file.
@@ -200,42 +224,29 @@ define
         function do_put (event)
         {
             var url;
-            var xmlhttp;
 
             var file = document.getElementById ("file");
             if (file.value != "")
             {
-                url = util.home () + "cim/file" + LAST_DIRECTORY + file.value.replace ("C:\\fakepath\\", "");
-                var data = file.files[0];
-                var reader = new FileReader ();
-                reader.onload = function ()
+                var name = file.value.replace ("C:\\fakepath\\", "");
+                var zip = name.endsWith (".zip");
+                if (zip)
                 {
-                    xmlhttp = util.createCORSRequest ("PUT", url, false);
-                    xmlhttp.onreadystatechange = function ()
-                    {
-                        var resp;
-                        var msg;
-                        var reason;
-
-                        if (4 == xmlhttp.readyState)
-                            if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                            {
-                                resp = JSON.parse (xmlhttp.responseText);
-                                if (resp.status == "OK")
-                                    do_fetch (LAST_DIRECTORY);
-                                else
-                                    alert (resp.error);
-                            }
-                            else
-                                alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-                    };
-                    xmlhttp.send (reader.result);
-                };
-                reader.onerror = function (event)
-                {
-                    alert (JSON.stringify (event, null, 4));
+                    url = util.home () + "cim/file" + LAST_DIRECTORY + name.replace (".zip", ".rdf");
+                    read_zip (file.files[0], function (data) { put (url, data); });
                 }
-                reader.readAsArrayBuffer (data)
+                else
+                {
+                    url = util.home () + "cim/file" + LAST_DIRECTORY + name;
+                    var data = file.files[0];
+                    var reader = new FileReader ();
+                    reader.onload = function () { put (url, reader.result); };
+                    reader.onerror = function (event)
+                    {
+                        alert (JSON.stringify (event, null, 4));
+                    }
+                    reader.readAsArrayBuffer (data);
+                }
             }
         }
 
@@ -252,7 +263,7 @@ define
 
             path = path.startsWith ("/") ? path : "/" + path;
             url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("DELETE", url, false);
+            xmlhttp = util.createCORSRequest ("DELETE", url);
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
@@ -279,6 +290,72 @@ define
         }
 
         /**
+         * @summary Parse a zip file.
+         * @description Read in a CIM file.
+         * @param {Blob} blob - the blob of CIM data
+         * @function read_cim
+         * @memberOf module:cimspace
+         */
+        function read_cim (blob)
+        {
+            var start = new Date ().getTime ();
+            console.log ("starting CIM read");
+            cim.read_xml_blob
+            (
+                blob,
+                function (result)
+                {
+                    var end = new Date ().getTime ();
+                    console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds)");
+                    // display the results on the map
+                    cimmap.terminate ();
+                    cimmap.initialize ();
+                    cimmap.set_data (result.parsed);
+                }
+            );
+        }
+
+        /**
+         * @summary Uncompress a zip file and then parse it.
+         * @description Use AMD wrapped zip.js (see https://github.com/MeltingMosaic/zip-amd) to read in a CIM file.
+         * @param {Blob} blob - the blob of zipped data
+         * @param {function} fn - the function to handle the unzipped data signature: function fn (data)
+         * @function read_zip
+         * @memberOf module:cimfiles
+         */
+        function read_zip (blob, fn)
+        {
+            var start = new Date ().getTime ();
+            console.log ("starting unzip");
+            require (
+                ["zip/zip", "zip/mime-types"],
+                function (zip, mimeTypes)
+                {
+                    //zip.workerScriptsPath = "js/zip/";
+                    zip.useWebWorkers = false;
+                    zip.createReader (new zip.BlobReader (blob),
+                        function (zipReader)
+                        {
+                            zipReader.getEntries (
+                                function (entries) {
+                                    entries[0].getData (
+                                        new zip.BlobWriter (mimeTypes.getMimeType (entries[0].filename)),
+                                        function (data)
+                                        {
+                                            zipReader.close ();
+                                            var end = new Date ().getTime ();
+                                            console.log ("finished unzip (" + (Math.round (end - start) / 1000) + " seconds)");
+                                            fn (data);
+                                        }
+                                );
+                            })
+                        }
+                    );
+                }
+            );
+        }
+
+        /**
          * @summary Show the file contents.
          * @description Fetch the file and display in a cimmap.
          * @function do_view
@@ -290,8 +367,10 @@ define
             var xmlhttp;
 
             path = path.startsWith ("/") ? path : "/" + path;
-            url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("GET", url, false);
+            url = util.home () + "cim/file" + path + ";zip=true";
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.setRequestHeader ("Accept", "application/zip");
+            xmlhttp.responseType = "blob";
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
@@ -300,20 +379,9 @@ define
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                    {
-                        var start = new Date ().getTime ();
-                        console.log ("starting XML read");
-                        var result = cim.read_full_xml (xmlhttp.responseText, 0, null, null)
-                        var end = new Date ().getTime ();
-                        console.log ("finished XML read (" + (Math.round (end - start) / 1000) + " seconds)");
-
-                        // display the results on the map
-                        cimmap.terminate ();
-                        cimmap.initialize ();
-                        cimmap.set_data (result.parsed);
-                    }
+                        read_zip (xmlhttp.response, read_cim);
                     else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                        alert ("status: " + xmlhttp.status);
             };
             xmlhttp.send ();
         }
@@ -370,7 +438,7 @@ define
             if (do_topo_islands ())
                 path += ";do_topo_islands=true";
             url = util.home () + "cim/load" + path;
-            xmlhttp = util.createCORSRequest ("GET", url, false);
+            xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;

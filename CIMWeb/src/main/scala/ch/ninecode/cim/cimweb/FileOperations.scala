@@ -1,11 +1,15 @@
 package ch.ninecode.cim.cimweb
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import java.util.logging.Logger
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.resource.ResourceException
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.ws.rs.DELETE
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.core.MediaType
@@ -34,14 +38,16 @@ class FileOperations extends RESTful
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
-    def getFile (@DefaultValue ("false") @MatrixParam ("debug") debug: String): Response =
-        getFile ("", debug)
+    def getFile (
+        @DefaultValue ("false") @MatrixParam ("debug") debug: String): Response =
+        getFile ("", "false", debug)
 
     @GET
     @Path ("{path:[^;]*}")
-    @Produces (Array (MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON))
+    @Produces (Array (MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, "application/zip"))
     def getFile (
         @PathParam ("path") path: String,
+        @DefaultValue ("false") @MatrixParam ("zip") zip: String,
         @DefaultValue ("false") @MatrixParam ("debug") debug: String): Response =
     {
         val file = if (path.startsWith ("/")) path else "/" + path
@@ -70,7 +76,27 @@ class FileOperations extends RESTful
                     // if not found use Response.Status.NOT_FOUND
                     val record = output.asInstanceOf [CIMMappedRecord]
                     if (fetch)
-                        Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_XML).build
+                    {
+                        val xml = record.get (CIMFunction.RESULT).asInstanceOf [String]
+                        if (try { zip.toBoolean } catch { case _: Throwable => false })
+                        {
+                            val bos = new ByteArrayOutputStream ()
+                            val zos = new ZipOutputStream (bos)
+                            zos.setLevel (9)
+                            val name = if (-1 == file.lastIndexOf ("/")) file else file.substring (file.lastIndexOf ("/") + 1)
+                            zos.putNextEntry (new ZipEntry (name))
+                            val data = xml.getBytes (StandardCharsets.UTF_8)
+                            zos.write (data, 0, data.length)
+                            zos.finish ()
+                            zos.close ()
+                            val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
+                            Response.ok (bos.toByteArray, "application/zip")
+                                .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                .build
+                        }
+                        else
+                            Response.ok (xml, MediaType.APPLICATION_XML).build
+                    }
                     else
                     {
                         ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])

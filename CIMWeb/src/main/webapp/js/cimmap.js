@@ -313,6 +313,9 @@ define
          */
         async function make_map ()
         {
+            var start = new Date ().getTime ();
+            console.log ("rendering CIM data");
+
             function sleep(ms)
             {
                 return new Promise(resolve => setTimeout(resolve, ms));
@@ -432,6 +435,9 @@ define
             TheMap.addLayer (symbol_layer ("symbol", ["!=", "mRID", ""], "{symbol}", 0.0, [0, 0], "rgb(0, 0, 0)"));
 
             TheMap.addLayer (symbol_layer ("symbol_highlight", ["==", "mRID", ""], "{symbol}", 0.0, [0, 0], "rgb(255, 255, 0)"));
+
+            var end = new Date ().getTime ();
+            console.log ("finished rendering CIM data (" + (Math.round (end - start) / 1000) + " seconds)");
 
         }
 

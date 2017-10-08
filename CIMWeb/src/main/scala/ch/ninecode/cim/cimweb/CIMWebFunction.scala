@@ -55,7 +55,7 @@ abstract class CIMWebFunction extends CIMFunction
     }
 
     // build a file system configuration, including core-site.xml
-    lazy val hdfs_configuration: Configuration =
+    def hdfs_configuration: Configuration =
     {
         val configuration = new Configuration ()
         if (null == configuration.getResource ("core-site.xml"))
@@ -73,10 +73,10 @@ abstract class CIMWebFunction extends CIMFunction
     }
 
     // get the file system
-    lazy val uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+    def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
-    lazy val hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
+    def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
         throw new UnsupportedOperationException ("execute called on wrong method signature")

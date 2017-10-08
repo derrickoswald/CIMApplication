@@ -91,7 +91,7 @@ define
             if ("" != file)
             {
                 url = util.home () + "cim/file/" + file;
-                xmlhttp = createCORSRequest ("GET", url, false);
+                xmlhttp = createCORSRequest ("GET", url);
                 xmlhttp.onreadystatechange = function ()
                 {
                     var resp;

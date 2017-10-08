@@ -28,7 +28,7 @@ import scala.collection.Map
  */
 class Island (
     spark: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
