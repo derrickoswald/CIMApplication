@@ -14,6 +14,7 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalIsland
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.WireInfo
 import org.apache.spark.graphx.Graph
@@ -60,9 +61,15 @@ class Island (
                 maybe_ends match
                 {
                     case Some (ends: Iterable[PowerTransformerEnd]) ⇒
-                        // sort ends by end number
-                        // ToDo: handle the case where terminal sequence and end sequence aren't the same
-                        ends.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber).map (e ⇒ voltage (e.TransformerEnd.BaseVoltage))
+                        def volt_map (terminal: Terminal): Double =
+                        {
+                            ends.find (_.PowerTransformer == terminal.ConductingEquipment) match
+                            {
+                                case Some (end: PowerTransformerEnd) ⇒ voltage (end.TransformerEnd.BaseVoltage)
+                                case None ⇒ log.error ("transformer end not found for terminal %s".format (terminal.id)); 0.0
+                            }
+                        }
+                        terminals.map (volt_map)
                     case None ⇒
                         val volt = voltage (equipment.BaseVoltage)
                         Array[Double](volt, volt)
@@ -153,10 +160,13 @@ class Island (
         val voltages = get[BaseVoltage].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the island terminals keyed by equipment
-        val terminals = get[Terminal].filter (island == _.TopologicalNode).keyBy (_.ConductingEquipment)
+        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (get[TopologicalNode].keyBy (_.id)).filter (island == _._2._2.TopologicalIsland).map (_._2._1).keyBy (_.ConductingEquipment)
 
         // get all conducting equipment in the island
-        val equipment = get[Element] ("Elements").keyBy (_.id).join (terminals).groupByKey.map (e ⇒ (e._1, (e._2.head._1, e._2.map (_._2))))
+        val eq = get[Element] ("Elements").keyBy (_.id).join (terminals).map (x ⇒ (x._1, x._2._1))
+
+        // get all terminals for this equipment
+        val equipment = eq.join (get[Terminal].keyBy (_.ConductingEquipment).groupByKey)
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val equipment_rated = equipment.leftOuterJoin (getCableMaxCurrent).map (e ⇒ (e._1, (e._2._1._1, e._2._1._2, e._2._2 match { case Some (i) ⇒ i case None ⇒ Double.PositiveInfinity })))
@@ -165,7 +175,8 @@ class Island (
         val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
-        val equipment_rated_ends = equipment_rated.leftOuterJoin (ends).map (e ⇒ (e._2._1._1, e._2._1._2, e._2._1._3, e._2._2))
+        def map2 (e: (String, ((Element, Iterable[Terminal], Double), Option[Iterable[PowerTransformerEnd]]))): (Element, Iterable[Terminal], Double, Option[Iterable[PowerTransformerEnd]]) = (e._2._1._1, e._2._1._2, e._2._1._3, e._2._2)
+        val equipment_rated_ends: RDD[(Element, Iterable[Terminal], Double, Option[Iterable[PowerTransformerEnd]])] = equipment_rated.leftOuterJoin (ends).map (map2)
 
         // map to edges
         val edges = equipment_rated_ends.flatMap (edge_operator (voltages)).filter (edgefilter)

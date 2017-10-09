@@ -46,8 +46,10 @@ case class GridLABExportFunction (island: String) extends CIMWebFunction
 
         override def emit_node (node: GLMNode): String =
         {
-            // or load_from_player_file (name, voltage)
-            super.emit_node (node) + generate_load (node)
+            if (node.id != tx.transformers(0).node0)
+                super.emit_node (node) + generate_load (node)
+            else
+                ""
         }
 
         def generate_load (node: GLMNode): String =
@@ -107,10 +109,7 @@ case class GridLABExportFunction (island: String) extends CIMWebFunction
         val i = new Island (spark)
         val (edges, nodes) = i.prepare (island)
         val transformers: Transformers = new Transformers (spark)
-        def mykey (edge: PreEdge): String = edge.id_equ
-        def anotherkey (data: TData): String = data.transformer.id
-        def anothernotherkey (pair: (String, (TData, PreEdge))) = pair._2._1
-        val tdata = transformers.getTransformerData ().keyBy (anotherkey).join (edges.keyBy (mykey)).map (anothernotherkey).collect
+        val tdata = transformers.getTransformerData ().keyBy (_.transformer.id).join (edges.keyBy (_.id_equ)).map (_._2._1).collect
         val generator = new LocalGLMGenerator (one_phase = true, date_format = format, title = island, tx = TransformerSet (tdata), xedges = edges, xnodes = nodes)
         gridlabd.export (generator)
         val glm = spark.sparkContext.textFile (hdfs.getUri.toString + "/simulation/" + island + "/" + island + ".glm")
