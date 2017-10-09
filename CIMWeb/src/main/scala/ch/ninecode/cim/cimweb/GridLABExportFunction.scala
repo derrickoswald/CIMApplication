@@ -40,7 +40,7 @@ case class GridLABExportFunction (island: String) extends CIMWebFunction
 
         override def edge_groups: Iterable[Iterable[GLMEdge]] = xedges.groupBy (_.key).values.collect.toIterable
 
-        override def swing_nodes: Iterable[GLMNode] = List (SwingNode (tx.transformers(0).node0, tx.transformers(0).voltage0, tx.transformer_name))
+        override def swing_nodes: Iterable[GLMNode] = List (SwingNode (tx.node0, tx.v0, tx.transformer_name))
 
         override def nodes: Iterable[GLMNode] = xnodes.collect.toIterable
 
