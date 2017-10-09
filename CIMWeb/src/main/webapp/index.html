@@ -48,37 +48,8 @@
                     <li><a id="query" href="#query">Query</a></li>
                     <li><a id="export" href="#export">Export</a></li>
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Options <span class="caret"></span></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Load <span class="caret"></span></a>
                         <ul class="dropdown-menu" role="menu">
-                            <li class="divider">Trace options</li>
-                            <li><a id="trace" href="#">Trace</a></li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="trace_through_open_switches">
-                                        <input id="trace_through_open_switches" type="checkbox"/>
-                                        Trace through open switches
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="trace_though_voltage_level_changes">
-                                        <input id="trace_though_voltage_level_changes" type="checkbox"/>
-                                        Trace through voltage levels
-                                    </label>
-                                </div>
-                            </li>
-                            <li><a id="unhighlight" href="#">Un-Highlight</a></li>
-                            <li class="divider">View Options</li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="show_internal_features">
-                                        <input id="show_internal_features" type="checkbox" checked="checked" />
-                                        Internal features
-                                    </label>
-                                </div>
-                            </li>
-                            <li class="divider">Load Options</li>
                             <li>
                                 <div class="checkbox">
                                     <label for="make_edges">
@@ -105,6 +76,53 @@
                             </li>
                         </ul>
                     </li>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Trace <span class="caret"></span></a>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a id="trace" href="#">Trace</a></li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="trace_through_open_switches">
+                                        <input id="trace_through_open_switches" type="checkbox"/>
+                                        Trace through open switches
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="trace_though_voltage_level_changes">
+                                        <input id="trace_though_voltage_level_changes" type="checkbox"/>
+                                        Trace through voltage levels
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <input id="number_of_elements" type="text" class="form-control" placeholder="# elements" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li><a id="unhighlight" href="#">Un-Highlight</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">View <span class="caret"></span></a>
+                        <ul class="dropdown-menu" role="menu">
+                            <li>
+                                <div class="checkbox">
+                                    <label for="show_internal_features">
+                                        <input id="show_internal_features" type="checkbox"/>
+                                        Internal features
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="buildings_3d">
+                                        <input id="buildings_3d" type="checkbox"/>
+                                        3D buildings
+                                    </label>
+                                </div>
+                            </li>
+                        </ul>
+                    </li>
                 </ul>
                 <ul class="nav navbar-nav">
                     <li><a id="coordinates"></a></li>
@@ -124,8 +142,8 @@
     </section>
 
     <!-- Details Dialog Non-modal -->
-    <div id="feature_details" class="modal" role="dialog" style="padding: 0px; display: block; width: 25%; height: 75%; top: 10%;">
-        <div id="feature_detail_contents" class="modal-body">
+    <div id="feature_details" class="modal" role="dialog" style="padding: 0px; display: block; width: 25%; height: 75%; top: 10%; pointer-events: none;">
+        <div id="feature_detail_contents" class="modal-body" style="pointer-events: auto">
         </div>
     </div>
 

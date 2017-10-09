@@ -51,6 +51,7 @@ requirejs
         document.getElementById ("export").onclick = activate (cimexport.initialize);
 
         document.getElementById ("show_internal_features").onchange = cimmap.redraw;
+        document.getElementById ("buildings_3d").onchange = cimmap.buildings_3d;
         document.getElementById ("trace").onclick = cimmap.trace;
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;
