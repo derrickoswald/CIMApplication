@@ -44,9 +44,9 @@
                 <ul id="functions" class="nav navbar-nav">
                     <li><a id="files" href="#files">Files</a></li>
                     <li><a id="map" href="#map">Map</a></li>
-                    <li><a id="simulate" href="#" data-toggle="modal" data-target="#server_modal">Simulate</a></li>
-                    <li><a id="query" href="#" data-toggle="modal">Query</a></li>
-                    <li><a id="export_gridlabd" href="#" data-toggle="modal" data-target="#export_modal">Export</a></li>
+                    <li><a id="simulate" href="#simulate">Simulate</a></li>
+                    <li><a id="query" href="#query">Query</a></li>
+                    <li><a id="export" href="#export">Export</a></li>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Options <span class="caret"></span></a>
                         <ul class="dropdown-menu" role="menu">
@@ -122,85 +122,6 @@
     <!-- Content -->
     <section id="main" class="intro">
     </section>
-
-    <!-- Server Dialog Modal -->
-    <div id="server_modal" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-
-            <div class="modal-content">
-                <div class="modal-header text-center" style="padding:35px 50px;">
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h2><i class="fa fa-exchange"></i> Connect to server</h2>
-                </div>
-                <div class="modal-body" style="padding:40px 50px;">
-                    <div class="row">
-                        <div class="form-group">
-                            <label class="col-sm-3 control-label" for="cim_file">CIM file</label>
-                            <div class="col-sm-9">
-                                <select id="cim_file" class="form-control" name="cim_file">
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-sm-3 control-label" for="transformer">Transformer</label>
-                            <div class="col-sm-9">
-                                <select id="transformer" class="form-control" name="transformer">
-                                    <option value='' selected></option>
-                                    <option value='all'>All</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="connect" class="btn btn-info" data-dismiss="modal">Connect</button>
-                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export Dialog Modal -->
-    <div id="export_modal" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-
-            <div class="modal-content">
-                <div class="modal-header text-center" style="padding:35px 50px;">
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h2><i class="fa fa-download"></i> Export GridLAB-D file</h2>
-                </div>
-                <div class="modal-body" style="padding:40px 50px;">
-                    <div class="row">
-                        <form class="form-horizontal">
-                            <fieldset>
-                                <legend>Parameters</legend>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label" for="cim_file2">CIM file</label>
-                                    <div class="col-sm-9">
-                                        <select id="cim_file2" class="form-control" name="cim_file2">
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label" for="transformer">Transformer</label>
-                                    <div class="col-sm-9">
-                                        <select id="trafokreise" class="form-control" name="trafokreise">
-                                            <option value='' selected></option>
-                                            <option value='all'>All</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </fieldset>
-                        </form>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="export" class="btn btn-info" data-dismiss="modal">Export</button>
-                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Details Dialog Non-modal -->
     <div id="feature_details" class="modal" role="dialog" style="padding: 0px; display: block; width: 25%; height: 75%; top: 10%;">

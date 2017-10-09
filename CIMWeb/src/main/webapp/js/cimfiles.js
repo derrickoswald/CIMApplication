@@ -172,8 +172,6 @@ define
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
-                var msg;
-                var reason;
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
@@ -196,8 +194,6 @@ define
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
-                var msg;
-                var reason;
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
@@ -267,8 +263,6 @@ define
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
-                var msg;
-                var reason;
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
@@ -374,8 +368,6 @@ define
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
-                var msg;
-                var reason;
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
@@ -442,8 +434,6 @@ define
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
-                var msg;
-                var reason;
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)

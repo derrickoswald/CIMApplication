@@ -4,8 +4,8 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimquery"],
-    function (cimapp, cimfiles, cimmap, cimquery)
+    ["cimapp", "cimfiles", "cimmap", "cimquery", "cimexport", "cimsimulate"],
+    function (cimapp, cimfiles, cimmap, cimquery, cimexport, cimsimulate)
     {
         // initialize material design for bootstrap (https://github.com/FezVrasta/bootstrap-material-design)
         $.material.init ();
@@ -46,9 +46,9 @@ requirejs
 
         document.getElementById ("files").onclick = activate (cimfiles.initialize);
         document.getElementById ("map").onclick = activate (cimmap.initialize);
-        document.getElementById ("connect").onclick = cimapp.connect;
+        document.getElementById ("simulate").onclick = activate (cimsimulate.initialize);
         document.getElementById ("query").onclick = activate (cimquery.initialize);
-        document.getElementById ("export").onclick = cimapp.gridlab;
+        document.getElementById ("export").onclick = activate (cimexport.initialize);
 
         document.getElementById ("show_internal_features").onchange = cimmap.redraw;
         document.getElementById ("trace").onclick = cimmap.trace;

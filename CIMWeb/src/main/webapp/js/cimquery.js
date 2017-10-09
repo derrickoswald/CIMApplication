@@ -16,11 +16,41 @@ define
     function (util, mustache)
     {
         /**
+         * @summary perform query.
+         * @description Perform an SQL query on loaded CIM data.
+         * @param {string} sql - the SQL to use
+         * @function query
+         * @memberOf module:cimquery
+         */
+        function query (sql, fn)
+        {
+            url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status == "OK")
+                            fn (resp.result);
+                        else
+                            alert (resp.message);
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            xmlhttp.send ();
+        }
+
+        /**
          * @summary Query loaded file.
          * @description Perform an SQL query on loaded CIM data.
          * @param {object} event - optional, the click event
          * @function do_query
-         * @memberOf module:cimfiles
+         * @memberOf module:cimquery
          */
         function do_query (event)
         {
@@ -29,29 +59,7 @@ define
 
             var sql = document.getElementById ("sql").value;
             if (sql != "")
-            {
-                url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
-                xmlhttp = util.createCORSRequest ("GET", url);
-                xmlhttp.onreadystatechange = function ()
-                {
-                    var resp;
-                    var msg;
-                    var reason;
-
-                    if (4 == xmlhttp.readyState)
-                        if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        {
-                            resp = JSON.parse (xmlhttp.responseText);
-                            if (resp.status == "OK")
-                                document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (resp.result, null, 4) + "</pre>";
-                            else
-                                alert (resp.message);
-                        }
-                        else
-                            alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-                };
-                xmlhttp.send ();
-            }
+                query (sql, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
         }
 
         /**
@@ -88,7 +96,7 @@ define
         return (
             {
                 initialize: initialize,
-                do_query: do_query
+                query: query
             }
         );
     }
