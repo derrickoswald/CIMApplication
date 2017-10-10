@@ -51,6 +51,8 @@ RUN set -x \
 	&& rm bin/*.bat \
 	&& rm tomee.tar.gz*
 
+# a little more memory than 4049600512 bytes
+ENV CATALINA_OPTS -Xmx8g
 
 EXPOSE 8080
 
@@ -68,7 +70,7 @@ RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
 # layers added for CIMApplication (do this last to speed up Docker build)
 
 # Copy start script
-COPY start-tomee /opt/util/bin/start-tomee
+COPY CIMEar/start-tomee /opt/util/bin/start-tomee
 
 # set up CIMApplication
 ADD CIMEar/target/CIMApplication.ear /usr/local/tomee/apps/

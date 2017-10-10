@@ -5,6 +5,7 @@ body {
 
 .intro {
     height: calc(100% - 60px);
+    overflow-y: scroll;
     margin-top: -20px;
     padding: 0;
     -webkit-background-size: cover;

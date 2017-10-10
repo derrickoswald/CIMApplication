@@ -74,9 +74,9 @@ define
             var query_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-8'>\n" +
+                "    <div class='col-8' style='margin-top: 40px;'>\n" +
                 "      <form id='query_form' class='form-inline waves-effect waves-light' role='form' style='width: 100%'>\n" +
-                "          <input id='sql' class='form-control' type='text' name='sql' placeholder='SQL query' style='width: 80%'/>\n" +
+                "          <textarea id='sql' class='form-control' name='sql' rows='8' placeholder='SQL query' style='width: 80%'></textarea>\n" +
                 "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
                 "      </form>\n" +
                 "      <div id='results_table'>\n" +

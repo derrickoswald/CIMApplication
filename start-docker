@@ -1,0 +1,1 @@
+docker run --name tomee --rm --publish 9080:8080 --publish 5040:4040 --publish 51070:50070 --volume /home/derrick/code/CIMReader/private_data:/opt/private_data derrickoswald/cimapplication start-tomee localhost

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+mvn -DskipTests clean install; docker build --tag derrickoswald/cimapplication .

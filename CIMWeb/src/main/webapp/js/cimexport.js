@@ -86,7 +86,7 @@ define
                 "          </div>\n" +
                 "        </div>\n" +
                 "      </form>\n" +
-                "      <div id='glm'>\n" +
+                "      <div id='glm' style='overflow-y: scroll;'>\n" +
                 "      </div>\n" +
                 "    </div>\n" +
                 "  </div>\n" +
