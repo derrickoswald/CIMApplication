@@ -24,8 +24,8 @@ define
          */
         function query (sql, fn)
         {
-            url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
-            xmlhttp = util.createCORSRequest ("GET", url);
+            var url = util.home () + "cim/query?sql=" + encodeURIComponent (sql);
+            var xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
                 var resp;
@@ -54,9 +54,6 @@ define
          */
         function do_query (event)
         {
-            var url;
-            var xmlhttp;
-
             var sql = document.getElementById ("sql").value;
             if (sql != "")
                 query (sql, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });

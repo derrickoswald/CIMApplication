@@ -6,20 +6,30 @@
  */
 define
 (
-    ["mustache", "util", "cimquery"],
+    ["mustache", "util", "cimfiles", "cimquery"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimquery)
+    function (mustache, util, cimfiles, cimquery)
     {
         function do_simulate ()
         {
             var island = document.getElementById ("simulation_island").value;
             if (("undefined" != typeof (island)) && ("" != island))
                 alert (island);
+        }
+
+        function htmlify (str)
+        {
+            return (str.replace (/</g, "&lt;").replace (/>/g, "&gt;"))
+        }
+
+        function show_rdf (data)
+        {
+            document.getElementById ("rdf").innerHTML = "<pre>\n" +  htmlify (data) + "\n</pre>"
         }
 
         /**
@@ -34,15 +44,24 @@ define
             var url;
             var xmlhttp;
 
+            function callback (response)
+            {
+                if (response.status == "OK")
+                    alert ("OK");
+                else
+                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+            }
+
             url = util.home () + "cim/export/" + island;
             xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        document.getElementById ("rdf").innerHTML = "<pre>\n" +  xmlhttp.responseText + "</pre>";
+                    {
+                        cimfiles.put ("/simulate/" + island + "/" + island + ".rdf", xmlhttp.responseText, callback);
+                        show_rdf (xmlhttp.responseText);
+                    }
                     else
                         alert ("status: " + xmlhttp.status);
             };
@@ -51,12 +70,30 @@ define
 
         function select_island (event)
         {
-            var island = document.getElementById ("simulation_island").value;
+            var island;
+            var directory;
+            var rdf;
+
+            function error (response)
+            {
+                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+            }
+
+            island = document.getElementById ("simulation_island").value;
             if (("undefined" != typeof (island)) && ("" != island))
             {
                 // check if the rdf exists already
-
-                exportIsland (island);
+                directory = "/simulate/" + island + "/";
+                rdf = island + ".rdf";
+                cimfiles.fetch (directory,
+                    function (response)
+                    {
+                        if ((response.status == "FAIL") || (0 == response.result.files.filter (function (file) { return (file.path == rdf); })))
+                            exportIsland (island);
+                        else
+                            cimfiles.get (directory + rdf, show_rdf, error);
+                    }
+                );
             }
         }
         /**
