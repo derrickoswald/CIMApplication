@@ -70,7 +70,10 @@ class FileOperations extends RESTful
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)
+                {
+                    interaction.close ()
                     Response.serverError ().entity ("null is not a MappedRecord").build
+                }
                 else
                 {
                     // if not found use Response.Status.NOT_FOUND
@@ -78,6 +81,7 @@ class FileOperations extends RESTful
                     if (fetch)
                     {
                         val xml = record.get (CIMFunction.RESULT).asInstanceOf [String]
+                        interaction.close ()
                         if (xml.startsWith ("File does not exist:"))
                             Response.status (Response.Status.NOT_FOUND).build
                         else
@@ -93,6 +97,7 @@ class FileOperations extends RESTful
                                 zos.finish ()
                                 zos.close ()
                                 val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
+                                interaction.close ()
                                 Response.ok (bos.toByteArray, "application/zip")
                                     .header ("content-disposition", "attachment; filename=%s".format (zip))
                                     .build
@@ -103,6 +108,7 @@ class FileOperations extends RESTful
                     else
                     {
                         ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                        interaction.close ()
                         val response = ret.result.asInstanceOf[JsonObject]
                         if (response.containsKey ("error"))
                         {

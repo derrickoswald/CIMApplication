@@ -42,18 +42,23 @@ class Export extends RESTful
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, export)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
-                    if (!output.getClass.isAssignableFrom (classOf [CIMMappedRecord]))
-                        throw new ResourceException ("object of class %s is not a MappedRecord".format (output.getClass.toGenericString))
+                try
+                {
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
                     else
-                    {
-                        val record = output.asInstanceOf [CIMMappedRecord]
-                        Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_OCTET_STREAM)
-                            .header ("content-disposition", "attachment; filename=%s.rdf".format (island))
-                            .build
-                    }
+                        if (!output.getClass.isAssignableFrom (classOf [CIMMappedRecord]))
+                            throw new ResourceException ("object of class %s is not a MappedRecord".format (output.getClass.toGenericString))
+                        else
+                        {
+                            val record = output.asInstanceOf [CIMMappedRecord]
+                            Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_OCTET_STREAM)
+                                .header ("content-disposition", "attachment; filename=%s.rdf".format (island))
+                                .build
+                        }
+                }
+                finally
+                    interaction.close ()
             }
             catch
             {

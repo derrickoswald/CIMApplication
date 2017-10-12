@@ -242,8 +242,8 @@ define
          */
         function put (path, data, fn)
         {
-            var xmlhttp;
             var url;
+            var xmlhttp;
 
             path = path.startsWith ("/") ? path : "/" + path;
             url = util.home () + "cim/file" + path;

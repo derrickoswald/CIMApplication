@@ -48,7 +48,6 @@ class Query extends RESTful
                     ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
                 }
                 interaction.close ()
-                connection.close ()
             }
             catch
             {

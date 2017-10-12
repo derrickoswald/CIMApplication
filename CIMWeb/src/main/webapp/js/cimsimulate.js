@@ -6,15 +6,24 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimquery"],
+    ["mustache", "util", "cimfiles", "cimquery", "cim"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimquery)
+    function (mustache, util, cimfiles, cimquery, cim)
     {
+        // The island being worked on.
+        var TheIsland;
+
+        // The island RDF export.
+        var TheRDF;
+
+        // The parsed CIM data.
+        var CIM_Data;
+
         function do_simulate ()
         {
             var island = document.getElementById ("simulation_island").value;
@@ -27,9 +36,18 @@ define
             return (str.replace (/</g, "&lt;").replace (/>/g, "&gt;"))
         }
 
-        function show_rdf (data)
+        function parse_rdf (data)
         {
-            document.getElementById ("rdf").innerHTML = "<pre>\n" +  htmlify (data) + "\n</pre>"
+            var blob;
+
+            function callback (result) // {context: context, parsed: parsed}
+            {
+                CIM_Data = result.parsed;
+                document.getElementById ("cim").innerHTML = "<pre>\n" +  JSON.stringify (result.parsed, null, 4) + "\n</pre>"
+            }
+
+            blob = new Blob ([data], {type : 'application/xml'});
+            cim.read_xml_blob (blob, callback)
         }
 
         /**
@@ -44,14 +62,6 @@ define
             var url;
             var xmlhttp;
 
-            function callback (response)
-            {
-                if (response.status == "OK")
-                    alert ("OK");
-                else
-                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-            }
-
             url = util.home () + "cim/export/" + island;
             xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
@@ -59,8 +69,19 @@ define
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
+                        function callback (response)
+                        {
+                            if (response.status == "OK")
+                            {
+                                TheIsland = island;
+                                TheRDF = xmlhttp.responseText;
+                                parse_rdf (xmlhttp.responseText);
+                            }
+                            else
+                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                        }
+
                         cimfiles.put ("/simulate/" + island + "/" + island + ".rdf", xmlhttp.responseText, callback);
-                        show_rdf (xmlhttp.responseText);
                     }
                     else
                         alert ("status: " + xmlhttp.status);
@@ -68,20 +89,34 @@ define
             xmlhttp.send ();
         }
 
+        /**
+         * @summary Event handler for island change.
+         * @description Invokes the server side export function or gets the existing island RDF.
+         * @param {object} event - the event that triggered the change <em>not used</em>.
+         * @function select_island
+         * @memberOf module:cimsimulate
+         */
         function select_island (event)
         {
             var island;
             var directory;
             var rdf;
 
-            function error (response)
-            {
-                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-            }
-
             island = document.getElementById ("simulation_island").value;
             if (("undefined" != typeof (island)) && ("" != island))
             {
+                function callback (data)
+                {
+                    TheIsland = island;
+                    TheRDF = data;
+                    parse_rdf (data);
+                }
+
+                function error (response)
+                {
+                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                }
+
                 // check if the rdf exists already
                 directory = "/simulate/" + island + "/";
                 rdf = island + ".rdf";
@@ -91,7 +126,7 @@ define
                         if ((response.status == "FAIL") || (0 == response.result.files.filter (function (file) { return (file.path == rdf); })))
                             exportIsland (island);
                         else
-                            cimfiles.get (directory + rdf, show_rdf, error);
+                            cimfiles.get (directory + rdf, callback, error);
                     }
                 );
             }
@@ -122,7 +157,7 @@ define
                 "        </div>\n" +
                 "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
                 "      </form>\n" +
-                "      <div id='rdf'>\n" +
+                "      <div id='cim'>\n" +
                 "      </div>\n" +
                 "    </div>\n" +
                 "  </div>\n" +
