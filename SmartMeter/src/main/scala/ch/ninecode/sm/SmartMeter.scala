@@ -18,15 +18,24 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
-
 import com.google.gson.Gson
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.ConnectivityNode
+import ch.ninecode.model.Element
+import ch.ninecode.model.Name
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.UserAttribute
 
 class SmartMeter extends Serializable
 {
-    var _StorageLevel = StorageLevel.MEMORY_ONLY
+    var _StorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY
 
     // copied from GridLAB-D
     def get (name: String, context: SparkContext): RDD[Element] =
@@ -37,8 +46,8 @@ class SmartMeter extends Serializable
             val rdd = rdds (key)
             if (rdd.name == name)
                 return (rdd.asInstanceOf[RDD[Element]])
-      }
-      return (null)
+        }
+        return (null)
     }
 
   // function to get the edge distance
@@ -46,22 +55,21 @@ class SmartMeter extends Serializable
     {
       val clazz = element.getClass.getName
       val cls = clazz.substring(clazz.lastIndexOf(".") + 1)
-      val ret = cls match {
+      cls match {
         case "ACLineSegment" =>
           element.asInstanceOf[ACLineSegment].Conductor.len
         case _ =>
           0.0
       }
-      return (ret)
     }
 
   // copied from GridLAB-D
-  def edge_operator(voltages: Map[String, Double], topologicalnodes: Boolean)(arg: Tuple2[Tuple2[Element, Option[Iterable[PowerTransformerEnd]]], Iterable[Terminal]]): List[PreEdge] =
+  def edge_operator(voltages: Map[String, Double], topologicalnodes: Boolean)(arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
       var ret = List[PreEdge]()
       def node_name(t: Terminal): String =
         {
-          return (if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode)
+          if (topologicalnodes) t.TopologicalNode else t.ConnectivityNode
         }
 
       val e = arg._1._1
@@ -69,7 +77,7 @@ class SmartMeter extends Serializable
         val t_it = arg._2
         // get the ConductingEquipment
         var c = e
-        while ((null != c) && !c.getClass ().getName ().endsWith (".ConductingEquipment"))
+        while ((null != c) && !c.getClass.getName.endsWith (".ConductingEquipment"))
             c = c.sup
         if (null != c)
         {
@@ -98,7 +106,7 @@ class SmartMeter extends Serializable
                 {
                     case 1 =>
                         ret :+
-                new PreEdge(
+                PreEdge(
                   terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                   node_name(terminals(0)),
                   volts(0),
@@ -110,10 +118,9 @@ class SmartMeter extends Serializable
                   e,
                   span(e))
             case _ =>
-              {
                 for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                 {
-                  ret = ret :+ new PreEdge(
+                  ret = ret :+ PreEdge(
                     terminals(0).ACDCTerminal.IdentifiedObject.mRID,
                     node_name(terminals(0)),
                     volts(0),
@@ -126,16 +133,15 @@ class SmartMeter extends Serializable
                     span(e))
                 }
                 ret
-              }
           }
       }
       //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
-      return (ret)
+      ret
     }
 
   // copied from GridLAB-D
-  def topological_node_operator(arg: Tuple2[Tuple2[TopologicalNode, Terminal], PreEdge]): PreNode =
+  def topological_node_operator(arg: ((TopologicalNode, Terminal), PreEdge)): PreNode =
     {
       val node = arg._1._1
       val term = arg._1._2
@@ -144,7 +150,7 @@ class SmartMeter extends Serializable
     }
 
   // copied from GridLAB-D
-  def connectivity_node_operator(arg: Tuple2[Tuple2[ConnectivityNode, Terminal], PreEdge]): PreNode =
+  def connectivity_node_operator(arg: ((ConnectivityNode, Terminal), PreEdge)): PreNode =
     {
       val node = arg._1._1
       val term = arg._1._2
@@ -153,7 +159,7 @@ class SmartMeter extends Serializable
     }
 
   // copied from GridLAB-D
-  def make_graph_vertices(v: PreNode): Tuple2[VertexId, PreNode] =
+  def make_graph_vertices(v: PreNode): (VertexId, PreNode) =
     {
       (v.vertex_id(v.id_seq), v)
     }
@@ -177,7 +183,7 @@ class SmartMeter extends Serializable
       val terms = terminals.groupBy(_.ConductingEquipment)
 
       // get all elements
-      val elements = get("Elements", sc).asInstanceOf[RDD[Element]]
+      val elements = get("Elements", sc)
 
       // get the transformer ends keyed by transformer
       val ends = get("PowerTransformerEnd", sc).asInstanceOf[RDD[PowerTransformerEnd]].groupBy(_.PowerTransformer)
@@ -217,7 +223,7 @@ class SmartMeter extends Serializable
       nodes.persist(_StorageLevel)
 
       // construct the initial graph from the real edges and nodes
-      return (Graph.apply[PreNode, PreEdge](nodes.map(make_graph_vertices), real_edges.map(make_graph_edges), PreNode("", 0.0), _StorageLevel, _StorageLevel))
+      Graph.apply[PreNode, PreEdge](nodes.map(make_graph_vertices), real_edges.map(make_graph_edges), PreNode("", 0.0), _StorageLevel, _StorageLevel)
     }
 
   def node_JSON(node: FinalNodeData): String =
@@ -229,7 +235,7 @@ class SmartMeter extends Serializable
   def make_JSON(nodes: RDD[FinalNodeData]): String =
     {
       val nodestring = nodes.map(node_JSON).fold("")((x: String, y: String) => x + (if ("" == x) "" else ", ") + y)
-      return ("[ " + nodestring + " ]")
+      "[ " + nodestring + " ]"
     }
   
   def filterEmptyLeaves(vertex: RDD[NodeData]): RDD[NodeData] =
@@ -302,7 +308,7 @@ object SmartMeter
     def jarForObject (obj: Object): String =
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
             ret = URLDecoder.decode (ret, "UTF-8")
@@ -321,7 +327,7 @@ object SmartMeter
             ret = name
         }
 
-        return (ret)
+        ret
     }
 
     def main (args: Array[String])
@@ -354,8 +360,8 @@ object SmartMeter
     val s2 = jarForObject(smart)
     configuration.setJars(Array(s1, s2))
 
-    // register low level classes
-    configuration.registerKryoClasses(Array(classOf[Element], classOf[BasicElement], classOf[Unknown]))
+    // register CIMReader classes
+    configuration.registerKryoClasses (CIMClasses.list)
 
     // make a Spark session
     val session = SparkSession.builder().config(configuration).getOrCreate() // create the fixture

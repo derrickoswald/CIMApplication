@@ -4,18 +4,13 @@ import java.util.HashMap
 import java.util.Map
 
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode._
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
 
 class GeoSuite extends FunSuite
 {
@@ -35,12 +30,8 @@ class GeoSuite extends FunSuite
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
 
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
+        // register CIMReader classes
+        configuration.registerKryoClasses (CIMClasses.list)
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -64,9 +55,7 @@ class GeoSuite extends FunSuite
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "false")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val element = context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-
-        return (element)
+        context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
     }
 
     test ("Basic")
@@ -91,9 +80,9 @@ class GeoSuite extends FunSuite
 //        for (record <- results)
 //            println (record)
 //
-//        println ("read : " + (read - start) / 1e9 + " seconds")
-//        println ("process: " + (process - read) / 1e9 + " seconds")
-//        println ()
+        println ("read : " + (read - start) / 1e9 + " seconds")
+        println ("process: " + (process - read) / 1e9 + " seconds")
+        println ()
 //
 //        for (record <- results)
 //        {

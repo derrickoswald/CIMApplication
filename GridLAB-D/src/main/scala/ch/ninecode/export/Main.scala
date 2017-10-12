@@ -13,9 +13,10 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
+import scopt.OptionParser
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
 
 object Main
 {
@@ -66,7 +67,7 @@ object Main
         files: Seq[String] = Seq()
     )
 
-    val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME)
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
@@ -196,14 +197,8 @@ object Main
                 val storage = StorageLevel.fromString (arguments.storage)
                 if (storage.useDisk)
                 {
-                    // register low level classes
-                    configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-                    // register CIM case classes
-                    CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-                    // register edge related classes
-                    configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-                    // register topological classes
-                    configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+                    // register CIMReader classes
+                    configuration.registerKryoClasses (CIMClasses.list)
                     // register GridLAB-D classes
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.gl.PreNode],

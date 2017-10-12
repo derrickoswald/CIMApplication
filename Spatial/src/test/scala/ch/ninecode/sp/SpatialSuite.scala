@@ -7,11 +7,9 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
 
 class SpatialSuite extends FunSuite
 {
@@ -31,12 +29,8 @@ class SpatialSuite extends FunSuite
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "4g")
 
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
+        // register CIMReader classes
+        configuration.registerKryoClasses (CIMClasses.list)
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN

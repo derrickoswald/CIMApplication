@@ -16,10 +16,10 @@ import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 @Stateless
-@Path ("gridlab/")
-class GridLABExport extends RESTful
+@Path ("export/")
+class Export extends RESTful
 {
-    import GridLABExport._
+    import Export._
 
     @GET
     @Path ("{island}")
@@ -28,7 +28,7 @@ class GridLABExport extends RESTful
         @PathParam ("island") island: String // some island name
         ): Response =
     {
-        _Logger.info ("gridlab %s".format (island))
+        _Logger.info ("export %s".format (island))
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         val response: Response = if (null != connection)
@@ -38,8 +38,8 @@ class GridLABExport extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 // set up the function with parameters
-                val gridlab = GridLABExportFunction (island)
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, gridlab)
+                val export = ExportFunction (island)
+                input.asInstanceOf[map].put (CIMFunction.FUNCTION, export)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)
@@ -51,7 +51,7 @@ class GridLABExport extends RESTful
                     {
                         val record = output.asInstanceOf [CIMMappedRecord]
                         Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_OCTET_STREAM)
-                            .header ("content-disposition", "attachment; filename=%s.glm".format (island))
+                            .header ("content-disposition", "attachment; filename=%s.rdf".format (island))
                             .build
                     }
             }
@@ -77,8 +77,8 @@ class GridLABExport extends RESTful
     }
 }
 
-object GridLABExport
+object Export
 {
-    val LOGGER_NAME: String = GridLABExport.getClass.getName
+    val LOGGER_NAME: String = Export.getClass.getName
     val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

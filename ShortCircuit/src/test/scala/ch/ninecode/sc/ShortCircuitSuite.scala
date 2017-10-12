@@ -6,14 +6,13 @@ import java.io.File
 
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
 
 class ShortCircuitSuite extends FunSuite
 {
@@ -33,12 +32,8 @@ class ShortCircuitSuite extends FunSuite
         configuration.set ("spark.executor.memory", "4g")
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
+        // register CIMReader classes
+        configuration.registerKryoClasses (CIMClasses.list)
         // register short circuit classes
         configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TData], classOf[ScNode]))
         // register short circuit inner classes
@@ -85,7 +80,7 @@ class ShortCircuitSuite extends FunSuite
         // short circuit calculations
         val sc_options = ShortCircuitOptions (csv_file = FILE_DEPOT + "KS_Leistungen.csv", trafos = FILE_DEPOT + "trafo.txt")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-        val house_connection = shortcircuit.run
+        val house_connection = shortcircuit.run ()
 
         // write output to file and console
         val output = FILE_DEPOT + "/result"
@@ -100,7 +95,7 @@ class ShortCircuitSuite extends FunSuite
         val results = string.collect        
         println ("results: " + results.length)
         println (s"""has;tra;ik;ik3pol;ip;r;r0;x;x0""")
-        for (i <- 0 until results.length)
+        for (i <- results.indices)
         {
             val h = results (i)
             println(h)

@@ -1,11 +1,15 @@
 package ch.ninecode.export
 
+import java.util.HashMap
+
 import org.apache.spark.SparkConf
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import org.scalatest.fixture.FunSuite
-import ch.ninecode.cim._
-import ch.ninecode.model._
 import org.apache.spark.storage.StorageLevel
+import org.scalatest.fixture.FunSuite
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.model.Element
 
 class ExportSuite extends FunSuite
 {
@@ -27,14 +31,8 @@ class ExportSuite extends FunSuite
         //configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-        // register topological classes
-        configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+        // register CIMReader classes
+        configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],
@@ -53,6 +51,21 @@ class ExportSuite extends FunSuite
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
         finally session.stop () // clean up the fixture
+    }
+
+    def readFile (session: SparkSession, filename: String): RDD[Element] =
+    {
+        val files = filename.split (",")
+        val options = new HashMap[String, String] ()
+        options.put ("path", filename)
+        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        options.put ("ch.ninecode.cim.make_edges", "false")
+        options.put ("ch.ninecode.cim.do_join", "false")
+        options.put ("ch.ninecode.cim.do_topo", "false")
+        options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        println (elements.count () + " elements")
+        session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
     }
 
     test ("Basic")
@@ -78,5 +91,24 @@ class ExportSuite extends FunSuite
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " UST\n")
+    }
+
+    test ("Island")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val root = "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355_or_EEA5287_with_topology" // "NIS_CIM_Export_SAK_sias_current_20170922_with_topology"
+            val filename =
+                FILE_DEPOT + root + ".rdf"
+
+            val elements = readFile (session, filename)
+            val island = GridLABExportFunction ("TRA5200_terminal_2_island") // "TRA2757_terminal_2_island")
+            val text = island.executeString (session)
+
+            println (text)
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds\n")
     }
 }

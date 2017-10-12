@@ -12,9 +12,11 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
+import scopt.OptionParser
 
-import ch.ninecode.cim._
-import ch.ninecode.model._
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.DefaultSource
 
 object Main {
     val APPLICATION_NAME = "Short Circuit Current"
@@ -24,7 +26,7 @@ object Main {
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
-    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName (_))
+    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         (s) ⇒
@@ -52,7 +54,7 @@ object Main {
         workdir: String = "",
         files: Seq[String] = Seq())
 
-    val parser = new scopt.OptionParser[Arguments](APPLICATION_NAME) {
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME) {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
         opt[Unit]('q', "quiet").
@@ -106,7 +108,7 @@ object Main {
     def jarForObject(obj: Object): String =
         {
             // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-            var ret = obj.getClass.getProtectionDomain ().getCodeSource ().getLocation ().getPath ()
+            var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
             try {
                 ret = URLDecoder.decode (ret, "UTF-8")
             }
@@ -122,7 +124,7 @@ object Main {
                 ret = name
             }
 
-            return (ret)
+            ret
         }
 
     /**
@@ -190,8 +192,8 @@ object Main {
                 configuration.setAppName (APPLICATION_NAME)
                 if ("" != arguments.master)
                     configuration.setMaster (arguments.master)
-                if (arguments.opts.size != 0)
-                    arguments.opts.map ((pair: Tuple2[String, String]) ⇒ configuration.set (pair._1, pair._2))
+                if (arguments.opts.nonEmpty)
+                    arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
                 if ("" != arguments.master) {
@@ -204,15 +206,10 @@ object Main {
                 }
 
                 val storage = StorageLevel.fromString (arguments.storage)
-                if (storage.useDisk) {
-                    // register low level classes
-                    configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-                    // register CIM case classes
-                    CHIM.apply_to_all_classes { x ⇒ configuration.registerKryoClasses (Array (x.runtime_class)) }
-                    // register edge related classes
-                    configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-                    // register topological classes
-                    configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+                if (storage.useDisk)
+                {
+                    // register CIMReader classes
+                    configuration.registerKryoClasses (CIMClasses.list)
                     // register ShortCircuit analysis classes
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.sc.ScNode],
@@ -224,7 +221,7 @@ object Main {
 
                 // make a Spark session
                 val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (arguments.log_level.toString ())
+                session.sparkContext.setLogLevel (arguments.log_level.toString)
                 if ("" != arguments.checkpoint_dir)
                     session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
 

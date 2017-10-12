@@ -12,12 +12,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
-import ch.ninecode.cim.CHIM
-import ch.ninecode.cim.CuttingEdge
-import ch.ninecode.cim.Extremum
+
+import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.PostEdge
-import ch.ninecode.cim.TopologicalData
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -25,8 +22,6 @@ import ch.ninecode.gl.Solar
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.Element
-import ch.ninecode.model.BasicElement
-import ch.ninecode.model.Unknown
 
 class PowerFeedingSuite extends FunSuite
 {
@@ -47,14 +42,8 @@ class PowerFeedingSuite extends FunSuite
         configuration.set ("spark.executor.memory", "4g")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
-        // register low level classes
-        configuration.registerKryoClasses (Array (classOf[Element], classOf[BasicElement], classOf[Unknown]))
-        // register CIM case classes
-        CHIM.apply_to_all_classes { x => configuration.registerKryoClasses (Array (x.runtime_class)) }
-        // register edge related classes
-        configuration.registerKryoClasses (Array (classOf[PreEdge], classOf[Extremum], classOf[PostEdge]))
-        // register topological classes
-        configuration.registerKryoClasses (Array (classOf[CuttingEdge], classOf[TopologicalData]))
+        // register CIMReader classes
+        configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.gl.PreNode],

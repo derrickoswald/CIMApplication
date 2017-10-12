@@ -1,25 +1,69 @@
 /**
  * @fileOverview Simulate with gridlabd.
- * @name cimexport
+ * @name cimsimulate
  * @author Derrick Oswald
  * @version 1.0
  */
 define
 (
-    ["mustache"],
+    ["mustache", "util", "cimquery"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache)
+    function (mustache, util, cimquery)
     {
+        function do_simulate ()
+        {
+            var island = document.getElementById ("simulation_island").value;
+            if (("undefined" != typeof (island)) && ("" != island))
+                alert (island);
+        }
+
+        /**
+         * @summary Call the export RESTful service.
+         * @description Invokes the server side export function.
+         * @param {string} island - the island name from the topology.
+         * @function exportIsland
+         * @memberOf module:cimsimulate
+         */
+        function exportIsland (island)
+        {
+            var url;
+            var xmlhttp;
+
+            url = util.home () + "cim/export/" + island;
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                        document.getElementById ("rdf").innerHTML = "<pre>\n" +  xmlhttp.responseText + "</pre>";
+                    else
+                        alert ("status: " + xmlhttp.status);
+            };
+            xmlhttp.send ();
+        }
+
+        function select_island (event)
+        {
+            var island = document.getElementById ("simulation_island").value;
+            if (("undefined" != typeof (island)) && ("" != island))
+            {
+                // check if the rdf exists already
+
+                exportIsland (island);
+            }
+        }
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
          * @function initialize
-         * @memberOf module:cimexport
+         * @memberOf module:cimsimulate
          */
         function initialize ()
         {
@@ -30,15 +74,36 @@ define
                 "    <div class='col-8'>\n" +
                 "      <h1>Simulate using GridLAB-D</h1>\n" +
                 "      <h2>TBD</h2>\n" +
+                "      <form>\n" +
+                "        <div class='form-group'>\n" +
+                "          <label for='simulation_island'>Island</label>\n" +
+                "          <select id='simulation_island' class='form-control' name='island'>\n" +
+                "{{#data}}\n" +
+                "            <option value='{{mRID}}'>{{mRID}}</option>\n" +
+                "{{/data}}\n" +
+                "          </select>\n" +
+                "        </div>\n" +
+                "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
+                "      </form>\n" +
+                "      <div id='rdf'>\n" +
+                "      </div>\n" +
                 "    </div>\n" +
                 "  </div>\n" +
                 "</div>\n";
 
-            var text = mustache.render
-            (
-                simulate_template
+            cimquery.query ("select i.IdentifiedObject.mRID from TopologicalIsland i",
+                function (data)
+                {
+                    var text = mustache.render
+                    (
+                        simulate_template,
+                        { data: data }
+                    );
+                    document.getElementById ("main").innerHTML = text;
+                    document.getElementById ("simulation_island").onchange = select_island;
+                    document.getElementById ("do_simulate").onclick = do_simulate;
+                }
             );
-            document.getElementById ("main").innerHTML = text;
         }
 
         return (

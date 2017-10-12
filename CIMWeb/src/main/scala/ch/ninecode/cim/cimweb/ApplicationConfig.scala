@@ -43,6 +43,7 @@ class ApplicationConfig extends Application
             classOf[FileOperations],
             classOf[LoadFile],
             classOf[Query],
+            classOf[Export],
             classOf[SimpleRESTEJB],
             classOf[EnergyConsumer],
             classOf[GridLABExport],

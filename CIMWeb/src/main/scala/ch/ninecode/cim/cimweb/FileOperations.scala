@@ -78,24 +78,27 @@ class FileOperations extends RESTful
                     if (fetch)
                     {
                         val xml = record.get (CIMFunction.RESULT).asInstanceOf [String]
-                        if (try { zip.toBoolean } catch { case _: Throwable => false })
-                        {
-                            val bos = new ByteArrayOutputStream ()
-                            val zos = new ZipOutputStream (bos)
-                            zos.setLevel (9)
-                            val name = if (-1 == file.lastIndexOf ("/")) file else file.substring (file.lastIndexOf ("/") + 1)
-                            zos.putNextEntry (new ZipEntry (name))
-                            val data = xml.getBytes (StandardCharsets.UTF_8)
-                            zos.write (data, 0, data.length)
-                            zos.finish ()
-                            zos.close ()
-                            val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
-                            Response.ok (bos.toByteArray, "application/zip")
-                                .header ("content-disposition", "attachment; filename=%s".format (zip))
-                                .build
-                        }
+                        if (xml.startsWith ("File does not exist:"))
+                            Response.status (Response.Status.NOT_FOUND).build
                         else
-                            Response.ok (xml, MediaType.APPLICATION_XML).build
+                            if (try { zip.toBoolean } catch { case _: Throwable => false })
+                            {
+                                val bos = new ByteArrayOutputStream ()
+                                val zos = new ZipOutputStream (bos)
+                                zos.setLevel (9)
+                                val name = if (-1 == file.lastIndexOf ("/")) file else file.substring (file.lastIndexOf ("/") + 1)
+                                zos.putNextEntry (new ZipEntry (name))
+                                val data = xml.getBytes (StandardCharsets.UTF_8)
+                                zos.write (data, 0, data.length)
+                                zos.finish ()
+                                zos.close ()
+                                val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
+                                Response.ok (bos.toByteArray, "application/zip")
+                                    .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                    .build
+                            }
+                            else
+                                Response.ok (xml, MediaType.APPLICATION_XML).build
                     }
                     else
                     {

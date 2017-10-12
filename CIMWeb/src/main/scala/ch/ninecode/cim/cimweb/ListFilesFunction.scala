@@ -33,25 +33,30 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
         val files = Json.createArrayBuilder
         try
         {
-            val statuses: Array[FileStatus] = hdfs.listStatus (root)
-            for (fs <- statuses)
+            if (hdfs.exists (root))
             {
-                val file = Json.createObjectBuilder
-                val name: String = fs.getPath.toString
-                file.add ("path", if (name.startsWith (prefix)) name.substring (prefix.length) else name)
-                file.add ("size", fs.getLen)
-                file.add ("modification_time", fs.getModificationTime)
-                file.add ("access_time", fs.getAccessTime)
-                file.add ("group", fs.getGroup)
-                file.add ("owner", fs.getOwner)
-                val permission: FsPermission = fs.getPermission
-                file.add ("permission", permission.toString)
-                file.add ("replication", fs.getReplication)
-                file.add ("block_size", fs.getBlockSize)
-                file.add ("is_directory", fs.isDirectory)
-                file.add ("is_sym_link", fs.isSymlink)
-                files.add (file)
+                val statuses: Array[FileStatus] = hdfs.listStatus (root)
+                for (fs <- statuses)
+                {
+                    val file = Json.createObjectBuilder
+                    val name: String = fs.getPath.toString
+                    file.add ("path", if (name.startsWith (prefix)) name.substring (prefix.length) else name)
+                    file.add ("size", fs.getLen)
+                    file.add ("modification_time", fs.getModificationTime)
+                    file.add ("access_time", fs.getAccessTime)
+                    file.add ("group", fs.getGroup)
+                    file.add ("owner", fs.getOwner)
+                    val permission: FsPermission = fs.getPermission
+                    file.add ("permission", permission.toString)
+                    file.add ("replication", fs.getReplication)
+                    file.add ("block_size", fs.getBlockSize)
+                    file.add ("is_directory", fs.isDirectory)
+                    file.add ("is_sym_link", fs.isSymlink)
+                    files.add (file)
+                }
             }
+            else
+                response.add ("error", "path does not exist")
         }
         catch
         {

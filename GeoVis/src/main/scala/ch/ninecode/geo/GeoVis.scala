@@ -1,18 +1,16 @@
 package ch.ninecode.geo
 
-import org.apache.spark.SparkConf
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.Element
+import ch.ninecode.model.PositionPoint
+
+import scala.collection.mutable._
+import scala.math._
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx._
+import org.apache.spark.sql.Row
 import org.apache.spark.rdd._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.types._
-import scala.collection.mutable._
-import scala.math._
-
-import ch.ninecode.cim._
-import ch.ninecode.model._
-import org.apache.spark.sql.Row
 
 
 case class SpezificAcLineSegment(id: String, name: String, aliasName: String, location: String, baseVoltage: String)
@@ -75,8 +73,7 @@ class GeoVis extends Serializable
                  .toDouble, false).take(maxLines)*/
             result = result.sample(true, maxLines.toDouble / numbLines.toDouble)
         }
-        val ppDf = sqlContext.createDataFrame (result)
-        return ppDf
+        sqlContext.createDataFrame (result)
     }
 
     def preparePositionPoints(pp: RDD[PositionPoint], bbox: BBox): RDD[(String, List[String])] =
@@ -97,7 +94,7 @@ class GeoVis extends Serializable
         val groupedPoints = orderedPoints.map((pp: PositionPoint) ⇒ (pp.Location, (pp.sequenceNumber, pp.xPosition, pp.yPosition)))
             .groupByKey()
 
-        val flattenPoints = groupedPoints.mapValues(value ⇒
+        groupedPoints.mapValues(value ⇒
             {
                 var orderedPoints = List[Seq[String]]()
                 val it = value.iterator
@@ -108,8 +105,6 @@ class GeoVis extends Serializable
                 val flatten = orderedPoints.flatten
                 flatten
             })
-
-        return flattenPoints
     }
 
     def get(sc: SparkContext, name: String): RDD[Element] =
@@ -127,10 +122,9 @@ class GeoVis extends Serializable
     {
         var epsilon = 5 * dougPeukFactor * resolution
         var dMaxList: List[Double] = List()
-        val reducedPos = positions.mapValues(list ⇒ {
+        positions.mapValues(list ⇒ {
             douglasPeuker(list, epsilon)
         })
-        return reducedPos
     }
 
     def douglasPeuker(list: List[String], epsilon: Double): (List[String]) =
@@ -139,7 +133,7 @@ class GeoVis extends Serializable
         var index = 0
         var size = list.size
         var i = 2
-        val firstPoint = List(list(0).toDouble, list(1).toDouble)
+        val firstPoint = List(list.head.toDouble, list(1).toDouble)
         val lastPoint = List(list(size - 2).toDouble, list(size - 1).toDouble)
         while (i < size - 1) {
             val curPoint = List(list(i).toDouble, list(i + 1).toDouble)
@@ -150,17 +144,15 @@ class GeoVis extends Serializable
             }
             i += 2
         }
-        var result: List[String] = List()
         if (dmax >= epsilon) {
             val recResult1 = douglasPeuker(list.take(index + 2), epsilon)
             val recResult2 = douglasPeuker(list.drop(index), epsilon)
 
-            result = recResult1 ++ recResult2.drop(2)
+            recResult1 ++ recResult2.drop(2)
         }
         else {
-            result = List(list(0), list(1), list(size - 2), list(size - 1))
+            List(list(0), list(1), list(size - 2), list(size - 1))
         }
-        return (result)
     }
 
     def calcLot(firstPoint: List[Double], lastPoint: List[Double], curPoint: List[Double]): Double =
@@ -169,7 +161,7 @@ class GeoVis extends Serializable
         val deltaY = lastPoint(1) - firstPoint(1)
         val zah = abs((deltaY) * curPoint(0) - (deltaX) * curPoint(1) + lastPoint(0) * firstPoint(1) - lastPoint(1) * firstPoint(0))
         val nen = sqrt(pow(deltaY, 2) + pow(deltaX, 2))
-        return zah / nen
+        zah / nen
     }
 
     def toGeoJSON (record: Row): String =
@@ -185,7 +177,7 @@ class GeoVis extends Serializable
         val d = record.getSeq[String] (1)
         sb.append ("                \"coordinates\": [")
         var first = true
-        for (i <- 0 until d.length; if (0 == (1 & i)) )
+        for (i <- d.indices; if (0 == (1 & i)) )
         {
             if (first)
                 first = false
@@ -211,7 +203,7 @@ class GeoVis extends Serializable
         sb.append (c.getString (4))
         sb.append ("\n            }\n")
         sb.append ("        }")
-        return (sb.toString ())
+        sb.toString ()
     }
 
     def extract_json (sc: SparkContext, sqlContext: SQLContext, args: String): String =
@@ -229,6 +221,6 @@ class GeoVis extends Serializable
         ret.append (strings.fold ("") ((a,b) => a + (if ("" == a) "" else ",\n") + b))
         ret.append ("\n    ]\n")
         ret.append ("\n}\n")
-        return (ret.toString ())
+        ret.toString ()
     }
 }
