@@ -15,6 +15,8 @@ define
      */
     function (util, mustache)
     {
+        var TheQuery;
+
         /**
          * @summary perform query.
          * @description Perform an SQL query on loaded CIM data.
@@ -56,7 +58,10 @@ define
         {
             var sql = document.getElementById ("sql").value;
             if (sql != "")
+            {
+                TheQuery = sql;
                 query (sql, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
+            }
         }
 
         /**
@@ -73,7 +78,7 @@ define
                 "  <div class='row justify-content-center'>\n" +
                 "    <div class='col-8' style='margin-top: 40px;'>\n" +
                 "      <form id='query_form' class='form-inline waves-effect waves-light' role='form' style='width: 100%'>\n" +
-                "          <textarea id='sql' class='form-control' name='sql' rows='8' placeholder='SQL query' style='width: 80%'></textarea>\n" +
+                "          <textarea id='sql' class='form-control' name='sql' rows='8' placeholder='SQL query' style='width: 80%'>{{sql}}</textarea>\n" +
                 "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
                 "      </form>\n" +
                 "      <div id='results_table'>\n" +
@@ -84,7 +89,10 @@ define
 
             var text = mustache.render
             (
-                query_template
+                query_template,
+                {
+                    sql: function () { return ((null != TheQuery) ? TheQuery : ""); },
+                }
             );
             document.getElementById ("main").innerHTML = text;
             document.getElementById ("do_query").onclick = do_query;

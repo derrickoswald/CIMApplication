@@ -146,11 +146,14 @@ class FileOperations extends RESTful
     @PUT
     @Path ("{path:[^;]*}")
     @Produces (Array (MediaType.APPLICATION_JSON))
-    def putFile (@PathParam ("path") path: String, data: Array[Byte]): String =
+    def putFile (
+        @PathParam ("path") path: String,
+        @DefaultValue ("false") @MatrixParam ("unzip") unzip: String,
+        data: Array[Byte]): String =
     {
         val file = if (path.startsWith ("/")) path else "/" + path
         _Logger.info ("file put %s".format (file))
-        val function = PutFileFunction (file, data)
+        val function = PutFileFunction (file, data, try { unzip.toBoolean } catch { case _: Throwable => false })
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         if (null != connection)

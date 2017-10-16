@@ -287,24 +287,16 @@ define
             if (file.value != "")
             {
                 name = file.value.replace ("C:\\fakepath\\", "");
-                zip = name.endsWith (".zip");
-                if (zip)
+                url = LAST_DIRECTORY + name;
+                url = url.endsWith (".zip") ? url + ";unzip=true" : url;
+                var data = file.files[0];
+                var reader = new FileReader ();
+                reader.onload = function () { put (url, reader.result, callback); };
+                reader.onerror = function (event)
                 {
-                    url = LAST_DIRECTORY + name.replace (".zip", ".rdf");
-                    read_zip (file.files[0], function (data) { put (url, data, callback); });
+                    alert (JSON.stringify (event, null, 4));
                 }
-                else
-                {
-                    url = LAST_DIRECTORY + name;
-                    var data = file.files[0];
-                    var reader = new FileReader ();
-                    reader.onload = function () { put (url, reader.result, callback); };
-                    reader.onerror = function (event)
-                    {
-                        alert (JSON.stringify (event, null, 4));
-                    }
-                    reader.readAsArrayBuffer (data);
-                }
+                reader.readAsArrayBuffer (data);
             }
         }
 
