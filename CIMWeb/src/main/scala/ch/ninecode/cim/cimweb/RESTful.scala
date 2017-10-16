@@ -1,81 +1,110 @@
 package ch.ninecode.cim.cimweb
 
 import java.util.Properties
+import javax.annotation.Resource
 import javax.naming.Context
 import javax.naming.InitialContext
-import javax.naming.NameClassPair
 import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.Connection
 import javax.resource.cci.MappedRecord
 
-import scala.collection.JavaConversions._
-
 import ch.ninecode.cim.connector.CIMConnectionFactory
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
 {
+    import RESTful._
+
     type map = java.util.Map[String,Object]
 
-    //import javax.annotation.Resource;
-    //    @Resource
-    //    (
-    //        description = "Connection factory for Spark connection using CIMConnector",
-    //        name = "CIMConnector.rar", // "java:app/eis/SparkConnectionFactory"
-    //        authenticationType = Resource.AuthenticationType.APPLICATION
-    //    )
-    protected var _ConnectionFactory: CIMConnectionFactory = _
-
-    try
-        _ConnectionFactory = new InitialContext ().lookup ("java:openejb/Resource/CIMConnector.rar").asInstanceOf [CIMConnectionFactory]
-    catch
+    protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): Connection =
     {
-        case ne: NamingException ⇒
-            System.out.println ("fuck this JNDI shit " + ne.getMessage)
+        val out = if (debug) new StringBuffer else null
+        val factory = getConnectionFactory (out)
+        if (debug)
+            result.message = out.toString
+        if (null != factory)
+        {
+            val specification = factory.getDefaultConnectionSpec
+            factory.getConnection (specification)
+        }
+        else
+        {
+            result.status = RESTfulJSONResult.FAIL
+            null
+        }
     }
+
+    @throws[ResourceException]
+    protected def getInputRecord (description: String): MappedRecord =
+    {
+        val ret = getConnectionFactory ().getRecordFactory.createMappedRecord (CIMMappedRecord.INPUT)
+        ret.setRecordShortDescription (description)
+        ret
+    }
+}
+
+object RESTful
+{
+    @Resource(
+        name = "SparkConnectionFactory",
+        description = "Connection factory for Spark connection using CIMConnector",
+        authenticationType = Resource.AuthenticationType.APPLICATION,
+        mappedName="java:openejb/Resource/SparkConnectionFactory",
+        `type`=classOf[CIMConnectionFactory])
+    var _ConnectionFactory: CIMConnectionFactory = _
 
     /**
      * Debugging for JNDI.
      */
     def print_context_r (out: StringBuffer, context: Context, name: String, depth: Int): Unit =
     {
-        val s = new StringBuilder
-        var i = 0
-        while (i < depth)
+        if (null != context)
         {
-            s.append ("    ")
-            i += 1
-        }
-        val indent = s.toString
-        try
-        {
-            for (pair: NameClassPair ← context.list (name))
+            val s = new StringBuilder
+            var i = 0
+            while (i < depth)
             {
-                out.append (indent)
-                out.append (pair.getName)
-                out.append (" : ")
-                out.append (pair.getClassName)
-                out.append ("\n")
-                print_context_r (out, context, name + "/" + pair.getName, depth + 1)
+                s.append ("    ")
+                i += 1
             }
-        }
-        catch
-        {
-            case _: NameNotFoundException ⇒
-                out.append (indent)
-                out.append ("NameNotFoundException ")
-                out.append (name)
-                out.append ("\n")
-            case ne: NamingException ⇒
-                if (!("Name is not bound to a Context" == ne.getMessage))
-                {
+            val indent = s.toString
+            try
+            {
+                val x = context.list (name)
+                if (null != x)
+                    while (x.hasMore)
+                    {
+                        val pair = x.next
+                        if (null != pair)
+                        {
+                            out.append (indent)
+                            out.append (pair.getName)
+                            out.append (" : ")
+                            out.append (pair.getClassName)
+                            out.append ("\n")
+                            print_context_r (out, context, name + "/" + pair.getName, depth + 1)
+                        }
+                    }
+            }
+            catch
+            {
+                case _: NameNotFoundException ⇒
                     out.append (indent)
-                    out.append ("NamingException ")
-                    out.append (ne.getMessage)
+                    out.append ("NameNotFoundException ")
+                    out.append (name)
                     out.append ("\n")
-                }
+                case ne: NamingException ⇒
+                    if (!("Name is not bound to a Context" == ne.getMessage))
+                    {
+                        out.append (indent)
+                        out.append ("NamingException ")
+                        out.append (ne.getMessage)
+                        out.append ("\n")
+                    }
+            }
         }
     }
 
@@ -92,64 +121,59 @@ class RESTful ()
         ret
     }
 
-    protected def getConnectionFactory: CIMConnectionFactory =
-        _ConnectionFactory
-
-    protected def getConnection (result: RESTfulJSONResult): Connection =
+    protected def getConnectionFactory (debug_out: StringBuffer = null): CIMConnectionFactory =
     {
-        val out = new StringBuffer
-        var connection: Connection = null
+        val debug = null != debug_out
         try
         {
             if (null == _ConnectionFactory)
             {
-                out.append ("resource injection failed\ntrying alternate lookup:\n")
+                if (debug)
+                    debug_out.append ("resource injection failed\ntrying alternate lookup:\n")
                 val properties = new Properties
-                //                properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
-                //                properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*");
                 try
                 {
                     val context = new InitialContext (properties)
-                    print_context (out, context, "java:")
-                    print_context (out, context, "openejb:")
-                    _ConnectionFactory = context.lookup ("openejb:Resource/CIMConnector.rar").asInstanceOf [CIMConnectionFactory]
+                    if (debug)
+                        print_context (debug_out, context, "java:")
+                    try
+                        _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf [CIMConnectionFactory]
+                    catch
+                    {
+                        case ne: NamingException ⇒
+                            System.out.println ("fuck this JNDI shit: " + ne.getMessage)
+                    }
+
                 }
                 catch
                 {
                     case nnfe: NameNotFoundException ⇒
-                        out.append ("NameNotFoundException: ")
-                        out.append (nnfe.getMessage)
-                        out.append ("\n")
+                        if (debug)
+                        {
+                            debug_out.append ("NameNotFoundException: ")
+                            debug_out.append (nnfe.getMessage)
+                            debug_out.append ("\n")
+                        }
                     case ne: NamingException ⇒
-                        out.append ("NamingException: ")
-                        out.append (ne.getMessage)
-                        out.append ("\n")
+                        if (debug)
+                        {
+                            debug_out.append ("NamingException: ")
+                            debug_out.append (ne.getMessage)
+                            debug_out.append ("\n")
+                        }
                 }
-            }
-            if (null != _ConnectionFactory)
-            {
-                val specification = _ConnectionFactory.getDefaultConnectionSpec
-                connection = _ConnectionFactory.getConnection (specification)
             }
         }
         catch
         {
             case re: ResourceException ⇒
-                out.append ("ResourceException: ")
-                out.append (re.getMessage)
-                out.append ("\n")
+                if (debug)
+                {
+                    debug_out.append ("ResourceException: ")
+                    debug_out.append (re.getMessage)
+                    debug_out.append ("\n")
+                }
         }
-        if (null == connection)
-            result.status = RESTfulJSONResult.FAIL
-        result.message = out.toString
-        connection
-    }
-
-    @throws[ResourceException]
-    protected def getInputRecord (description: String): MappedRecord =
-    {
-        val ret = getConnectionFactory.getRecordFactory.createMappedRecord (CIMMappedRecord.INPUT)
-        ret.setRecordShortDescription (description)
-        ret
+        _ConnectionFactory
     }
 }

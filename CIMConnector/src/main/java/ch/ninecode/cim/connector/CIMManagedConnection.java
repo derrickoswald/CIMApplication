@@ -4,17 +4,14 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Vector;
-
-import scala.Function1;
-import scala.runtime.BoxedUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.resource.NotSupportedException;
 import javax.resource.ResourceException;
 import javax.resource.spi.ConnectionEvent;
 import javax.resource.spi.ConnectionEventListener;
 import javax.resource.spi.ConnectionRequestInfo;
+import javax.resource.spi.DissociatableManagedConnection;
 import javax.resource.spi.LocalTransaction;
 import javax.resource.spi.ManagedConnection;
 import javax.resource.spi.ManagedConnectionMetaData;
@@ -24,8 +21,8 @@ import javax.transaction.xa.XAResource;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
 
-import ch.ninecode.cim.*;
-import ch.ninecode.model.*;
+import ch.ninecode.cim.CIMClasses;
+import ch.ninecode.cim.DefaultSource;
 
 /**
  * Connection to Apache Spark (http://spark.apache.org).
@@ -37,13 +34,13 @@ import ch.ninecode.model.*;
  * org.apache.spark:spark-yarn_2.11-2.2.0
  *
  */
-public class CIMManagedConnection implements ManagedConnection
+public class CIMManagedConnection implements ManagedConnection, DissociatableManagedConnection
 {
     private static final String TRANSACTIONS_NOT_SUPPORTED_ERROR = "Transactions not supported";
 
     protected CIMResourceAdapter _Adapter;
     protected PrintWriter _PrintWriter;
-    protected Vector<ConnectionEventListener> _Listeners;
+    protected CopyOnWriteArrayList<ConnectionEventListener> _Listeners;
     protected Subject _Subject;
     protected CIMConnectionRequestInfo _RequestInfo;
     protected ArrayList<CIMConnection> _Connections;
@@ -57,7 +54,7 @@ public class CIMManagedConnection implements ManagedConnection
         super ();
         _Adapter = adapter;
         _PrintWriter = writer;
-        _Listeners = new Vector<> ();
+        _Listeners = new CopyOnWriteArrayList<> ();
         _Subject = null;
         _RequestInfo = null;
         _Connections = new ArrayList<> ();
@@ -74,11 +71,10 @@ public class CIMManagedConnection implements ManagedConnection
             if (connection._Valid)
             {
                 connection.invalidate ();
-                Enumeration<ConnectionEventListener> list = _Listeners.elements ();
                 ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
                 event.setConnectionHandle (connection);
-                while (list.hasMoreElements ())
-                    list.nextElement ().connectionClosed (event);
+                for (ConnectionEventListener listener: _Listeners)
+                    listener.connectionClosed (event);
             }
     }
 
@@ -263,13 +259,15 @@ public class CIMManagedConnection implements ManagedConnection
     public void cleanup () throws ResourceException
     {
         for (CIMConnection connection : _Connections)
-            close (connection);
+            if (connection._Valid)
+                close (connection);
+        _Connections.clear ();
     }
 
     public void disssociateConnection (Object connection) throws ResourceException
     {
         if (null != connection)
-            _Connections.remove (connection);
+            _Connections.remove ((CIMConnection)connection);
         else
             throw new ResourceException ("null cannot be dissociated as a connection object");
     }
@@ -280,7 +278,6 @@ public class CIMManagedConnection implements ManagedConnection
     public void associateConnection (Object connection) throws ResourceException
     {
         if (null != connection)
-        {
             if (connection.getClass ().isAssignableFrom (CIMConnection.class))
             {
                 CIMConnection c = (CIMConnection)connection;
@@ -290,7 +287,6 @@ public class CIMManagedConnection implements ManagedConnection
             }
             else
                 throw new ResourceException ("object of class " + connection.getClass ().toGenericString () + " cannot be associated as a connection object");
-        }
         else
             throw new ResourceException ("null cannot be associated as a connection object");
     }
@@ -349,5 +345,13 @@ public class CIMManagedConnection implements ManagedConnection
     public PrintWriter getLogWriter () throws ResourceException
     {
         return (_PrintWriter);
+    }
+
+    /**
+     * @see DissociatableManagedConnection#dissociateConnections()
+     */
+    public void dissociateConnections () throws ResourceException
+    {
+        _Connections.clear ();
     }
 }

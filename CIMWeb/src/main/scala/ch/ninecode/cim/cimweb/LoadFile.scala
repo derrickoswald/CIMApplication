@@ -30,7 +30,7 @@ class LoadFile extends RESTful
     import LoadFile._
 
     @GET
-    @Path ("{path}")
+    @Path ("{path:[^;]*}")
     @Produces (Array (MediaType.APPLICATION_JSON))
     def getFile (
         @PathParam ("path") path: String,
@@ -79,6 +79,8 @@ class LoadFile extends RESTful
                                 result.add (key, response.get (key))
                         ret.setResult (result.build)
                     }
+                    else
+                        ret.message = ""
                 }
             }
             catch

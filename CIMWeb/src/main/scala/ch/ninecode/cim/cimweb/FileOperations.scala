@@ -138,7 +138,7 @@ class FileOperations extends RESTful
                         Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
                 }
         else
-            Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection").build
+            Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
 
         response
     }

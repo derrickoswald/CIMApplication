@@ -36,6 +36,11 @@ define
             return (str.replace (/</g, "&lt;").replace (/>/g, "&gt;"))
         }
 
+        function jsonify (data)
+        {
+            return (JSON.stringify (data, null, 4))
+        }
+
         function parse_rdf (data)
         {
             var blob;
@@ -43,11 +48,59 @@ define
             function callback (result) // {context: context, parsed: parsed}
             {
                 CIM_Data = result.parsed;
-                document.getElementById ("cim").innerHTML = "<pre>\n" +  JSON.stringify (result.parsed, null, 4) + "\n</pre>"
+                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (CIM_Data) + "\n</pre>"
             }
 
             blob = new Blob ([data], {type : 'application/xml'});
             cim.read_xml_blob (blob, callback)
+        }
+
+
+        /**
+         * @summary Read the file contents in Spark.
+         * @description Trigger CIMReader to read in the file.
+         * @param {string} path - the file to load
+         * @param {function} callback - the function accepting the load JSON with signature: function (response)
+         * @function do_load
+         * @memberOf module:cimsimulate
+         */
+        function do_load (path, callback)
+        {
+            var url;
+            var xmlhttp;
+
+            path = path.startsWith ("/") ? path : "/" + path;
+            url = util.home () + "cim/load" + path;
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status == "OK")
+                            callback (resp);
+                        else
+                            alert (resp.message);
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            xmlhttp.send ();
+        }
+
+        function setup ()
+        {
+            function callback (result)
+            {
+                alert (JSON.stringify (result, null, 4));
+                // since the island is loaded, reset the select_island dropdown
+                document.getElementById ("simulation_island").innerHTML = "<option value='" + TheIsland + "' selected>" + TheIsland + "</option>";
+            }
+            do_load ("/simulate/" + TheIsland + "/" + TheIsland + ".rdf", callback)
+            parse_rdf (TheRDF);
         }
 
         /**
@@ -74,8 +127,9 @@ define
                             if (response.status == "OK")
                             {
                                 TheIsland = island;
+                                document.getElementById ("title").innerHTML = TheIsland;
                                 TheRDF = xmlhttp.responseText;
-                                parse_rdf (xmlhttp.responseText);
+                                setup ();
                             }
                             else
                                 alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
@@ -108,8 +162,9 @@ define
                 function callback (data)
                 {
                     TheIsland = island;
+                    document.getElementById ("title").innerHTML = TheIsland;
                     TheRDF = data;
-                    parse_rdf (data);
+                    setup ();
                 }
 
                 function error (response)
@@ -131,6 +186,7 @@ define
                 );
             }
         }
+
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
@@ -145,13 +201,13 @@ define
                 "  <div class='row justify-content-center'>\n" +
                 "    <div class='col-8'>\n" +
                 "      <h1>Simulate using GridLAB-D</h1>\n" +
-                "      <h2>TBD</h2>\n" +
+                "      <h2 id='title'></h2>\n" +
                 "      <form>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='simulation_island'>Island</label>\n" +
                 "          <select id='simulation_island' class='form-control' name='island'>\n" +
                 "{{#data}}\n" +
-                "            <option value='{{mRID}}'>{{mRID}}</option>\n" +
+                "            <option value='{{mRID}}'{{is_selected}}>{{mRID}}</option>\n" +
                 "{{/data}}\n" +
                 "          </select>\n" +
                 "        </div>\n" +
@@ -169,11 +225,17 @@ define
                     var text = mustache.render
                     (
                         simulate_template,
-                        { data: data }
+                        {
+                            is_selected: function () { return ((this.mRID == TheIsland) ? " selected" : ""); },
+                            data: data
+                        }
                     );
                     document.getElementById ("main").innerHTML = text;
                     document.getElementById ("simulation_island").onchange = select_island;
                     document.getElementById ("do_simulate").onclick = do_simulate;
+                    document.getElementById ("title").innerHTML = (null != TheIsland) ? TheIsland : "";
+                    if (null != CIM_Data)
+                        document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (CIM_Data) + "\n</pre>"
                 }
             );
         }

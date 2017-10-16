@@ -77,6 +77,6 @@ public class CIMConnection implements Connection
      */
     public void close () throws ResourceException
     {
-        invalidate ();
+        _ManagedConnection.close (this);
     }
 }

@@ -6,7 +6,7 @@
 #   http://localhost:8080/cimweb/cim/ping
 #   http://localhost:8080/cimweb/cim/list
 
-# Most of this is directly copied from https://github.com/tomitribe/docker-tomee/blob/master/8-jre-7.0.3-plus/Dockerfile
+# Most of this is directly copied from https://github.com/tomitribe/docker-tomee/blob/master/8-jre-7.0.4-plus/Dockerfile
 # but based on a hadoop image from singularities, both of which have a common root at openjdk:8-jre,
 # and just setting the fs.defaultFS in core-site.xml as is done in start-hadoop
 
@@ -42,12 +42,12 @@ RUN set -xe \
 
 
 RUN set -x \
-	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.3/apache-tomee-7.0.3-plus.tar.gz.asc -o tomee.tar.gz.asc \
-	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.3/apache-tomee-7.0.3-plus.tar.gz -o tomee.tar.gz \
+	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz.asc -o tomee.tar.gz.asc \
+	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz -o tomee.tar.gz \
     && gpg --batch --verify tomee.tar.gz.asc tomee.tar.gz \
 	&& tar -zxf tomee.tar.gz \
-	&& mv apache-tomee-plus-7.0.3/* /usr/local/tomee \
-	&& rm -Rf apache-tomee-plus-7.0.3 \
+	&& mv apache-tomee-plus-7.0.4/* /usr/local/tomee \
+	&& rm -Rf apache-tomee-plus-7.0.4 \
 	&& rm bin/*.bat \
 	&& rm tomee.tar.gz*
 
@@ -56,7 +56,7 @@ ENV CATALINA_OPTS -Xmx8g
 
 EXPOSE 8080
 
-# Install tools
+# install tools
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install \
     -yq --no-install-recommends  \
@@ -64,22 +64,27 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-# Set up environment
+# set up environment
 RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
 
 # layers added for CIMApplication (do this last to speed up Docker build)
 
-# Copy start script
+# copy start script
 COPY CIMEar/start-tomee /opt/util/bin/start-tomee
+
+# set up apps directory
+RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak
+COPY CIMEar/tomee.xml /usr/local/tomee/conf/tomee.xml
+
+# set up tomee user and manager
+RUN mv /usr/local/tomee/conf/tomcat-users.xml /usr/local/tomee/conf/tomcat-users.bak
+COPY CIMEar/tomcat-users.xml /usr/local/tomee/conf/tomcat-users.xml
+RUN mkdir --parents /usr/local/tomee/conf/Catalina/localhost/
+COPY CIMEar/manager.xml /usr/local/tomee/conf/Catalina/localhost/manager.xml
 
 # set up CIMApplication
 ADD CIMEar/target/CIMApplication.ear /usr/local/tomee/apps/
-RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak \
-  && echo '<?xml version="1.0" encoding="UTF-8"?>' > /usr/local/tomee/conf/tomee.xml \
-  && echo '<tomee>' >> /usr/local/tomee/conf/tomee.xml \
-  && echo '    <!-- see http://tomee.apache.org/containers-and-resources.html -->' >> /usr/local/tomee/conf/tomee.xml \
-  && echo '    <Deployments dir="apps" />' >> /usr/local/tomee/conf/tomee.xml \
-  && echo '</tomee>' >> /usr/local/tomee/conf/tomee.xml
+RUN echo 'openejb.deployments.classpath.include = .*ninecode.*' >> /usr/local/tomee/conf/system.properties
 
 # set up CORS
 RUN sed -i.bak "s|</web-app>|\

@@ -49,7 +49,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     @Override
     public Object createConnectionFactory () throws ResourceException
     {
-        return (new CIMConnectionFactory (this, null));
+        return (createConnectionFactory (null));
     }
 
     @Override

@@ -110,7 +110,7 @@ public class CIMConnectionFactory implements ConnectionFactory
 
     /**
      * Get the name of a jar file for an object class.
-     * @see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+     * see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
      * @param obj the object to get the jar file for (can be arbitrary - it's not used)
      * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
      */

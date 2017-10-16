@@ -476,6 +476,7 @@ define
         /**
          * @summary Read the file contents in Spark.
          * @description Trigger CIMReader to read in the file.
+         * @param {string} path - the file to load
          * @function do_load
          * @memberOf module:cimfiles
          */

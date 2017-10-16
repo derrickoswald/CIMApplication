@@ -27,7 +27,7 @@
             <config-property-value>4g</config-property-value>
         </config-property>
         <outbound-resourceadapter>
-            <connection-definition>
+            <connection-definition id="SparkConnectionFactory">
                 <managedconnectionfactory-class>ch.ninecode.cim.connector.CIMManagedConnectionFactory</managedconnectionfactory-class>
                 <config-property>
                     <config-property-name>ConnectionURL</config-property-name>
