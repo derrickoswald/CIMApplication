@@ -6,14 +6,14 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimquery", "cim"],
+    ["mustache", "util", "cimfiles", "cimquery", "cim", "cimexport"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimquery, cim)
+    function (mustache, util, cimfiles, cimquery, cim, cimexport)
     {
         // The island RDF export.
         var TheRDF;
@@ -29,7 +29,8 @@ define
         //     loads: [
         //         {
         //             "name": "HASXXXXX_load",
-        //             "node": "HASXXXXX_fuse_topo"
+        //             "node": "HASXXXXX_fuse_topo",
+        //             "player": "/data/HASXXXXX.csv
         //         },
         //         ...
         //     ]
@@ -57,9 +58,7 @@ define
                 function callback (response)
                 {
                     if (response.status == "OK")
-                    {
-                        alert (simulation);
-                    }
+                        cimexport.exportIsland ("/simulate/" + getIsland () + "/simulation.json", function (data) { document.getElementById ("cim").innerHTML = "<pre>\n" +  data + "</pre>"; } )
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }
@@ -84,7 +83,6 @@ define
             function callback (result) // {context: context, parsed: parsed}
             {
                 CIM_Data = result.parsed;
-                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (CIM_Data) + "\n</pre>"
             }
 
             blob = new Blob ([data], {type : 'application/xml'});
@@ -129,9 +127,33 @@ define
 
         function query_loads ()
         {
-            cimquery.query (
-                "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') load, t.TopologicalNode node from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
-               function (data) { TheSimulation.loads = data; }
+            directory = "/data/";
+
+            cimfiles.fetch (directory,
+                function (response)
+                {
+                    if (response.status == "FAIL")
+                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                    else
+                    {
+                        var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
+                        var randomfiles = response.result.files.map (function (item) { return (root + item.path); });
+                        cimquery.query (
+                            "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode node from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                            function (data)
+                            {
+                                function getRandomInt (min, max)
+                                {
+                                    min = Math.ceil (min);
+                                    max = Math.floor (max);
+                                    return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
+                                }
+                                TheSimulation.loads = data.map (function (item) { item.player = randomfiles[getRandomInt (0, randomfiles.length)]; return (item); })
+                                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+                            }
+                        );
+                    }
+                }
             );
         }
 
@@ -150,14 +172,15 @@ define
             document.getElementById ("title").innerHTML = getIsland ();
             function callback (result)
             {
-                alert (JSON.stringify (result, null, 4));
+                // not sure if we need this
+                parse_rdf (TheRDF);
+
                 // since the island is loaded, reset the select_island dropdown
                 document.getElementById ("simulation_island").innerHTML = "<option value='" + island + "' selected>" + island + "</option>";
-                // hard coded loads
+                // hard coded random loads
                 query_loads ();
             }
             do_load (cim, callback)
-            parse_rdf (TheRDF);
         }
 
         /**
@@ -289,8 +312,8 @@ define
                     document.getElementById ("simulation_island").onchange = select_island;
                     document.getElementById ("do_simulate").onclick = do_simulate;
                     document.getElementById ("title").innerHTML = getIsland ();
-                    if (null != CIM_Data)
-                        document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (CIM_Data) + "\n</pre>"
+                    if (null != TheSimulation)
+                        document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
                 }
             );
         }

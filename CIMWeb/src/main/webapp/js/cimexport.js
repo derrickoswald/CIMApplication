@@ -22,7 +22,7 @@ define
          * @function exportIsland
          * @memberOf module:cimexport
          */
-        function exportIsland (island)
+        function exportIsland (island, callback)
         {
             var url;
             var xmlhttp;
@@ -35,7 +35,7 @@ define
 
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        document.getElementById ("glm").innerHTML = "<pre>\n" +  xmlhttp.responseText + "</pre>";
+                        callback (xmlhttp.responseText);
                     else
                         alert ("status: " + xmlhttp.status);
             };
@@ -52,7 +52,7 @@ define
         {
             var island = document.getElementById ("island").value;
             if (("undefined" != typeof (island)) && ("" != island))
-                exportIsland (island);
+                exportIsland ("/simulate/" + island + "/simulation.json", function (data) { document.getElementById ("glm").innerHTML = "<pre>\n" +  data + "</pre>"; } );
         }
 
         /**

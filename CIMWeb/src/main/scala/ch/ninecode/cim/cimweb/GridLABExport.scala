@@ -21,14 +21,22 @@ class GridLABExport extends RESTful
 {
     import GridLABExport._
 
+    // get a righteous string for a glm filename
+    def glm_name (simulation: String): String =
+    {
+        val index = simulation.lastIndexOf ("/")
+        val suffix = if (simulation.endsWith (".json")) simulation.length - 4 else simulation.length
+        (if (-1 == index) simulation.substring (0, suffix) else simulation.substring (index + 1, suffix)) + ".glm"
+    }
+
     @GET
-    @Path ("{island}")
+    @Path ("{simulation:[^;]*}")
     @Produces (Array (MediaType.APPLICATION_JSON))
     def export (
-        @PathParam ("island") island: String // some island name
+        @PathParam ("simulation") simulation: String // the name of the JSON simulation file on HDFS
         ): Response =
     {
-        _Logger.info ("gridlab %s".format (island))
+        _Logger.info ("gridlab %s".format (simulation))
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         val response: Response = if (null != connection)
@@ -38,7 +46,7 @@ class GridLABExport extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 // set up the function with parameters
-                val gridlab = GridLABExportFunction (island)
+                val gridlab = GridLABExportFunction (if (simulation.startsWith ("/")) simulation else "/" + simulation)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, gridlab)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
@@ -51,7 +59,7 @@ class GridLABExport extends RESTful
                     {
                         val record = output.asInstanceOf [CIMMappedRecord]
                         Response.ok (record.get (CIMFunction.RESULT).asInstanceOf [String], MediaType.APPLICATION_OCTET_STREAM)
-                            .header ("content-disposition", "attachment; filename=%s.glm".format (island))
+                            .header ("content-disposition", "attachment; filename=%s".format (glm_name (simulation)))
                             .build
                     }
             }

@@ -28,7 +28,7 @@ class Pong extends RESTful
     {
         val date = new util.Date ().toString
         _Logger.info ("pong @ %s".format (date))
-        val result = new RESTfulJSONResult ("OK", date)
+        val result = new RESTfulJSONResult (RESTfulJSONResult.OK, date)
         val connection = getConnection (result)
         if (null != connection)
         {
