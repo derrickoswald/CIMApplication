@@ -15,20 +15,56 @@ define
      */
     function (mustache, util, cimfiles, cimquery, cim)
     {
-        // The island being worked on.
-        var TheIsland;
-
         // The island RDF export.
         var TheRDF;
 
         // The parsed CIM data.
         var CIM_Data;
 
+        // The simulation details.
+        // provisional schema:
+        // {
+        //     island: <topological node of the island to simulate>,
+        //     cim: <CIM RDF file containing the island>
+        //     loads: [
+        //         {
+        //             "name": "HASXXXXX_load",
+        //             "node": "HASXXXXX_fuse_topo"
+        //         },
+        //         ...
+        //     ]
+        //
+        //
+        //
+        // }
+        var TheSimulation;
+
+        // accessors
+        function getIsland ()
+        {
+            return ((null != TheSimulation) ? TheSimulation.island : "");
+        }
+        function getCIM ()
+        {
+            return ((null != TheSimulation) ? TheSimulation.cim : "");
+        }
+
         function do_simulate ()
         {
-            var island = document.getElementById ("simulation_island").value;
-            if (("undefined" != typeof (island)) && ("" != island))
-                alert (island);
+            if (null != TheSimulation)
+            {
+                var simulation = JSON.stringify (TheSimulation, null, 4);
+                function callback (response)
+                {
+                    if (response.status == "OK")
+                    {
+                        alert (simulation);
+                    }
+                    else
+                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                }
+                cimfiles.put ("/simulate/" + getIsland () + "/simulation.json", simulation, callback)
+            }
         }
 
         function htmlify (str)
@@ -91,26 +127,49 @@ define
             xmlhttp.send ();
         }
 
-        function setup ()
+        function query_loads ()
         {
+            cimquery.query (
+                "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') load, t.TopologicalNode node from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+               function (data) { TheSimulation.loads = data; }
+            );
+        }
+
+        /**
+         * Set up the simulation data
+         * @param {string} island - the name of the Topological island for the simulation.
+         * @param {string} cim - the name of the CIM file for the simulation.
+         */
+        function setup (island, cim)
+        {
+            TheSimulation =
+            {
+                 island: island,
+                 cim: cim
+            };
+            document.getElementById ("title").innerHTML = getIsland ();
             function callback (result)
             {
                 alert (JSON.stringify (result, null, 4));
                 // since the island is loaded, reset the select_island dropdown
-                document.getElementById ("simulation_island").innerHTML = "<option value='" + TheIsland + "' selected>" + TheIsland + "</option>";
+                document.getElementById ("simulation_island").innerHTML = "<option value='" + island + "' selected>" + island + "</option>";
+                // hard coded loads
+                query_loads ();
             }
-            do_load ("/simulate/" + TheIsland + "/" + TheIsland + ".rdf", callback)
+            do_load (cim, callback)
             parse_rdf (TheRDF);
         }
 
         /**
          * @summary Call the export RESTful service.
          * @description Invokes the server side export function.
-         * @param {string} island - the island name from the topology.
+         * @param {string} island - the island name from the topology
+         * @param {string} cim - the name of the cim file
+         * @param {function} callback - the function to call back with signature function (data)
          * @function exportIsland
          * @memberOf module:cimsimulate
          */
-        function exportIsland (island)
+        function exportIsland (island, cim, callback)
         {
             var url;
             var xmlhttp;
@@ -122,20 +181,15 @@ define
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
-                        function callback (response)
+                        function callback2 (response)
                         {
                             if (response.status == "OK")
-                            {
-                                TheIsland = island;
-                                document.getElementById ("title").innerHTML = TheIsland;
-                                TheRDF = xmlhttp.responseText;
-                                setup ();
-                            }
+                                callback (xmlhttp.responseText);
                             else
                                 alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                         }
 
-                        cimfiles.put ("/simulate/" + island + "/" + island + ".rdf", xmlhttp.responseText, callback);
+                        cimfiles.put (cim, xmlhttp.responseText, callback2);
                     }
                     else
                         alert ("status: " + xmlhttp.status);
@@ -155,16 +209,20 @@ define
             var island;
             var directory;
             var rdf;
+            var cim;
 
             island = document.getElementById ("simulation_island").value;
             if (("undefined" != typeof (island)) && ("" != island))
             {
+                // check if the rdf exists already
+                directory = "/simulate/" + island + "/";
+                rdf = island + ".rdf";
+                cim = directory + rdf;
+
                 function callback (data)
                 {
-                    TheIsland = island;
-                    document.getElementById ("title").innerHTML = TheIsland;
                     TheRDF = data;
-                    setup ();
+                    setup (island, cim);
                 }
 
                 function error (response)
@@ -172,16 +230,13 @@ define
                     alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }
 
-                // check if the rdf exists already
-                directory = "/simulate/" + island + "/";
-                rdf = island + ".rdf";
                 cimfiles.fetch (directory,
                     function (response)
                     {
                         if ((response.status == "FAIL") || (0 == response.result.files.filter (function (file) { return (file.path == rdf); })))
-                            exportIsland (island);
+                            exportIsland (island, cim, callback);
                         else
-                            cimfiles.get (directory + rdf, callback, error);
+                            cimfiles.get (cim, callback, error);
                     }
                 );
             }
@@ -226,14 +281,14 @@ define
                     (
                         simulate_template,
                         {
-                            is_selected: function () { return ((this.mRID == TheIsland) ? " selected" : ""); },
+                            is_selected: function () { return ((this.mRID == getIsland ()) ? " selected" : ""); },
                             data: data
                         }
                     );
                     document.getElementById ("main").innerHTML = text;
                     document.getElementById ("simulation_island").onchange = select_island;
                     document.getElementById ("do_simulate").onclick = do_simulate;
-                    document.getElementById ("title").innerHTML = (null != TheIsland) ? TheIsland : "";
+                    document.getElementById ("title").innerHTML = getIsland ();
                     if (null != CIM_Data)
                         document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (CIM_Data) + "\n</pre>"
                 }
