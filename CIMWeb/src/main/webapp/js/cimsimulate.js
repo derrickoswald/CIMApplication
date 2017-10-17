@@ -25,6 +25,7 @@ define
         // provisional schema:
         // {
         //     island: <topological node of the island to simulate>,
+        //     station: <station of the island to simulate>,
         //     cim: <CIM RDF file containing the island>
         //     loads: [
         //         {
@@ -45,6 +46,10 @@ define
         {
             return ((null != TheSimulation) ? TheSimulation.island : "");
         }
+        function getStation ()
+        {
+            return ((null != TheSimulation) ? TheSimulation.station : "");
+        }
         function getCIM ()
         {
             return ((null != TheSimulation) ? TheSimulation.cim : "");
@@ -58,11 +63,11 @@ define
                 function callback (response)
                 {
                     if (response.status == "OK")
-                        cimexport.exportIsland ("/simulate/" + getIsland () + "/simulation.json", function (data) { document.getElementById ("cim").innerHTML = "<pre>\n" +  data + "</pre>"; } )
+                        cimexport.exportIsland ("/" + getStation () +"/" + getIsland () + "/simulation.json", function (data) { document.getElementById ("cim").innerHTML = "<pre>\n" +  data + "</pre>"; } )
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }
-                cimfiles.put ("/simulate/" + getIsland () + "/simulation.json", simulation, callback)
+                cimfiles.put ("/" + getStation () + "/" + getIsland () + "/simulation.json", simulation, callback)
             }
         }
 
@@ -139,6 +144,7 @@ define
                         var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
                         var randomfiles = response.result.files.map (function (item) { return (root + item.path); });
                         cimquery.query (
+                            // ToDo: this query assumes transformers are in a Bay which is directly in a Substation
                             "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode node from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
                             function (data)
                             {
@@ -160,13 +166,15 @@ define
         /**
          * Set up the simulation data
          * @param {string} island - the name of the Topological island for the simulation.
+         * @param {string} station - the name of the station for the simulation.
          * @param {string} cim - the name of the CIM file for the simulation.
          */
-        function setup (island, cim)
+        function setup (island, station, cim)
         {
             TheSimulation =
             {
                  island: island,
+                 station: station,
                  cim: cim
             };
             document.getElementById ("title").innerHTML = getIsland ();
@@ -176,7 +184,7 @@ define
                 parse_rdf (TheRDF);
 
                 // since the island is loaded, reset the select_island dropdown
-                document.getElementById ("simulation_island").innerHTML = "<option value='" + island + "' selected>" + island + "</option>";
+                document.getElementById ("simulation_island").innerHTML = "<option value='" + station + "/" + island + "' selected>" + station + " (" + island + ")</option>";
                 // hard coded random loads
                 query_loads ();
             }
@@ -229,23 +237,27 @@ define
          */
         function select_island (event)
         {
+            var selection;
             var island;
+            var station;
             var directory;
             var rdf;
             var cim;
 
-            island = document.getElementById ("simulation_island").value;
+            selection = document.getElementById ("simulation_island").value;
+            island = selection.substring (0, selection.indexOf ("/"));
+            station = selection.substring (selection.indexOf ("/") + 1);
             if (("undefined" != typeof (island)) && ("" != island))
             {
                 // check if the rdf exists already
-                directory = "/simulate/" + island + "/";
+                directory = "/" + station + "/" + island + "/";
                 rdf = island + ".rdf";
                 cim = directory + rdf;
 
                 function callback (data)
                 {
                     TheRDF = data;
-                    setup (island, cim);
+                    setup (island, station, cim);
                 }
 
                 function error (response)
@@ -285,7 +297,7 @@ define
                 "          <label for='simulation_island'>Island</label>\n" +
                 "          <select id='simulation_island' class='form-control' name='island'>\n" +
                 "{{#data}}\n" +
-                "            <option value='{{mRID}}'{{is_selected}}>{{mRID}}</option>\n" +
+                "            <option value='{{island}}/{{station}}'{{is_selected}}>{{station}} ({{island}})</option>\n" +
                 "{{/data}}\n" +
                 "          </select>\n" +
                 "        </div>\n" +
@@ -297,7 +309,7 @@ define
                 "  </div>\n" +
                 "</div>\n";
 
-            cimquery.query ("select i.IdentifiedObject.mRID from TopologicalIsland i",
+            cimquery.query ("select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID", // "select i.IdentifiedObject.mRID from TopologicalIsland i",
                 function (data)
                 {
                     var text = mustache.render
