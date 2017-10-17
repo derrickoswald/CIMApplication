@@ -183,7 +183,8 @@ define
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                         fn (xmlhttp.responseText);
                     else
-                        fn ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
+                        if (null != err)
+                            err ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
             };
             xmlhttp.send ();
         }

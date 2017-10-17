@@ -277,15 +277,8 @@ define
             }
         }
 
-        /**
-         * @summary Render the simulations page.
-         * @description Uses mustache to create HTML DOM elements that display the simulation options.
-         * @function initialize
-         * @memberOf module:cimsimulate
-         */
-        function initialize ()
+        function render (data)
         {
-            document.getElementById ("main").innerHTML = "";
             var simulate_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
@@ -309,25 +302,98 @@ define
                 "  </div>\n" +
                 "</div>\n";
 
-            cimquery.query ("select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID", // "select i.IdentifiedObject.mRID from TopologicalIsland i",
-                function (data)
+            var text = mustache.render
+            (
+                simulate_template,
                 {
-                    var text = mustache.render
-                    (
-                        simulate_template,
-                        {
-                            is_selected: function () { return ((this.mRID == getIsland ()) ? " selected" : ""); },
-                            data: data
-                        }
-                    );
-                    document.getElementById ("main").innerHTML = text;
-                    document.getElementById ("simulation_island").onchange = select_island;
-                    document.getElementById ("do_simulate").onclick = do_simulate;
-                    document.getElementById ("title").innerHTML = getIsland ();
-                    if (null != TheSimulation)
-                        document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+                    is_selected: function () { return ((this.mRID == getIsland ()) ? " selected" : ""); },
+                    data: data
                 }
             );
+            document.getElementById ("main").innerHTML = text;
+            document.getElementById ("simulation_island").onchange = select_island;
+            document.getElementById ("do_simulate").onclick = do_simulate;
+            document.getElementById ("title").innerHTML = getIsland ();
+            if (null != TheSimulation)
+                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+        }
+
+        /**
+         * @summary Render the simulations page.
+         * @description Uses mustache to create HTML DOM elements that display the simulation options.
+         * @function initialize
+         * @memberOf module:cimsimulate
+         */
+        function initialize ()
+        {
+            document.getElementById ("main").innerHTML = "";
+            if (null == TheSimulation)
+            {
+                // get the list of stations
+                cimquery.query (
+                    "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
+                    function (data)
+                    {
+                        var stations = data.map (function (obj) { return (obj.station); });
+                        // list files and try to match
+                        var directory = "/"
+                        cimfiles.fetch (directory,
+                            function (response)
+                            {
+                                if (response.status == "FAIL")
+                                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                                else
+                                {
+                                    var have = response.result.files.filter (function (file) { return (-1 != stations.indexOf (file.path)); });
+                                    if (0 == have.length)
+                                        // query for topological islands
+                                        cimquery.query (
+                                            "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID", // "select i.IdentifiedObject.mRID from TopologicalIsland i",
+                                            render
+                                        );
+                                    else
+                                    {
+                                        // choose the first one for now
+                                        directory = directory + have[0].path + "/";
+                                        cimfiles.fetch (directory,
+                                            function (response)
+                                            {
+                                                if (response.status == "FAIL")
+                                                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                                                else
+                                                {
+                                                    // choose the first one for now
+                                                    if (0 < response.result.files.length)
+                                                    {
+                                                        directory = directory + response.result.files[0].path + "/";
+                                                        // get the simulation json
+                                                        cimfiles.get (directory + "simulation.json",
+                                                            function (data)
+                                                            {
+                                                                TheSimulation = JSON.parse (data);
+                                                                render ([ { island:  getIsland (), station: getStation () } ]);
+                                                            },
+                                                            function (response) { alert (JSON.stringify (response, null, 4)); }
+                                                        );
+                                                    }
+                                                    else
+                                                        // query for topological islands
+                                                        cimquery.query (
+                                                            "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID", // "select i.IdentifiedObject.mRID from TopologicalIsland i",
+                                                            render
+                                                        );
+                                                }
+                                            }
+                                        );
+                                    }
+                                }
+                            }
+                        );
+                    }
+                );
+            }
+            else
+                render ([ { island:  getIsland (), station: getStation () } ]);
         }
 
         return (
