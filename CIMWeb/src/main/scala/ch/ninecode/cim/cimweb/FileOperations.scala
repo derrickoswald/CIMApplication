@@ -103,7 +103,19 @@ class FileOperations extends RESTful
                                     .build
                             }
                             else
-                                Response.ok (xml, MediaType.APPLICATION_XML).build
+                            {
+                                val extension = file.substring (file.lastIndexOf (".") + 1)
+                                val media = extension match
+                                {
+                                    case "xml" ⇒ MediaType.APPLICATION_XML
+                                    case "rdf" ⇒ MediaType.APPLICATION_XML
+                                    case "json" ⇒ MediaType.APPLICATION_JSON
+                                    case "csv" ⇒ "text/csv"
+                                    case "glm" ⇒ "text/csv"
+                                    case "zip" ⇒ "application/zip"
+                                }
+                                Response.ok (xml, media).build
+                            }
                     }
                     else
                     {

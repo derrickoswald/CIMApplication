@@ -27,12 +27,11 @@ define
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/gridlab/" + island;
+            island = island.startsWith ("/") ? island : "/" + island;
+            url = util.home () + "cim/gridlab" + island;
             xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                         callback (xmlhttp.responseText);
