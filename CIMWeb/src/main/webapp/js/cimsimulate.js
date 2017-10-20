@@ -6,14 +6,14 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimquery", "cim", "cimexport", "chooser"],
+    ["mustache", "util", "cimfiles", "cimquery", "cim", "chooser"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimquery, cim, cimexport, chooser)
+    function (mustache, util, cimfiles, cimquery, cim, chooser)
     {
         // The island RDF export.
         var TheRDF;
@@ -32,11 +32,11 @@ define
         var RecorderChoices = [
             {
                 title: "All cable currents",
-                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property from ACLineSegment a"
+                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a"
             },
             {
                 title: "All node voltages",
-                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property  from TopologicalNode n"
+                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n"
             }
         ];
 
@@ -92,7 +92,7 @@ define
                 function callback (response)
                 {
                     if (response.status == "OK")
-                        cimexport.exportIsland (name , function (data) { document.getElementById ("cim").innerHTML = "<pre>\n" +  data + "</pre>"; } )
+                        alert ("simulating...")
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }
@@ -271,7 +271,8 @@ define
                  station: station,
                  cim: cim
             };
-            document.getElementById ("title").innerHTML = getIsland ();
+            // update the name
+            document.getElementById ("title").innerHTML = name;
             function callback (result)
             {
                 // not sure if we need this
@@ -422,7 +423,6 @@ define
             document.getElementById ("simulation_island").onchange = select_island;
             document.getElementById ("do_refresh").onclick = do_refresh;
             document.getElementById ("do_simulate").onclick = do_simulate;
-            document.getElementById ("title").innerHTML = getIsland ();
             if (null == PlayerChooser)
             {
                 var help =
@@ -449,9 +449,57 @@ define
         {
             // query for topological islands
             cimquery.query (
+                // simple TopologicalIsland query
+                // "select i.IdentifiedObject.mRID from TopologicalIsland i",
                 // ToDo: this query assumes transformers are in a Bay which is directly in a Substation
-                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID", // "select i.IdentifiedObject.mRID from TopologicalIsland i",
+                // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                // ToDo: this query assumes transformers are directly in a Substation
+                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 render
+            );
+        }
+
+        function getStations (callback)
+        {
+            // get the list of stations
+            cimquery.query (
+                "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
+                function (data)
+                {
+                    var rdfstations = data.map (function (obj) { return (obj.station); });
+                    // list files and try to match
+                    var directory = "/"
+                    cimfiles.fetch (directory,
+                        function (response)
+                        {
+                            if (response.status == "FAIL")
+                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                            else
+                            {
+                                var stations = response.result.files.filter (function (file) { return (file.is_directory && (-1 != rdfstations.indexOf (file.path))); }).map (function (file) { return (file.path); });
+                                callback (stations);
+                            }
+                        }
+                    );
+                }
+            );
+        }
+
+        function getSimulations (station, callback)
+        {
+            // choose the first one for now
+            var directory = "/" + station + "/";
+            cimfiles.fetch (directory,
+                function (response)
+                {
+                    if (response.status == "FAIL")
+                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                    else
+                    {
+                        var simulations = response.result.files.filter (function (file) { return (!file.is_directory && file.path.endsWith (".json")); } ).map (function (file) { return (file.path); });
+                        callback (simulations);
+                    }
+                }
             );
         }
 
@@ -465,70 +513,38 @@ define
         {
             document.getElementById ("main").innerHTML = "";
             if (null == TheSimulation)
-            {
-                // get the list of stations
-                cimquery.query (
-                    "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
-                    function (data)
-                    {
-                        var stations = data.map (function (obj) { return (obj.station); });
-                        // list files and try to match
-                        var directory = "/"
-                        cimfiles.fetch (directory,
-                            function (response)
+                getStations (function (stations) {
+                    if (0 == stations.length)
+                        query_islands ();
+                    else
+                        getSimulations (stations[0], function (simulations) {
+                            // choose the first one for now
+                            if (0 < simulations.length)
                             {
-                                if (response.status == "FAIL")
-                                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-                                else
-                                {
-                                    var have = response.result.files.filter (function (file) { return (file.is_directory && (-1 != stations.indexOf (file.path))); });
-                                    if (0 == have.length)
-                                        query_islands ();
-                                    else
+                                var simulation = "/" + stations[0] +  "/" + simulations[0];
+                                // get the simulation json
+                                cimfiles.get (simulation,
+                                    function (data)
                                     {
-                                        // choose the first one for now
-                                        directory = directory + have[0].path + "/";
-                                        cimfiles.fetch (directory,
-                                            function (response)
-                                            {
-                                                if (response.status == "FAIL")
-                                                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-                                                else
-                                                {
-                                                    var simulations = response.result.files.filter (function (file) { return (!file.is_directory && file.path.endsWith (".json")); } );
-                                                    // choose the first one for now
-                                                    if (0 < simulations.length)
-                                                    {
-                                                        var simulation = directory + simulations[0].path;
-                                                        // get the simulation json
-                                                        cimfiles.get (simulation,
-                                                            function (data)
-                                                            {
-                                                                TheSimulation = JSON.parse (data);
-                                                                render ([ { island:  getIsland (), station: getStation () } ]);
-                                                            },
-                                                            function (response) { alert (JSON.stringify (response, null, 4)); }
-                                                        );
-                                                    }
-                                                    else
-                                                        query_islands ();
-                                                }
-                                            }
-                                        );
-                                    }
-                                }
+                                        TheSimulation = JSON.parse (data);
+                                        render ([ { island:  getIsland (), station: getStation () } ]);
+                                    },
+                                    function (response) { alert (JSON.stringify (response, null, 4)); }
+                                );
                             }
-                        );
-                    }
-                );
-            }
-            else
+                            else
+                                query_islands ();
+                        });
+                });
+            else+
                 render ([ { island:  getIsland (), station: getStation () } ]);
         }
 
         return (
             {
-                initialize: initialize
+                initialize: initialize,
+                getStations: getStations,
+                getSimulations: getSimulations
             }
         );
     }

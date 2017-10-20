@@ -40,9 +40,11 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
 
     override def getReturnType: Return = Return.String
 
-    case class Load (name: String, node: String, player: String)
+    case class Player (name: String, parent: String, file: String)
 
-    class LocalGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, title: String, tx: TransformerSet, loads: Array[Load], xedges: RDD[PreEdge], xnodes: RDD[PreNode]) extends GLMGenerator (one_phase, date_format)
+    case class Recorder (name: String, parent: String, property: String, file: String)
+
+    class LocalGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, title: String, tx: TransformerSet, players: Array[Player], recorders: Array[Recorder], xedges: RDD[PreEdge], xnodes: RDD[PreNode]) extends GLMGenerator (one_phase, date_format)
     {
         override def name: String = title
 
@@ -63,56 +65,71 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         override def emit_node (node: GLMNode): String =
         {
             if (node.id != tx.transformers(0).node0)
-                super.emit_node (node) + generate_load (node)
+                super.emit_node (node) + generate_load (node) + generate_recorder (node)
             else
                 ""
         }
 
         def generate_load (node: GLMNode): String =
         {
-            loads.find (l ⇒ l.node == node.id) match
+            // ToDo: handle three phase files
+            def one_to_three (file: String, phase: String) = file.substring (0, file.length - 4) + "_" + phase + file.substring (file.length - 4)
+            players.find (player ⇒ player.parent == node.id) match
             {
-                case Some (load) ⇒
-                    val house = load.name
-                    val player = load.player
+                case Some (player: Player) ⇒
                     "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + node.id + "_load\";\n" +
-                        "            parent \"" + node.id + "\";\n" +
-                        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                        "            nominal_voltage " + node.nominal_voltage + "V;\n" +
-                        (if (one_phase)
+                    "        object load\n" +
+                    "        {\n" +
+                    "            name \"" + player.name + "\";\n" +
+                    "            parent \"" + player.parent + "\";\n" +
+                    "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                    "            nominal_voltage " + node.nominal_voltage + "V;\n" +
+                    (if (one_phase)
+                        "            object player\n" +
+                            "            {\n" +
+                            "                property \"constant_power_A\";\n" +
+                            "                file \"" + player.file + "\";\n" +
+                            "            };\n"
+                    else
+                        "            object player\n" +
+                            "            {\n" +
+                            "                property \"constant_power_A\";\n" +
+                            "                file \"" + one_to_three (player.file, "R") + "\";\n" +
+                            "            };\n" +
                             "            object player\n" +
-                                "            {\n" +
-                                "                property \"constant_power_A\";\n" +
-                                "                file \"" + player + "\";\n" +
-                                "            };\n"
+                            "            {\n" +
+                            "                property \"constant_power_B\";\n" +
+                            "                file \"" + one_to_three (player.file, "S") + "\";\n" +
+                            "            };\n" +
+                            "            object player\n" +
+                            "            {\n" +
+                            "                property \"constant_power_C\";\n" +
+                            "                file \"" + one_to_three (player.file, "T") + "\";\n" +
+                            "            };\n") +
+                    "        };\n"
+                case None ⇒ ""
+            }
+        }
+
+        def generate_recorder (node:GLMNode): String =
+        {
+            def add_phase (property: String, phase: String) = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
+            recorders.find (recorder ⇒ recorder.parent == node.id) match
+            {
+                case Some (recorder: Recorder) ⇒
+                    val property =
+                        if (one_phase)
+                            add_phase (recorder.property, "A")
                         else
-                            "            object player\n" +
-                                "            {\n" +
-                                "                property \"constant_power_A\";\n" +
-                                "                file \"input_data/" + house + "_R.csv\";\n" +
-                                "            };\n" +
-                                "            object player\n" +
-                                "            {\n" +
-                                "                property \"constant_power_B\";\n" +
-                                "                file \"input_data/" + house + "_S.csv\";\n" +
-                                "            };\n" +
-                                "            object player\n" +
-                                "            {\n" +
-                                "                property \"constant_power_C\";\n" +
-                                "                file \"input_data/" + house + "_T.csv\";\n" +
-                                "            };\n") +
-                        "        };\n" +
-                        "\n" + // only need a recorder if there is a load
+                            add_phase (recorder.property, "A") + "," + add_phase (recorder.property, "B") + "," + add_phase (recorder.property, "C")
+                        "\n" +
                         "        object recorder\n" +
                         "        {\n" +
-                        "            name \"" + nis_number (node.id) + "_voltage_recorder\";\n" +
-                        "            parent \"" + node.id + "\";\n" +
-                        "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
+                        "            name \"" + recorder.name + "\";\n" +
+                        "            parent \"" + recorder.parent + "\";\n" +
+                        "            property " + property + ";\n" +
                         "            interval 5;\n" +
-                        "            file \"output_data/" + node.id + "_voltage.csv\";\n" +
+                        "            file \"output_data/" + recorder.file + "\";\n" +
                         "        };\n"
                 case None ⇒ ""
             }
@@ -154,7 +171,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         }
     }
 
-    def getLoads (details: JsonObject): Array[Load] =
+    def getPlayers (details: JsonObject): Array[Player] =
     {
         val array = details.getJsonArray ("players")
         if (null == array)
@@ -162,7 +179,20 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         else
         {
             val buffer = for (element: JsonObject ← array.getValuesAs (classOf[JsonObject]).asScala) // ToDo: more robust checking
-                yield Load (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("player", ""))
+                yield Player (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("player", ""))
+            buffer.toArray
+        }
+    }
+
+    def getRecorders (details: JsonObject): Array[Recorder] =
+    {
+        val array = details.getJsonArray ("recorders")
+        if (null == array)
+            Array()
+        else
+        {
+            val buffer = for (element: JsonObject ← array.getValuesAs (classOf[JsonObject]).asScala) // ToDo: more robust checking
+                yield Recorder (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("property", ""), element.getString ("file", ""))
             buffer.toArray
         }
     }
@@ -175,7 +205,8 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
             val island = details.getString ("island", "")
             if ("" != island)
             {
-                val loads = getLoads (details)
+                val players = getPlayers (details)
+                val recorders = getRecorders (details)
                 val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
                 format.setTimeZone (TimeZone.getTimeZone ("UTC"))
                 val gridlabd = new GridLABD (
@@ -187,7 +218,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
                 val (edges, nodes) = i.prepare (island)
                 val transformers: Transformers = new Transformers (spark)
                 val tdata = transformers.getTransformerData ().keyBy (_.transformer.id).join (edges.keyBy (_.id_equ)).map (_._2._1).collect
-                val generator = new LocalGLMGenerator (one_phase = true, date_format = format, title = island, tx = TransformerSet (tdata), loads = loads, xedges = edges, xnodes = nodes)
+                val generator = new LocalGLMGenerator (one_phase = true, date_format = format, title = island, tx = TransformerSet (tdata), players = players, recorders = recorders, xedges = edges, xnodes = nodes)
                 gridlabd.export (generator)
                 val glm = spark.sparkContext.textFile (hdfs.getUri.toString + "/simulation/" + island + "/" + island + ".glm")
                 glm.collect.mkString ("\n")
