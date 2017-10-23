@@ -22,37 +22,25 @@ define
         var PlayerChooser;
         var PlayerChoices = [
             {
-                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService'",
+                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService' from /data with cosΦ = 1.0",
                 sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
                 directory: "/data/", // hard coded random loads
-                execute: function (item, callback)
-                {
-                    cimfiles.fetch (item.directory,
-                        function (response)
-                        {
-                            if (response.status == "FAIL")
-                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-                            else
-                            {
-                                var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
-                                item.files = response.result.files.map (function (item) { return (root + item.path); });
-                                cimquery.query (
-                                    item.sql,
-                                    function (data)
-                                    {
-                                        function getRandomInt (min, max)
-                                        {
-                                            min = Math.ceil (min);
-                                            max = Math.floor (max);
-                                            return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
-                                        }
-                                        callback (data.map (function (row) { row.player = item.files[getRandomInt (0, item.files.length)]; return (row); }));
-                                    }
-                                );
-                            }
-                        }
-                   );
-               }
+                phi: 1.0,
+                execute: cosphi
+            },
+            {
+                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService' from /data with cosΦ = 0.95",
+                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                directory: "/data/", // hard coded random loads
+                phi: 0.95,
+                execute: cosphi
+            },
+            {
+                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService' from /data with cosΦ = 0.9",
+                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                directory: "/data/", // hard coded random loads
+                phi: 0.9,
+                execute: cosphi
             }
         ];
 
@@ -62,20 +50,20 @@ define
             {
                 title: "All cable currents",
                 sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
-                execute: function (item, callback)
+                execute: function (choice, callback)
                 {
                     cimquery.query (
-                        item.sql,
+                        choice.sql,
                         callback);
                 }
             },
             {
                 title: "All node voltages",
                 sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
-                execute: function (item, callback)
+                execute: function (choice, callback)
                 {
                     cimquery.query (
-                        item.sql,
+                        choice.sql,
                         callback);
                 }
             }
@@ -99,10 +87,17 @@ define
         //             "player": "/data/HASXXXXX.csv
         //         },
         //         ...
+        //     ],
+        //     recorders: [
+        //         {
+        //            {
+        //                "name": "MUFYYY_topo_voltage_recorder",
+        //                "parent": "MUFYY_topo",
+        //                "property": "voltage",
+        //                "file": "output_data/MUFYYY_topo_voltage.csv"
+        //            },
+        //     ...
         //     ]
-        //
-        //
-        //
         // }
         var TheSimulation;
 
@@ -200,6 +195,134 @@ define
             xmlhttp.send ();
         }
 
+        function cosphi (choice, callback)
+        {
+            function generate_file (source, target, phi, done)
+            {
+                phi = phi || 1.0;
+                if (Math.abs (phi) > 1.0)
+                    phi = 1.0;
+
+                function fromPolar (magnitude, angle, degrees)
+                {
+                    var a;
+                    if (degrees)
+                        a = angle * 3.1415926 / 180.0;
+                    else
+                        a = angle
+                    return ({ real: magnitude * Math.cos (a), imag: magnitude * Math.sin (a)});
+                }
+
+                var rotation = { real: phi, imag: Math.sqrt (1.0 - (phi * phi)) };
+
+                function times (c1, c2)
+                {
+                    return ({ real: c1.real * c2.real - c1.imag * c2.imag, imag: c1.imag * c2.real + c1.real * c2.imag });
+                }
+
+                function rotate (line)
+                {
+                    var ret;
+
+                    var parts = line.split (",");
+                    if ((parts.length != 2) && (parts.length != 3))
+                        ret = line;
+                    else
+                    {
+                        var original;
+                        if (parts.length == 2) // 2017-07-18 00:00:00 UTC,0.25<0d
+                        {
+                            var real_mag = parts[1].split ("<")
+                            var degrees = false;
+                            if (real_mag[1].endsWith ("d"))
+                            {
+                                real_mag[1] = real_mag[1].substring (0, real_mag[1].length - 1);
+                                degrees = true;
+                            }
+                            original = fromPolar (real_mag[0], real_mag[1], degrees);
+                        }
+                        else // 2017-07-18 00:15:00 UTC,0.03,0.004
+                            original = { real: parts[1], imag: parts[2]};
+                        var transformed = times (original, rotation);
+                        ret = parts[0] + "," + transformed.real + "," + transformed.imag;
+                    }
+
+                    return (ret);
+                }
+
+                cimfiles.get (source,
+                    function (data)
+                    {
+                        var lines = data.split ("\n");
+                        var modified = lines.map (rotate).join ("\n");
+                        cimfiles.put (target, modified, done);
+                    },
+                    done);
+            }
+
+            cimfiles.fetch (choice.directory,
+                function (response)
+                {
+                    if (response.status == "FAIL")
+                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                    else
+                    {
+                        var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
+                        choice.files = response.result.files.map (function (item) { return ({ house: item.path.substring (0, item.path.indexOf (".")), file: root + item.path }); });
+                        cimquery.query (
+                            choice.sql,
+                            function (data)
+                            {
+                                function getRandomInt (min, max)
+                                {
+                                    min = Math.ceil (min);
+                                    max = Math.floor (max);
+                                    return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
+                                }
+                                var houses = data.length;
+                                var recorders = data.map (
+                                    function (row)
+                                    {
+                                        var house = row.parent.substring (0, row.parent.indexOf ("_"));
+                                        var match = choice.files.filter (function (x) { return (x.house == house); });
+                                        if (0 != match.length)
+                                            row.player = match[0].file;
+                                        else
+                                        {
+                                            row.fake = true;
+                                            row.player = choice.files[getRandomInt (0, choice.files.length)].file;
+                                        }
+                                        return (row);
+                                    }
+                                );
+
+                                // transform each file
+                                var todo = recorders.length;
+                                recorders.forEach (
+                                    function (pl)
+                                    {
+                                        var target = "/" + getStation () + "/" + getIsland () + "/input_data/" + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
+                                        generate_file (pl.player, target, choice.phi,
+                                            function (response)
+                                            {
+                                                if (response.status == "OK")
+                                                    pl.player = target;
+                                                else
+                                                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                                                todo = todo - 1;
+                                                if (0 == todo)
+                                                    callback (recorders);
+                                            }
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
+                }
+           );
+        }
+
         function query_players ()
         {
             // reset the list
@@ -232,6 +355,7 @@ define
                             items = items - 1;
                             if (0 == items)
                                 document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+
                         }
                     );
                 }

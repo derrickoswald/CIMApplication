@@ -162,7 +162,7 @@ define
 
         /**
          * @summary Get the file at the given path.
-         * @description Invoke the server-side function to get file gata execute the callback.
+         * @description Invoke the server-side function to get file data and execute the callback.
          * @param {string} path - the path to list (this is forced to start with a slash).
          * @param {function} fn - the callback function with signature fn (text).
          * @param {function} err - the JSON callback function for an error with signature fn (response).
