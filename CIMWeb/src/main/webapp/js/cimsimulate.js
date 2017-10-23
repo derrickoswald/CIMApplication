@@ -23,7 +23,36 @@ define
         var PlayerChoices = [
             {
                 title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService'",
-                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment"
+                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                directory: "/data/", // hard coded random loads
+                execute: function (item, callback)
+                {
+                    cimfiles.fetch (item.directory,
+                        function (response)
+                        {
+                            if (response.status == "FAIL")
+                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                            else
+                            {
+                                var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
+                                item.files = response.result.files.map (function (item) { return (root + item.path); });
+                                cimquery.query (
+                                    item.sql,
+                                    function (data)
+                                    {
+                                        function getRandomInt (min, max)
+                                        {
+                                            min = Math.ceil (min);
+                                            max = Math.floor (max);
+                                            return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
+                                        }
+                                        callback (data.map (function (row) { row.player = item.files[getRandomInt (0, item.files.length)]; return (row); }));
+                                    }
+                                );
+                            }
+                        }
+                   );
+               }
             }
         ];
 
@@ -32,11 +61,23 @@ define
         var RecorderChoices = [
             {
                 title: "All cable currents",
-                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a"
+                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
+                execute: function (item, callback)
+                {
+                    cimquery.query (
+                        item.sql,
+                        callback);
+                }
             },
             {
                 title: "All node voltages",
-                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n"
+                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
+                execute: function (item, callback)
+                {
+                    cimquery.query (
+                        item.sql,
+                        callback);
+                }
             }
         ];
 
@@ -161,61 +202,48 @@ define
 
         function query_players ()
         {
-            directory = "/data/"; // hard coded random loads
+            // reset the list
+            TheSimulation.players = [];
+            document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
 
-            cimfiles.fetch (directory,
-                function (response)
+            var queries = [];
+            PlayerChooser.context.items.forEach (
+                function (item)
                 {
-                    if (response.status == "FAIL")
-                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-                    else
+                    if ("" !== item.value)
                     {
-                        var root = response.result.root.substring (response.result.filesystem.length); // like hdfs://0eef240033b6:8020/data/ => /data/
-                        var randomfiles = response.result.files.map (function (item) { return (root + item.path); });
-                        var queries = [];
-                        PlayerChooser.context.items.forEach (
-                            function (item)
-                            {
-                                if ("" !== item.value)
-                                {
-                                    // look it up in the pre-defined choices
-                                    var selected = PlayerChoices.filter (function (x) { return (x.title == item.value); });
-                                    if (0 != selected.length)
-                                        queries.push (selected[0]);
-                                    else
-                                        queries.push (item.value); // assume raw SQL
-                                }
-                            });
-                        var query = "";
-                        // union all queries
-                        queries.forEach (
-                            function (x)
-                            {
-                                if (query != "") query = query + " union ";
-                                query = query + x.sql;
-                            }
-                        );
-                        cimquery.query (
-                            query,
-                            function (data)
-                            {
-                                function getRandomInt (min, max)
-                                {
-                                    min = Math.ceil (min);
-                                    max = Math.floor (max);
-                                    return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
-                                }
-                                TheSimulation.players = data.map (function (item) { item.player = randomfiles[getRandomInt (0, randomfiles.length)]; return (item); });
-                                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
-                            }
-                        );
+                        // look it up in the pre-defined choices
+                        var selected = PlayerChoices.filter (function (x) { return (x.title == item.value); });
+                        if (0 != selected.length)
+                            queries = queries.concat (selected);
+                        else
+                            TheSimulation.players.push (JSON.parse (item.value)); // assume raw JSON
                     }
+                }
+            );
+            var items = queries.length;
+            queries.forEach (
+                function (item)
+                {
+                    item.execute (item,
+                        function (list)
+                        {
+                            TheSimulation.players = TheSimulation.players.concat (list);
+                            items = items - 1;
+                            if (0 == items)
+                                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+                        }
+                    );
                 }
             );
         }
 
         function query_recorders ()
         {
+            // reset the list
+            TheSimulation.recorders = [];
+            document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+
             var queries = [];
             RecorderChooser.context.items.forEach (
                 function (item)
@@ -225,32 +253,31 @@ define
                         // look it up in the pre-defined choices
                         var selected = RecorderChoices.filter (function (x) { return (x.title == item.value); });
                         if (0 != selected.length)
-                            queries.push (selected[0]);
+                            queries = queries.concat (selected);
                         else
-                            queries.push (item.value); // assume raw SQL
+                            TheSimulation.recorders.push (JSON.parse (item.value)); // assume raw JSON
                     }
                 });
-            var query = "";
-            // union all queries
+            var items = queries.length;
             queries.forEach (
-                function (x)
+                function (item)
                 {
-                    if (query != "") query = query + " union ";
-                    query = query + x.sql;
-                }
-            );
-            cimquery.query (
-                query,
-                function (data)
-                {
-                    TheSimulation.recorders = data
-                    document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+                    item.execute (item,
+                        function (list)
+                        {
+                            TheSimulation.recorders = TheSimulation.recorders.concat (list);
+                            items = items - 1;
+                            if (0 == items)
+                                document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+                        }
+                    );
                 }
             );
         }
 
         function do_refresh ()
         {
+            TheSimulation.name = document.getElementById ("simulation_name").value;
             query_players ();
             query_recorders ();
         }
@@ -452,9 +479,9 @@ define
                 // simple TopologicalIsland query
                 // "select i.IdentifiedObject.mRID from TopologicalIsland i",
                 // ToDo: this query assumes transformers are in a Bay which is directly in a Substation
-                // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Bay b, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s, Bay b where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 // ToDo: this query assumes transformers are directly in a Substation
-                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s        where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 render
             );
         }

@@ -118,7 +118,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      * The edges may have parallel elements, and thus this is a "list of lists"
      * in the form of the generic Scala trait Iterable for iterable collections.
      *
-     * Only edges defined by this mehod are exported, so it is important to include
+     * Only edges defined by this method are exported, so it is important to include
      * exactly the edges required by the network, no more, no less.
      *
      * @return The edges to be included in the export.
