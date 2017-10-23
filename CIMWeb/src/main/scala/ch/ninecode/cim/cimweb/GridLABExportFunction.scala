@@ -129,7 +129,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
                         "            parent \"" + recorder.parent + "\";\n" +
                         "            property " + property + ";\n" +
                         "            interval 5;\n" +
-                        "            file \"output_data/" + recorder.file + "\";\n" +
+                        "            file \"" + recorder.file + "\";\n" +
                         "        };\n"
                 case None ⇒ ""
             }
