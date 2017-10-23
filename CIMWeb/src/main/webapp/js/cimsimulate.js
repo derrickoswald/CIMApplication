@@ -50,22 +50,14 @@ define
             {
                 title: "All cable currents",
                 sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
-                execute: function (choice, callback)
-                {
-                    cimquery.query (
-                        choice.sql,
-                        callback);
-                }
+                target_directory: "output_data/",
+                execute: outfile
             },
             {
                 title: "All node voltages",
                 sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
-                execute: function (choice, callback)
-                {
-                    cimquery.query (
-                        choice.sql,
-                        callback);
-                }
+                target_directory: "output_data/",
+                execute: outfile
             }
         ];
 
@@ -119,16 +111,60 @@ define
             return ((null != TheSimulation) ? TheSimulation.cim : "");
         }
 
+        /**
+         * @summary Call the gridlab RESTful service.
+         * @description Invokes the server side gridlab function.
+         * @param {string} simulation - the simulation file name.
+         * @function exportSimulation
+         * @memberOf module:cimsimulate
+         */
+        function exportSimulation (simulation, callback)
+        {
+            var url;
+            var xmlhttp;
+
+            simulation = simulation.startsWith ("/") ? simulation : "/" + simulation;
+            url = util.home () + "cim/gridlab" + simulation;
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                        callback (xmlhttp.responseText);
+                    else
+                        alert ("status: " + xmlhttp.status);
+            };
+            xmlhttp.send ();
+        }
+
         function do_simulate ()
         {
             if (null != TheSimulation)
             {
-                var name = "/" + getStation () +"/" + encodeURIComponent (getName ()) + ".json";
-                var simulation = JSON.stringify (TheSimulation, null, 4);
+                var name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + ".json";
+                var glm_name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + "/" + encodeURIComponent (getName ()) + ".glm";
+                TheSimulation.glm = glm_name;
+                var simulation = jsonify (TheSimulation);
                 function callback (response)
                 {
                     if (response.status == "OK")
-                        alert ("simulating...")
+                        exportSimulation (name,
+                            function (glm)
+                            {
+                                cimfiles.put (glm_name, glm,
+                                    function (response)
+                                    {
+                                        if (response.status == "OK")
+                                        {
+                                            document.getElementById ("cim").innerHTML = "<pre>\n" +  simulation + "\n</pre>";
+                                            alert ("simulating...");
+                                        }
+                                        else
+                                            alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                                    }
+                                );
+                            }
+                        );
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }
@@ -301,12 +337,13 @@ define
                                 recorders.forEach (
                                     function (pl)
                                     {
-                                        var target = "/" + getStation () + "/" + getIsland () + "/input_data/" + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
+                                        var name = "input_data/" + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
+                                        var target = "/" + getStation () + "/" + getName () + "/" + name;
                                         generate_file (pl.player, target, choice.phi,
                                             function (response)
                                             {
                                                 if (response.status == "OK")
-                                                    pl.player = target;
+                                                    pl.player = name;
                                                 else
                                                     alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                                                 todo = todo - 1;
@@ -321,6 +358,22 @@ define
                     }
                 }
            );
+        }
+
+        function outfile (choice, callback)
+        {
+            var dir = "/" + getStation () + "/" + getName () + "/" + choice.target_directory;
+            cimfiles.put (dir, "",
+                function (response)
+                {
+                    if (response.status == "OK")
+                        cimquery.query (
+                            choice.sql,
+                            callback);
+                    else
+                        alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                }
+            );
         }
 
         function query_players ()
@@ -498,7 +551,7 @@ define
             if (("undefined" != typeof (island)) && ("" != island))
             {
                 // check if the rdf exists already
-                directory = "/" + station + "/" + island + "/";
+                directory = "/" + station + "/" + name + "/";
                 rdf = island + ".rdf";
                 cim = directory + rdf;
 
@@ -680,7 +733,7 @@ define
                                         TheSimulation = JSON.parse (data);
                                         render ([ { island:  getIsland (), station: getStation () } ]);
                                     },
-                                    function (response) { alert (JSON.stringify (response, null, 4)); }
+                                    function (response) { alert (jsonify (response)); }
                                 );
                             }
                             else
