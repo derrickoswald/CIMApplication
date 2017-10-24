@@ -383,6 +383,7 @@ define
         function query_players ()
         {
             // reset the list
+            TheSimulation.player_choices = [];
             TheSimulation.players = [];
             document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
 
@@ -405,6 +406,7 @@ define
             queries.forEach (
                 function (item)
                 {
+                    TheSimulation.player_choices.push (item.title);
                     item.execute (item,
                         function (list)
                         {
@@ -422,6 +424,7 @@ define
         function query_recorders ()
         {
             // reset the list
+            TheSimulation.recorder_choices = [];
             TheSimulation.recorders = [];
             document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
 
@@ -443,6 +446,7 @@ define
             queries.forEach (
                 function (item)
                 {
+                    TheSimulation.recorder_choices.push (item.title);
                     item.execute (item,
                         function (list)
                         {
@@ -646,6 +650,8 @@ define
                     "</span>";
                 PlayerChooser = new chooser.Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
             }
+            if (null != data[0].player_choices)
+                PlayerChooser.context.items = data[0].player_choices.map (function (item) { return ( { value: item }); });
             PlayerChooser.render ();
             if (null == RecorderChooser)
             {
@@ -655,6 +661,8 @@ define
                     "</span>";
                 RecorderChooser = new chooser.Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
             }
+            if (null != data[0].recorder_choices)
+                RecorderChooser.context.items = data[0].recorder_choices.map (function (item) { return ( { value: item } ); });
             RecorderChooser.render ();
             if (null != TheSimulation)
                 document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
