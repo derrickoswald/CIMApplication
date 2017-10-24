@@ -60,9 +60,14 @@ EXPOSE 8080
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install \
     -yq --no-install-recommends  \
-      vim \
+      python python3 vim sqlite3 r-base p7zip net-tools \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install GridLAB-D
+COPY CIMEar/gridlabd_3.2.0-2_amd64.deb /opt/util/gridlabd_3.2.0-2_amd64.deb
+RUN dpkg -i /opt/util/gridlabd_3.2.0-2_amd64.deb \
+  && rm /opt/util/gridlabd_3.2.0-2_amd64.deb
 
 # set up environment
 RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc

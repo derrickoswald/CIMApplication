@@ -22,6 +22,7 @@ import javax.ws.rs.Produces
 import javax.ws.rs.core.Response
 
 import scala.collection.JavaConversions._
+
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl

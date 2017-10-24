@@ -70,11 +70,16 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
         status = FAIL
     }
 
+    def getJSON: JsonStructure =
+    {
+        Json.createObjectBuilder.add ("status", status).add ("message", message).add ("result", result).build
+    }
+
     override def toString: String =
     {
         val string = new StringWriter
         val writer = getPrettyJsonWriterFactory.createWriter (string)
-        val data = Json.createObjectBuilder.add ("status", status).add ("message", message).add ("result", result).build
+        val data = getJSON
         writer.write (data)
         writer.close ()
         string.toString

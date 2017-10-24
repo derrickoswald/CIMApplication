@@ -116,7 +116,7 @@ define
         }
 
         /**
-         * @summary Call the gridlab RESTful service.
+         * @summary Call the gridlab RESTful service to export the simulation.
          * @description Invokes the server side gridlab function.
          * @param {string} simulation - the simulation file name.
          * @function exportSimulation
@@ -141,6 +141,33 @@ define
             xmlhttp.send ();
         }
 
+        /**
+         * @summary Call the gridlab RESTful service to run the simulation.
+         * @description Invokes the server side gridlab function.
+         * @param {string} simulation - the simulation file name.
+         * @function runSimulation
+         * @memberOf module:cimsimulate
+         */
+        function runSimulation (simulation, callback)
+        {
+            var url;
+            var xmlhttp;
+
+            simulation = simulation.startsWith ("/") ? simulation : "/" + simulation;
+            url = util.home () + "cim/gridlab" + simulation;
+            xmlhttp = util.createCORSRequest ("POST", url);
+            xmlhttp.onreadystatechange = function ()
+            {
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                        callback (JSON.parse (xmlhttp.responseText))
+                    else
+                        alert ("status: " + xmlhttp.status);
+            };
+            xmlhttp.send ();
+        }
+
+
         function do_simulate ()
         {
             if (null != TheSimulation)
@@ -161,7 +188,8 @@ define
                                         if (response.status == "OK")
                                         {
                                             document.getElementById ("cim").innerHTML = "<pre>\n" +  simulation + "\n</pre>";
-                                            alert ("simulating...");
+                                            //alert ("simulating...");
+                                            runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
                                         }
                                         else
                                             alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
