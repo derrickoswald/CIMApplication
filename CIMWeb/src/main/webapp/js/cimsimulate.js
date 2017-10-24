@@ -98,6 +98,10 @@ define
         {
             return ((null != TheSimulation) ? TheSimulation.name : "");
         }
+        function getDescription ()
+        {
+            return ((null != TheSimulation) ? TheSimulation.description : "");
+        }
         function getIsland ()
         {
             return ((null != TheSimulation) ? TheSimulation.island : "");
@@ -455,6 +459,7 @@ define
         function do_refresh ()
         {
             TheSimulation.name = document.getElementById ("simulation_name").value;
+            TheSimulation.description = document.getElementById ("simulation_description").value;
             query_players ();
             query_recorders ();
         }
@@ -593,6 +598,11 @@ define
                 "          <small id='nameHelp' class='form-text text-muted'>Enter a unique name for the simulation - used as a file name for the details.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
+                "          <label for='simulation_description'>Description</label>\n" +
+                "          <input  id='simulation_description' type='text' class='form-control'aria-describedby='descriptionHelp' placeholder='Enter a description for the simulation' value='{{description}}'>\n" +
+                "          <small id='descriptionHelp' class='form-text text-muted'>Enter a user facing description for the simulation - used for drop down choice title.</small>\n" +
+                "        </div>\n" +
+                "        <div class='form-group'>\n" +
                 "          <label for='simulation_island'>Island</label>\n" +
                 "          <select id='simulation_island' class='form-control' name='island'>\n" +
                 "{{#data}}\n" +
@@ -619,6 +629,7 @@ define
                 simulate_template,
                 {
                     name: getName,
+                    description: getDescription,
                     is_selected: function () { return ((this.mRID == getIsland ()) ? " selected" : ""); },
                     data: data
                 }
@@ -731,7 +742,7 @@ define
                                     function (data)
                                     {
                                         TheSimulation = JSON.parse (data);
-                                        render ([ { island:  getIsland (), station: getStation () } ]);
+                                        render ([ TheSimulation ]);
                                     },
                                     function (response) { alert (jsonify (response)); }
                                 );
@@ -740,8 +751,8 @@ define
                                 query_islands ();
                         });
                 });
-            else+
-                render ([ { island:  getIsland (), station: getStation () } ]);
+            else
+                render ([ TheSimulation ]);
         }
 
         return (
