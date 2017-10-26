@@ -115,7 +115,7 @@
             <dependency>
                 <groupId>ch.ninecode.cim</groupId>
                 <artifactId>CIMConnector</artifactId>
-                <version>1.0-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -45,6 +45,8 @@ define
         ];
 
         // User specified recorder object queries
+        // see http://gridlabd.me.uvic.ca/wiki/index.php/Power_Flow_User_Guide#Node_Parameters
+        // see http://gridlabd.me.uvic.ca/wiki/index.php/Power_Flow_User_Guide#Link_Parameters
         var RecorderChooser;
         var RecorderChoices = [
             {
@@ -66,6 +68,12 @@ define
                 execute: outfile
             },
             {
+                title: "All transformer power flows",
+                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_power_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power_out' property, 'Volt-Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_power.csv') file  from PowerTransformer p",
+                target_directory: "output_data/",
+                execute: outfile
+            },
+            {
                 title: "All transformer output currents",
                 sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_out' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_current.csv') file  from PowerTransformer p",
                 target_directory: "output_data/",
@@ -77,36 +85,44 @@ define
                 target_directory: "output_data/",
                 execute: outfile
             }
-
         ];
-
-
-        // The parsed CIM data.
-        // var CIM_Data;
 
         // The simulation details.
         // provisional schema:
         // {
         //     name: <the name of the simulation and this JSON file>
+        //     description: <textual description suitable for GUI display>,
         //     island: <topological node of the island to simulate>,
         //     station: <station of the island to simulate>,
-        //     cim: <CIM RDF file containing the island>
+        //     cim: <CIM RDF file containing the island>,
+        //     glm: <generated GridLAB-D Model file>
+        //     player_choices: [
+        //        <the titles of player selections from the drop down menu>,
+        //        ...
+        //     ],
         //     players: [
         //         {
-        //             "name": "HASXXXXX_load",
-        //             "node": "HASXXXXX_fuse_topo",
-        //             "player": "/data/HASXXXXX.csv
+        //            "name": "HAS2987_load",
+        //            "parent": "HAS2987_fuse_topo",
+        //            "property": "constant_power",
+        //            "unit": "Watt",
+        //            "player": "input_data/HAS2987.csv"
         //         },
         //         ...
         //     ],
+        //     recorder_choices: [
+        //        <the titles of recorder selections from the drop down menu>,
+        //        ...
+        //     ],
         //     recorders: [
         //         {
-        //            {
-        //                "name": "MUFYYY_topo_voltage_recorder",
-        //                "parent": "MUFYY_topo",
-        //                "property": "voltage",
-        //                "file": "output_data/MUFYYY_topo_voltage.csv"
-        //            },
+        //            "name": "TRA2755_losses_recorder",
+        //            "parent": "TRA2755",
+        //            "property": "power_losses",
+        //            "unit": "Volt-Amperes",
+        //            "interval": 900,
+        //            "file": "output_data/TRA2755_losses.csv"
+        //        },
         //     ...
         //     ]
         // }
@@ -132,6 +148,10 @@ define
         function getCIM ()
         {
             return ((null != TheSimulation) ? TheSimulation.cim : "");
+        }
+        function getGLM ()
+        {
+            return ((null != TheSimulation) ? TheSimulation.glm : "");
         }
 
         /**
@@ -186,8 +206,13 @@ define
             xmlhttp.send ("your lucky number is " + Math.floor (Math.random () * (1000000 - 0)) + 0);
         }
 
-
-        function do_simulate ()
+        /**
+         * @summary Save the simulation .json, and the GridLAB-D model .glm files.
+         * @description Store the simulation .json gathered from the form data.
+         * @function do_save
+         * @memberOf module:cimsimulate
+         */
+        function do_save ()
         {
             if (null != TheSimulation)
             {
@@ -207,8 +232,7 @@ define
                                         if (response.status == "OK")
                                         {
                                             document.getElementById ("cim").innerHTML = "<pre>\n" +  simulation + "\n</pre>";
-                                            //alert ("simulating...");
-                                            runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
+                                            alert ("simulation " + name + " saved");
                                         }
                                         else
                                             alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
@@ -223,6 +247,21 @@ define
             }
         }
 
+        /**
+         * @summary Run the simulation using GridLAB-D to generate the output files.
+         * @description Execute gridlabd for the current simulation.
+         * @function do_simulate
+         * @memberOf module:cimsimulate
+         */
+        function do_simulate ()
+        {
+            if (null != TheSimulation)
+            {
+                var name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + ".json";
+                runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
+            }
+        }
+
         function htmlify (str)
         {
             return (str.replace (/</g, "&lt;").replace (/>/g, "&gt;"))
@@ -232,20 +271,6 @@ define
         {
             return (JSON.stringify (data, null, 4))
         }
-
-//        function parse_rdf (data)
-//        {
-//            var blob;
-//
-//            function callback (result) // {context: context, parsed: parsed}
-//            {
-//                CIM_Data = result.parsed;
-//            }
-//
-//            blob = new Blob ([data], {type : 'application/xml'});
-//            cim.read_xml_blob (blob, callback)
-//        }
-
 
         /**
          * @summary Read the file contents in Spark.
@@ -282,6 +307,13 @@ define
             xmlhttp.send ();
         }
 
+        /**
+         * Fake complex load data from simple meter data.
+         * @param {object} choice - the user selected player file entry with output directory, sql query and cosΦ.
+         * @param {function} callback - the function accepting the player array: function (response)
+         * @function cosphi
+         * @memberOf module:cimsimulate
+         */
         function cosphi (choice, callback)
         {
             function generate_file (source, target, phi, done)
@@ -367,7 +399,7 @@ define
                                     return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
                                 }
                                 var houses = data.length;
-                                var recorders = data.map (
+                                var players = data.map (
                                     function (row)
                                     {
                                         var house = row.parent.substring (0, row.parent.indexOf ("_"));
@@ -384,8 +416,8 @@ define
                                 );
 
                                 // transform each file
-                                var todo = recorders.length;
-                                recorders.forEach (
+                                var todo = players.length;
+                                players.forEach (
                                     function (pl)
                                     {
                                         var name = "input_data/" + (pl.fake ? "fake_" : "") + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
@@ -399,7 +431,7 @@ define
                                                     alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                                                 todo = todo - 1;
                                                 if (0 == todo)
-                                                    callback (recorders);
+                                                    callback (players);
                                             }
                                         );
                                     }
@@ -535,9 +567,6 @@ define
             document.getElementById ("title").innerHTML = name;
             function callback (result)
             {
-                // not sure if we need this
-                // parse_rdf (TheRDF);
-
                 // since the island is loaded, reset the select_island dropdown
                 document.getElementById ("simulation_island").innerHTML = "<option value='" + station + "/" + island + "' selected>" + station + " (" + island + ")</option>";
             }
@@ -667,6 +696,7 @@ define
                 "        <div id='recorders' class='form-group'>\n" +
                 "        </div>\n" +
                 "        <button id='do_refresh' name='do_refresh' type='button' class='btn btn-primary'>Refresh</button>\n" +
+                "        <button id='do_save' name='do_save' type='button' class='btn btn-primary'>Save</button>\n" +
                 "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
                 "      </form>\n" +
                 "      <div id='cim'>\n" +
@@ -688,6 +718,7 @@ define
             document.getElementById ("main").innerHTML = text;
             document.getElementById ("simulation_island").onchange = select_island;
             document.getElementById ("do_refresh").onclick = do_refresh;
+            document.getElementById ("do_save").onclick = do_save;
             document.getElementById ("do_simulate").onclick = do_simulate;
             if (null == PlayerChooser)
             {
