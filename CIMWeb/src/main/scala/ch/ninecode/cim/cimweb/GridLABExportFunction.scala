@@ -42,7 +42,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
 
     case class Player (name: String, parent: String, file: String)
 
-    case class Recorder (name: String, parent: String, property: String, file: String)
+    case class Recorder (name: String, parent: String, property: String, interval: Double, file: String)
 
     class LocalGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, title: String, tx: TransformerSet, players: Array[Player], recorders: Array[Recorder], xedges: RDD[PreEdge], xnodes: RDD[PreNode]) extends GLMGenerator (one_phase, date_format)
     {
@@ -64,13 +64,13 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
 
         override def emit_edge (edges: Iterable[GLMEdge]): String =
         {
-            super.emit_edge (edges) + generate_edge_recorder (edges)
+            super.emit_edge (edges) + generate_edge_recorders (edges)
         }
 
         override def emit_node (node: GLMNode): String =
         {
             if (node.id != tx.transformers(0).node0)
-                super.emit_node (node) + generate_load (node) + generate_node_recorder (node)
+                super.emit_node (node) + generate_load (node) + generate_node_recorders (node)
             else
                 ""
         }
@@ -79,16 +79,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         {
             val name = transformer.transformer_name
 
-            super.emit_transformer (transformer) +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + name + "_current_recorder\";\n" +
-                "            parent \"" + name + "\";\n" +
-                "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
-                "            interval 5;\n" +
-                "            file \"output_data/" + name + "_current.csv\";\n" +
-                "        };\n"
+            super.emit_transformer (transformer) + generate_transformer_recorders (transformer)
         }
 
         def generate_load (node: GLMNode): String =
@@ -132,68 +123,95 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
             }
         }
 
-        def generate_node_recorder (node:GLMNode): String =
+        def add_phase (property: String, phase: String): String = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
+
+        def property_phased (property: String): String =
         {
-            def add_phase (property: String, phase: String) = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
-            recorders.find (recorder ⇒ recorder.parent == node.id) match
-            {
-                case Some (recorder: Recorder) ⇒
-                    val property =
-                        if (one_phase)
-                            add_phase (recorder.property, "A")
-                        else
-                            add_phase (recorder.property, "A") + "," + add_phase (recorder.property, "B") + "," + add_phase (recorder.property, "C")
+            if (one_phase)
+                add_phase (property, "A")
+            else
+                add_phase (property, "A") + "," + add_phase (property, "B") + "," + add_phase (property, "C")
+        }
+
+        def generate_node_recorders (node:GLMNode): String =
+        {
+            val matching_recorders = recorders.filter (recorder ⇒ recorder.parent == node.id)
+            val s = new StringBuilder
+            matching_recorders.foreach (
+                recorder ⇒
+                    s.append (
                         "\n" +
                         "        object recorder\n" +
                         "        {\n" +
                         "            name \"" + recorder.name + "\";\n" +
                         "            parent \"" + recorder.parent + "\";\n" +
-                        "            property " + property + ";\n" +
-                        "            interval 5;\n" +
+                        "            property " + property_phased (recorder.property) + ";\n" +
+                        "            interval " + recorder.interval + ";\n" +
                         "            file \"" + recorder.file + "\";\n" +
                         "        };\n"
-                case None ⇒ ""
-            }
+                    )
+            )
+            s.toString
         }
 
-        def generate_edge_recorder (edges: Iterable[GLMEdge]): String =
+        def generate_edge_recorders (edges: Iterable[GLMEdge]): String =
         {
-            def add_phase (property: String, phase: String) = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
             // a little tricky here, the line configuration is maybe parallel cables, but the recorder may ask for any of the cables
             val edgeids = edges.map (_.id).toArray
-            recorders.find (recorder ⇒ edgeids.contains (recorder.parent)) match
-            {
-                case Some (recorder: Recorder) ⇒
+            val matching_recorders = recorders.filter (recorder ⇒ edgeids.contains (recorder.parent))
+            val s = new StringBuilder
+            matching_recorders.foreach (
+                recorder ⇒
+                {
                     val edge = edges.head
                     val cls = edge.el.getClass.getName
                     val clazz = cls.substring (cls.lastIndexOf(".") + 1)
                     def current_recorder: String =
                     {
-                        val property =
-                            if (one_phase)
-                                add_phase (recorder.property, "A")
-                            else
-                                add_phase (recorder.property, "A") + "," + add_phase (recorder.property, "B") + "," + add_phase (recorder.property, "C")
                         "\n" +
-                            "        object recorder\n" +
-                            "        {\n" +
-                            "            name \"" + recorder.name + "\";\n" +
-                            "            parent \"" + recorder.parent + "\";\n" +
-                            "            property " + property + ";\n" +
-                            "            interval 5;\n" +
-                            "            file \"" + recorder.file + "\";\n" +
-                            "        };\n"
+                        "        object recorder\n" +
+                        "        {\n" +
+                        "            name \"" + recorder.name + "\";\n" +
+                        "            parent \"" + recorder.parent + "\";\n" +
+                        "            property " + property_phased (recorder.property) + ";\n" +
+                        "            interval " + recorder.interval + ";\n" +
+                        "            file \"" + recorder.file + "\";\n" +
+                        "        };\n"
                     }
 
                     clazz match
                     {
                         case "ACLineSegment" ⇒
-                            current_recorder
+                            s.append (current_recorder)
                         case _ ⇒
-                            ""
+
                     }
-                case None ⇒ ""
-            }
+                }
+            )
+            s.toString
+        }
+
+        def generate_transformer_recorders (transformer: TransformerSet): String =
+        {
+            // a little tricky here, transformer.transformer_name may be the ganged name, e.g. TRA1234_TRA1235, but the recorder may ask for any of transformers
+            val matching_recorders = recorders.filter (
+                recorder ⇒
+                    (recorder.parent == transformer.transformer_name) ||
+                    (transformer.transformers.find (recorder.parent == _.transformer.id) match { case Some (_) ⇒ true case None ⇒ false }))
+            val s = new StringBuilder
+            matching_recorders.foreach (
+                recorder ⇒
+                    s.append (
+                    "\n" +
+                    "        object recorder\n" +
+                    "        {\n" +
+                    "            name \"" + recorder.name + "\";\n" +
+                    "            parent \"" + recorder.parent + "\";\n" +
+                    "            property " + property_phased (recorder.property) + ";\n" +
+                    "            interval " + recorder.interval + ";\n" +
+                    "            file \"" + recorder.file + "\";\n" +
+                    "        };\n"))
+            s.toString
         }
     }
 
@@ -253,7 +271,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         else
         {
             val buffer = for (element: JsonObject ← array.getValuesAs (classOf[JsonObject]).asScala) // ToDo: more robust checking
-                yield Recorder (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("property", ""), element.getString ("file", ""))
+                yield Recorder (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("property", ""), element.getJsonNumber ("interval").doubleValue, element.getString ("file", ""))
             buffer.toArray
         }
     }

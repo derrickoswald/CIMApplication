@@ -48,17 +48,36 @@ define
         var RecorderChooser;
         var RecorderChoices = [
             {
-                title: "All cable currents",
-                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, 'Amp' unit, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
+                title: "All node voltages",
+                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, 'Volts' unit, Double(900.0) interval, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
                 target_directory: "output_data/",
                 execute: outfile
             },
             {
-                title: "All node voltages",
-                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, 'Volt' unit, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
+                title: "All cable currents",
+                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
+                target_directory: "output_data/",
+                execute: outfile
+            },
+            {
+                title: "All cable power losses",
+                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power_losses' property, 'Volt-Amperes' unit, Double(900.0) interval, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_losses.csv') file from ACLineSegment a",
+                target_directory: "output_data/",
+                execute: outfile
+            },
+            {
+                title: "All transformer output currents",
+                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_out' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_current.csv') file  from PowerTransformer p",
+                target_directory: "output_data/",
+                execute: outfile
+            },
+            {
+                title: "All transformer power losses",
+                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power_losses' property, 'Volt-Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_losses.csv') file  from PowerTransformer p",
                 target_directory: "output_data/",
                 execute: outfile
             }
+
         ];
 
 
