@@ -276,8 +276,8 @@ public class CIMResourceAdapterTest
         CIMResultSet resultset = (CIMResultSet)output;
         assertTrue ("resultset empty", resultset.next ());
         assertNotNull ("mRID", resultset.getString (1));
-        assertTrue ("zero x coordinate", 0.0 != resultset.getDouble (5));
-        assertTrue ("zero y coordinate", 0.0 != resultset.getDouble (6));
+        assertTrue ("zero x coordinate", "0.0" != resultset.getString (5));
+        assertTrue ("zero y coordinate", "0.0" != resultset.getString (6));
         resultset.close ();
         interaction.close ();
         connection.close ();

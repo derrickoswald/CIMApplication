@@ -39,7 +39,14 @@ case class PreEdge(
     id_equ: String,
     ratedCurrent: Double,
     equipment: ConductingEquipment,
-    element: Element) extends GLMEdge with Graphable with Serializable {
+    element: Element)
+extends
+    GLMEdge
+with
+    Graphable
+with
+    Serializable
+{
     /**
      * Ordered key.
      * Provide a key on the two connections, independent of to-from from-to ordering.

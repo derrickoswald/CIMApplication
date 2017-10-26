@@ -225,13 +225,13 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      *
      * Generate the text for an edge.
      * Uses the Line and SwitchDevice handlers to create the text,
-     * using possibley parallel edges for lines but only the head element for switch edges.
+     * using possibly parallel edges for lines but only the head element for switch edges.
      * Transformers are handled separately.
      *
      * @param edges The edge element(s).
      * @return The .glm file text for the edge.
      */
-    def make_link (edges: Iterable[GLMEdge]): String =
+    def emit_edge (edges: Iterable[GLMEdge]): String =
     {
         val edge = edges.head
         val cls = edge.el.getClass.getName
@@ -259,13 +259,13 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
             case _ ⇒
                 // by default, make a link
                 "\n" +
-                    "        object link\n" +
-                    "        {\n" +
-                    "            name \"" + edge.id + "\";\n" +
-                    "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                    "            from \"" + edge.cn1 + "\";\n" +
-                    "            to \"" + edge.cn2 + "\";\n" +
-                    "        };\n"
+                "        object link\n" +
+                "        {\n" +
+                "            name \"" + edge.id + "\";\n" +
+                "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+                "            from \"" + edge.cn1 + "\";\n" +
+                "            to \"" + edge.cn2 + "\";\n" +
+                "        };\n"
         }
     }
 
@@ -317,6 +317,11 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
 
     }
 
+    def emit_transformer (transformer: TransformerSet): String =
+    {
+        trans.emit (transformer)
+    }
+
     /**
      * Combine all .glm pieces into a complete network.
      *
@@ -343,10 +348,10 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         val n_strings = nodes.map (emit_node)
 
         // get the transformer strings
-        val t_edges = trans.emit (transformers)
+        val t_edges = transformers.map (emit_transformer)
 
         // get the edge strings
-        val l_edges = combined_edges.map (make_link)
+        val l_edges = combined_edges.map (emit_edge)
 
         // get the extra strings
         val e_strings = extra
@@ -354,11 +359,11 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         // create the output file.
         val result = new StringBuilder()
         result.append (prefix)
-        result.append (t_string)
+        result.append (gather (t_string))
         result.append (gather (l_strings))
         result.append (gather (o_strings))
         result.append (gather (n_strings))
-        result.append (t_edges)
+        result.append (gather (t_edges))
         result.append (gather (l_edges))
         result.append (gather (e_strings))
 

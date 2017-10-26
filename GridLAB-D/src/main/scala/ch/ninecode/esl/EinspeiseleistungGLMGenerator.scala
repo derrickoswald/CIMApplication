@@ -1,19 +1,22 @@
 package ch.ninecode.esl
 
 import java.text.SimpleDateFormat
+import java.util.Calendar
 
 import ch.ninecode.gl._
 import ch.ninecode.model.SolarGeneratingUnit
 
-class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis) extends GLMGenerator (one_phase, date_format)
+class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
+extends
+    GLMGenerator (one_phase, date_format)
 {
     override def name: String = trafokreis.name
 
     override def header: String = "Einspeiseleistung"
 
-    override def start_time = trafokreis.start_time
+    override def start_time: Calendar = trafokreis.start_time
 
-    override def finish_time = trafokreis.finish_time
+    override def finish_time: Calendar = trafokreis.finish_time
 
     override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy(_.key).values
 
@@ -23,7 +26,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
-    override def extra (): Iterable[String] =
+    override def extra: Iterable[String] =
     {
         def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null)
 
@@ -36,11 +39,55 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         extra_nodes.map (emit_extra_node)
     }
 
-
     override def emit_node (node: GLMNode): String =
     {
         // or load_from_player_file (name, voltage)
         super.emit_node (node) + generate_load (node)
+    }
+
+    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    {
+        val edge = edges.head
+        val cls = edge.el.getClass.getName
+        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
+        def current_recorder: String =
+        {
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + edge.id + "_current_recorder\";\n" +
+            "            parent \"" + edge.id + "\";\n" +
+            "            property " + (if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + edge.id + "_current.csv\";\n" +
+            "        };\n"
+        }
+
+        val t = super.emit_edge (edges)
+        val r = clazz match
+        {
+            case "ACLineSegment" ⇒
+                current_recorder
+            case _ ⇒
+                ""
+        }
+        t + r
+    }
+
+    override def emit_transformer (transformer: TransformerSet): String =
+    {
+        val name = transformer.transformer_name
+
+        super.emit_transformer (transformer) +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + name + "_current_recorder\";\n" +
+        "            parent \"" + name + "\";\n" +
+        "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
+        "            interval 5;\n" +
+        "            file \"output_data/" + name + "_current.csv\";\n" +
+        "        };\n"
     }
 
     def generate_load (node: GLMNode): String =
@@ -93,45 +140,6 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         else
             ""
     }
-
-//    def load_from_player_file (name: String, voltage: Double): String =
-//    {
-//        // assumes meter data files exist
-//        // from Yamshid,
-//        // then: for file in meter_data/*; do sed -i.bak '/Timestamp/d' $file; done
-//        // and then: for file in meter_data/*; do sed -i.bak 's/\"//g' $file; done
-//        val house = has (name)
-//        // by supplying player files for only EnergyConsumer objects
-//        // this existence test picks only HASXXXX nodes (i.e. not ABGXXXX or PINXXXX)
-//        val ret =
-//            if (exists ("meter_data/" + house + "_R.csv"))
-//                "\n" +
-//                "        object load\n" +
-//                "        {\n" +
-//                "            name \"" + name + "_load\";\n" +
-//                "            parent \"" + name + "\";\n" +
-//                "            phases ABCN;\n" +
-//                "            nominal_voltage " + voltage + "V;\n" +
-//                "            object player\n" +
-//                "            {\n" +
-//                "                property \"constant_current_A\";\n" +
-//                "                file \"meter_data/" + house + "_R.csv\";\n" +
-//                "            };\n" +
-//                "            object player\n" +
-//                "            {\n" +
-//                "                property \"constant_current_B\";\n" +
-//                "                file \"meter_data/" + house + "_S.csv\";\n" +
-//                "            };\n" +
-//                "            object player\n" +
-//                "            {\n" +
-//                "                property \"constant_current_C\";\n" +
-//                "                file \"meter_data/" + house + "_T.csv\";\n" +
-//                "            };\n" +
-//                "        };\n"
-//            else
-//                ""
-//        return (ret)
-//    }
 
     def emit_pv (solargeneratingunits: List[SolarGeneratingUnit], node: MaxPowerFeedingNodeEEA): String =
     {

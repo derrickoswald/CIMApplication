@@ -62,12 +62,33 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
 
         override def nodes: Iterable[GLMNode] = xnodes.collect.toIterable
 
+        override def emit_edge (edges: Iterable[GLMEdge]): String =
+        {
+            super.emit_edge (edges) + generate_edge_recorder (edges)
+        }
+
         override def emit_node (node: GLMNode): String =
         {
             if (node.id != tx.transformers(0).node0)
-                super.emit_node (node) + generate_load (node) + generate_recorder (node)
+                super.emit_node (node) + generate_load (node) + generate_node_recorder (node)
             else
                 ""
+        }
+
+        override def emit_transformer (transformer: TransformerSet): String =
+        {
+            val name = transformer.transformer_name
+
+            super.emit_transformer (transformer) +
+                "\n" +
+                "        object recorder\n" +
+                "        {\n" +
+                "            name \"" + name + "_current_recorder\";\n" +
+                "            parent \"" + name + "\";\n" +
+                "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
+                "            interval 5;\n" +
+                "            file \"output_data/" + name + "_current.csv\";\n" +
+                "        };\n"
         }
 
         def generate_load (node: GLMNode): String =
@@ -111,7 +132,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
             }
         }
 
-        def generate_recorder (node:GLMNode): String =
+        def generate_node_recorder (node:GLMNode): String =
         {
             def add_phase (property: String, phase: String) = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
             recorders.find (recorder ⇒ recorder.parent == node.id) match
@@ -131,6 +152,46 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
                         "            interval 5;\n" +
                         "            file \"" + recorder.file + "\";\n" +
                         "        };\n"
+                case None ⇒ ""
+            }
+        }
+
+        def generate_edge_recorder (edges: Iterable[GLMEdge]): String =
+        {
+            def add_phase (property: String, phase: String) = property + "_" + phase + ".real," + property+ "_" + phase + ".imag"
+            // a little tricky here, the line configuration is maybe parallel cables, but the recorder may ask for any of the cables
+            val edgeids = edges.map (_.id).toArray
+            recorders.find (recorder ⇒ edgeids.contains (recorder.parent)) match
+            {
+                case Some (recorder: Recorder) ⇒
+                    val edge = edges.head
+                    val cls = edge.el.getClass.getName
+                    val clazz = cls.substring (cls.lastIndexOf(".") + 1)
+                    def current_recorder: String =
+                    {
+                        val property =
+                            if (one_phase)
+                                add_phase (recorder.property, "A")
+                            else
+                                add_phase (recorder.property, "A") + "," + add_phase (recorder.property, "B") + "," + add_phase (recorder.property, "C")
+                        "\n" +
+                            "        object recorder\n" +
+                            "        {\n" +
+                            "            name \"" + recorder.name + "\";\n" +
+                            "            parent \"" + recorder.parent + "\";\n" +
+                            "            property " + property + ";\n" +
+                            "            interval 5;\n" +
+                            "            file \"" + recorder.file + "\";\n" +
+                            "        };\n"
+                    }
+
+                    clazz match
+                    {
+                        case "ACLineSegment" ⇒
+                            current_recorder
+                        case _ ⇒
+                            ""
+                    }
                 case None ⇒ ""
             }
         }
@@ -161,7 +222,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
             catch
             {
                 case je: JsonException ⇒
-                    fail ("%s could not be parsed as JSON".format (simulation))
+                    fail ("%s could not be parsed as JSON (%s)".format (simulation, je.getMessage))
             }
         }
         catch

@@ -28,7 +28,9 @@ case class Trafokreis
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
     options: EinspeiseleistungOptions
-) extends Problem
+)
+extends
+    Problem
 {
 
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -46,24 +48,24 @@ case class Trafokreis
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-        Experiment (trafo, house, start_time (), index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
+        Experiment (trafo, house, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
     }
 
     // generate experiments
     lazy val experiments: Array[Experiment] = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
 
-    def name (): String = trafo
+    def name: String = trafo
 
-    def start_time (): Calendar = start
+    def start_time: Calendar = start
 
-    def finish_time (): Calendar =
+    def finish_time: Calendar =
     {
-        val t = start_time ().clone().asInstanceOf[Calendar]
+        val t = start_time.clone ().asInstanceOf[Calendar]
         t.add (Calendar.SECOND, experiments.length * window)
         t
     }
 
-    def swing_node (): String = transformers.node0
+    def swing_node: String = transformers.node0
 
-    def swing_node_voltage (): Double = transformers.v0
+    def swing_node_voltage: Double = transformers.v0
 }

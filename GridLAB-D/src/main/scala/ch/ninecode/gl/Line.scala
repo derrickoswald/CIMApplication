@@ -99,7 +99,7 @@ class Line (one_phase: Boolean) extends Serializable
     }
 
     // see http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html
-    def parallel (r1: Double, x1: Double, r2: Double, x2: Double): Tuple2[Double, Double] =
+    def parallel (r1: Double, x1: Double, r2: Double, x2: Double): (Double, Double) =
     {
         val rs = r1 + r2
         val xs = x1 + x2
@@ -107,10 +107,10 @@ class Line (one_phase: Boolean) extends Serializable
         val xp = x1 * x2
         val r = (((rp - xp) * rs) + (((x1 * r2) + (x2 * r1)) * xs)) / ((rs * rs) + (xs * xs))
         val x = ((((x1 * r2) + (x2 * r1)) * rs) - ((rp - xp) * xs)) / ((rs * rs) + (xs * xs))
-        new Tuple2 (r, x)
+        (r, x)
     }
 
-    def configuration (item: Tuple2[String, Iterable[GLMEdge]]): String =
+    def configuration (item: (String, Iterable[GLMEdge])): String =
     {
         if (1 == item._2.size)
         {
@@ -126,7 +126,7 @@ class Line (one_phase: Boolean) extends Serializable
             var xt = if (0 == line.x) DEFAULT_X else line.x
             var r0t = if (0 == line.r0) DEFAULT_R else line.r0
             var x0t = if (0 == line.x0) DEFAULT_X else line.x0
-            for (i <- 1 until lines.size)
+            for (i <- 1 until lines.length)
             {
                 line = lines(i).el.asInstanceOf[ACLineSegment]
                 val rl = if (0 == line.r) DEFAULT_R else line.r
@@ -170,15 +170,6 @@ class Line (one_phase: Boolean) extends Serializable
         "            to \"" + edge.cn2 + "\";\n" +
         "            length " + line.Conductor.len + "m;\n" +
         "            configuration \"" + config + "\";\n" +
-        "        };\n" +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + edge.id + "_current_recorder\";\n" +
-        "            parent \"" + edge.id + "\";\n" +
-        "            property " + (if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
-        "            interval 5;\n" +
-        "            file \"output_data/" + edge.id + "_current.csv\";\n" +
         "        };\n"
     }
 }
