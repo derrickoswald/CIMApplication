@@ -98,7 +98,7 @@ class GridLAB extends RESTful
     ): String =
     {
         _Logger.info ("gridlab %s".format (simulation))
-        val ret = new RESTfulJSONResult
+        var ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         if (null != connection)
             try
@@ -116,18 +116,8 @@ class GridLAB extends RESTful
                 else
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
-                    if (response.containsKey ("error"))
-                    {
-                        ret.status = RESTfulJSONResult.FAIL
-                        ret.message = response.getString ("error")
-                        val result = Json.createObjectBuilder
-                        for (key <- response.keySet)
-                            if (key != "error")
-                                result.add (key, response.get (key))
-                        ret.setResult (result.build)
-                    }
+                    val struct = record.get (CIMFunction.RESULT).asInstanceOf [JsonObject]
+                    ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
                 }
             }
             catch

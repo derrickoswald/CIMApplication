@@ -112,8 +112,11 @@ class FileOperations extends RESTful
                                     case "rdf" ⇒ MediaType.APPLICATION_XML
                                     case "json" ⇒ MediaType.APPLICATION_JSON
                                     case "csv" ⇒ "text/csv"
-                                    case "glm" ⇒ "text/csv"
+                                    case "glm" ⇒ "text/plain"
                                     case "zip" ⇒ "application/zip"
+                                    case "txt" ⇒ "text/plain"
+                                    case "out" ⇒ "text/plain"
+                                    case _ ⇒ MediaType.APPLICATION_OCTET_STREAM
                                 }
                                 Response.ok (xml, media).build
                             }

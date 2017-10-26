@@ -164,7 +164,7 @@ define
                     else
                         alert ("status: " + xmlhttp.status);
             };
-            xmlhttp.send ();
+            xmlhttp.send ("your lucky number is " + Math.floor (Math.random () * (1000000 - 0)) + 0);
         }
 
 
@@ -369,7 +369,7 @@ define
                                 recorders.forEach (
                                     function (pl)
                                     {
-                                        var name = "input_data/" + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
+                                        var name = "input_data/" + (pl.fake ? "fake_" : "") + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
                                         var target = "/" + getStation () + "/" + getName () + "/" + name;
                                         generate_file (pl.player, target, choice.phi,
                                             function (response)

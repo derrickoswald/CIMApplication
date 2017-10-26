@@ -122,16 +122,21 @@ define
                             if (this.is_directory || !this.path.endsWith (".rdf"))
                                 text = ""
                             else
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-open'></span></a>";;
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-open'></span></a>";
                             return (text);
                         },
                         view: function ()
                         {
                             var text;
-                            if (this.is_directory || !this.path.endsWith (".rdf"))
+                            if (this.is_directory)
                                 text = ""
+                            else if (this.path.endsWith (".rdf"))
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-eye-open'></span></a>";
                             else
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-eye-open'></span></a>";;
+                            {
+                                var url = util.home () + "cim/file" + root + this.path;
+                                text = "<a href='" + url + "'><span class='glyphicon glyphicon-download'></span></a>";
+                            }
                             return (text);
                         },
                         file: function ()
