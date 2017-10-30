@@ -101,56 +101,80 @@ extends
         // generate low voltage pin (NSPIN) swing node
         val trafo = swing.name
         "\n" +
-            "        object meter\n" +
-            "        {\n" +
-            "            name \"" + swing.id + "\";\n" +
-            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-            "            bustype SWING;\n" +
-            "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
-            (if (one_phase)
-                "            object player\n" +
-                    "            {\n" +
-                    "                property \"voltage_A\";\n" +
-                    "                file \"input_data/" + trafo + ".csv\";\n" +
-                    "            };\n"
-            else
-                "            object player\n" +
-                    "            {\n" +
-                    "                property \"voltage_A\";\n" +
-                    "                file \"input_data/" + trafo + "_R.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"voltage_B\";\n" +
-                    "                file \"input_data/" + trafo + "_S.csv\";\n" +
-                    "            };\n" +
-                    "            object player\n" +
-                    "            {\n" +
-                    "                property \"voltage_C\";\n" +
-                    "                file \"input_data/" + trafo + "_T.csv\";\n" +
-                    "            };\n") +
-            "        };\n"
+        "        object meter\n" +
+        "        {\n" +
+        "            name \"" + swing.id + "\";\n" +
+        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
+        "            bustype SWING;\n" +
+        "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
+        (if (one_phase)
+            "            object player\n" +
+            "            {\n" +
+            "                property \"voltage_A\";\n" +
+            "                file \"input_data/" + trafo + ".csv\";\n" +
+            "            };\n"
+        else
+            "            object player\n" +
+            "            {\n" +
+            "                property \"voltage_A\";\n" +
+            "                file \"input_data/" + trafo + "_R.csv\";\n" +
+            "            };\n" +
+            "            object player\n" +
+            "            {\n" +
+            "                property \"voltage_B\";\n" +
+            "                file \"input_data/" + trafo + "_S.csv\";\n" +
+            "            };\n" +
+            "            object player\n" +
+            "            {\n" +
+            "                property \"voltage_C\";\n" +
+            "                file \"input_data/" + trafo + "_T.csv\";\n" +
+            "            };\n"
+        ) +
+        "        };\n" +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + trafo + "_current_recorder\";\n" +
+        "            parent \"" + node.id + "\";\n" +
+        "            property " + ( if (one_phase) "measured_current_A.real,measured_current_A.imag" else "measured_current_A.real,measured_current_A.imag,measured_current_B.real,measured_current_B.imag,measured_current_C.real,measured_current_C.imag") + ";\n" +
+        "            interval 300;\n" +
+        "            file \"output_data/" + trafo + "_current.csv\";\n" +
+        "        };\n" +
+        "\n" +
+        "        object recorder\n" +
+        "        {\n" +
+        "            name \"" + trafo + "_power_recorder\";\n" +
+        "            parent \"" + node.id + "\";\n" +
+        "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
+        "            interval 300;\n" +
+        "            file \"output_data/" + trafo + "_power.csv\";\n" +
+        "        };\n"
     }
 
     override def emit_transformer (transformer: TransformerSet): String =
     {
         val name = transformer.transformer_name
 
+        val swings = swing_nodes.map (_.id).toArray
         super.emit_transformer (transformer) +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + name + "_current_recorder\";\n" +
-        "            parent \"" + name + "_transformer\";\n" +
-        "            property " + ( if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
-        "            interval 300;\n" +
-        "            file \"output_data/" + name + "_current.csv\";\n" +
-        "        };\n" +
+        (if (!swings.contains (transformer.node0) && !swings.contains (transformer.node1))
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + name + "_current_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property " + ( if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
+            "            interval 300;\n" +
+            "            file \"output_data/" + name + "_current.csv\";\n" +
+            "        };\n"
+        else
+            ""
+        ) +
         "\n" +
         "        object recorder\n" +
         "        {\n" +
         "            name \"" + name + "_power_recorder\";\n" +
-        "            parent \"" + name + "_transformer\";\n" +
+        "            parent \"" + name + "\";\n" +
         "            property " + ( if (one_phase) "power_in_A.real,power_in_A.imag" else "power_in_A.real,power_in_A.imag,power_in_B.real,power_in_B.imag,power_in_C.real,power_in_C.imag") + ";\n" +
         "            interval 300;\n" +
         "            file \"output_data/" + name + "_power.csv\";\n" +
@@ -159,7 +183,7 @@ extends
         "        object recorder\n" +
         "        {\n" +
         "            name \"" + name + "_losses_recorder\";\n" +
-        "            parent \"" + name + "_transformer\";\n" +
+        "            parent \"" + name + "\";\n" +
         "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
         "            interval 300;\n" +
         "            file \"output_data/" + name + "_losses.csv\";\n" +
