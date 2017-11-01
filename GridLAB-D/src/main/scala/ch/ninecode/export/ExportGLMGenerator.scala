@@ -3,6 +3,7 @@ package ch.ninecode.export
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
+import ch.ninecode.esl.PowerFeedingNode
 import ch.ninecode.gl._
 import ch.ninecode.esl.Trafokreis
 
@@ -34,12 +35,24 @@ extends
     // the swing node is the low voltage pin
     override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.transformers.node1, trafokreis.transformers.v1, trafokreis.transformers.transformer_name))
 
-    override def nodes: Iterable[GLMNode] = trafokreis.nodes
+    override def nodes: Iterable[GLMNode] =
+    {
+        val swings = swing_nodes.map (_.id).toArray
+        trafokreis.nodes.filter (x => !swings.contains (x.id)).++: (
+            Array (
+                PowerFeedingNode (
+                    trafokreis.transformers.node0,
+                    trafokreis.transformers.v0,
+                    null,
+                    0.0,
+                    Double.PositiveInfinity,
+                    false)))
+    }
 
     override def emit_node (node: GLMNode): String =
     {
         super.emit_node (node) +
-        (if (name.startsWith ("HAS"))
+        (if (node.id.startsWith ("HAS"))
         {
             generate_recorder (node) +
             generate_load (node)
@@ -59,7 +72,7 @@ extends
             "        object recorder\n" +
             "        {\n" +
             "            name \"" + edge.id + "_current_recorder\";\n" +
-            "            parent \"" + edge.id + "_line\";\n" +
+            "            parent \"" + edge.id + "\";\n" +
             "            property " + ( if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + edge.id + "_current.csv\";\n" +
@@ -68,7 +81,7 @@ extends
             "        object recorder\n" +
             "        {\n" +
             "            name \"" + edge.id + "_power_recorder\";\n" +
-            "            parent \"" + edge.id + "_line\";\n" +
+            "            parent \"" + edge.id + "\";\n" +
             "            property " + ( if (one_phase) "power_in_A.real,power_in_A.imag" else "power_in_A.real,power_in_A.imag,power_in_B.real,power_in_B.imag,power_in_C.real,power_in_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + edge.id + "_power.csv\";\n" +
@@ -77,7 +90,7 @@ extends
             "        object recorder\n" +
             "        {\n" +
             "            name \"" + edge.id + "_losses_recorder\";\n" +
-            "            parent \"" + edge.id + "_line\";\n" +
+            "            parent \"" + edge.id + "\";\n" +
             "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + edge.id + "_losses.csv\";\n" +
@@ -148,7 +161,8 @@ extends
         "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
         "            interval 300;\n" +
         "            file \"output_data/" + trafo + "_power.csv\";\n" +
-        "        };\n"
+        "        };\n" +
+        "\n"
     }
 
     override def emit_transformer (transformer: TransformerSet): String =
@@ -166,28 +180,28 @@ extends
             "            property " + ( if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + name + "_current.csv\";\n" +
+            "        };\n" +
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + name + "_power_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property " + ( if (one_phase) "power_in_A.real,power_in_A.imag" else "power_in_A.real,power_in_A.imag,power_in_B.real,power_in_B.imag,power_in_C.real,power_in_C.imag") + ";\n" +
+            "            interval 300;\n" +
+            "            file \"output_data/" + name + "_power.csv\";\n" +
+            "        };\n" +
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + name + "_losses_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
+            "            interval 300;\n" +
+            "            file \"output_data/" + name + "_losses.csv\";\n" +
             "        };\n"
         else
             ""
-        ) +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + name + "_power_recorder\";\n" +
-        "            parent \"" + name + "\";\n" +
-        "            property " + ( if (one_phase) "power_in_A.real,power_in_A.imag" else "power_in_A.real,power_in_A.imag,power_in_B.real,power_in_B.imag,power_in_C.real,power_in_C.imag") + ";\n" +
-        "            interval 300;\n" +
-        "            file \"output_data/" + name + "_power.csv\";\n" +
-        "        };\n" +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + name + "_losses_recorder\";\n" +
-        "            parent \"" + name + "\";\n" +
-        "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
-        "            interval 300;\n" +
-        "            file \"output_data/" + name + "_losses.csv\";\n" +
-        "        };\n"
+        )
     }
 
     def generate_recorder (node: GLMNode): String =
@@ -215,7 +229,8 @@ extends
             "            property " + ( if (one_phase) "power_A.real,power_A.imag" else "power_A.real,power_A.imag,power_B.real,power_B.imag,power_C.real,power_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + node.id + "_power.csv\";\n" +
-            "        };\n"
+            "        };\n" +
+            "\n"
         else
             ""
     }

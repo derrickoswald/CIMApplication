@@ -258,7 +258,7 @@ case class GridLABExportFunction (simulation: String) extends CIMWebFunction
         else
         {
             val buffer = for (element: JsonObject ← array.getValuesAs (classOf[JsonObject]).asScala) // ToDo: more robust checking
-                yield Player (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("player", ""))
+                yield Player (element.getString ("name", ""), element.getString ("parent", ""), element.getString ("file", ""))
             buffer.toArray
         }
     }

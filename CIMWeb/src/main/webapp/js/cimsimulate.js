@@ -106,7 +106,7 @@ define
         //            "parent": "HAS2987_fuse_topo",
         //            "property": "constant_power",
         //            "unit": "Watt",
-        //            "player": "input_data/HAS2987.csv"
+        //            "file": "input_data/HAS2987.csv"
         //         },
         //         ...
         //     ],
@@ -405,11 +405,11 @@ define
                                         var house = row.parent.substring (0, row.parent.indexOf ("_"));
                                         var match = choice.files.filter (function (x) { return (x.house == house); });
                                         if (0 != match.length)
-                                            row.player = match[0].file;
+                                            row.file = match[0].file;
                                         else
                                         {
                                             row.fake = true;
-                                            row.player = choice.files[getRandomInt (0, choice.files.length)].file;
+                                            row.file = choice.files[getRandomInt (0, choice.files.length)].file;
                                         }
                                         return (row);
                                     }
@@ -420,13 +420,13 @@ define
                                 players.forEach (
                                     function (pl)
                                     {
-                                        var name = "input_data/" + (pl.fake ? "fake_" : "") + pl.player.substring (pl.player.lastIndexOf ("/") + 1);
+                                        var name = "input_data/" + (pl.fake ? "fake_" : "") + pl.file.substring (pl.file.lastIndexOf ("/") + 1);
                                         var target = "/" + getStation () + "/" + getName () + "/" + name;
-                                        generate_file (pl.player, target, choice.phi,
+                                        generate_file (pl.file, target, choice.phi,
                                             function (response)
                                             {
                                                 if (response.status == "OK")
-                                                    pl.player = name;
+                                                    pl.file = name;
                                                 else
                                                     alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                                                 todo = todo - 1;
@@ -679,7 +679,7 @@ define
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='simulation_description'>Description</label>\n" +
-                "          <input  id='simulation_description' type='text' class='form-control'aria-describedby='descriptionHelp' placeholder='Enter a description for the simulation' value='{{description}}'>\n" +
+                "          <input id='simulation_description' type='text' class='form-control'aria-describedby='descriptionHelp' placeholder='Enter a description for the simulation' value='{{description}}'>\n" +
                 "          <small id='descriptionHelp' class='form-text text-muted'>Enter a user facing description for the simulation - used for drop down choice title.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +

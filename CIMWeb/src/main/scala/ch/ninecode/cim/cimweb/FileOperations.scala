@@ -41,11 +41,11 @@ class FileOperations extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def getFile (
         @DefaultValue ("false") @MatrixParam ("debug") debug: String): Response =
-        getFile ("", "false", debug)
+        getFile ("/", "false", debug)
 
     @GET
     @Path ("{path:[^;]*}")
-    @Produces (Array (MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, "application/zip"))
+    @Produces (Array (MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.APPLICATION_OCTET_STREAM, "text/plain", "text/csv", "application/zip"))
     def getFile (
         @PathParam ("path") path: String,
         @DefaultValue ("false") @MatrixParam ("zip") zip: String,

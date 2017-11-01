@@ -6,6 +6,8 @@ import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.JsonStructure
 
+import scala.collection.JavaConverters._
+
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.Text
 import org.apache.spark.rdd.RDD
@@ -13,7 +15,6 @@ import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.FAIL
-
 import ch.ninecode.cim.connector.CIMFunction.Return
 
 /**
@@ -120,6 +121,14 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
                 {
                     val workdir_path = glm.substring (0, index1 + 1)
                     val file = glm.substring (index1 + 1, index2)
+                    // erase all the recorder files
+                    val recorders = details.getJsonArray ("recorders")
+                    val root = glm.substring (0, index2 + 1)
+                    for (element: JsonObject ← recorders.getValuesAs (classOf[JsonObject]).asScala) // ToDo: more robust checking
+                    {
+                        val recorder_file = element.getString ("file", "")
+                        hdfs.delete (new Path (root, recorder_file), false)
+                    }
                     val message = solve (workdir_path, spark.sparkContext.parallelize (Array (file)))
                     if (message == "")
                         new RESTfulJSONResult (OK, "gridlab simulation ran").getJSON
