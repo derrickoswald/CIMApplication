@@ -24,6 +24,12 @@ The program runs on [Spark](https://spark.apache.org), usually on a cluster such
 [Amazon Web Services (AWS)](https://aws.amazon.com), [Azure](https://docs.microsoft.com/en-us/azure) or
 an in-house system.
 
+# Video
+
+An overview of the current release 2.3.4:
+
+[![CIMApplication Overview](http://img.youtube.com/vi/uWfDuNiRp8M/0.jpg)](http://www.youtube.com/watch?v=uWfDuNiRp8M "CIMApplication Movie")
+
 # Input
 
 The starting point for analysis is a CIM export file.
