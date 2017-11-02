@@ -17,6 +17,13 @@ to access Spark Resilient Distributed Dataset (RDD) for each CIM class.
 
 It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data applications running on Hadoop.
 
+# Video
+
+An overview of the current release 2.3.4:
+
+[![CIMApplication Overview](http://img.youtube.com/vi/uWfDuNiRp8M/0.jpg)](http://www.youtube.com/watch?v=uWfDuNiRp8M "CIMApplication Movie")
+
+
 # Provisioning a Cluster
 
 To create a cluster on Amazon ECS you can use the provisioning tool:
