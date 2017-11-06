@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    [],
+    ["cimnav", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function ()
+    function (cimnav, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
     {
         /**
          * The map object.
@@ -25,6 +25,11 @@ define
          * The extents of visible objects (those with Location and PositionPoint).
          */
         var TheExtents = null;
+
+        /**
+         * The theme setting control object.
+         */
+        var TheThemer = null;
 
         /**
          * The user specific token to access mapbox tiles.
@@ -45,21 +50,6 @@ define
          * The last selected features.
          */
         var CURRENT_SELECTION = null;
-
-        /**
-         * symbology
-         */
-        var junction_symbol = "alternate_junction";
-        var connector_symbol = "connector";
-        var distribution_box_symbol = "distribution_box";
-        var energy_consumer_symbol = "energy_consumer";
-        var fuse_symbol = "fuse";
-        var other_symbol = "junction";
-        var street_light_symbol = "street_light";
-        var substation_symbol = "substation";
-        var switch_symbol = "switch";
-        var transformer_station_symbol = "transformer_station";
-        var transformer_symbol = "transformer";
 
         /**
          * Set the CIM data for the map to draw.
@@ -97,266 +87,6 @@ define
         }
 
         /**
-         * Create a circle layer object.
-         * @param {String} id - the layer id
-         * @param {Any[]} filter - the filter to apply to the points
-         * @param {String} color - the symbol color to use (doesn't work)
-         * @returns {Object} the layer
-         * @function circle_layer
-         * @memberOf module:cimmap
-         */
-        function circle_layer (id, filter, color)
-        {
-            return (
-                {
-                    id: id,
-                    type: "circle",
-                    source: "the cim points",
-                    minzoom: 14,
-                    maxzoom: 17,
-                    filter: filter,
-                    paint:
-                    {
-                        "circle-radius": 5, // Optional number. Units in pixels. Defaults to 5.
-                        "circle-color": color, // Optional color. Defaults to #000000.
-                        "circle-blur": 0, // Optional number. Defaults to 0. 1 blurs the circle such that only the centerpoint is full opacity.
-                        "circle-opacity": 1, // Optional number. Defaults to 1.
-                        "circle-translate": [0, 0], // Optional array. Units in pixels. Defaults to 0,0. Values are [x, y] where negatives indicate left and up, respectively.
-                        "circle-translate-anchor": "map", // Optional enum. One of map, viewport. Defaults to map. Requires circle-translate.
-                    }
-                }
-            );
-        }
-
-        /**
-         * Create a symbol layer object.
-         * @param {String} id - the layer id
-         * @param {Any[]} filter - the filter to apply to the points
-         * @param {String} symbol - the symbol name
-         * @param {Number} orientation - the symbol orientation
-         * @param {Number[]} offset - the symbol offset
-         * @param {String} color - the symbol color (doesn't work)
-         * @returns {Object} the layer
-         * @function symbol_layer
-         * @memberOf module:cimmap
-         */
-        function symbol_layer (id, filter, symbol, orientation, offset, color)
-        {
-            //console.log (id + " " + JSON.stringify (filter, null, 4));
-            return (
-                {
-                    id: id,
-                    type: "symbol",
-                    source: "the cim points",
-                    minzoom: 17,
-                    filter: filter,
-                    interactive: true,
-                    layout:
-                    {
-                        "icon-image": symbol,
-                        "icon-allow-overlap": true,
-                        "icon-size":
-                        {
-//                            stops: [[17, 1], [18, 1], [19, 1.2], [20, 1.4], [21, 1.6], [22, 1.8], [23, 2], [24, 2.2], [25, 2.4]]
-                            stops: [[17, 0.1875], [18, 0.25], [19, 0.3], [20, 0.45], [21, 0.9], [22, 1.8], [23, 3.75], [24, 7.5], [25, 10.0]]
-                        },
-                        "icon-rotate": orientation,
-                        "icon-offset": offset,
-                        "text-field": "{name}",
-                        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-                        "text-offset": [0, 1],
-                        "text-anchor": "top",
-                        "text-allow-overlap": true,
-                        "text-size":
-                        {
-                            stops: [[17, 4], [18, 8], [19, 12], [20, 14], [21, 18], [22, 24], [23, 30], [24, 38], [25, 48]]
-                        }
-                    },
-                    paint:
-                    {
-                        "icon-color": color,
-                        "text-color": color
-                    }
-                }
-            );
-
-        }
-
-        /**
-         * Add stylization information to elements and make a list of point and linear features.
-         * @param {Object} psr - the hash table object with properties that are (PowerSystemResource) elements keyed by mRID.
-         * @param {Object} locations - the hash table object with properties that are locations with arrays of coordinates.
-         * @param {Object[]} points - the resultant list of point GeoJSON objects.
-         * @param {Object} psr - the resultant list of linear GeoJSON objects.
-         * @function process_spatial_objects
-         * @memberOf module:cimmap
-         */
-        function process_spatial_objects (psr, locations, points, lines)
-        {
-            var coordinates;
-            var location;
-            for (var id in psr)
-            {
-                if (null != (location = psr[id].Location))
-                {
-                    if (null != (coordinates = locations[location]))
-                    {
-                        if (2 == coordinates.length)
-                        {
-                            points.features.push
-                            (
-                                {
-                                    type : "Feature",
-                                    geometry :
-                                    {
-                                        type : "Point",
-                                        coordinates : [ coordinates[0], coordinates[1] ]
-                                    },
-                                    properties : psr[id]
-                                }
-                            );
-                            psr[id].id = id;
-                            psr[id].orientation = 0.0;
-                            // assign the symbol
-                            if ("PowerTransformer" == psr[id].cls)
-                                psr[id].symbol = transformer_symbol;
-                            else if ("Fuse" == psr[id].cls)
-                                psr[id].symbol = fuse_symbol;
-                            else if ("undefined" != typeof (psr[id].normalOpen)) // all switches have this attribute
-                                psr[id].symbol = switch_symbol;
-                            else if ("EnergyConsumer" == psr[id].cls)
-                            {
-                                if (psr[id].PSRType == "PSRType_StreetLight")
-                                    psr[id].symbol = street_light_symbol;
-                                else
-                                    psr[id].symbol = energy_consumer_symbol;
-                            }
-                            else if ("Connector" == psr[id].cls)
-                                psr[id].symbol = connector_symbol;
-                            else if ("BusbarSection" == psr[id].cls)
-                                psr[id].symbol = junction_symbol;
-                            else
-                            {
-                                if ("undefined" != typeof (CIM_Data.Substation[id]))
-                                {
-                                    if (psr[id].PSRType == "PSRType_DistributionBox")
-                                        psr[id].symbol = distribution_box_symbol;
-                                    else if (psr[id].PSRType == "PSRType_Substation")
-                                        psr[id].symbol = substation_symbol;
-                                    else if (psr[id].PSRType == "PSRType_TransformerStation")
-                                        psr[id].symbol = transformer_station_symbol;
-                                    else
-                                        psr[id].symbol = other_symbol;
-                                }
-                                else
-                                    psr[id].symbol = other_symbol;
-                            }
-                        }
-                        else
-                        {
-                            lines.features.push
-                            (
-                                {
-                                    type : "Feature",
-                                    geometry :
-                                    {
-                                        type : "LineString",
-                                        coordinates : coordinates.reduce
-                                        (
-                                            function (ret, item)
-                                            {
-                                                var next;
-
-                                                next = ret[ret.length - 1];
-                                                if (!next || (2 <= next.length))
-                                                {
-                                                    next = [];
-                                                    ret.push (next);
-                                                }
-                                                next.push (item);
-
-                                                return (ret);
-                                            },
-                                            []
-                                        )
-                                    },
-                                    properties : psr[id]
-                                }
-                            );
-                            psr[id].id = id;
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * @summary Gather position points into locations.
-         * @description Convert sequences of position points into locations with coordinate array.
-         * As a side effect, computes the minimum bounding rectangle and stores it in TheExtents.
-         * @param {object} PositionPoint objects stored by id (real or generated)
-         * @return {object} object of arrays stored by Location.id
-         * @function get_locations
-         * @memberOf module:cimmap
-         */
-        function get_locations (points)
-        {
-            // the parsed PositionPoint set
-            var points = CIM_Data.PositionPoint;
-            // the parsed Location set
-            var locations = CIM_Data.Location;
-            // list of locations to exclude
-            var blacklist = {};
-            var extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
-            var ret = {};
-
-            if (!show_internal_features ())
-            {
-                for (var location in locations)
-                {
-                    var l = locations[location];
-                    if (l.CoordinateSystem != "wgs84")
-                        blacklist[location] = true;
-                }
-            }
-            for (var point in points)
-            {
-                var p = points[point];
-                var location = p.Location;
-                if ((null != location) && ("undefined" == typeof (blacklist[location])))
-                {
-                    if (null == ret[location])
-                        ret[location] = [];
-                    var seq = p.sequenceNumber;
-                    if (null != seq)
-                    {
-                        var x = Number (p.xPosition);
-                        var y = Number (p.yPosition);
-                        ret[location][seq * 2] = x;
-                        ret[location][seq * 2 + 1] = y;
-                        if ((x >= -180.0) && (x <= 180.0)) // eliminate fucked up coordinates
-                        {
-                            if (x < extents.xmin)
-                                extents.xmin = x;
-                            if (x > extents.xmax)
-                                extents.xmax = x;
-                        }
-                        if ((y >= -90.0) && (y <= 90.0))
-                        {
-                            if (y < extents.ymin)
-                                extents.ymin = y;
-                            if (y > extents.ymax)
-                                extents.ymax = y;
-                        }
-                    }
-                }
-            }
-
-            TheExtents = extents;
-            return (ret);
-        }
-
-        /**
          * Generate a map.
          * @param {function} callback The function to invoke when the map is complete.
          * @function make_map
@@ -375,115 +105,10 @@ define
                 await sleep (2000);
             while (!TheMap.loaded ())
 
-            // index of position point data by location
-            var locations = get_locations ();
-            // the lines GeoJSON
-            var lines =
-            {
-                "type" : "FeatureCollection",
-                "features" : []
-            };
-            // the points GeoJSON
-            var points =
-            {
-                "type" : "FeatureCollection",
-                "features" : []
-            };
-            process_spatial_objects (CIM_Data.PowerSystemResource, locations, points, lines);
-
-            // remove previous layer data
-            if (TheMap.getSource ("the cim lines"))
-            {
-                TheMap.removeLayer ("lines");
-                TheMap.removeLayer ("lines_highlight");
-                TheMap.removeLayer ("circle_junction");
-                TheMap.removeLayer ("circle_station");
-                TheMap.removeLayer ("circle_transformer");
-                TheMap.removeLayer ("circle_switch");
-                TheMap.removeLayer ("circle_energy_consumer");
-                TheMap.removeLayer ("circle_other");
-                TheMap.removeLayer ("circle_highlight");
-                TheMap.removeLayer ("symbol");
-                TheMap.removeLayer ("symbol_highlight");
-                TheMap.removeSource ("the cim lines");
-                TheMap.removeSource ("the cim points");
-            }
-
-            // update the map
-            TheMap.addSource
-            (
-                "the cim lines",
-                {
-                    type: "geojson",
-                    data: lines,
-                    maxzoom: 25
-                }
-            );
-
-            TheMap.addSource
-            (
-                "the cim points",
-                {
-                    type: "geojson",
-                    data: points,
-                    maxzoom: 25
-                }
-            );
-
-            TheMap.addLayer
-            (
-                {
-                    id: "lines",
-                    type: "line",
-                    source: "the cim lines",
-                    layout:
-                    {
-                        "line-join": "round",
-                        "line-cap": "round"
-                    },
-                    paint:
-                    {
-                        "line-color": "#000",
-                        "line-width": 3
-                    }
-                }
-            );
-
-            TheMap.addLayer
-            (
-                {
-                    id: "lines_highlight",
-                    type: "line",
-                    source: "the cim lines",
-                    filter: ["==", "mRID", ""],
-                    layout:
-                    {
-                        "line-join": "round",
-                        "line-cap": "round"
-                    },
-                    paint:
-                    {
-                        "line-color": "#ffff00",
-                        "line-width": 3
-                    }
-                }
-            );
-
-            // simple circle from 14 to 17
-            TheMap.addLayer (circle_layer ("circle_junction", ["in", "symbol", junction_symbol, connector_symbol], "rgb(255, 0, 0)"));
-            TheMap.addLayer (circle_layer ("circle_station", ["in", "symbol", distribution_box_symbol, substation_symbol, transformer_station_symbol], "rgb(255, 0, 255)"));
-            TheMap.addLayer (circle_layer ("circle_transformer", ["==", "symbol", transformer_symbol], "rgb(0, 255, 0)"));
-            TheMap.addLayer (circle_layer ("circle_switch", ["in", "symbol", switch_symbol, fuse_symbol], "rgb(0, 0, 255)"));
-            TheMap.addLayer (circle_layer ("circle_energy_consumer", ["in", "symbol", energy_consumer_symbol, street_light_symbol], "rgb(255, 0, 0)"));
-            TheMap.addLayer (circle_layer ("circle_other", ["==", "symbol", other_symbol], "black"));
-
-            TheMap.addLayer (circle_layer ("circle_highlight", ["==", "mRID", ""], "rgb(255, 255, 0)"));
-
-            // symbol icon from 17 and deeper
-            // ToDo: color the icons according to color on the object
-            TheMap.addLayer (symbol_layer ("symbol", ["!=", "mRID", ""], "{symbol}", 0.0, [0, 0], "rgb(0, 0, 0)"));
-
-            TheMap.addLayer (symbol_layer ("symbol_highlight", ["==", "mRID", ""], "{symbol}", 0.0, [0, 0], "rgb(255, 255, 0)"));
+            if (TheThemer.getTheme ().getLegend ().visible ())
+                TheMap.removeControl (TheThemer.getTheme ().getLegend ());
+            TheThemer.theme (TheMap, CIM_Data, { show_internal_features: show_internal_features () });
+            TheExtents = TheThemer.getExtents ();
 
             buildings_3d ();
 
@@ -495,9 +120,26 @@ define
 
         function zoom_extents ()
         {
-            TheMap.fitBounds (
-                [[TheExtents.xmin, TheExtents.ymin], [TheExtents.xmax, TheExtents.ymax]],
-                { linear: true, padding: 50 });
+            if (null != TheExtents)
+                TheMap.fitBounds (
+                    [[TheExtents.xmin, TheExtents.ymin], [TheExtents.xmax, TheExtents.ymax]],
+                    { linear: true, padding: 50 });
+        }
+
+        function toggle_themer ()
+        {
+            if (TheThemer.visible ())
+                TheMap.removeControl (TheThemer);
+            else
+                TheMap.addControl (TheThemer);
+        }
+
+        function toggle_legend ()
+        {
+            if (TheThemer.getTheme ().getLegend ().visible ())
+                TheMap.removeControl (TheThemer.getTheme ().getLegend ());
+            else
+                TheMap.addControl (TheThemer.getTheme ().getLegend ());
         }
 
         /**
@@ -552,7 +194,7 @@ define
          */
         function glow (filter)
         {
-            if (TheMap.getSource ("the cim lines"))
+            if (TheMap.getSource ("cim lines"))
             {
                 TheMap.setFilter ("lines_highlight", filter);
                 TheMap.setFilter ("circle_highlight", filter);
@@ -963,7 +605,7 @@ define
         }
 
         /**
-         * Compute the bounding box for the currentls selected element.
+         * Compute the bounding box for the currently selected element.
          * @description Look up all PositionPoint elements associated with elemen's location,
          * and compute the minimum bounding box that would enclose it.
          * @parm {string} id - the id of the element to process
@@ -1149,8 +791,8 @@ define
                     transformRequest: toURL
                 }
             );
-            // add zoom and rotation controls to the map.
-            TheMap.addControl (new mapboxgl.NavigationControl ());
+            // add zoom and rotation controls to the map
+            TheMap.addControl (new cimnav.NavigationControl (zoom_extents, toggle_themer, toggle_legend));
             // handle mouse click
             TheMap.on
             (
@@ -1200,6 +842,8 @@ define
                     document.getElementById ("coordinates").innerHTML = "" + lng + "," + lat;
                 }
             );
+            TheThemer = new ThemeControl ([new DefaultTheme (), new VoltageTheme (), new IslandTheme (), new InServiceTheme ()]);
+            TheThemer.theme_change_listener (redraw);
             // display any existing data
             redraw ();
         }
