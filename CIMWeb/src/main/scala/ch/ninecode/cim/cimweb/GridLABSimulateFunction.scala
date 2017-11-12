@@ -96,9 +96,13 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
                     "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                     "pushd $FILE; " +
                     "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                    "cat output_data/* > output.txt; " +
+                    "cat input_data/* > input.txt; " +
                     "popd; " +
                     "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                     "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output_data/* " + workdir_path + "$FILE/output_data; " +
+                    "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/input.txt " + workdir_path + "$FILE; " +
+                    "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt " + workdir_path + "$FILE; " +
                     "cat $FILE/$FILE.out; " +
                     "rm -rf $FILE; " +
                     "done < /dev/stdin")

@@ -42,7 +42,7 @@
                 <a class="navbar-brand" href="#">CIM Application</a>
             </div>
 
-            <div id="bs-example-navbar-collapse-1" class="collapse navbar-collapse">
+            <span id="bs-example-navbar-collapse-1" class="collapse navbar-collapse">
                 <ul id="functions" class="nav navbar-nav">
                     <li><a id="files" href="#files">Files</a></li>
                     <li><a id="map" href="#map">Map</a></li>
@@ -52,6 +52,7 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Load <span class="caret"></span></a>
                         <ul class="dropdown-menu" role="menu">
+                            <li class="dropdown-header">CIM</li>
                             <li>
                                 <div class="checkbox">
                                     <label for="make_edges">
@@ -73,6 +74,83 @@
                                     <label for="do_topo_islands">
                                         <input id="do_topo_islands" type="checkbox"/>
                                         Make islands
+                                    </label>
+                                </div>
+                            </li>
+                            <li role="separator" class="divider"></li>
+                            <li class="dropdown-header">CSV</li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="header">
+                                        <input id="header" type="checkbox"/>
+                                        Header
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="ignoreLeadingWhiteSpace">
+                                        <input id="ignoreLeadingWhiteSpace" type="checkbox"/>
+                                        Trim leading
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="ignoreTrailingWhiteSpace">
+                                        <input id="ignoreTrailingWhiteSpace" type="checkbox"/>
+                                        Trim trailing
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <input id="sep" type="text" class="form-control" placeholder="separator" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="quote" type="text" class="form-control" placeholder="quote" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="escape" type="text" class="form-control" placeholder="escape" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="encoding" type="text" class="form-control" placeholder="encoding" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="comment" type="text" class="form-control" placeholder="comment" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="nullValue" type="text" class="form-control" placeholder="nullValue" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="nanValue" type="text" class="form-control" placeholder="nanValue" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="positiveInf" type="text" class="form-control" placeholder="positiveInf" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="negativeInf" type="text" class="form-control" placeholder="negativeInf" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="dateFormat" type="text" class="form-control" placeholder="date format" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <input id="timestampFormat" type="text" class="form-control" placeholder="timestamp format" style="margin-left: 15px; width: 120px;">
+                            </li>
+                            <li>
+                                <div class="form-check">
+                                    <label class="form-check-label">
+                                        <input id="permissive" type="radio" name="mode" value="PERMISSIVE" checked>Permissive</label>
+                                    <label class="form-check-label">
+                                        <input id="dropmalformed" type="radio" name="mode" value="DROPMALFORMED">Discard bad</label>
+                                    <label class="form-check-label">
+                                        <input id="failfast" type="radio" name="mode" value="FAILFAST">Fail fast</label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="inferSchema">
+                                        <input id="inferSchema" type="checkbox"/>
+                                        Infer schema
                                     </label>
                                 </div>
                             </li>

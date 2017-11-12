@@ -119,10 +119,12 @@ define
                         load: function ()
                         {
                             var text;
-                            if (this.is_directory || !this.path.endsWith (".rdf"))
+                            if (this.is_directory)
                                 text = ""
-                            else
+                            else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml") || this.path.endsWith (".csv"))
                                 text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-open'></span></a>";
+                            else
+                                text = ""
                             return (text);
                         },
                         view: function ()
@@ -130,7 +132,7 @@ define
                             var text;
                             if (this.is_directory)
                                 text = ""
-                            else if (this.path.endsWith (".rdf"))
+                            else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml"))
                                 text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-eye-open'></span></a>";
                             else
                             {
@@ -471,6 +473,93 @@ define
             return (document.getElementById ("do_topo_islands").checked);
         }
 
+        function header ()
+        {
+            return (document.getElementById ("header").checked);
+        }
+
+        function ignoreLeadingWhiteSpace ()
+        {
+            return (document.getElementById ("ignoreLeadingWhiteSpace").checked);
+        }
+
+        function ignoreTrailingWhiteSpace ()
+        {
+            return (document.getElementById ("ignoreTrailingWhiteSpace").checked);
+        }
+
+        function sep ()
+        {
+            return (document.getElementById ("sep").value);
+        }
+
+        function quote ()
+        {
+            return (document.getElementById ("quote").value);
+        }
+
+        function escape ()
+        {
+            return (document.getElementById ("escape").value);
+        }
+
+        function encoding ()
+        {
+            return (document.getElementById ("encoding").value);
+        }
+
+        function comment ()
+        {
+            return (document.getElementById ("comment").value);
+        }
+
+        function nullValue ()
+        {
+            return (document.getElementById ("nullValue").value);
+        }
+
+        function nanValue ()
+        {
+            return (document.getElementById ("nanValue").value);
+        }
+
+        function positiveInf ()
+        {
+            return (document.getElementById ("positiveInf").value);
+        }
+
+        function negativeInf ()
+        {
+            return (document.getElementById ("negativeInf").value);
+        }
+
+        function dateFormat ()
+        {
+            return (document.getElementById ("dateFormat").value);
+        }
+
+        function timestampFormat ()
+        {
+            return (document.getElementById ("timestampFormat").value);
+        }
+
+        function mode ()
+        {
+            if (document.getElementById ("permissive").checked)
+                return ("PERMISSIVE");
+            else if (document.getElementById ("dropmalformed").checked)
+                return ("DROPMALFORMED");
+            else if (document.getElementById ("failfast").checked)
+                return ("FAILFAST");
+            else
+                return ("");
+        }
+
+        function inferSchema ()
+        {
+            return (document.getElementById ("inferSchema").checked);
+        }
+
         /**
          * @summary Read the file contents in Spark.
          * @description Trigger CIMReader to read in the file.
@@ -490,6 +579,39 @@ define
                 path += ";do_topo=true";
             if (do_topo_islands ())
                 path += ";do_topo_islands=true";
+            if (header ())
+                path += ";header=true";
+            if (ignoreLeadingWhiteSpace ())
+                path += ";ignoreLeadingWhiteSpace=true";
+            if (ignoreTrailingWhiteSpace ())
+                path += ";ignoreTrailingWhiteSpace=true";
+            if ("" != sep ())
+                path += ";sep=" + encodeURIComponent (sep ());
+            if ("" != quote ())
+                path += ";quote=" + encodeURIComponent (quote ());
+            if ("" != escape ())
+                path += ";escape=" + encodeURIComponent (escape ());
+            if ("" != encoding ())
+                path += ";encoding=" + encodeURIComponent (encoding ());
+            if ("" != comment ())
+                path += ";comment=" + encodeURIComponent (comment ());
+            if ("" != nullValue ())
+                path += ";nullValue=" + encodeURIComponent (nullValue ());
+            if ("" != nanValue ())
+                path += ";nanValue=" + encodeURIComponent (nanValue ());
+            if ("" != positiveInf ())
+                path += ";positiveInf=" + encodeURIComponent (positiveInf ());
+            if ("" != negativeInf ())
+                path += ";negativeInf=" + encodeURIComponent (negativeInf ());
+            if ("" != dateFormat ())
+                path += ";dateFormat=" + encodeURIComponent (dateFormat ());
+            if ("" != timestampFormat ())
+                path += ";timestampFormat=" + encodeURIComponent (timestampFormat ());
+            if ("" != mode ())
+                path += ";mode=" + encodeURIComponent (mode ());
+            if (inferSchema ())
+                path += ";inferSchema=true";
+
             url = util.home () + "cim/load" + path;
             xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()

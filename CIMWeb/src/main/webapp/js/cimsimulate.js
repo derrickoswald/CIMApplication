@@ -374,6 +374,7 @@ define
                     {
                         var lines = data.split ("\n");
                         var modified = lines.map (rotate).join ("\n");
+                        modified = '# ' + target +  '\n' + modified;
                         cimfiles.put (target, modified, done);
                     },
                     done);
