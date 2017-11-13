@@ -41,7 +41,12 @@ define
                 directory: "/data/", // hard coded random loads
                 phi: 0.9,
                 execute: cosphi
-            }
+            },
+            {
+                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService' from table 'data'",
+                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                execute: makeplayers
+            },
         ];
 
         // User specified recorder object queries
@@ -391,6 +396,7 @@ define
                         choice.files = response.result.files.map (function (item) { return ({ house: item.path.substring (0, item.path.indexOf (".")), file: root + item.path }); });
                         cimquery.query (
                             choice.sql,
+                            "",
                             function (data)
                             {
                                 function getRandomInt (min, max)
@@ -399,11 +405,10 @@ define
                                     max = Math.floor (max);
                                     return (Math.floor (Math.random () * (max - min)) + min); //The maximum is exclusive and the minimum is inclusive
                                 }
-                                var houses = data.length;
                                 var players = data.map (
                                     function (row)
                                     {
-                                        var house = row.parent.substring (0, row.parent.indexOf ("_"));
+                                        var house = row.name.substring (0, row.name.indexOf ("_"));
                                         var match = choice.files.filter (function (x) { return (x.house == house); });
                                         if (0 != match.length)
                                             row.file = match[0].file;
@@ -444,6 +449,66 @@ define
            );
         }
 
+        function makeplayers (choice, callback)
+        {
+            cimquery.query (
+                choice.sql,
+                "",
+                function (players)
+                {
+                    var houses = players.length;
+                    function done ()
+                    {
+                        houses = houses - 1;
+                        if (0 == houses)
+                            callback (players);
+                    }
+                    players.forEach (
+                        function (row)
+                        {
+//    {
+//        "name": "HAS2104_load",
+//        "parent": "HAS2104_fuse_topo",
+//        "property": "constant_power",
+//        "unit": "Watt"
+//    },
+                            var house = row.name.substring (0, row.name.indexOf ("_"));
+                            cimquery.query (
+                                "select d.time, d.real, d.imag from data d where d.house = '" + house + "'", // could  order by time  here but it's not very fast
+                                "",
+                                function (measurements)
+                                {
+                                    var name = "input_data/" + house + ".csv";
+                                    row.file = name;
+                                    var strings = measurements.sort (function (a, b) { return (a.time.localeCompare (b.time)); }).map (
+                                        function (measurement)
+                                        {
+//    {
+//        "time": "2017-07-18 00:15:00",
+//        "real": 4037.5,
+//        "imag": 1327.062075
+//    },
+                                            return (measurement.time + "," + measurement.real + "," + measurement.imag);
+                                        }
+                                    );
+                                    if (0 == measurements.length)
+                                    {
+                                        row.error = "mo measurements";
+                                        strings.push ("1970-01-01 00:00:00,0.0,0.0");
+                                    }
+                                    var target = "/" + getStation () + "/" + getName () + "/" + name;
+                                    strings.unshift ("# " + target);
+                                    var text = strings.join ("\n");
+                                    cimfiles.put (target, text, done);
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+
+        }
+
         function outfile (choice, callback)
         {
             var dir = "/" + getStation () + "/" + getName () + "/" + choice.target_directory;
@@ -453,6 +518,7 @@ define
                     if (response.status == "OK")
                         cimquery.query (
                             choice.sql,
+                            "",
                             callback);
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
@@ -757,6 +823,7 @@ define
                 // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s, Bay b where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 // ToDo: this query assumes transformers are directly in a Substation
                 "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s        where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                "",
                 render
             );
         }
@@ -766,6 +833,7 @@ define
             // get the list of stations
             cimquery.query (
                 "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
+                "",
                 function (data)
                 {
                     var rdfstations = data.map (function (obj) { return (obj.station); });
