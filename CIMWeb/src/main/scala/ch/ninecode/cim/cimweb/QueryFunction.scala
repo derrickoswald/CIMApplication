@@ -8,7 +8,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 
-case class QueryFunction (sql: String) extends CIMWebFunction
+case class QueryFunction (sql: String, table_name: String = "") extends CIMWebFunction
 {
     def packRow (row: Row): JsonObjectBuilder =
     {
@@ -39,7 +39,13 @@ case class QueryFunction (sql: String) extends CIMWebFunction
 
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
-        val resultset: Array[Row] = spark.sql (sql).collect
+        val df: DataFrame = spark.sql (sql)
+        if ("" != table_name)
+        {
+            df.cache ()
+            df.createOrReplaceTempView (table_name)
+        }
+        val resultset: Array[Row] = df.collect
         val response = Json.createArrayBuilder
         resultset.map (packRow).map (response.add)
         response.build

@@ -10,10 +10,10 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.resource.ResourceException
+import javax.ws.rs.DefaultValue
 import javax.ws.rs.QueryParam
 
 import scala.collection.JavaConversions._
-
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
@@ -23,10 +23,18 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("query/")
 class Query extends RESTful
 {
+    /**
+     * Execute a Spark SQL query.
+     *
+     * @param sql The query text
+     * @param table_name The temporary table to register as the result of the query
+     * @return The result set as a JSON array
+     */
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
     def Operation (
-        @QueryParam ("sql") sql: String): String =
+        @QueryParam ("sql") sql: String,
+        @DefaultValue ("") @QueryParam ("table_name") table_name: String): String =
     {
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
@@ -36,7 +44,7 @@ class Query extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                val query = QueryFunction (sql)
+                val query = QueryFunction (sql, table_name)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)

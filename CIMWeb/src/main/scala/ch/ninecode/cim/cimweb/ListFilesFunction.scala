@@ -56,7 +56,7 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
                 }
             }
             else
-                response.add ("error", "path does not exist")
+                response.add ("error", "path %s does not exist".format (root.toString))
         }
         catch
         {

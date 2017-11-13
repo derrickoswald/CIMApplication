@@ -72,14 +72,14 @@ class LoadFile extends RESTful
         val options = new scala.collection.mutable.HashMap[String, String] ()
         val function = filetype match
         {
-            case "CIM" ⇒
+            case "CIM" ⇒ // see https://github.com/derrickoswald/CIMReader#reader-api
                 options.put ("ch.ninecode.cim.do_deduplication", do_deduplication)
                 options.put ("ch.ninecode.cim.make_edges", make_edges)
                 options.put ("ch.ninecode.cim.do_join", do_join)
                 options.put ("ch.ninecode.cim.do_topo", do_topo)
                 options.put ("ch.ninecode.cim.do_topo_islands", do_topo_islands)
                 LoadCIMFileFunction (files, options)
-            case "CSV" ⇒
+            case "CSV" ⇒ // see https://spark.apache.org/docs/2.2.0/api/scala/index.html#org.apache.spark.sql.DataFrameReader
                 options.put ("header", header)
                 options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
                 options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
