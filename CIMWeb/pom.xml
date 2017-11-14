@@ -21,11 +21,14 @@
         <version.plugin.compiler>3.6.2</version.plugin.compiler>
         <version.plugin.war>3.1.0</version.plugin.war>
 
+        <!-- component versions -->
+        <version.dependency.cassandra>2.0.5</version.dependency.cassandra>
+        <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
+
         <!-- test dependencies versions -->
         <version.dependency.tomee>7.0.3</version.dependency.tomee>
         <version.dependency.arquillian>1.1.13.Final</version.dependency.arquillian>
         <tomee.classifier>plus</tomee.classifier>
-        <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
 
     </properties>
 
@@ -38,14 +41,7 @@
             <classifier>lib</classifier>
             <scope>provided</scope>
         </dependency>
-<!--
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client</artifactId>
-            <version>${version.dependency.hadoop}</version>
-            <scope>compile</scope>
-        </dependency>
--->
+
         <dependency>
             <groupId>ch.ninecode.sc</groupId>
             <artifactId>ShortCircuit</artifactId>
@@ -92,6 +88,12 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>${version.dependency.sqlite}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.datastax.spark</groupId>
+            <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.cassandra}</version>
         </dependency>
 
         <dependency>

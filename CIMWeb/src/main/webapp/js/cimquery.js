@@ -37,7 +37,9 @@ define
         function query (sql, table_name, fn)
         {
             var table = ("" != table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
-            var url = util.home () + "cim/query?" + table + "sql=" + encodeURIComponent (sql);
+            var cassandra_table_name = document.getElementById ("cassandra_table_name").value;
+            var cassandra_table = ("" != cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
+            var url = util.home () + "cim/query?" + table + cassandra_table + "sql=" + encodeURIComponent (sql);
             var xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -99,6 +101,11 @@ define
                 "          <label for='table_name'>Save as table</label>\n" +
                 "          <input  id='table_name' type='text' class='form-control' aria-describedby='nameHelp' placeholder='table name' value='{{table}}'>\n" +
                 "          <small id='nameHelp' class='form-text text-muted'>Enter a name for a temporary view to hold the results of the query.</small>\n" +
+                "        </div>\n" +
+                "        <div class='form-group'>\n" +
+                "          <label for='cassandra_table_name'>Save in Cassandra</label>\n" +
+                "          <input  id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value=''>\n" +
+                "          <small id='cassandraHelp' class='form-text text-muted'>Enter the name of the Cassandra table to store the results of the query.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +

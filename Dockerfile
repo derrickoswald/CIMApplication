@@ -40,7 +40,6 @@ RUN set -xe \
         gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
     done
 
-
 RUN set -x \
 	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz.asc -o tomee.tar.gz.asc \
 	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz -o tomee.tar.gz \
@@ -56,10 +55,20 @@ ENV CATALINA_OPTS -Xmx8g
 
 EXPOSE 8080
 
+# install Cassandra
+RUN echo "deb http://www.apache.org/dist/cassandra/debian 311x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
+RUN curl https://www.apache.org/dist/cassandra/KEYS | apt-key add -
+RUN apt-get update \
+  && apt-key adv --keyserver pool.sks-keyservers.net --recv-key A278B781FE4B2BDA \
+  && DEBIAN_FRONTEND=noninteractive apt-get install \
+    -yq --no-install-recommends \
+       cassandra \
+  && apt-get clean
+
 # install tools
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install \
-    -yq --no-install-recommends  \
+    -yq --no-install-recommends \
       python python3 vim sqlite3 r-base p7zip net-tools \
   && apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
@@ -76,6 +85,7 @@ RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
 
 # copy start script
 COPY CIMEar/start-tomee /opt/util/bin/start-tomee
+COPY CIMEar/schema.sql /opt/util/bin/schema.sql
 
 # set up apps directory
 RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak

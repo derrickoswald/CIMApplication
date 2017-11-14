@@ -38,4 +38,11 @@ while ! nc -z $NAMENODE 50070; do
   sleep 2;
 done;
 
+# start cassandra and load schema
+service cassandra start
+until [[ $(nodetool statusbinary) == "running" ]]; do
+    sleep 1
+done
+cqlsh --file /opt/util/bin/schema.sql localhost
+
 catalina.sh run
