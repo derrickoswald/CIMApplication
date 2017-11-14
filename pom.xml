@@ -100,7 +100,6 @@
         <module>GridLAB-D</module>
         <module>ShortCircuit</module>
         <module>Spatial</module>
-        <module>GeoVis</module>
         <module>SmartMeter</module>
     </modules>
 

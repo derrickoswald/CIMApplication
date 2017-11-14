@@ -44,13 +44,13 @@ class ApplicationConfig extends Application
             classOf[LoadFile],
             classOf[Query],
             classOf[Export],
+            classOf[View],
             classOf[SimpleRESTEJB],
             classOf[EnergyConsumer],
             classOf[GridLAB],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
-            classOf[TimeSeries],
-            classOf[Visualize]))
+            classOf[TimeSeries]))
     }
 }
 
