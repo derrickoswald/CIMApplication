@@ -1,7 +1,6 @@
 package ch.ninecode.cim.cimweb
 
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.io.Text
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMExport

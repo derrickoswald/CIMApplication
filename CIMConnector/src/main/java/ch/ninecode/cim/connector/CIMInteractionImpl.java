@@ -103,7 +103,7 @@ public class CIMInteractionImpl implements Interaction
                                 }
                                 catch (Exception exception)
                                 {
-                                    throw new ResourceException ("problem", exception);
+                                    throw new ResourceException (exception.getLocalizedMessage (), exception);
                                 }
                             }
                             else
@@ -161,7 +161,7 @@ public class CIMInteractionImpl implements Interaction
                                                 }
                                                 catch (InvocationTargetException ite)
                                                 {
-                                                    throw new ResourceException ("problem", ite);
+                                                    throw new ResourceException (ite.getLocalizedMessage (), ite);
                                                 }
                                                 break;
                                             }
@@ -169,12 +169,12 @@ public class CIMInteractionImpl implements Interaction
                                     }
                                     catch (ClassNotFoundException cnfe)
                                     {
-                                        throw new ResourceException ("problem", cnfe);
+                                        throw new ResourceException (cnfe.getLocalizedMessage (), cnfe);
                                     }
                                 }
                                 catch (Exception exception)
                                 {
-                                    throw new ResourceException ("problem", exception);
+                                    throw new ResourceException (exception.getLocalizedMessage (), exception);
                                 }
                             }
                             else
@@ -250,7 +250,7 @@ public class CIMInteractionImpl implements Interaction
                             }
                             catch (Exception exception)
                             {
-                                throw new ResourceException ("problem", exception);
+                                throw new ResourceException (exception.getLocalizedMessage (), exception);
                             }
                         else
                             throw new ResourceException (INVALID_INPUT_ERROR);
@@ -267,7 +267,7 @@ public class CIMInteractionImpl implements Interaction
                             }
                             catch (Exception exception)
                             {
-                                throw new ResourceException ("problem", exception);
+                                throw new ResourceException (exception.getLocalizedMessage (), exception);
                             }
                         else
                             throw new ResourceException (INVALID_INPUT_ERROR);
@@ -328,7 +328,7 @@ public class CIMInteractionImpl implements Interaction
                                             }
                                             catch (InvocationTargetException ite)
                                             {
-                                                throw new ResourceException ("problem", ite);
+                                                throw new ResourceException (ite.getLocalizedMessage (), ite);
                                             }
                                             break;
                                         }
@@ -336,12 +336,12 @@ public class CIMInteractionImpl implements Interaction
                                 }
                                 catch (ClassNotFoundException cnfe)
                                 {
-                                    throw new ResourceException ("problem", cnfe);
+                                    throw new ResourceException (cnfe.getLocalizedMessage (), cnfe);
                                 }
                             }
                             catch (Exception exception)
                             {
-                                throw new ResourceException ("problem", exception);
+                                throw new ResourceException (exception.getLocalizedMessage (), exception);
                             }
                         else
                             throw new ResourceException (INVALID_INPUT_ERROR);

@@ -93,7 +93,7 @@ define
                 "        <div class='form-group'>\n" +
                 "          <label for='sql'>SQL query</label>\n" +
                 "          <textarea id='sql' class='form-control' aria-describedby='sqlHelp' name='sql' rows='8' placeholder='select * from ACLineSegment' style='width: 80%'>{{sql}}</textarea>\n" +
-                "          <small id='sqlHelp' class='form-text text-muted'>A spark SQL query against the <a href='https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package' target='_blank'>CIMReader schema</a>.</small>\n" +
+                "          <small id='sqlHelp' class='form-text text-muted'>A Spark SQL query against the <a href='https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package' target='_blank'>CIMReader schema</a>.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='table_name'>Save as table</label>\n" +
