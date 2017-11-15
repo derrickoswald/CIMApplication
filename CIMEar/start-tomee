@@ -38,8 +38,15 @@ while ! nc -z $NAMENODE 50070; do
   sleep 2;
 done;
 
-# start cassandra and load schema
+# configure Cassandra cluster
+sed -i "s|cluster_name: 'Test Cluster'|cluster_name: 'sandbox'|g" /etc/cassandra/cassandra.yaml
+seed=$(getent ahosts $NAMENODE | grep $NAMENODE | cut --delimiter " " --fields 1) && sed -i "s|- seeds: \"127.0.0.1\"|- seeds: \"$seed\"|g" /etc/cassandra/cassandra.yaml
+me=$(hostname -i) && sed -i "s|listen_address: localhost|listen_address: $me|g" /etc/cassandra/cassandra.yaml
+
+# start Cassandra
 service cassandra start 2>/dev/null
+
+# load Cassandra schema
 until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
     sleep 1
 done
