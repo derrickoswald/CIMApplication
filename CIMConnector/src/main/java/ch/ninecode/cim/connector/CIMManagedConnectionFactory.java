@@ -192,23 +192,41 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
             throw new ResourceException ("the ResourceAdapter association must not change during the lifetime of a ManagedConnectionFactory JavaBean");
     }
 
-    // requires a running standalone Spark instance with current user added to supergroup
-    // see https://github.com/derrickoswald/CIMReader/blob/master/src/test/resources/sandbox.yaml
-
+    /**
+     * Get the Spark master URL.
+     *
+     * For example <code>spark://sandbox:7077</code>.
+     *
+     * @implNote For TomEE+, this value may also be set via a system property,
+     * either on the command line via environment variable:
+     * <code>CATALINA_OPTS=-DSparkConnectionFactory.ConnectionURL=spark://sandbox:7077</code>
+     * or adding it to &lt;tomee installation directory&gt;/conf/system.properties:
+     * <code>SparkConnectionFactory.ConnectionURL=spark://sandbox:7077</code>
+     *
+     * @return The current setting for Spark master.
+     */
     @ConfigProperty
     (
         type = String.class,
         description = "Spark stand-alone master URL.",
-        defaultValue = "spark://sandbox:7077",
+        defaultValue = "local[*]",
         ignore = false,
         supportsDynamicUpdates = false,
         confidential = false
     )
-    public String getConnectionURL ()
-    {
-        return (_ConnectionURL);
-    }
+    public String getConnectionURL () { return (_ConnectionURL); }
 
+    /**
+     * Set the Spark master URL.
+     *
+     * @implNote Setting this to something other than the default <code>local[*]</code> requires a running
+     * "standalone" Spark instance with the current user added to supergroup.
+     * An example for creating such an instance, using Docker "compose", can be found in the
+     * <a href="https://github.com/derrickoswald/CIMReader/blob/master/src/test/resources/sandbox.yaml" target="_blank">
+     * <code>spark_master</code> container</a>.
+     *
+     * @param url The new Spark master URL.
+     */
     public void setConnectionURL (String url)
     {
         String old = _ConnectionURL;

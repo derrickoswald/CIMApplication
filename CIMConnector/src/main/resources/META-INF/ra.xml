@@ -29,11 +29,6 @@
         <outbound-resourceadapter>
             <connection-definition id="SparkConnectionFactory">
                 <managedconnectionfactory-class>ch.ninecode.cim.connector.CIMManagedConnectionFactory</managedconnectionfactory-class>
-                <config-property>
-                    <config-property-name>ConnectionURL</config-property-name>
-                    <config-property-type>java.lang.String</config-property-type>
-                    <config-property-value>local[*]</config-property-value>
-                </config-property>
                 <connectionfactory-interface>javax.resource.cci.ConnectionFactory</connectionfactory-interface>
                 <connectionfactory-impl-class>ch.ninecode.cim.connector.CIMConnectionFactory</connectionfactory-impl-class>
                 <connection-interface>javax.resource.cci.Connection</connection-interface>

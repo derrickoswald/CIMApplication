@@ -34,6 +34,10 @@ class Ping extends RESTful
                 environment.add (pair._1, pair._2)
             val ret = Json.createObjectBuilder
             ret.add ("environment", environment)
+            val properties = Json.createObjectBuilder
+            for (property ← System.getProperties)
+                properties.add (property._1, property._2)
+            ret.add ("properties", properties)
             result.setResult (ret.build)
         }
 

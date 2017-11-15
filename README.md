@@ -104,7 +104,6 @@ Endpoint | Verb | Parameters | Description|
 /cimweb/cim/view | GET | about xmin ymin, xmax, ymax, reduceLines, maxLines, dougPeuk dougPeukFactor, resolution | Return (simplified) RDF for features within the bounding box from the CIM loaded into Spark.|
 /cimweb/cim/ejb | GET | | Reads test file /data/NIS_CIM_Export_NS_INITIAL_FILL.rdf and returns the number of elements.|
 /cimweb/cim/EnergyConsumer | GET | | Reads test file /data/NIS_CIM_Export_NS_INITIAL_FILL.rdf and returns the number of elements.|
-/cimweb/cim/GridLabExport | GET | optional file transformer | With no file specified, reads given file into Spark and returns the transformer names. With specified transformer returns the gridlab file.|
 /cimweb/cim/ShortCircuitCalculation | GET | optional file transformer | With no file specified, reads given file into Spark and returns the transformer names. With specified transformer returns the short circuit data for the house connections.|
 /cimweb/cim/Spatial/nearest | GET | optional lat lon n | Finds the n nearest house connections to the given wgs84 lat,long.|
 /cimweb/cim/timeseries | GET | | Sample to read SQLite database and return measurement data.|

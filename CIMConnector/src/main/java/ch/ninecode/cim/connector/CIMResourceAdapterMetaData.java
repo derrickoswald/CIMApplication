@@ -11,7 +11,7 @@ public class CIMResourceAdapterMetaData implements ResourceAdapterMetaData
         "A resource adapter linking Spark and the CIMReader with the J2EE world.";
     private static final String SPEC_VERSION = "1.0";
     private static final String[] INTERACTION_SPECS_SUPPORTED =
-        { "ch.ninecode.cim.connector.CIMInteractionSpecImpl" };
+        { "ch.ninecode.cim.connector.CIMInteractionSpec" };
 
     public CIMResourceAdapterMetaData ()
     {
@@ -63,7 +63,7 @@ public class CIMResourceAdapterMetaData implements ResourceAdapterMetaData
     @Override
     public boolean supportsExecuteWithInputRecordOnly ()
     {
-        return (false);
+        return (true);
     }
 
     @Override

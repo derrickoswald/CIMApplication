@@ -171,7 +171,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
             // set up the spark master
-            if (!_RequestInfo.getMaster ().equals (""))
+            if ((null != _RequestInfo.getMaster ()) && !_RequestInfo.getMaster ().equals (""))
                 configuration.setMaster (_RequestInfo.getMaster ());
             else
                 // run Spark locally with as many worker threads as logical cores on the machine

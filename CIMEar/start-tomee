@@ -22,15 +22,15 @@ if [[ -z "${1}" ]]; then
   exit 1
 fi
 
-# if localhost start the name node
+# if localhost, start the name node
 if [[ "localhost" == "${1}" ]]; then
     export NAMENODE=$(hostname)
-    sed -i "s|\[NAMENODE_HOST\]|$(hostname)|g" $HADOOP_CONF_DIR/core-site.xml
+    sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
     start-hadoop-namenode &
 else
     # just edit the configuration
     export NAMENODE=${1}
-    sed -i "s|\[NAMENODE_HOST\]|${1}|g" $HADOOP_CONF_DIR/core-site.xml
+    sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
 fi
 
 # Wait for the name node to be online
@@ -39,10 +39,17 @@ while ! nc -z $NAMENODE 50070; do
 done;
 
 # start cassandra and load schema
-service cassandra start
-until [[ $(nodetool statusbinary) == "running" ]]; do
+service cassandra start 2>/dev/null
+until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
     sleep 1
 done
 cqlsh --file /opt/util/bin/schema.sql localhost
+
+# if not localhost, add the Spark master setting as the connection URL to the system.properties
+if [[ "localhost" == "${1}" ]]; then
+    echo "SparkConnectionFactory.ConnectionURL=local[*]" >> /usr/local/tomee/conf/system.properties
+else
+    echo "SparkConnectionFactory.ConnectionURL=spark://$NAMENODE:7077" >> /usr/local/tomee/conf/system.properties
+fi
 
 catalina.sh run

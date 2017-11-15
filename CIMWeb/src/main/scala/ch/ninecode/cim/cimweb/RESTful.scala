@@ -7,10 +7,11 @@ import javax.naming.InitialContext
 import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
-import javax.resource.cci.Connection
 import javax.resource.cci.MappedRecord
 
+import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMConnectionFactory
+import ch.ninecode.cim.connector.CIMConnectionSpec
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
@@ -19,7 +20,7 @@ class RESTful ()
 
     type map = java.util.Map[String,Object]
 
-    protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): Connection =
+    protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): CIMConnection =
     {
         val out = if (debug) new StringBuffer else null
         val factory = getConnectionFactory (out)
@@ -28,7 +29,7 @@ class RESTful ()
         if (null != factory)
         {
             val specification = factory.getDefaultConnectionSpec
-            factory.getConnection (specification)
+            factory.getConnection (specification).asInstanceOf[CIMConnection]
         }
         else
         {
@@ -121,7 +122,7 @@ object RESTful
         ret
     }
 
-    protected def getConnectionFactory (debug_out: StringBuffer = null): CIMConnectionFactory =
+    def getConnectionFactory (debug_out: StringBuffer = null): CIMConnectionFactory =
     {
         val debug = null != debug_out
         try
