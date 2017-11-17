@@ -1,6 +1,6 @@
 create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
 use cimapplication;
-create table measured_value_by_day (
+create table if not exists measured_value_by_day (
     mrid text,
     type text,
     date date,

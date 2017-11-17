@@ -9,7 +9,6 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import com.datastax.spark.connector._
-import com.twitter.jsr166e.LongAdder
 
 case class QueryFunction (sql: String, table_name: String = "", cassandra_table_name: String = "") extends CIMWebFunction
 {

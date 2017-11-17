@@ -166,9 +166,6 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // create the configuration
             SparkConf configuration = new SparkConf (false);
             configuration.setAppName ("CIMConnector");
-            configuration.set ("spark.driver.userClassPathFirst", "false"); // default
-            configuration.set ("spark.executor.userClassPathFirst", "false"); // default
-            configuration.set ("spark.driver.allowMultipleContexts", "false"); // default
 
             // set up the spark master
             if ((null != _RequestInfo.getMaster ()) && !_RequestInfo.getMaster ().equals (""))
@@ -176,6 +173,11 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             else
                 // run Spark locally with as many worker threads as logical cores on the machine
                 configuration.setMaster ("local[*]");
+
+            // set up the cassandra connection host
+            if ((null != _RequestInfo.getCassandra ()) && !_RequestInfo.getCassandra ().equals (""))
+                configuration.set ("spark.cassandra.connection.host", _RequestInfo.getCassandra ());
+            else
 
             // add the other properties
             for (String key : _RequestInfo.getProperties ().keySet ())

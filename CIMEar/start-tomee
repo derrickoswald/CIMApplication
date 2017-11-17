@@ -43,20 +43,56 @@ sed -i "s|cluster_name: 'Test Cluster'|cluster_name: 'sandbox'|g" /etc/cassandra
 seed=$(getent ahosts $NAMENODE | grep $NAMENODE | cut --delimiter " " --fields 1) && sed -i "s|- seeds: \"127.0.0.1\"|- seeds: \"$seed\"|g" /etc/cassandra/cassandra.yaml
 me=$(hostname -i) && sed -i "s|listen_address: localhost|listen_address: $me|g" /etc/cassandra/cassandra.yaml
 
-# start Cassandra
-service cassandra start 2>/dev/null
+# if localhost, start Cassandra
+if [[ "localhost" == "${1}" ]]; then
+    service cassandra start 2>/dev/null
+    declare -i i
+    i=0
+    until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
+        echo waiting for Cassandra -- $(nodetool statusbinary 2>/dev/null)
+        sleep 1
+        if [[ $(nodetool statusbinary 2>/dev/null) == "" ]]
+        then
+            i=$(($i+1))
+        fi
+        if [ "$i" -gt 10 ]
+        then
+            # WTF? Cassandra: bigtime fail, see https://issues.apache.org/jira/browse/CASSANDRA-5916
+            echo JVM_OPTS=\"\$JVM_OPTS -Dcassandra.replace_address=$me\" >> /etc/cassandra/cassandra-env.sh
+            # start Cassandra
+            service cassandra start 2>/dev/null
+            declare -i j
+            j=0
+            until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
+                echo still waiting for Cassandra -- $(nodetool statusbinary 2>/dev/null)
+                sleep 1
+                if [[ $(nodetool statusbinary 2>/dev/null) == "" ]]
+                then
+                    j=$(($j+1))
+                fi
+                if [ "$j" -gt 10 ]
+                then
+                    break
+                fi
+            done
+            break
+        fi
+    done
+    rpc_host=localhost
+else
+    rpc_host=$NAMENODE
+fi
 
 # load Cassandra schema
-until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
-    sleep 1
-done
-cqlsh --file /opt/util/bin/schema.sql localhost
+cqlsh --file /opt/util/bin/schema.sql $rpc_host
 
-# if not localhost, add the Spark master setting as the connection URL to the system.properties
+# if not localhost, add the Spark master setting as ConnectionURL and Cassandra connect.host as ServerName to the system.properties
 if [[ "localhost" == "${1}" ]]; then
     echo "SparkConnectionFactory.ConnectionURL=local[*]" >> /usr/local/tomee/conf/system.properties
+    echo "SparkConnectionFactory.ServerName=localhost" >> /usr/local/tomee/conf/system.properties
 else
     echo "SparkConnectionFactory.ConnectionURL=spark://$NAMENODE:7077" >> /usr/local/tomee/conf/system.properties
+    echo "SparkConnectionFactory.ServerName=$NAMENODE" >> /usr/local/tomee/conf/system.properties
 fi
 
 catalina.sh run

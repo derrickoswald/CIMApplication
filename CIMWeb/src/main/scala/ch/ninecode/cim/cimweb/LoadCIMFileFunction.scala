@@ -4,9 +4,7 @@ import javax.json.Json
 import javax.json.JsonStructure
 
 import org.apache.hadoop.fs.Path
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.StructField
 
 import scala.collection.mutable.HashMap
 
@@ -44,7 +42,8 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             response.add ("options", opts)
             reader_options.put ("path", files.mkString (",")) // ToDo: why is this still needed?
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
-            response.add ("elements", elements.count ())
+            val count = elements.count
+            response.add ("elements", count)
         }
         catch
         {

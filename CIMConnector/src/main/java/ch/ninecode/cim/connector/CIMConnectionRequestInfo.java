@@ -8,6 +8,7 @@ import javax.resource.spi.ConnectionRequestInfo;
 public class CIMConnectionRequestInfo implements ConnectionRequestInfo
 {
     protected String _Master = "";
+    protected String _Cassandra = "";
     protected HashMap<String,String> _Properties = new HashMap<>();
     protected ArrayList<String> _Jars = new ArrayList<> ();
 
@@ -25,12 +26,13 @@ public class CIMConnectionRequestInfo implements ConnectionRequestInfo
         if (object instanceof CIMConnectionRequestInfo)
         {
             CIMConnectionRequestInfo that = (CIMConnectionRequestInfo)object;
-            ret = getMaster () == that.getMaster () &&
+            ret = getMaster ().equals (that.getMaster ()) &&
+                getCassandra ().equals (that.getCassandra ()) &&
                 getProperties ().size () == that.getProperties ().size () &&
                 getJars ().size () == that.getJars ().size ();
             if (ret)
                 for (String key : getProperties ().keySet ())
-                    if (!that.getProperties ().containsKey (key) || getProperties ().get (key) != that.getProperties ().get (key))
+                    if (!that.getProperties ().containsKey (key) || !getProperties ().get (key).equals (that.getProperties ().get (key)))
                     {
                         ret = false;
                         break;
@@ -53,38 +55,24 @@ public class CIMConnectionRequestInfo implements ConnectionRequestInfo
      **/
     public int hashCode ()
     {
-        return (getMaster ().hashCode () + getProperties ().hashCode () + getJars ().hashCode ());
+        return (getMaster ().hashCode () + getCassandra ().hashCode () + getProperties ().hashCode () + getJars ().hashCode ());
     }
 
-    public String getMaster ()
-    {
-        return (_Master);
-    }
+    public String getMaster () { return (_Master); }
 
-    public void setMaster (String master)
-    {
-        _Master = master;
-    }
+    public void setMaster (String master) { _Master = master; }
 
-    public HashMap<String, String> getProperties ()
-    {
-        return (_Properties);
-    }
+    public String getCassandra () { return (_Cassandra); }
 
-    public void setProperties (HashMap<String, String> properties)
-    {
-        _Properties = properties;
-    }
+    public void setCassandra (String cassandra) { _Cassandra = cassandra; }
 
-    public ArrayList<String> getJars ()
-    {
-        return (_Jars);
-    }
+    public HashMap<String, String> getProperties () { return (_Properties); }
 
-    public void setJars (ArrayList<String> jars)
-    {
-        _Jars = jars;
-    }
+    public void setProperties (HashMap<String, String> properties) { _Properties = properties; }
+
+    public ArrayList<String> getJars () { return (_Jars); }
+
+    public void setJars (ArrayList<String> jars) { _Jars = jars; }
 
     public String toString ()
     {
@@ -92,6 +80,8 @@ public class CIMConnectionRequestInfo implements ConnectionRequestInfo
 
         sb.append ("[@");
         sb.append (getMaster ());
+        sb.append (" + ");
+        sb.append (getCassandra ());
         sb.append (": ");
         for (String key: getProperties ().keySet ())
         {

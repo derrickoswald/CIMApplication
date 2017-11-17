@@ -65,11 +65,12 @@ public class CIMConnectionFactory implements ConnectionFactory
     {
         CIMConnectionSpec _spec;
         if ((null == spec) || (!spec.getClass ().isAssignableFrom (CIMConnectionSpec.class)))
-            _spec = new CIMConnectionSpec ();
+            _spec = getDefaultConnectionSpec ();
         else
             _spec = (CIMConnectionSpec)spec;
         CIMConnectionRequestInfo info = new CIMConnectionRequestInfo ();
         info.setMaster (_ManagedConnectionFactory.getConnectionURL ());
+        info.setCassandra (_ManagedConnectionFactory.getServerName ());
         for (String key : _spec.getProperties ().keySet ())
             info.getProperties ().put (key, _spec.getProperties ().get (key));
         for (String jar : _spec.getJars ())

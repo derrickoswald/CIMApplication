@@ -397,6 +397,7 @@ define
                         cimquery.query (
                             choice.sql,
                             "",
+                            "",
                             function (data)
                             {
                                 function getRandomInt (min, max)
@@ -454,6 +455,7 @@ define
             cimquery.query (
                 choice.sql,
                 "",
+                "",
                 function (players)
                 {
                     var houses = players.length;
@@ -475,6 +477,7 @@ define
                             var house = row.name.substring (0, row.name.indexOf ("_"));
                             cimquery.query (
                                 "select d.time, d.real, d.imag from data d where d.house = '" + house + "'", // could  order by time  here but it's not very fast
+                                "",
                                 "",
                                 function (measurements)
                                 {
@@ -518,6 +521,7 @@ define
                     if (response.status == "OK")
                         cimquery.query (
                             choice.sql,
+                            "",
                             "",
                             callback);
                     else
@@ -824,6 +828,7 @@ define
                 // ToDo: this query assumes transformers are directly in a Substation
                 "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s        where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 "",
+                "",
                 render
             );
         }
@@ -833,6 +838,7 @@ define
             // get the list of stations
             cimquery.query (
                 "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
+                "",
                 "",
                 function (data)
                 {

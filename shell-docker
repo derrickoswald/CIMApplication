@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
+set -x
 docker exec --tty --interactive tomee bash

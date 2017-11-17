@@ -29,15 +29,15 @@ define
          * @summary perform query.
          * @description Perform an SQL query on loaded CIM data.
          * @param {string} sql - the SQL to use
-         * @param {string} table_name - the name of the temporary view to store the result DataFrame
+         * @param {string} table_name - the name of the temporary view to store the result DataFrame, "" for none
+         * @param {string} cassandra_table_name - the name of the name of the Cassandra table to store the result DataFrame, "" for none
          * @param {function} fn - the callback function with the data
          * @function query
          * @memberOf module:cimquery
          */
-        function query (sql, table_name, fn)
+        function query (sql, table_name, cassandra_table_name, fn)
         {
             var table = ("" != table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
-            var cassandra_table_name = document.getElementById ("cassandra_table_name").value;
             var cassandra_table = ("" != cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
             var url = util.home () + "cim/query?" + table + cassandra_table + "sql=" + encodeURIComponent (sql);
             var xmlhttp = util.createCORSRequest ("GET", url);
@@ -74,7 +74,8 @@ define
             {
                 TheQuery = sql;
                 var table_name = document.getElementById ("table_name").value;
-                query (sql, table_name, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
+                var cassandra_table_name = document.getElementById ("cassandra_table_name").value;
+                query (sql, table_name, cassandra_table_name, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
             }
         }
 

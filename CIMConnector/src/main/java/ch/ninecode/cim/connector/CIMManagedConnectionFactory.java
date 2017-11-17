@@ -31,11 +31,11 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
     protected transient PropertyChangeSupport _PropertyChangeSupport;
     protected PrintWriter _PrintWriter;
     protected CIMResourceAdapter _ResourceAdapter;
-//    protected String ServerName; // Name of the server for the EIS instance.
 //    protected int PortNumber; // Port number for establishing a connection to an EIS instance.
 //    protected String UserName; // Name of the user establishing a connection to an EIS instance.
 //    protected String Password; // Password for the user establishing a connection.
-    protected String _ConnectionURL; // URL for the EIS instance to which it connects.
+    protected String _ConnectionURL; // Spark master URL
+    protected String _ServerName; // Cassandra connection host
 
     public CIMManagedConnectionFactory ()
     {
@@ -44,7 +44,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         _PrintWriter = new PrintWriter (System.out);
         _ResourceAdapter = null;
         _ConnectionURL = null;
-    }
+        _ServerName = null;    }
 
     @Override
     public Object createConnectionFactory () throws ResourceException
@@ -99,6 +99,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         else
             _info = (CIMConnectionRequestInfo)info;
         _info.setMaster (getConnectionURL ());
+        _info.setCassandra (getServerName ());
         if (null != logger)
             logger.println ("allocating new CIMManagedConnection");
         connection = new CIMManagedConnection ((CIMResourceAdapter)getResourceAdapter (), getLogWriter ());
@@ -232,6 +233,34 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
         String old = _ConnectionURL;
         _ConnectionURL = url;
         firePropertyChange ("ConnectionURL", old, _ConnectionURL);
+    }
+
+    /**
+     * Get the Cassandra connection host.
+     *
+     * @return The current setting for Cassandra connection.host.
+     */
+    @ConfigProperty
+        (
+            type = String.class,
+            description = "Cassandra connection.host.",
+            defaultValue = "localhost",
+            ignore = false,
+            supportsDynamicUpdates = false,
+            confidential = false
+        )
+    public String getServerName () { return (_ServerName); }
+
+    /**
+     * Set the Cassandra connection host.
+     *
+     * @param server The new Cassandra connection host.
+     */
+    public void setServerName (String server)
+    {
+        String old = _ServerName;
+        _ServerName = server;
+        firePropertyChange ("ServerName", old, _ServerName);
     }
 
     /**

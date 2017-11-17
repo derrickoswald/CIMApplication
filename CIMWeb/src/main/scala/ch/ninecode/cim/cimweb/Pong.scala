@@ -30,7 +30,7 @@ class Pong extends RESTful
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
-    def ping (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
+    def pong (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
         val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
         _Logger.info ("pong (debug=%s)".format (verbose))
