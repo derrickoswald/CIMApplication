@@ -92,6 +92,16 @@ public class CIMConnectionFactory implements ConnectionFactory
     }
 
     /**
+     * Get the resource adapter.
+     *
+     * @return The CIMResourceAdapter object.
+     */
+    public CIMResourceAdapter getResourceAdapter ()
+    {
+        return ((CIMResourceAdapter)_ManagedConnectionFactory.getResourceAdapter ());
+    }
+
+    /**
      * Build a connection specification with the configured settings.
      * @return a connection specification that is probably good enough
      */

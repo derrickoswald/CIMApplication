@@ -71,6 +71,34 @@ class Pong extends RESTful
                     metadata.add ("interaction_specifications_supported", meta.getInteractionSpecsSupported.mkString (","))
                 }
                 ret.add ("resource_adapter_metadata", metadata)
+
+                // add the Resource Adapter properties
+                val resource_adapter_properties = Json.createObjectBuilder
+                val resource_adapter = factory.getResourceAdapter
+                if (null != resource_adapter)
+                {
+                    resource_adapter_properties.add ("YarnConfigurationPath", resource_adapter.getYarnConfigurationPath)
+                    resource_adapter_properties.add ("SparkDriverMemory", resource_adapter.getSparkDriverMemory)
+                    resource_adapter_properties.add ("SparkExecutorMemory", resource_adapter.getSparkExecutorMemory)
+                }
+                ret.add ("resource_adapter_properties", resource_adapter_properties)
+
+                val default_connection_spec = Json.createObjectBuilder
+                val connection_spec = factory.getDefaultConnectionSpec
+                if (null != connection_spec)
+                {
+                    default_connection_spec.add ("username", connection_spec.getUserName)
+                    default_connection_spec.add ("password", connection_spec.getPassword)
+                    val properties = Json.createObjectBuilder
+                    for (property <- connection_spec.getProperties)
+                        properties.add (property._1, property._2)
+                    default_connection_spec.add ("properties", properties)
+                    val jars = Json.createArrayBuilder
+                    for (jar <- connection_spec.getJars)
+                        jars.add (jar)
+                    default_connection_spec.add ("jars", jars)
+                }
+                ret.add ("default_connection_spec", default_connection_spec)
             }
 
             val connection = getConnection (result)  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output

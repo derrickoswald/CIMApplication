@@ -90,9 +90,13 @@ cqlsh --file /opt/util/bin/schema.sql $rpc_host
 if [[ "localhost" == "${1}" ]]; then
     echo "SparkConnectionFactory.ConnectionURL=local[*]" >> /usr/local/tomee/conf/system.properties
     echo "SparkConnectionFactory.ServerName=localhost" >> /usr/local/tomee/conf/system.properties
+    echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
+    echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
 else
     echo "SparkConnectionFactory.ConnectionURL=spark://$NAMENODE:7077" >> /usr/local/tomee/conf/system.properties
     echo "SparkConnectionFactory.ServerName=$NAMENODE" >> /usr/local/tomee/conf/system.properties
+    echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
+    echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
 fi
 
 catalina.sh run

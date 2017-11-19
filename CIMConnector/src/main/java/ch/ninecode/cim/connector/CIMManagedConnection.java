@@ -203,6 +203,10 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // register CIMReader classes
             configuration.registerKryoClasses (CIMClasses.list ());
 
+            // setting spark.executor.memory as a property doesn't work:
+            if (null != configuration.get ("spark.executor.memory", null))
+                System.setProperty ("spark.executor.memory", configuration.get ("spark.executor.memory"));
+
             // make a Spark session
             _SparkSession = SparkSession.builder ().config (configuration).getOrCreate ();
             _SparkSession.sparkContext ().setLogLevel ("INFO"); // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
