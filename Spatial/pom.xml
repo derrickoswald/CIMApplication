@@ -17,6 +17,42 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMReader</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive-thriftserver_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-graphx_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.spark}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -31,41 +67,6 @@
             <artifactId>junit</artifactId>
             <version>${version.dependency.junit}</version>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${version.dependency.scala}</artifactId>
-            <scope>provided</scope>
-            <version>${version.dependency.spark}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.cim</groupId>
-            <artifactId>CIMReader</artifactId>
-            <version>${version.dependency.cimreader}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${version.dependency.scala}</artifactId>
-            <scope>provided</scope>
-            <version>${version.dependency.spark}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-hive-thriftserver_${version.dependency.scala}</artifactId>
-            <scope>provided</scope>
-            <version>${version.dependency.spark}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-graphx_${version.dependency.scala}</artifactId>
-            <scope>provided</scope>
-            <version>${version.dependency.spark}</version>
         </dependency>
 
     </dependencies>

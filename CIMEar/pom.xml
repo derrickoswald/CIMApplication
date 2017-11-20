@@ -61,13 +61,6 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.geo</groupId>
-            <artifactId>GeoVis</artifactId>
-            <version>${project.version}</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
             <groupId>ch.ninecode.sm</groupId>
             <artifactId>SmartMeter</artifactId>
             <version>${project.version}</version>
@@ -114,11 +107,6 @@
                             <groupId>ch.ninecode.sp</groupId>
                             <artifactId>Spatial</artifactId>
                             <bundleFileName>Spatial-${project.version}.jar</bundleFileName>
-                        </jarModule>
-                        <jarModule>
-                            <groupId>ch.ninecode.geo</groupId>
-                            <artifactId>GeoVis</artifactId>
-                            <bundleFileName>GeoVis-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sm</groupId>

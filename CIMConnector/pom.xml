@@ -22,6 +22,7 @@
         <version.plugin.compiler>3.6.2</version.plugin.compiler>
         <version.plugin.jar>3.0.2</version.plugin.jar>
         <version.plugin.rar>2.4</version.plugin.rar>
+        <version.plugin.surefire>2.20</version.plugin.surefire>
 
         <!-- test dependencies versions -->
         <version.dependency.tomee>7.0.3</version.dependency.tomee>
@@ -89,7 +90,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.20</version>
+                <version>${version.plugin.surefire}</version>
                 <configuration>
                     <systemPropertyVariables>
                         <tomee.embedded.httpPort>-1</tomee.embedded.httpPort>

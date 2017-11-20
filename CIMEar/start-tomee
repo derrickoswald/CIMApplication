@@ -28,7 +28,7 @@ if [[ "localhost" == "${1}" ]]; then
     sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
     start-hadoop-namenode &
 else
-    # just edit the configuration
+    # just edit the configuration to set the fs.defaultFS in core-site.xml as is done in start-hadoop
     export NAMENODE=${1}
     sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
 fi
@@ -85,6 +85,9 @@ fi
 
 # load Cassandra schema
 cqlsh --file /opt/util/bin/schema.sql $rpc_host
+
+# add Spark jars to shared classpath
+# sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/jars/*.jar|g" /usr/local/tomee/conf/catalina.properties
 
 # if not localhost, add the Spark master setting as ConnectionURL and Cassandra connect.host as ServerName to the system.properties
 if [[ "localhost" == "${1}" ]]; then

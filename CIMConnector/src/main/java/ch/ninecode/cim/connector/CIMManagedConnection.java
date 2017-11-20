@@ -91,6 +91,8 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
 
         logger = getLogWriter ();
         // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find the CIMreader jar
+        // ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.2.0-2.5.0.jar";
         ret = (new DefaultSource ()).getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
         try
         {

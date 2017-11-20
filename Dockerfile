@@ -1,16 +1,15 @@
 # build:
 #   $ cd CIMApplication; mvn -DskipTests install; docker build --tag derrickoswald/cimapplication .
 # run:
-#   $ docker run --rm --publish 9080:8080 --net spark_default --link="spark_master:sandbox" derrickoswald/cimapplication start-tomee sandbox
+#   $ docker run --rm --publish 9080:9080 --net spark_default --link="spark_master:sandbox" derrickoswald/cimapplication start-tomee sandbox
 # access:
 #   http://localhost:8080/cimweb/cim/ping
 #   http://localhost:8080/cimweb/cim/list
 
 # Most of this is directly copied from https://github.com/tomitribe/docker-tomee/blob/master/8-jre-7.0.4-plus/Dockerfile
-# but based on a hadoop image from singularities, both of which have a common root at openjdk:8-jre,
-# and just setting the fs.defaultFS in core-site.xml as is done in start-hadoop
+# but based on a hadoop image from spark-docker, both of which have a common root at openjdk:8-jre.
 
-FROM singularities/hadoop:2.7
+FROM derrickoswald/spark-docker:latest
 LABEL maintainer = "Derrick.Oswald@9code.ch"
 
 ENV PATH /usr/local/tomee/bin:$PATH
@@ -53,33 +52,41 @@ RUN set -x \
 # a little more memory than 4049600512 bytes
 ENV CATALINA_OPTS -Xmx8g
 
-EXPOSE 8080
+# Tomcat/TomEE+ web UI
+RUN sed -i.bak "s|Connector port=\"8080\" protocol=\"HTTP/1.1\"|Connector port=\"9080\" protocol=\"HTTP/1.1\"|g" /usr/local/tomee/conf/server.xml
+EXPOSE 9080
 
-# install Cassandra
-RUN echo "deb http://www.apache.org/dist/cassandra/debian 311x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
-RUN curl https://www.apache.org/dist/cassandra/KEYS | apt-key add -
-RUN apt-get update \
-  && apt-key adv --keyserver pool.sks-keyservers.net --recv-key A278B781FE4B2BDA \
-  && DEBIAN_FRONTEND=noninteractive apt-get install \
-    -yq --no-install-recommends \
-       cassandra \
-  && apt-get clean
+# remove jul-to-slf4j, jul-to-slf4j is used by Spark and Hadoop and both can't exist together: see https://www.slf4j.org/legacy.html#jul-to-slf4j
+# RUN rm /usr/local/tomee/lib/slf4j-jdk14-1.7.21.jar doesn't work (org.glassfish.jersey.server.ContainerException: java.lang.NoClassDefFoundError: org/slf4j/impl/StaticLoggerBinder)
+# RUN rm /usr/local/spark-2.2.0/jars/jul-to-slf4j-1.7.16.jar doesn't work (java.lang.NoClassDefFoundError: org/slf4j/bridge/SLF4JBridgeHandler)
 
-# install tools
-RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install \
-    -yq --no-install-recommends \
-      python python3 vim sqlite3 r-base p7zip net-tools \
-  && apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
+# deleting both together doesn't work either
+# RUN rm /usr/local/tomee/lib/slf4j-jdk14-1.7.21.jar
+# RUN rm /usr/local/tomee/lib/slf4j-api-1.7.21.jar
 
-# Install GridLAB-D
-COPY CIMEar/gridlabd_3.2.0-2_amd64.deb /opt/util/gridlabd_3.2.0-2_amd64.deb
-RUN dpkg -i /opt/util/gridlabd_3.2.0-2_amd64.deb \
-  && rm /opt/util/gridlabd_3.2.0-2_amd64.deb
+# naively removing AsyncConsoleHandler references doesn't work either
+# RUN mv /usr/local/tomee/conf/logging.properties /usr/local/tomee/conf/logging.properties.original
+# COPY CIMEar/logging.properties /usr/local/tomee/conf/logging.properties
 
-# set up environment
-RUN echo "alias ll='ls -alF'">> /etc/bash.bashrc
+# configuring Tomcat to use log4j rather than java.util.logging doesn't work either, see https://tomcat.apache.org/tomcat-8.0-doc/logging.html#Using_Log4j
+# the only juli jars are for an earlier version and support was apparently dropped in 8.5.20 (TomEE 7.0.4)
+# RUN mv /usr/local/tomee/conf/logging.properties /usr/local/tomee/conf/logging.properties.original
+# COPY CIMEar/log4j.properties /usr/local/tomee/lib/log4j.properties
+# COPY CIMEar/apache-log4j-1.2.17/log4j-1.2.17.jar /usr/local/tomee/liblog4j-1.2.17.jar
+# COPY CIMEar/tomcat-juli-adapters.jar /usr/local/tomee/lib/tomcat-juli-adapters.jar
+# RUN rm /usr/local/tomee/bin/tomcat-juli.jar
+# COPY CIMEar/tomcat-juli.jar /usr/local/tomee/bin/tomcat-juli.jar
+
+# naive remove slf4j doesn't work (catalina complains bitterly)
+# RUN rm /usr/local/tomee/lib/slf4j-api-1.7.21.jar
+# RUN rm /usr/local/tomee/lib/slf4j-jdk14-1.7.21.jar
+
+# try no logging - still StackOverflowError
+# COPY CIMEar/no_logging.properties /usr/local/tomee/conf/logging.properties
+
+# removing slf4j from Spark doesn't work (org.apache.spark.sql.execution.datasources.parquet.ParquetFileFormat could not be instantiated)
+# RUN rm /usr/local/spark-2.2.0/jars/jul-to-slf4j-1.7.16.jar
+# RUN rm /usr/local/spark-2.2.0/jars/slf4j-api-1.7.16.jar
 
 # layers added for CIMApplication (do this last to speed up Docker build)
 
