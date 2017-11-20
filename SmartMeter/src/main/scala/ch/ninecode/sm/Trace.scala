@@ -19,7 +19,7 @@ trait Graphable
 
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable
-case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, equipment: ConductingEquipment, element: Element, length: Double) extends Graphable with Serializable
+case class PreEdge (id_seq_1: String, id_cn_1: String, v1: Double, id_seq_2: String, id_cn_2: String, v2: Double, id_equ: String, ratedCurrent: Double, equipment: ConductingEquipment, element: Element, length: Double) extends Graphable with Serializable
 {
     // provide a key on the two connections, independant of to-from from-to ordering
     def key (): String =
@@ -72,7 +72,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        val ret = cls match
+        cls match
         {
             case "Switch" =>
                 !element.asInstanceOf[Switch].normalOpen
@@ -101,7 +101,6 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
             case _ =>
                 true
         }
-        return (ret)
     }
 
     def sendMessage (starting_id: Array[VertexId]) (triplet: EdgeTriplet[NodeData, PreEdge]): Iterator[(VertexId, NodeData)] =

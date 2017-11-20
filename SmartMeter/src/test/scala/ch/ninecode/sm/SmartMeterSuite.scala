@@ -6,10 +6,10 @@ import java.nio.file.Paths
 import java.util.HashMap
 
 import org.apache.spark.SparkConf
-
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
@@ -76,9 +76,8 @@ class SmartMeterSuite extends FunSuite
         val elements = readFile (session.sqlContext, filename, use_topological_nodes)
         println (elements.count () + " elements")
         val read = System.nanoTime ()
-
-        val smart = new SmartMeter ()
-        val text = smart.run (session.sparkContext, session.sqlContext, starting_node, use_topological_nodes)
+        val smart = new SmartMeter (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), use_topological_nodes)
+        val text = smart.run (starting_node)
         
         val process = System.nanoTime ()
         
@@ -86,7 +85,7 @@ class SmartMeterSuite extends FunSuite
         println (text)
         
         val out_content = "smartmeter_tree = " + text
-        Files.write (Paths.get (FILE_DEPOT, "smartmeter_tree.js"), out_content.getBytes(StandardCharsets.UTF_8))
+        Files.write (Paths.get ("target/", "smartmeter_tree.js"), out_content.getBytes(StandardCharsets.UTF_8))
 
         val write = System.nanoTime ()
 

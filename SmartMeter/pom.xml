@@ -14,6 +14,12 @@
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/SmartMeter</url>
 
+    <properties>
+
+        <version.dependency.glassfish>1.1.2</version.dependency.glassfish>
+
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -57,12 +63,12 @@
             <version>${version.dependency.spark}</version>
             <scope>provided</scope>
         </dependency>
-        
+
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.8.0</version>
-            <scope>compile</scope>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+            <version>${version.dependency.glassfish}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
