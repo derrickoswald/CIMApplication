@@ -79,21 +79,18 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     }
 
     /**
-     * Get the name of the CIMReader jar file.
+     * Get the name of the jar file containing the object.
      * See <a href="https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file">How to get the path of a running jar</a>
      * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
      */
-    protected String CIMReaderJarPath ()
+    protected String jarForObject (Object obj)
         throws ResourceException
     {
         PrintWriter logger;
         String ret;
 
         logger = getLogWriter ();
-        // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMreader jar
-        // ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.2.0-2.5.0.jar";
-        ret = (new DefaultSource ()).getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
+        ret = obj.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
         try
         {
             ret = URLDecoder.decode (ret, "UTF-8");
@@ -103,18 +100,44 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // good enough
         }
 
-        if (!ret.endsWith (".jar"))
+        if (!ret.endsWith (".jar") && !ret.endsWith (".rar"))
         {
             if (null != logger)
-                logger.println ("CIMReader jar file could not be determined");
+                logger.println ("jar file could not be determined for " + obj.getClass ().getName ());
             ret = null;
         }
         else
             if (null != logger)
-                logger.println ("CIMReader jar file: " + ret);
+                logger.println (obj.getClass ().getName () + " jar file: " + ret);
 
         return (ret);
     }
+
+    protected String CIMReaderJarPath ()
+        throws ResourceException
+    {
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find the CIMreader jar
+        // String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.2.0-2.5.0.jar";
+        return (jarForObject (new DefaultSource ()));
+    }
+
+    protected String CIMConnectorLibJarPath ()
+        throws ResourceException
+    {
+        // ToDo: find a better way to find the CIMConnector.rar
+        String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMConnector-2.3.4-lib.jar";
+        return (ret);
+    }
+
+    protected String J2EEAPIJarPath ()
+        throws ResourceException
+    {
+        // ToDo: find a better way to find the CIMConnector.rar
+        String ret = "/usr/local/tomee/lib/javaee-api-7.0-1.jar";
+        return (ret);
+    }
+
 
     /**
      * Check and save the subject and connection request information.
@@ -166,31 +189,38 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             check (subject, info);
 
             // create the configuration
-            SparkConf configuration = new SparkConf (false);
+            SparkConf configuration = new SparkConf (true);
             configuration.setAppName ("CIMConnector");
 
-            // set up the spark master
-            if ((null != _RequestInfo.getMaster ()) && !_RequestInfo.getMaster ().equals (""))
-                configuration.setMaster (_RequestInfo.getMaster ());
-            else
+            // set up the Spark master
+            String master = _RequestInfo.getMaster ();
+            if ((null == master) || master.equals (""))
                 // run Spark locally with as many worker threads as logical cores on the machine
-                configuration.setMaster ("local[*]");
+                master = "local[*]";
+            configuration.setMaster (master);
 
             // set up the cassandra connection host
-            if ((null != _RequestInfo.getCassandra ()) && !_RequestInfo.getCassandra ().equals (""))
-                configuration.set ("spark.cassandra.connection.host", _RequestInfo.getCassandra ());
-            else
+            String cassandra = _RequestInfo.getCassandra ();
+            if ((null != cassandra) && !cassandra.equals (""))
+                configuration.set ("spark.cassandra.connection.host", cassandra);
 
             // add the other properties
             for (String key : _RequestInfo.getProperties ().keySet ())
                 configuration.set (key, _RequestInfo.getProperties ().get (key));
 
-            // set up the list of jars to send with the connection request
-            String jar = CIMReaderJarPath ();
-            String[] jars = new String[_RequestInfo.getJars ().size () + (null == jar ? 0 : 1)];
+            // set up the list of jars to send with the connection request: CIMReader and CIMConnector
+            String reader = CIMReaderJarPath ();
+            String connector = CIMConnectorLibJarPath ();
+            String j2ee = J2EEAPIJarPath ();
+            int size = _RequestInfo.getJars ().size ();
+            String[] jars = new String[size + (null == reader ? 0 : 1) + (null == connector ? 0 : 1) + (null == j2ee ? 0 : 1)];
             jars = _RequestInfo.getJars ().toArray (jars);
-            if (null != jar)
-                jars[jars.length - 1] = jar;
+            if (null != reader)
+                jars[size++] = reader;
+            if (null != connector)
+                jars[size++] = connector;
+            if (null != j2ee)
+                jars[size] = j2ee;
             configuration.setJars (jars);
 
             if (null != logger)
@@ -205,9 +235,9 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // register CIMReader classes
             configuration.registerKryoClasses (CIMClasses.list ());
 
-            // setting spark.executor.memory as a property doesn't work:
-            if (null != configuration.get ("spark.executor.memory", null))
-                System.setProperty ("spark.executor.memory", configuration.get ("spark.executor.memory"));
+            // setting spark.executor.memory as a property of SparkConf doesn't work:
+            if (null != _RequestInfo.getProperties ().get ("spark.executor.memory"))
+                System.setProperty ("spark.executor.memory", _RequestInfo.getProperties ().get ("spark.executor.memory"));
 
             // make a Spark session
             _SparkSession = SparkSession.builder ().config (configuration).getOrCreate ();

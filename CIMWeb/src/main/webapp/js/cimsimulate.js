@@ -650,35 +650,31 @@ define
          * @param {string} island - the island name from the topology
          * @param {string} cim - the name of the cim file
          * @param {function} callback - the function to call back with signature function (data)
+         * @param {function} error - the error function with signature function ({message: "xx"})
          * @function exportIsland
          * @memberOf module:cimsimulate
          */
-        function exportIsland (island, cim, callback)
+        function exportIsland (island, cim, callback, error)
         {
             var url;
             var xmlhttp;
-
-            url = util.home () + "cim/export/" + island;
-            xmlhttp = util.createCORSRequest ("GET", url);
+            url = util.home () + "cim/export" + cim;
+            xmlhttp = util.createCORSRequest ("PUT", url);
             xmlhttp.onreadystatechange = function ()
             {
                 if (4 == xmlhttp.readyState)
                     if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
                     {
-                        function callback2 (response)
-                        {
-                            if (response.status == "OK")
-                                callback (xmlhttp.responseText);
-                            else
-                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-                        }
-
-                        cimfiles.put (cim, xmlhttp.responseText, callback2);
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status != "OK")
+                            error ({ status: "FAIL", message: resp.message });
+                        else
+                            cimfiles.get (cim, callback, error);
                     }
-                    else
-                        alert ("status: " + xmlhttp.status);
+                    else if (null != error)
+                        error ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
             };
-            xmlhttp.send ();
+            xmlhttp.send (island);
         }
 
         /**
@@ -726,7 +722,7 @@ define
                     function (response)
                     {
                         if ((response.status == "FAIL") || (0 == response.result.files.filter (function (file) { return (file.path == rdf); })))
-                            exportIsland (island, cim, callback);
+                            exportIsland (island, cim, callback, error);
                         else
                             cimfiles.get (cim, callback, error);
                     }
@@ -826,7 +822,7 @@ define
                 // ToDo: this query assumes transformers are in a Bay which is directly in a Substation
                 // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s, Bay b where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 // ToDo: this query assumes transformers are directly in a Substation
-                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s        where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 "",
                 "",
                 render

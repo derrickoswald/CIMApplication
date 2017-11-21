@@ -1,5 +1,6 @@
 package ch.ninecode.cim.cimweb
 
+import java.net.URLClassLoader
 import java.util
 import java.util.logging.Logger
 import javax.ejb.Stateless
@@ -14,7 +15,6 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
 import scala.collection.JavaConversions._
-
 import ch.ninecode.cim.connector.CIMConnectionMetaData
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
@@ -48,6 +48,33 @@ class Pong extends RESTful
             for (property ← System.getProperties)
                 properties.add (property._1, property._2)
             ret.add ("properties", properties)
+            val classpath = Json.createArrayBuilder
+            val classLoaders = new util.ArrayList[ClassLoader]
+            classLoaders.add (ClassLoader.getSystemClassLoader)
+            if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
+                classLoaders.add (Thread.currentThread.getContextClassLoader)
+            try
+                throw new Exception
+            catch
+            {
+                case exception: Exception ⇒
+                    for (element: StackTraceElement <- exception.getStackTrace)
+                        try
+                        {
+                            val classloader = Class.forName (element.getClassName).getClassLoader
+                            if ((null != classloader) && !classLoaders.contains (classloader))
+                                classLoaders.add (classloader)
+                        }
+                        catch
+                        {
+                            case oops: ClassNotFoundException ⇒
+                        }
+            }
+            for (cl <- classLoaders)
+                for (url <- cl.asInstanceOf[URLClassLoader].getURLs)
+                    if ("file" == url.getProtocol)
+                        classpath.add (url.getFile)
+            ret.add ("classpath", classpath)
         }
 
         val factory = RESTful.getConnectionFactory () // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output

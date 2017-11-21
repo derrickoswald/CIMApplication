@@ -23,6 +23,8 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("query/")
 class Query extends RESTful
 {
+    import Query._
+
     /**
      * Execute a Spark SQL query.
      *
@@ -32,11 +34,12 @@ class Query extends RESTful
      */
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
-    def Operation (
+    def query (
         @QueryParam ("sql") sql: String,
         @DefaultValue ("") @QueryParam ("table_name") table_name: String,
         @DefaultValue ("") @QueryParam ("cassandra_table_name") cassandra_table_name: String): String =
     {
+        _Logger.info ("query sql=%s%s%s".format (sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
         if (null != connection)

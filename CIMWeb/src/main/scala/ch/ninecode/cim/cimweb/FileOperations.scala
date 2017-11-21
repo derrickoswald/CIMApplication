@@ -98,7 +98,6 @@ class FileOperations extends RESTful
                                 zos.finish ()
                                 zos.close ()
                                 val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
-                                interaction.close ()
                                 Response.ok (bos.toByteArray, "application/zip")
                                     .header ("content-disposition", "attachment; filename=%s".format (zip))
                                     .build

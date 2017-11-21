@@ -1,8 +1,8 @@
 package ch.ninecode.cim.cimweb
 
+import java.net.URLClassLoader
 import java.util
 import java.util.logging.Logger
-
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.ws.rs.core.MediaType
@@ -24,9 +24,9 @@ class Ping extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def ping (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val date = new util.Date ().toString
-        _Logger.info ("ping @ %s".format (date))
-        val result = new RESTfulJSONResult (RESTfulJSONResult.OK, date)
+        val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
+        _Logger.info ("ping (debug=%s)".format (verbose))
+        val result = new RESTfulJSONResult (RESTfulJSONResult.OK, new util.Date ().toString)
         if (try { debug.toBoolean } catch { case _: Throwable => false })
         {
             val environment = Json.createObjectBuilder
@@ -38,6 +38,33 @@ class Ping extends RESTful
             for (property ← System.getProperties)
                 properties.add (property._1, property._2)
             ret.add ("properties", properties)
+            val classpath = Json.createArrayBuilder
+            val classLoaders = new util.ArrayList[ClassLoader]
+            classLoaders.add (ClassLoader.getSystemClassLoader)
+            if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
+                classLoaders.add (Thread.currentThread.getContextClassLoader)
+            try
+                throw new Exception
+            catch
+            {
+                case exception: Exception ⇒
+                    for (element: StackTraceElement <- exception.getStackTrace)
+                        try
+                        {
+                            val classloader = Class.forName (element.getClassName).getClassLoader
+                            if ((null != classloader) && !classLoaders.contains (classloader))
+                                classLoaders.add (classloader)
+                        }
+                        catch
+                        {
+                            case oops: ClassNotFoundException ⇒
+                        }
+            }
+            for (cl <- classLoaders)
+                for (url <- cl.asInstanceOf[URLClassLoader].getURLs)
+                    if ("file" == url.getProtocol)
+                        classpath.add (url.getFile)
+            ret.add ("classpath", classpath)
             result.setResult (ret.build)
         }
 

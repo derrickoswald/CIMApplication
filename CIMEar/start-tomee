@@ -86,6 +86,9 @@ fi
 # load Cassandra schema
 cqlsh --file /opt/util/bin/schema.sql $rpc_host
 
+# add Spark and Hadoop configuration directories to shared classpath
+sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/conf,${HADOOP_CONF_DIR}|g" /usr/local/tomee/conf/catalina.properties
+
 # add Spark jars to shared classpath
 # sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/jars/*.jar|g" /usr/local/tomee/conf/catalina.properties
 
