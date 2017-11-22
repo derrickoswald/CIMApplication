@@ -56,6 +56,7 @@ requirejs
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;
 
+        cimapp.initialize (); // set URLs
         cimfiles.initialize (); // populate the file list
         // cimmap.initialize ();
     }
