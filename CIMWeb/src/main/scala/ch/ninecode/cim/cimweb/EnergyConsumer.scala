@@ -1,7 +1,6 @@
 package ch.ninecode.cim.cimweb
 
 import java.sql.SQLException
-
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.ws.rs.GET
@@ -10,6 +9,7 @@ import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 import javax.resource.ResourceException
 
+import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
@@ -30,7 +30,7 @@ class EnergyConsumer extends RESTful
                 val spec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION)
                 val input = getInputRecord ("record containing the sql query")
-                input.asInstanceOf[map].put ("query", "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0")
+                input.asInstanceOf[map].put (CIMFunction.QUERY, "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0")
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
                 if (null == output)

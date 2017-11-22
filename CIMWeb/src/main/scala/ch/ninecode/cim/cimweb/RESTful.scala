@@ -11,7 +11,6 @@ import javax.resource.cci.MappedRecord
 
 import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMConnectionFactory
-import ch.ninecode.cim.connector.CIMConnectionSpec
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()

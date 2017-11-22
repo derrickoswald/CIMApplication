@@ -77,6 +77,9 @@ public class CIMConnection implements Connection
      */
     public void close () throws ResourceException
     {
-        _ManagedConnection.close (this);
+        if (_Valid)
+            _ManagedConnection.close (this);
+        else
+            throw new ResourceException (CLOSED_ERROR);
     }
 }

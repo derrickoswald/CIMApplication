@@ -19,7 +19,7 @@ import ch.ninecode.cim.connector.CIMResultSet
 import ch.ninecode.sp.SpatialOperationParameters
 
 @Stateless
-@Path ("Spatial/")
+@Path ("spatial/")
 class Spatial extends RESTful
 {
     @GET

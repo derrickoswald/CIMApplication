@@ -57,7 +57,7 @@ public class CIMResourceAdapterMetaData implements ResourceAdapterMetaData
     @Override
     public boolean supportsExecuteWithInputAndOutputRecord ()
     {
-        return (true);
+        return (false);
     }
 
     @Override

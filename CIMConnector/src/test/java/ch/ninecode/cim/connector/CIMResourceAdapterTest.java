@@ -228,34 +228,6 @@ public class CIMResourceAdapterTest
 
     @SuppressWarnings ("unchecked")
     @Test
-    public void testRead () throws Exception
-    {
-        // number of elements in the file
-        // get number of lines at the top level with:
-        // grep -P "^[\t]<cim" NIS_CIM_Export_NS_INITIAL_FILL.rdf | wc
-        final long ELEMENTS = 679473L;
-        final ConnectionFactory factory = getConnectionFactory ();
-        final Connection connection = getConnection (factory);
-        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.READ_FUNCTION);
-        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-        input.setRecordShortDescription ("record containing the file name with key filename");
-        if (USE_LOCAL)
-            input.put ("filename", "src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        else
-            input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
-        output.setRecordShortDescription ("record that will return key count");
-        final Interaction interaction = connection.createInteraction ();
-        assertTrue ("interaction returned false", interaction.execute (spec, input, output));
-        assertFalse ("interaction returned empty", output.isEmpty ());
-        assertEquals ("interaction returned wrong value", ELEMENTS, output.get ("count"));
-        interaction.close ();
-        connection.close ();
-    }
-
-    @SuppressWarnings ("unchecked")
-    @Test
     public void testReadEnergyConsumer () throws Exception
     {
         final ConnectionFactory factory = getConnectionFactory ();
@@ -268,7 +240,7 @@ public class CIMResourceAdapterTest
             input.put ("filename", "src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
         else
             input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        input.put ("query", "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0");
+        input.put (CIMFunction.QUERY, "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0");
         final Interaction interaction = connection.createInteraction ();
         final Record output = interaction.execute (spec, input);
         assertNotNull ("output", output);
@@ -288,35 +260,6 @@ public class CIMResourceAdapterTest
         System.out.println ("session.version = " + session.version ());
         System.out.println ("args = " + args);
         return ("OK");
-    }
-
-    @SuppressWarnings ("unchecked")
-    @Test
-    public void testGetString () throws Exception
-    {
-        final ConnectionFactory factory = getConnectionFactory ();
-        final Connection connection = getConnection (factory);
-        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.GET_STRING_FUNCTION);
-        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-        input.setRecordShortDescription ("record containing the file name and class and method to run");
-        if (USE_LOCAL)
-            input.put ("filename", "src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        else
-            input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        input.put ("class", "ch.ninecode.cim.connector.CIMResourceAdapterTest");
-        input.put ("method", "dummy");
-        final MappedRecord output = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.OUTPUT);
-        output.setRecordShortDescription ("the results of the read operation");
-
-        final Interaction interaction = connection.createInteraction ();
-        assertTrue (interaction.execute (spec, input, output));
-        assertNotNull ("result", output.get ("result"));
-        assertTrue ("result is empty", "" != output.get ("result"));
-        String out = (output.get ("result")).toString ();
-        assertTrue ("result is incorrect", out.equals ("OK"));
-        interaction.close ();
-        connection.close ();
     }
 
 }

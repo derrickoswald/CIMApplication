@@ -16,6 +16,11 @@ public interface CIMFunction extends Serializable
     static String FUNCTION = "function";
 
     /**
+     * The key in the input CIMMappedRecord holding the query to execute.
+     */
+    static String QUERY = "query";
+
+    /**
      * The key in the output CIMMappedRecord holding the CIMFunction result.
      *
      * For {@link #executeString(SparkSession spark) executeString} and

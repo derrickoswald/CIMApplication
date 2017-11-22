@@ -2,8 +2,6 @@ package ch.ninecode.cim.cimweb
 
 import java.util.logging.Logger
 import javax.ejb.Stateless
-import javax.json.Json
-import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.ws.rs.GET
 import javax.ws.rs.core.MediaType
@@ -13,7 +11,6 @@ import javax.resource.ResourceException
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.QueryParam
 
-import scala.collection.JavaConversions._
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl

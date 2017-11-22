@@ -98,9 +98,6 @@ class CIMWebTest
         print_context_r (name, 1)
     }
 
-    @Inject
-    val ejbobject:SimpleRESTEJB = null
-
     @Test
     def testResourceAdapter (): Unit =
     {
@@ -115,14 +112,5 @@ class CIMWebTest
         val connection = connectionFactory.getConnection
         assertNotNull (connection)
         connection.close ()
-    }
-
-    @Test
-    def testWebApp (): Unit =
-    {
-        assertNotNull (ejbobject)
-        val text = ejbobject.ejb
-        assertNotNull (text)
-        println (text)
     }
 }
