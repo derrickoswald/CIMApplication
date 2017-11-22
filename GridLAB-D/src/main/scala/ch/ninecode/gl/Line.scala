@@ -74,10 +74,9 @@ class Line (one_phase: Boolean) extends Serializable
     }
 
     // is this an ACLineSegment
-    // ToDo: this currently only looks at the first element -- what about combinations?
     def isACLineSegment (iter: Iterable[GLMEdge]): Boolean =
     {
-        iter.head.el.getClass.getName.endsWith ("ACLineSegment")
+        iter.forall (_.el.getClass.getName.endsWith ("ACLineSegment"))
     }
 
     // get the configuration name (of the parallel lines)
