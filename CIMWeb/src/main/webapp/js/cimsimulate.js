@@ -396,6 +396,7 @@ define
                         choice.files = response.result.files.map (function (item) { return ({ house: item.path.substring (0, item.path.indexOf (".")), file: root + item.path }); });
                         cimquery.query (
                             choice.sql,
+                            false,
                             "",
                             "",
                             function (data)
@@ -454,6 +455,7 @@ define
         {
             cimquery.query (
                 choice.sql,
+                false,
                 "",
                 "",
                 function (players)
@@ -477,6 +479,7 @@ define
                             var house = row.name.substring (0, row.name.indexOf ("_"));
                             cimquery.query (
                                 "select d.time, d.real, d.imag from data d where d.house = '" + house + "'", // could  order by time  here but it's not very fast
+                                false,
                                 "",
                                 "",
                                 function (measurements)
@@ -521,6 +524,7 @@ define
                     if (response.status == "OK")
                         cimquery.query (
                             choice.sql,
+                            false,
                             "",
                             "",
                             callback);
@@ -823,6 +827,7 @@ define
                 // "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s, Bay b where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID and b.Substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
                 // ToDo: this query assumes transformers are directly in a Substation
                 "select i.IdentifiedObject.mRID island, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalIsland i, TopologicalNode n, Terminal t, PowerTransformer p, Substation s where n.TopologicalIsland = i.IdentifiedObject.mRID and t.TopologicalNode = n.IdentifiedObject.mRID and t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID",
+                false,
                 "",
                 "",
                 render
@@ -834,6 +839,7 @@ define
             // get the list of stations
             cimquery.query (
                 "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from Substation s",
+                false,
                 "",
                 "",
                 function (data)

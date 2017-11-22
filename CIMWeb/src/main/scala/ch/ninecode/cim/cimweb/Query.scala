@@ -33,10 +33,12 @@ class Query extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def query (
         @QueryParam ("sql") sql: String,
+        @DefaultValue ("false") @QueryParam ("cassandra") cass: String,
         @DefaultValue ("") @QueryParam ("table_name") table_name: String,
         @DefaultValue ("") @QueryParam ("cassandra_table_name") cassandra_table_name: String): String =
     {
-        _Logger.info ("query sql=%s%s%s".format (sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
+        val cassandra = try { cass.toBoolean } catch { case _: Throwable => false }
+        _Logger.info ("query %ssql=%s%s%s".format (if (cassandra) "cassandra " else "", sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
         if (null != connection)
@@ -45,7 +47,7 @@ class Query extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                val query = QueryFunction (sql, table_name, cassandra_table_name)
+                val query = QueryFunction (sql, cassandra, table_name, cassandra_table_name)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)

@@ -26,20 +26,32 @@ define
         var TheTable;
 
         /**
+         * The Cassandra table for the results.
+         */
+        var TheCassandraTable;
+
+        /**
+         * Direct queries to Cassandra.
+         */
+        var QueryCassandra = false;
+
+        /**
          * @summary perform query.
          * @description Perform an SQL query on loaded CIM data.
          * @param {string} sql - the SQL to use
+         * @param {boolean} cassandra - if <code>true</code> query Cassandra rather than Spark
          * @param {string} table_name - the name of the temporary view to store the result DataFrame, "" for none
          * @param {string} cassandra_table_name - the name of the name of the Cassandra table to store the result DataFrame, "" for none
          * @param {function} fn - the callback function with the data
          * @function query
          * @memberOf module:cimquery
          */
-        function query (sql, table_name, cassandra_table_name, fn)
+        function query (sql, cassandra, table_name, cassandra_table_name, fn)
         {
+            var target = (cassandra) ? "cassandra=true&": "";
             var table = ("" != table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
             var cassandra_table = ("" != cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
-            var url = util.home () + "cim/query?" + table + cassandra_table + "sql=" + encodeURIComponent (sql);
+            var url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (sql);
             var xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -73,9 +85,10 @@ define
             if (sql != "")
             {
                 TheQuery = sql;
-                var table_name = document.getElementById ("table_name").value;
-                var cassandra_table_name = document.getElementById ("cassandra_table_name").value;
-                query (sql, table_name, cassandra_table_name, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
+                TheTable = document.getElementById ("table_name").value;
+                TheCassandraTable = document.getElementById ("cassandra_table_name").value;
+                QueryCassandra = document.getElementById ("query_cassandra").checked;
+                query (TheQuery, QueryCassandra, TheTable, TheCassandraTable, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
             }
         }
 
@@ -98,6 +111,17 @@ define
                 "          <textarea id='sql' class='form-control' aria-describedby='sqlHelp' name='sql' rows='8' placeholder='select * from ACLineSegment' style='width: 80%'>{{sql}}</textarea>\n" +
                 "          <small id='sqlHelp' class='form-text text-muted'>A Spark SQL query against the <a href='https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package' target='_blank'>CIMReader schema</a>.</small>\n" +
                 "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <div class='col-sm-2 col-form-label'>Cassandra</div>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <div class='form-check'>\n" +
+                "              <label class='form-check-label'>\n" +
+                "                <input id='query_cassandra' class='form-check-input' type='checkbox' value=''{{cassandra}}>\n" +
+                "                Query Cassandra rather than Spark.\n" +
+                "              </label>\n" +
+                "            </div>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='table_name'>Save as table</label>\n" +
                 "          <input  id='table_name' type='text' class='form-control' aria-describedby='nameHelp' placeholder='table name' value='{{table}}'>\n" +
@@ -105,7 +129,7 @@ define
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='cassandra_table_name'>Save in Cassandra</label>\n" +
-                "          <input  id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value=''>\n" +
+                "          <input  id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value='{{ctable}}'>\n" +
                 "          <small id='cassandraHelp' class='form-text text-muted'>Enter the name of the Cassandra table to store the results of the query.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
@@ -123,7 +147,9 @@ define
                 query_template,
                 {
                     sql: function () { return ((null != TheQuery) ? TheQuery : ""); },
-                    table: function () { return ((null != TheTable) ? TheTable : ""); }
+                    table: function () { return ((null != TheTable) ? TheTable : ""); },
+                    ctable: function () { return ((null != TheCassandraTable) ? TheCassandraTable : ""); },
+                    cassandra: function () { return ((QueryCassandra) ? " checked" : ""); }
                 }
             );
             document.getElementById ("main").innerHTML = text;

@@ -99,7 +99,7 @@ Endpoint | Verb | Parameters | Description|
 /cimweb/cim/load | GET | path | Reads the contents of the HDFS file (.rdf) into Spark via the CIMReader.|
 /cimweb/cim/export | GET | island | Returns the RDF of the given TopologicalIsland and related elements.|
 /cimweb/cim/export | PUT | target | Stores the RDF of the TopologicalIsland specified by the contents (text island name) at the target path on HDFS.|
-/cimweb/cim/query | GET | sql | Performs SQL query against the loaded CIM data. Returns a JSON array of records retrieved.|
+/cimweb/cim/query | GET | sql cassandra table_name cassandra_table_name| Performs SQL query against the loaded CIM data, or against Cassandra if cassandra=true. Returns a JSON array of records retrieved. Optionally store results in supplied table names.|
 /cimweb/cim/gridlab | GET | simulation | Returns the GridLAB-D Model file (.glm) for the given simulation file (JSON).|
 /cimweb/cim/gridlab | POST | simulation | Executes gridlabd for the model specified by the glm property in the given simulation file (JSON).|
 /cimweb/cim/view | GET | about xmin ymin, xmax, ymax, reduceLines, maxLines, dougPeuk dougPeukFactor, resolution | Return (simplified) RDF for features within the bounding box from the CIM loaded into Spark.|
