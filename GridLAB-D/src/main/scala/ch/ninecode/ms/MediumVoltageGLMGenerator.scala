@@ -41,7 +41,7 @@ case class MediumVoltageGLMGenerator (
             "            name \"" + edge.id + "_current_recorder\";\n" +
             "            parent \"" + edge.id + "\";\n" +
             "            property " + (if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
-            "            interval 5;\n" +
+            "            interval 300;\n" +
             "            file \"output_data/" + edge.id + "_current.csv\";\n" +
             "        };\n"
         }
@@ -105,7 +105,7 @@ case class MediumVoltageGLMGenerator (
         "            name \"" + trafo + "_current_recorder\";\n" +
         "            parent \"" + node.id + "\";\n" +
         "            property " + ( if (one_phase) "measured_current_A.real,measured_current_A.imag" else "measured_current_A.real,measured_current_A.imag,measured_current_B.real,measured_current_B.imag,measured_current_C.real,measured_current_C.imag") + ";\n" +
-        "            interval 5;\n" +
+        "            interval 300;\n" +
         "            file \"output_data/" + trafo + "_current.csv\";\n" +
         "        };\n" +
         "\n" +
@@ -114,7 +114,7 @@ case class MediumVoltageGLMGenerator (
         "            name \"" + trafo + "_power_recorder\";\n" +
         "            parent \"" + node.id + "\";\n" +
         "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
-        "            interval 5;\n" +
+        "            interval 300;\n" +
         "            file \"output_data/" + trafo + "_power.csv\";\n" +
         "        };\n"
     }
@@ -132,7 +132,7 @@ case class MediumVoltageGLMGenerator (
                 "            name \"" + name + "_current_recorder\";\n" +
                 "            parent \"" + name + "\";\n" +
                 "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
-                "            interval 5;\n" +
+                "            interval 300;\n" +
                 "            file \"output_data/" + name + "_current.csv\";\n" +
                 "        };\n"
             else
@@ -182,7 +182,7 @@ case class MediumVoltageGLMGenerator (
             "            name \"" + trafo + "_voltage_recorder\";\n" +
             "            parent \"" + node.id + "\";\n" +
             "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
-            "            interval 5;\n" +
+            "            interval 300;\n" +
             "            file \"output_data/" + trafo + "_voltage.csv\";\n" +
             "        };\n"
         }
