@@ -126,7 +126,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // ToDo: find a better way to find the CIMConnector.rar
-        String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMConnector-2.3.4-lib.jar";
+        String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMConnector-2.11-2.2.0-2.3.5-lib.jar";
         return (ret);
     }
 
