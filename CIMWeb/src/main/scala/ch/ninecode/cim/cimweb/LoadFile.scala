@@ -34,11 +34,14 @@ class LoadFile extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def getFile (
         @PathParam ("path") path: String,
+        @DefaultValue ("false") @MatrixParam ("do_about") do_about: String,
+        @DefaultValue ("false") @MatrixParam ("do_normalize") do_normalize: String,
         @DefaultValue ("false") @MatrixParam ("do_deduplication") do_deduplication: String,
         @DefaultValue ("false") @MatrixParam ("make_edges") make_edges: String,
         @DefaultValue ("false") @MatrixParam ("do_join") do_join: String,
-        @DefaultValue ("false") @MatrixParam ("do_topo") do_topo: String,
         @DefaultValue ("false") @MatrixParam ("do_topo_islands") do_topo_islands: String,
+        @DefaultValue ("false") @MatrixParam ("do_topo") do_topo: String,
+        @DefaultValue ("67108864") @MatrixParam ("split_maxsize") split_maxsize: String,
         @DefaultValue ("false") @MatrixParam ("header") header: String,
         @DefaultValue ("false") @MatrixParam ("ignoreLeadingWhiteSpace") ignoreLeadingWhiteSpace: String,
         @DefaultValue ("false") @MatrixParam ("ignoreTrailingWhiteSpace") ignoreTrailingWhiteSpace: String,
@@ -73,11 +76,14 @@ class LoadFile extends RESTful
         val function = filetype match
         {
             case "CIM" ⇒ // see https://github.com/derrickoswald/CIMReader#reader-api
+                options.put ("ch.ninecode.cim.do_about", do_about)
+                options.put ("ch.ninecode.cim.do_normalize", do_normalize)
                 options.put ("ch.ninecode.cim.do_deduplication", do_deduplication)
                 options.put ("ch.ninecode.cim.make_edges", make_edges)
                 options.put ("ch.ninecode.cim.do_join", do_join)
-                options.put ("ch.ninecode.cim.do_topo", do_topo)
                 options.put ("ch.ninecode.cim.do_topo_islands", do_topo_islands)
+                options.put ("ch.ninecode.cim.do_topo", do_topo)
+                options.put ("ch.ninecode.cim.split_maxsize", split_maxsize)
                 LoadCIMFileFunction (files, options)
             case "CSV" ⇒ // see https://spark.apache.org/docs/2.2.0/api/scala/index.html#org.apache.spark.sql.DataFrameReader
                 options.put ("header", header)

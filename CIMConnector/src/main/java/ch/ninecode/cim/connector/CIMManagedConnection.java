@@ -204,6 +204,19 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             if ((null != cassandra) && !cassandra.equals (""))
                 configuration.set ("spark.cassandra.connection.host", cassandra);
 
+            if (null != System.getProperty ("SPARK_HOME"))
+                System.setProperty ("spark.home", System.getProperty ("SPARK_HOME"));
+            if (null != System.getProperty ("HADOOP_HOME"))
+            {
+                // ToDo: read from conf/spark-defaults.conf
+                System.setProperty ("spark.driver.extraLibraryPath", System.getProperty ("HADOOP_HOME") + "/lib/native");
+                System.setProperty ("spark.executor.extraLibraryPath", System.getProperty ("HADOOP_HOME") + "/lib/native");
+            }
+            configuration.set ("spark.sql.warehouse.dir", "file:/tmp/spark-warehouse");
+// need hive jars too:
+//            configuration.set ("spark.sql.catalogImplementation", "hive");
+            configuration.set ("spark.submit.deployMode", "client");
+
             // add the other properties
             for (String key : _RequestInfo.getProperties ().keySet ())
                 configuration.set (key, _RequestInfo.getProperties ().get (key));
@@ -223,9 +236,6 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
                 jars[size] = j2ee;
             configuration.setJars (jars);
 
-            if (null != logger)
-                logger.println ("SparkConf = " + configuration.toDebugString ());
-
             // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
             // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
     //      configuration.setMaster ("yarn-client"); // assumes a resource manager is specified in yarn-site.xml, e.g. sandbox:8032
@@ -234,6 +244,9 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
 
             // register CIMReader classes
             configuration.registerKryoClasses (CIMClasses.list ());
+
+            if (null != logger)
+                logger.println ("SparkConf:\n" + configuration.toDebugString ());
 
             // setting spark.executor.memory as a property of SparkConf doesn't work:
             if (null != _RequestInfo.getProperties ().get ("spark.executor.memory"))

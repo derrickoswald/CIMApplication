@@ -3,8 +3,12 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
+import ch.ninecode.cim.CIMEdges
+import ch.ninecode.cim.CIMJoin
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.HashMap
 
@@ -24,25 +28,75 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             for (f <- files)
                 ff.add (f)
             response.add ("files", ff)
-            val reader_options = new HashMap[String, String] ()
-            if (null != options)
-                reader_options ++= options
-            else
+
+            // establish default options if needed
+            val op = if (null == options)
             {
-                reader_options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-                reader_options.put ("ch.ninecode.cim.make_edges", "false")
-                reader_options.put ("ch.ninecode.cim.do_join", "false")
-                reader_options.put ("ch.ninecode.cim.do_topo", "false")
-                reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-                reader_options.put ("ch.ninecode.cim.do_deduplication", if (1 < files.length) "true" else "false")
+                List (
+                    ("StorageLevel", "MEMORY_AND_DISK_SER"),
+                    ("ch.ninecode.cim.do_about", "false"),
+                    ("ch.ninecode.cim.do_normalize", "false"),
+                    ("ch.ninecode.cim.do_deduplication", if (1 < files.length) "true" else "false"),
+                    ("ch.ninecode.cim.make_edges", "false"),
+                    ("ch.ninecode.cim.do_join", "false"),
+                    ("ch.ninecode.cim.do_topo_islands", "false"),
+                    ("ch.ninecode.cim.do_topo", "false"),
+                    ("ch.ninecode.cim.split_maxsize", "67108864")
+                )
             }
+            else
+                options
+
+            // echo settings to the response
             val opts = Json.createObjectBuilder
-            for (pair <- reader_options)
+            for (pair <- op)
                 opts.add (pair._1, pair._2)
             response.add ("options", opts)
+
+            // there is a problem (infinite loop) if post processing is done in the CIMReader
+            // so we extract out topo, edge, and join processing
+            var topo = false
+            var isld = false
+            var join = false
+            var edge = false
+            val reader_options = new HashMap[String, String] ()
+            for (option ← op)
+                option._1 match
+                {
+                    case "ch.ninecode.cim.do_topo" ⇒
+                        topo = isld || (try { option._2.toBoolean } catch { case _: Throwable => false })
+                    case "ch.ninecode.cim.do_topo_islands" ⇒
+                        isld = try { option._2.toBoolean } catch { case _: Throwable => false }
+                        topo = topo || isld
+                    case "ch.ninecode.cim.do_join" ⇒
+                        join = try { option._2.toBoolean } catch { case _: Throwable => false }
+                    case "ch.ninecode.cim.make_edges" ⇒
+                        edge = try { option._2.toBoolean } catch { case _: Throwable => false }
+                    case _ ⇒
+                        reader_options.put (option._1, option._2)
+                }
             reader_options.put ("path", files.mkString (",")) // ToDo: why is this still needed?
+
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
-            val count = elements.count
+            var count = elements.count
+            if (topo)
+            {
+                val ntp = new CIMNetworkTopologyProcessor (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, true)
+                val elements2 = ntp.process (isld)
+                count = elements2.count
+            }
+            if (join)
+            {
+                val join = new CIMJoin (spark, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                val elements3 = join.do_join ()
+                count = elements3.count
+            }
+            if (edge)
+            {
+                val edges = new CIMEdges (spark, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                val elements4 = edges.make_edges (topo)
+                count = elements4.count
+            }
             response.add ("elements", count)
         }
         catch

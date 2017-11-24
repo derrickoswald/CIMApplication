@@ -54,10 +54,71 @@
                         <ul class="dropdown-menu" role="menu">
                             <li class="dropdown-header">CIM</li>
                             <li>
+                                <div class="select">
+                                    <label for="storage_level">
+                                        <select id='storage_level' class='form-control' name='storage_level'>
+                                            <option value="NONE">NONE</option>
+                                            <option value="DISK_ONLY">DISK_ONLY</option>
+                                            <option value="DISK_ONLY_2">DISK_ONLY_2</option>
+                                            <option value="MEMORY_ONLY">MEMORY_ONLY</option>
+                                            <option value="MEMORY_ONLY_2">MEMORY_ONLY_2</option>
+                                            <option value="MEMORY_ONLY_SER">MEMORY_ONLY_SER</option>
+                                            <option value="MEMORY_ONLY_SER_2">MEMORY_ONLY_SER_2</option>
+                                            <option value="MEMORY_AND_DISK">MEMORY_AND_DISK</option>
+                                            <option value="MEMORY_AND_DISK_2">MEMORY_AND_DISK_2</option>
+                                            <option value="MEMORY_AND_DISK_SER" selected>MEMORY_AND_DISK_SER</option>
+                                            <option value="MEMORY_AND_DISK_SER_2">MEMORY_AND_DISK_SER_2</option>
+                                            <option value="OFF_HEAP">OFF_HEAP</option>
+                                        </select>
+                                        StorageLevel
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="do_about">
+                                        <input id="do_about" type="checkbox"/>
+                                        Merge rdf:about
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="do_normalize">
+                                        <input id="do_normalize" type="checkbox"/>
+                                        Normalize data
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="do_deduplication">
+                                        <input id="do_deduplication" type="checkbox"/>
+                                        Deduplicate
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
                                 <div class="checkbox">
                                     <label for="make_edges">
                                         <input id="make_edges" type="checkbox"/>
                                         Make edges
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="do_join">
+                                        <input id="do_join" type="checkbox"/>
+                                        Join NIS-ISU
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="checkbox">
+                                    <label for="do_topo_islands">
+                                        <input id="do_topo_islands" type="checkbox"/>
+                                        Make islands
                                     </label>
                                 </div>
                             </li>
@@ -70,12 +131,12 @@
                                 </div>
                             </li>
                             <li>
-                                <div class="checkbox">
-                                    <label for="do_topo_islands">
-                                        <input id="do_topo_islands" type="checkbox"/>
-                                        Make islands
+                                <div class="input">
+                                    <label for="split_maxsize">
+                                        <input id="split_maxsize" type="text" class="form-control" placeholder="split size (bytes)" style="margin-left: 15px; width: 120px;" value="67108864">
                                     </label>
-                                </div>
+                                    Split size
+                                </div>div>
                             </li>
                             <li role="separator" class="divider"></li>
                             <li class="dropdown-header">CSV</li>

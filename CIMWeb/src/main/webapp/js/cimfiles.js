@@ -441,14 +441,80 @@ define
         }
 
         /**
+         * Get the user's choice for storage level.
+         * @returns {string} constant name for StorageLevel
+         * @function storage_level
+         * @memberOf module:cimfiles
+         */
+        function storage_level ()
+        {
+            return (document.getElementById ("storage_level").value);
+        }
+
+        /**
+         * Get the user's choice for rdf:about processing.
+         * @returns {boolean} <code>true</code> if rdf:about elements should be merged, <code>false</code> otherwise
+         * @function do_about
+         * @memberOf module:cimfiles
+         */
+        function do_about ()
+        {
+            return (document.getElementById ("do_about").checked);
+        }
+
+        /**
+         * Get the user's choice for data model normalization.
+         * @returns {boolean} <code>true</code> if 1:N relationships should be normalized, <code>false</code> otherwise
+         * @function do_normalize
+         * @memberOf module:cimfiles
+         */
+        function do_normalize ()
+        {
+            return (document.getElementById ("do_normalize").checked);
+        }
+
+        /**
+         * Get the user's choice for deduplication.
+         * @returns {boolean} <code>true</code> if duplicate elements should be removed, <code>false</code> otherwise
+         * @function do_deduplication
+         * @memberOf module:cimfiles
+         */
+        function do_deduplication ()
+        {
+            return (document.getElementById ("do_deduplication").checked);
+        }
+
+        /**
          * Get the user's choice for edge table creation.
-         * @returns {boolean} <code>true</code> if the edges tale is required, <code>false</code> otherwise
+         * @returns {boolean} <code>true</code> if the edges table is required, <code>false</code> otherwise
          * @function make_edges
          * @memberOf module:cimfiles
          */
         function make_edges ()
         {
             return (document.getElementById ("make_edges").checked);
+        }
+
+        /**
+         * Get the user's choice for joining ServceLocation NIS-ISU.
+         * @returns {boolean} <code>true</code> if joining is required, <code>false</code> otherwise
+         * @function do_join
+         * @memberOf module:cimfiles
+         */
+        function do_join ()
+        {
+            return (document.getElementById ("do_join").checked);
+        }
+
+        /**
+         * Get the user's choice for topological island generation.
+         * @returns {boolean} <code>true</code> if a topological islands should be created, <code>false</code> otherwise
+         * @function do_topo_islands
+         * @memberOf module:cimfiles
+         */
+        function do_topo_islands ()
+        {
+            return (document.getElementById ("do_topo_islands").checked);
         }
 
         /**
@@ -462,15 +528,12 @@ define
             return (document.getElementById ("do_topo").checked);
         }
 
-        /**
-         * Get the user's choice for topological island generation.
-         * @returns {boolean} <code>true</code> if a topological islands should be created, <code>false</code> otherwise
-         * @function do_topo_islands
-         * @memberOf module:cimfiles
-         */
-        function do_topo_islands ()
+        function split_maxsize ()
         {
-            return (document.getElementById ("do_topo_islands").checked);
+            var splits = document.getElementById ("split_maxsize").value;
+            if ("NaN" == Number (splits).toString ())
+                 splits = "67108864";
+            return (splits);
         }
 
         function header ()
@@ -573,12 +636,22 @@ define
             var xmlhttp;
 
             path = path.startsWith ("/") ? path : "/" + path;
+            if (do_about ())
+                path += ";do_about=true";
+            if (do_normalize ())
+                path += ";do_normalize=true";
+            if (do_deduplication ())
+                path += ";do_deduplication=true";
             if (make_edges ())
                 path += ";make_edges=true";
-            if (do_topo ())
-                path += ";do_topo=true";
+            if (do_join ())
+                path += ";do_join=true";
             if (do_topo_islands ())
                 path += ";do_topo_islands=true";
+            if (do_topo ())
+                path += ";do_topo=true";
+            if ("67108864" != split_maxsize ())
+                path += ";split_maxsize=" + split_maxsize ()
             if (header ())
                 path += ";header=true";
             if (ignoreLeadingWhiteSpace ())

@@ -37,7 +37,7 @@
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMReader</artifactId>
             <version>${version.dependency.cimreader}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
