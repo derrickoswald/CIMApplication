@@ -117,25 +117,25 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMreader jar
-        // String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.2.0-2.5.0.jar";
+        // ToDo: find a better way to find the CIMreader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.1.2-2.6.0.jar)
         return (jarForObject (new DefaultSource ()));
     }
 
     protected String CIMConnectorLibJarPath ()
         throws ResourceException
     {
-        // ToDo: find a better way to find the CIMConnector.rar
-        String ret = "/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMConnector-2.11-2.2.0-2.3.5-lib.jar";
-        return (ret);
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find CIMConnector.rar (/usr/local/tomee/apps/CIMApplication/CIMConnector.rar)
+        String readerpath = CIMReaderJarPath ();
+        return (readerpath.substring (0, readerpath.lastIndexOf (java.io.File.separator)) + ".rar");
     }
 
     protected String J2EEAPIJarPath ()
         throws ResourceException
     {
-        // ToDo: find a better way to find the CIMConnector.rar
-        String ret = "/usr/local/tomee/lib/javaee-api-7.0-1.jar";
-        return (ret);
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find javaee-api-7.0-1.jar (/usr/local/tomee/lib/javaee-api-7.0-1.jar)
+        return (jarForObject (new javax.enterprise.concurrent.AbortedException ()));
     }
 
 

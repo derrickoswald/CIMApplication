@@ -117,7 +117,7 @@ define
                 export_template,
                 TheChoices
             );
-            document.getElementById ("main").innerHTML = text;
+            document.getElementById ("export").innerHTML = text;
             document.getElementById ("station_directory").onchange = select_station;
             document.getElementById ("simulation_file").onchange = set_do_export_url;
             document.getElementById ("export_option_all").onchange = set_do_export_url;
@@ -187,7 +187,7 @@ define
          */
         function initialize ()
         {
-            document.getElementById ("main").innerHTML = "";
+            document.getElementById ("export").innerHTML = "";
             cimsimulate.getStations (
                 function (stations)
                 {

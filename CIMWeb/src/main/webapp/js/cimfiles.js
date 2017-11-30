@@ -160,11 +160,11 @@ define
                         }
                     }
                 );
-                document.getElementById ("main").innerHTML = text;
+                document.getElementById ("files").innerHTML = text;
                 document.getElementById ("do_put").onclick = do_put;
             }
             else
-                document.getElementById ("main").innerHTML = response.message;
+                document.getElementById ("files").innerHTML = response.message;
         }
 
         /**
@@ -716,7 +716,7 @@ define
          */
         function initialize ()
         {
-            document.getElementById ("main").innerHTML = "";
+            document.getElementById ("files").innerHTML = "";
             do_fetch (LAST_DIRECTORY);
         }
 

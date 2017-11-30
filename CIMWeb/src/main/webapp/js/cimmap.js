@@ -783,14 +783,14 @@ define
         function initialize (event)
         {
             // make the map
-            document.getElementById ("main").innerHTML = "";
+            document.getElementById ("map").innerHTML = "";
             mapboxgl.accessToken = TheToken;
             TheMap = new mapboxgl.Map
             (
                 {
                     name: "TheMap",
                     version: 8,
-                    container: "main",
+                    container: "map",
                     center: [7.48634000000001, 46.93003],
                     zoom: 8,
                     maxZoom: 25,
@@ -872,7 +872,7 @@ define
             {
                 var map = TheMap;
                 map.remove ();
-                document.getElementById ("main").innerHTML = "";
+                document.getElementById ("map").innerHTML = "";
             }
         }
 

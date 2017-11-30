@@ -43,11 +43,13 @@ define
          * @param {string} table_name - the name of the temporary view to store the result DataFrame, "" for none
          * @param {string} cassandra_table_name - the name of the name of the Cassandra table to store the result DataFrame, "" for none
          * @param {function} fn - the callback function with the data
+         * @param {function} error - the error callback function with an error string if possible
          * @function query
          * @memberOf module:cimquery
          */
-        function query (sql, cassandra, table_name, cassandra_table_name, fn)
+        function query (sql, cassandra, table_name, cassandra_table_name, fn, error)
         {
+            error = error || function (s) { alert (s); };
             var target = (cassandra) ? "cassandra=true&": "";
             var table = ("" != table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
             var cassandra_table = ("" != cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
@@ -64,10 +66,10 @@ define
                         if (resp.status == "OK")
                             fn (resp.result);
                         else
-                            alert (resp.message);
+                            error (resp.message);
                     }
                     else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                        error ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
             };
             xmlhttp.send ();
         }
@@ -100,7 +102,7 @@ define
          */
         function initialize ()
         {
-            document.getElementById ("main").innerHTML = "";
+            document.getElementById ("query").innerHTML = "";
             var query_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
@@ -152,7 +154,7 @@ define
                     cassandra: function () { return ((QueryCassandra) ? " checked" : ""); }
                 }
             );
-            document.getElementById ("main").innerHTML = text;
+            document.getElementById ("query").innerHTML = text;
             document.getElementById ("do_query").onclick = do_query;
         }
 

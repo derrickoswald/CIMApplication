@@ -786,7 +786,7 @@ define
                     data: data
                 }
             );
-            document.getElementById ("main").innerHTML = text;
+            document.getElementById ("simulate").innerHTML = text;
             document.getElementById ("simulation_island").onchange = select_island;
             document.getElementById ("do_refresh").onclick = do_refresh;
             document.getElementById ("do_save").onclick = do_save;
@@ -799,7 +799,7 @@ define
                     "</span>";
                 PlayerChooser = new chooser.Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
             }
-            if (null != data[0].player_choices)
+            if ((0 < data.length) && (null != data[0].player_choices))
                 PlayerChooser.context.items = data[0].player_choices.map (function (item) { return ( { value: item }); });
             PlayerChooser.render ();
             if (null == RecorderChooser)
@@ -810,7 +810,7 @@ define
                     "</span>";
                 RecorderChooser = new chooser.Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
             }
-            if (null != data[0].recorder_choices)
+            if ((0 < data.length) && (null != data[0].recorder_choices))
                 RecorderChooser.context.items = data[0].recorder_choices.map (function (item) { return ( { value: item } ); });
             RecorderChooser.render ();
             if (null != TheSimulation)
@@ -830,7 +830,12 @@ define
                 false,
                 "",
                 "",
-                render
+                render,
+                function (error)
+                {
+                    console.log (error);
+                    render ([]);
+                }
             );
         }
 
@@ -859,6 +864,11 @@ define
                             }
                         }
                     );
+                },
+                function (error)
+                {
+                    console.log (error);
+                    callback ([]);
                 }
             );
         }
@@ -889,7 +899,7 @@ define
          */
         function initialize ()
         {
-            document.getElementById ("main").innerHTML = "";
+            document.getElementById ("simulate").innerHTML = "";
             if (null == TheSimulation)
                 getStations (function (stations) {
                     if (0 == stations.length)
