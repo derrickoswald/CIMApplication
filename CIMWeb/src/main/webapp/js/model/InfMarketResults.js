@@ -8,84 +8,143 @@ define
          * Binding security constrained clearing results posted for a given settlement period.
          *
          */
-        function parse_SecurityConstraintsClearing (context, sub)
+        class SecurityConstraintsClearing extends MarketPlan.MarketFactors
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.SecurityConstraintsClearing;
+                if (null == bucket)
+                   cim_data.SecurityConstraintsClearing = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = MarketPlan.parse_MarketFactors (context, sub);
-            obj.cls = "SecurityConstraintsClearing";
-            /**
-             * Binding MW limit.
-             *
-             */
-            base.parse_element (/<cim:SecurityConstraintsClearing.mwLimit>([\s\S]*?)<\/cim:SecurityConstraintsClearing.mwLimit>/g, obj, "mwLimit", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.SecurityConstraintsClearing[this._id];
+            }
 
-            /**
-             * Optimal MW flow
-             *
-             */
-            base.parse_element (/<cim:SecurityConstraintsClearing.mwFlow>([\s\S]*?)<\/cim:SecurityConstraintsClearing.mwFlow>/g, obj, "mwFlow", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Security constraint shadow price.
-             *
-             */
-            base.parse_element (/<cim:SecurityConstraintsClearing.shadowPrice>([\s\S]*?)<\/cim:SecurityConstraintsClearing.shadowPrice>/g, obj, "shadowPrice", base.to_string, sub, context);
+                obj = MarketPlan.MarketFactors.prototype.parse.call (this, context, sub);
+                obj.cls = "SecurityConstraintsClearing";
+                base.parse_element (/<cim:SecurityConstraintsClearing.mwLimit>([\s\S]*?)<\/cim:SecurityConstraintsClearing.mwLimit>/g, obj, "mwLimit", base.to_string, sub, context);
+                base.parse_element (/<cim:SecurityConstraintsClearing.mwFlow>([\s\S]*?)<\/cim:SecurityConstraintsClearing.mwFlow>/g, obj, "mwFlow", base.to_string, sub, context);
+                base.parse_element (/<cim:SecurityConstraintsClearing.shadowPrice>([\s\S]*?)<\/cim:SecurityConstraintsClearing.shadowPrice>/g, obj, "shadowPrice", base.to_string, sub, context);
 
-            bucket = context.parsed.SecurityConstraintsClearing;
-            if (null == bucket)
-                context.parsed.SecurityConstraintsClearing = bucket = {};
-            bucket[obj.id] = obj;
+                var bucket = context.parsed.SecurityConstraintsClearing;
+                if (null == bucket)
+                   context.parsed.SecurityConstraintsClearing = bucket = {};
+                bucket[obj.id] = obj;
 
-            return (obj);
-        }
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = MarketPlan.MarketFactors.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "SecurityConstraintsClearing", "mwLimit", base.from_string, fields);
+                base.export_element (obj, "SecurityConstraintsClearing", "mwFlow", base.from_string, fields);
+                base.export_element (obj, "SecurityConstraintsClearing", "shadowPrice", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#SecurityConstraintsClearing_collapse" aria-expanded="true" aria-controls="SecurityConstraintsClearing_collapse">SecurityConstraintsClearing</a>
+<div id="SecurityConstraintsClearing_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + MarketPlan.MarketFactors.prototype.template.call (this) +
+`
+{{#mwLimit}}<div><b>mwLimit</b>: {{mwLimit}}</div>{{/mwLimit}}
+{{#mwFlow}}<div><b>mwFlow</b>: {{mwFlow}}</div>{{/mwFlow}}
+{{#shadowPrice}}<div><b>shadowPrice</b>: {{shadowPrice}}</div>{{/shadowPrice}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Market case clearing results are posted for a given settlement period.
          *
          */
-        function parse_MarketCaseClearing (context, sub)
+        class MarketCaseClearing extends MarketPlan.MarketFactors
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.MarketCaseClearing;
+                if (null == bucket)
+                   cim_data.MarketCaseClearing = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = MarketPlan.parse_MarketFactors (context, sub);
-            obj.cls = "MarketCaseClearing";
-            /**
-             * Settlement period:
-             * 'DA - Bid-in'
-             * 'DA - Reliability'
-             * 'DA - Amp1'
-             * 'DA - Amp2'
-             * 'RT - Ex-Ante'
-             * 'RT - Ex-Post'
-             * 'RT - Amp1'
-             *
-             * 'RT - Amp2'
-             *
-             */
-            base.parse_element (/<cim:MarketCaseClearing.caseType>([\s\S]*?)<\/cim:MarketCaseClearing.caseType>/g, obj, "caseType", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.MarketCaseClearing[this._id];
+            }
 
-            /**
-             * Bid clearing results posted time and date.
-             *
-             */
-            base.parse_element (/<cim:MarketCaseClearing.postedDate>([\s\S]*?)<\/cim:MarketCaseClearing.postedDate>/g, obj, "postedDate", base.to_datetime, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Last time and date clearing results were manually modified.
-             *
-             */
-            base.parse_element (/<cim:MarketCaseClearing.modifiedDate>([\s\S]*?)<\/cim:MarketCaseClearing.modifiedDate>/g, obj, "modifiedDate", base.to_datetime, sub, context);
+                obj = MarketPlan.MarketFactors.prototype.parse.call (this, context, sub);
+                obj.cls = "MarketCaseClearing";
+                base.parse_element (/<cim:MarketCaseClearing.caseType>([\s\S]*?)<\/cim:MarketCaseClearing.caseType>/g, obj, "caseType", base.to_string, sub, context);
+                base.parse_element (/<cim:MarketCaseClearing.postedDate>([\s\S]*?)<\/cim:MarketCaseClearing.postedDate>/g, obj, "postedDate", base.to_datetime, sub, context);
+                base.parse_element (/<cim:MarketCaseClearing.modifiedDate>([\s\S]*?)<\/cim:MarketCaseClearing.modifiedDate>/g, obj, "modifiedDate", base.to_datetime, sub, context);
 
-            bucket = context.parsed.MarketCaseClearing;
-            if (null == bucket)
-                context.parsed.MarketCaseClearing = bucket = {};
-            bucket[obj.id] = obj;
+                var bucket = context.parsed.MarketCaseClearing;
+                if (null == bucket)
+                   context.parsed.MarketCaseClearing = bucket = {};
+                bucket[obj.id] = obj;
 
-            return (obj);
-        }
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = MarketPlan.MarketFactors.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "MarketCaseClearing", "caseType", base.from_string, fields);
+                base.export_element (obj, "MarketCaseClearing", "postedDate", base.from_datetime, fields);
+                base.export_element (obj, "MarketCaseClearing", "modifiedDate", base.from_datetime, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#MarketCaseClearing_collapse" aria-expanded="true" aria-controls="MarketCaseClearing_collapse">MarketCaseClearing</a>
+<div id="MarketCaseClearing_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + MarketPlan.MarketFactors.prototype.template.call (this) +
+`
+{{#caseType}}<div><b>caseType</b>: {{caseType}}</div>{{/caseType}}
+{{#postedDate}}<div><b>postedDate</b>: {{postedDate}}</div>{{/postedDate}}
+{{#modifiedDate}}<div><b>modifiedDate</b>: {{modifiedDate}}</div>{{/modifiedDate}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Model of market clearing related to results at the inter-ties.
@@ -93,20 +152,63 @@ define
          * Identifies interval
          *
          */
-        function parse_InterTieClearing (context, sub)
+        class InterTieClearing extends MarketPlan.MarketFactors
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.InterTieClearing;
+                if (null == bucket)
+                   cim_data.InterTieClearing = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = MarketPlan.parse_MarketFactors (context, sub);
-            obj.cls = "InterTieClearing";
-            bucket = context.parsed.InterTieClearing;
-            if (null == bucket)
-                context.parsed.InterTieClearing = bucket = {};
-            bucket[obj.id] = obj;
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.InterTieClearing[this._id];
+            }
 
-            return (obj);
-        }
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = MarketPlan.MarketFactors.prototype.parse.call (this, context, sub);
+                obj.cls = "InterTieClearing";
+
+                var bucket = context.parsed.InterTieClearing;
+                if (null == bucket)
+                   context.parsed.InterTieClearing = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = MarketPlan.MarketFactors.prototype.export.call (this, obj, false);
+
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#InterTieClearing_collapse" aria-expanded="true" aria-controls="InterTieClearing_collapse">InterTieClearing</a>
+<div id="InterTieClearing_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + MarketPlan.MarketFactors.prototype.template.call (this) +
+`
+</div>
+`
+                );
+           }        }
 
         /**
          * Provides the tie point specific output from the market applications.
@@ -114,43 +216,82 @@ define
          * Currently, this is defined as the loop flow compensation MW value.
          *
          */
-        function parse_InterTieResults (context, sub)
+        class InterTieResults extends base.Element
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.InterTieResults;
+                if (null == bucket)
+                   cim_data.InterTieResults = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = base.parse_Element (context, sub);
-            obj.cls = "InterTieResults";
-            /**
-             * Net Dispatched MW
-             *
-             */
-            base.parse_element (/<cim:InterTieResults.clearedValue>([\s\S]*?)<\/cim:InterTieResults.clearedValue>/g, obj, "clearedValue", base.to_float, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.InterTieResults[this._id];
+            }
 
-            /**
-             * Net Actual MW Flow
-             *
-             */
-            base.parse_element (/<cim:InterTieResults.baseMW>([\s\S]*?)<\/cim:InterTieResults.baseMW>/g, obj, "baseMW", base.to_float, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            base.parse_attribute (/<cim:InterTieResults.InterTieClearing\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "InterTieClearing", sub, context, true);
+                obj = base.Element.prototype.parse.call (this, context, sub);
+                obj.cls = "InterTieResults";
+                base.parse_element (/<cim:InterTieResults.clearedValue>([\s\S]*?)<\/cim:InterTieResults.clearedValue>/g, obj, "clearedValue", base.to_float, sub, context);
+                base.parse_element (/<cim:InterTieResults.baseMW>([\s\S]*?)<\/cim:InterTieResults.baseMW>/g, obj, "baseMW", base.to_float, sub, context);
+                base.parse_attribute (/<cim:InterTieResults.InterTieClearing\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "InterTieClearing", sub, context);
+                base.parse_attribute (/<cim:InterTieResults.Flowgate\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Flowgate", sub, context);
 
-            base.parse_attribute (/<cim:InterTieResults.Flowgate\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Flowgate", sub, context, true);
+                var bucket = context.parsed.InterTieResults;
+                if (null == bucket)
+                   context.parsed.InterTieResults = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.InterTieResults;
-            if (null == bucket)
-                context.parsed.InterTieResults = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = [];
+
+                base.export_element (obj, "InterTieResults", "clearedValue", base.from_float, fields);
+                base.export_element (obj, "InterTieResults", "baseMW", base.from_float, fields);
+                base.export_attribute (obj, "InterTieResults", "InterTieClearing", fields);
+                base.export_attribute (obj, "InterTieResults", "Flowgate", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#InterTieResults_collapse" aria-expanded="true" aria-controls="InterTieResults_collapse">InterTieResults</a>
+<div id="InterTieResults_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + base.Element.prototype.template.call (this) +
+`
+{{#clearedValue}}<div><b>clearedValue</b>: {{clearedValue}}</div>{{/clearedValue}}
+{{#baseMW}}<div><b>baseMW</b>: {{baseMW}}</div>{{/baseMW}}
+{{#InterTieClearing}}<div><b>InterTieClearing</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{InterTieClearing}}&quot;);})'>{{InterTieClearing}}</a></div>{{/InterTieClearing}}
+{{#Flowgate}}<div><b>Flowgate</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Flowgate}}&quot;);})'>{{Flowgate}}</a></div>{{/Flowgate}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_SecurityConstraintsClearing: parse_SecurityConstraintsClearing,
-                parse_MarketCaseClearing: parse_MarketCaseClearing,
-                parse_InterTieClearing: parse_InterTieClearing,
-                parse_InterTieResults: parse_InterTieResults
+                InterTieResults: InterTieResults,
+                InterTieClearing: InterTieClearing,
+                SecurityConstraintsClearing: SecurityConstraintsClearing,
+                MarketCaseClearing: MarketCaseClearing
             }
         );
     }

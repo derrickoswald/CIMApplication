@@ -11,117 +11,75 @@ define
     {
 
         /**
-         * The class represents IEEE PF Controller Type 1 which operates by moving the voltage reference directly.
-         *
-         * Reference: IEEE Standard 421.5-2005 Section 11.2.
-         *
-         */
-        function parse_PFVArType1IEEEPFController (context, sub)
-        {
-            var obj;
-            var bucket;
-
-            obj = parse_PFVArControllerType1Dynamics (context, sub);
-            obj.cls = "PFVArType1IEEEPFController";
-            /**
-             * Overexcitation Flag (<i>OVEX</i>)
-             * true = overexcited
-             *
-             * false = underexcited.
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.ovex>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.ovex>/g, obj, "ovex", base.to_boolean, sub, context);
-
-            /**
-             * PF controller time delay (<i>T</i><i><sub>PFC</sub></i>).
-             *
-             * Typical Value = 5.
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.tpfc>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.tpfc>/g, obj, "tpfc", base.to_string, sub, context);
-
-            /**
-             * Minimum machine terminal current needed to enable pf/var controller (<i>V</i><i><sub>ITMIN</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vitmin>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vitmin>/g, obj, "vitmin", base.to_string, sub, context);
-
-            /**
-             * Synchronous machine power factor (<i>V</i><i><sub>PF</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vpf>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpf>/g, obj, "vpf", base.to_string, sub, context);
-
-            /**
-             * PF controller dead band (<i>V</i><i><sub>PFC_BW</sub></i>).
-             *
-             * Typical Value = 0.05.
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vpfcbw>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpfcbw>/g, obj, "vpfcbw", base.to_float, sub, context);
-
-            /**
-             * PF controller reference (<i>V</i><i><sub>PFREF</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vpfref>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpfref>/g, obj, "vpfref", base.to_string, sub, context);
-
-            /**
-             * Maximum machine terminal voltage needed for pf/var controller to be enabled (<i>V</i><i><sub>VTMAX</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
-
-            /**
-             * Minimum machine terminal voltage needed to enable pf/var controller (<i>V</i><i><sub>VTMIN</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
-
-            bucket = context.parsed.PFVArType1IEEEPFController;
-            if (null == bucket)
-                context.parsed.PFVArType1IEEEPFController = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
-
-        /**
          * Power Factor or VAr controller Type I function block whose behaviour is described by reference to a standard model <font color="#0f0f0f">or by definition of a user-defined model.</font>
          *
          */
-        function parse_PFVArControllerType1Dynamics (context, sub)
+        class PFVArControllerType1Dynamics extends StandardModels.DynamicsFunctionBlock
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.PFVArControllerType1Dynamics;
+                if (null == bucket)
+                   cim_data.PFVArControllerType1Dynamics = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = StandardModels.parse_DynamicsFunctionBlock (context, sub);
-            obj.cls = "PFVArControllerType1Dynamics";
-            /**
-             * Voltage adjuster model associated with this Power Factor or VA controller Type I model.
-             *
-             */
-            base.parse_attribute (/<cim:PFVArControllerType1Dynamics.VoltageAdjusterDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "VoltageAdjusterDynamics", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.PFVArControllerType1Dynamics[this._id];
+            }
 
-            /**
-             * Excitation system model with which this Power Factor or VAr controller Type I model is associated.
-             *
-             */
-            base.parse_attribute (/<cim:PFVArControllerType1Dynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context, true);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Remote input signal used by this Power Factor or VAr controller Type I model.
-             *
-             */
-            base.parse_attribute (/<cim:PFVArControllerType1Dynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context, true);
+                obj = StandardModels.DynamicsFunctionBlock.prototype.parse.call (this, context, sub);
+                obj.cls = "PFVArControllerType1Dynamics";
+                base.parse_attribute (/<cim:PFVArControllerType1Dynamics.VoltageAdjusterDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "VoltageAdjusterDynamics", sub, context);
+                base.parse_attribute (/<cim:PFVArControllerType1Dynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
+                base.parse_attribute (/<cim:PFVArControllerType1Dynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context);
 
-            bucket = context.parsed.PFVArControllerType1Dynamics;
-            if (null == bucket)
-                context.parsed.PFVArControllerType1Dynamics = bucket = {};
-            bucket[obj.id] = obj;
+                var bucket = context.parsed.PFVArControllerType1Dynamics;
+                if (null == bucket)
+                   context.parsed.PFVArControllerType1Dynamics = bucket = {};
+                bucket[obj.id] = obj;
 
-            return (obj);
-        }
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = StandardModels.DynamicsFunctionBlock.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "VoltageAdjusterDynamics", fields);
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "ExcitationSystemDynamics", fields);
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "RemoteInputSignal", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#PFVArControllerType1Dynamics_collapse" aria-expanded="true" aria-controls="PFVArControllerType1Dynamics_collapse">PFVArControllerType1Dynamics</a>
+<div id="PFVArControllerType1Dynamics_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
+`
+{{#VoltageAdjusterDynamics}}<div><b>VoltageAdjusterDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{VoltageAdjusterDynamics}}&quot;);})'>{{VoltageAdjusterDynamics}}</a></div>{{/VoltageAdjusterDynamics}}
+{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+{{#RemoteInputSignal}}<div><b>RemoteInputSignal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{RemoteInputSignal}}&quot;);})'>{{RemoteInputSignal}}</a></div>{{/RemoteInputSignal}}
+</div>
+`
+                );
+           }        }
 
         /**
          * The class represents IEEE VAR Controller Type 1 which operates by moving the voltage reference directly.
@@ -129,66 +87,175 @@ define
          * Reference: IEEE Standard 421.5-2005 Section 11.3.
          *
          */
-        function parse_PFVArType1IEEEVArController (context, sub)
+        class PFVArType1IEEEVArController extends PFVArControllerType1Dynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.PFVArType1IEEEVArController;
+                if (null == bucket)
+                   cim_data.PFVArType1IEEEVArController = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_PFVArControllerType1Dynamics (context, sub);
-            obj.cls = "PFVArType1IEEEVArController";
-            /**
-             * Var controller time delay (<i>T</i><i><sub>VARC</sub></i>).
-             *
-             * Typical Value = 5.
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.tvarc>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.tvarc>/g, obj, "tvarc", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.PFVArType1IEEEVArController[this._id];
+            }
 
-            /**
-             * Synchronous machine power factor (<i>V</i><i><sub>VAR</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.vvar>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvar>/g, obj, "vvar", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Var controller dead band (<i>V</i><i><sub>VARC_BW</sub></i>).
-             *
-             * Typical Value = 0.02.
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.vvarcbw>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvarcbw>/g, obj, "vvarcbw", base.to_float, sub, context);
+                obj = PFVArControllerType1Dynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "PFVArType1IEEEVArController";
+                base.parse_element (/<cim:PFVArType1IEEEVArController.tvarc>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.tvarc>/g, obj, "tvarc", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEVArController.vvar>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvar>/g, obj, "vvar", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEVArController.vvarcbw>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvarcbw>/g, obj, "vvarcbw", base.to_float, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEVArController.vvarref>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvarref>/g, obj, "vvarref", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
 
-            /**
-             * Var controller reference (<i>V</i><i><sub>VARREF</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.vvarref>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvarref>/g, obj, "vvarref", base.to_string, sub, context);
+                var bucket = context.parsed.PFVArType1IEEEVArController;
+                if (null == bucket)
+                   context.parsed.PFVArType1IEEEVArController = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Maximum machine terminal voltage needed for pf/var controller to be enabled (<i>V</i><i><sub>VTMAX</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
+                return (obj);
+            }
 
-            /**
-             * Minimum machine terminal voltage needed to enable pf/var controller (<i>V</i><i><sub>VTMIN</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
+            export (obj, full)
+            {
+                var fields = PFVArControllerType1Dynamics.prototype.export.call (this, obj, false);
 
-            bucket = context.parsed.PFVArType1IEEEVArController;
-            if (null == bucket)
-                context.parsed.PFVArType1IEEEVArController = bucket = {};
-            bucket[obj.id] = obj;
+                base.export_element (obj, "PFVArType1IEEEVArController", "tvarc", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvar", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvarcbw", base.from_float, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvarref", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmax", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmin", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            return (obj);
-        }
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#PFVArType1IEEEVArController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEVArController_collapse">PFVArType1IEEEVArController</a>
+<div id="PFVArType1IEEEVArController_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + PFVArControllerType1Dynamics.prototype.template.call (this) +
+`
+{{#tvarc}}<div><b>tvarc</b>: {{tvarc}}</div>{{/tvarc}}
+{{#vvar}}<div><b>vvar</b>: {{vvar}}</div>{{/vvar}}
+{{#vvarcbw}}<div><b>vvarcbw</b>: {{vvarcbw}}</div>{{/vvarcbw}}
+{{#vvarref}}<div><b>vvarref</b>: {{vvarref}}</div>{{/vvarref}}
+{{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
+{{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
+</div>
+`
+                );
+           }        }
+
+        /**
+         * The class represents IEEE PF Controller Type 1 which operates by moving the voltage reference directly.
+         *
+         * Reference: IEEE Standard 421.5-2005 Section 11.2.
+         *
+         */
+        class PFVArType1IEEEPFController extends PFVArControllerType1Dynamics
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.PFVArType1IEEEPFController;
+                if (null == bucket)
+                   cim_data.PFVArType1IEEEPFController = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.PFVArType1IEEEPFController[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = PFVArControllerType1Dynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "PFVArType1IEEEPFController";
+                base.parse_element (/<cim:PFVArType1IEEEPFController.ovex>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.ovex>/g, obj, "ovex", base.to_boolean, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.tpfc>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.tpfc>/g, obj, "tpfc", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vitmin>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vitmin>/g, obj, "vitmin", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vpf>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpf>/g, obj, "vpf", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vpfcbw>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpfcbw>/g, obj, "vpfcbw", base.to_float, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vpfref>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpfref>/g, obj, "vpfref", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
+                base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
+
+                var bucket = context.parsed.PFVArType1IEEEPFController;
+                if (null == bucket)
+                   context.parsed.PFVArType1IEEEPFController = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = PFVArControllerType1Dynamics.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "PFVArType1IEEEPFController", "ovex", base.from_boolean, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "tpfc", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vitmin", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpf", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpfcbw", base.from_float, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpfref", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmax", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmin", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#PFVArType1IEEEPFController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEPFController_collapse">PFVArType1IEEEPFController</a>
+<div id="PFVArType1IEEEPFController_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + PFVArControllerType1Dynamics.prototype.template.call (this) +
+`
+{{#ovex}}<div><b>ovex</b>: {{ovex}}</div>{{/ovex}}
+{{#tpfc}}<div><b>tpfc</b>: {{tpfc}}</div>{{/tpfc}}
+{{#vitmin}}<div><b>vitmin</b>: {{vitmin}}</div>{{/vitmin}}
+{{#vpf}}<div><b>vpf</b>: {{vpf}}</div>{{/vpf}}
+{{#vpfcbw}}<div><b>vpfcbw</b>: {{vpfcbw}}</div>{{/vpfcbw}}
+{{#vpfref}}<div><b>vpfref</b>: {{vpfref}}</div>{{/vpfref}}
+{{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
+{{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_PFVArType1IEEEPFController: parse_PFVArType1IEEEPFController,
-                parse_PFVArControllerType1Dynamics: parse_PFVArControllerType1Dynamics,
-                parse_PFVArType1IEEEVArController: parse_PFVArType1IEEEVArController
+                PFVArType1IEEEVArController: PFVArType1IEEEVArController,
+                PFVArType1IEEEPFController: PFVArType1IEEEPFController,
+                PFVArControllerType1Dynamics: PFVArControllerType1Dynamics
             }
         );
     }

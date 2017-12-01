@@ -12,38 +12,73 @@ define
          * IEC 62325 version number assigned to this UML model.
          *
          */
-        function parse_IEC62325CIMVersion (context, sub)
+        class IEC62325CIMVersion extends base.Element
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.IEC62325CIMVersion;
+                if (null == bucket)
+                   cim_data.IEC62325CIMVersion = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = base.parse_Element (context, sub);
-            obj.cls = "IEC62325CIMVersion";
-            /**
-             * Form is YYYY-MM-DD for example for January 5, 2009 it is 2009-01-05.
-             *
-             */
-            base.parse_element (/<cim:IEC62325CIMVersion.date>([\s\S]*?)<\/cim:IEC62325CIMVersion.date>/g, obj, "date", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.IEC62325CIMVersion[this._id];
+            }
 
-            /**
-             * Form is IEC62325CIMXXvYY where XX is the major CIM package version and the YY is the minor version.
-             *
-             * For example IEC62325CIM10v03.
-             *
-             */
-            base.parse_element (/<cim:IEC62325CIMVersion.version>([\s\S]*?)<\/cim:IEC62325CIMVersion.version>/g, obj, "version", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.IEC62325CIMVersion;
-            if (null == bucket)
-                context.parsed.IEC62325CIMVersion = bucket = {};
-            bucket[obj.id] = obj;
+                obj = base.Element.prototype.parse.call (this, context, sub);
+                obj.cls = "IEC62325CIMVersion";
+                base.parse_element (/<cim:IEC62325CIMVersion.date>([\s\S]*?)<\/cim:IEC62325CIMVersion.date>/g, obj, "date", base.to_string, sub, context);
+                base.parse_element (/<cim:IEC62325CIMVersion.version>([\s\S]*?)<\/cim:IEC62325CIMVersion.version>/g, obj, "version", base.to_string, sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.IEC62325CIMVersion;
+                if (null == bucket)
+                   context.parsed.IEC62325CIMVersion = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = [];
+
+                base.export_element (obj, "IEC62325CIMVersion", "date", base.from_string, fields);
+                base.export_element (obj, "IEC62325CIMVersion", "version", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#IEC62325CIMVersion_collapse" aria-expanded="true" aria-controls="IEC62325CIMVersion_collapse">IEC62325CIMVersion</a>
+<div id="IEC62325CIMVersion_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + base.Element.prototype.template.call (this) +
+`
+{{#date}}<div><b>date</b>: {{date}}</div>{{/date}}
+{{#version}}<div><b>version</b>: {{version}}</div>{{/version}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_IEC62325CIMVersion: parse_IEC62325CIMVersion
+                IEC62325CIMVersion: IEC62325CIMVersion
             }
         );
     }

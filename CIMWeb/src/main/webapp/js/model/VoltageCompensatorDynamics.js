@@ -11,117 +11,146 @@ define
     {
 
         /**
-         * <font color="#0f0f0f">The class represents the terminal voltage transducer and the load compensator as defined in the IEEE Std 421.5-2005, Section 4.
-         *
-         * This model is common to all excitation system models described in the IEEE Standard. </font>
-         *
-         */
-        function parse_VCompIEEEType1 (context, sub)
-        {
-            var obj;
-            var bucket;
-
-            obj = parse_VoltageCompensatorDynamics (context, sub);
-            obj.cls = "VCompIEEEType1";
-            /**
-             * <font color="#0f0f0f">Resistive component of compensation of a generator (Rc).</font>
-             *
-             */
-            base.parse_element (/<cim:VCompIEEEType1.rc>([\s\S]*?)<\/cim:VCompIEEEType1.rc>/g, obj, "rc", base.to_string, sub, context);
-
-            /**
-             * <font color="#0f0f0f">Time constant which is used for the combined voltage sensing and compensation signal (Tr).</font>
-             *
-             */
-            base.parse_element (/<cim:VCompIEEEType1.tr>([\s\S]*?)<\/cim:VCompIEEEType1.tr>/g, obj, "tr", base.to_string, sub, context);
-
-            /**
-             * <font color="#0f0f0f">Reactive component of compensation of a generator (Xc).</font>
-             *
-             */
-            base.parse_element (/<cim:VCompIEEEType1.xc>([\s\S]*?)<\/cim:VCompIEEEType1.xc>/g, obj, "xc", base.to_string, sub, context);
-
-            bucket = context.parsed.VCompIEEEType1;
-            if (null == bucket)
-                context.parsed.VCompIEEEType1 = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
-
-        /**
          * This class provides the resistive and reactive components of compensation for the generator associated with the IEEE Type 2 voltage compensator for current flow out of one of the other generators in the interconnection.
          *
          */
-        function parse_GenICompensationForGenJ (context, sub)
+        class GenICompensationForGenJ extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.GenICompensationForGenJ;
+                if (null == bucket)
+                   cim_data.GenICompensationForGenJ = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "GenICompensationForGenJ";
-            /**
-             * <font color="#0f0f0f">Resistive component of compensation of generator associated with this IEEE Type 2 voltage compensator for current flow out of another generator (Rcij).</font>
-             *
-             */
-            base.parse_element (/<cim:GenICompensationForGenJ.rcij>([\s\S]*?)<\/cim:GenICompensationForGenJ.rcij>/g, obj, "rcij", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.GenICompensationForGenJ[this._id];
+            }
 
-            /**
-             * <font color="#0f0f0f">Reactive component of compensation of generator associated with this IEEE Type 2 voltage compensator for current flow out of another generator (Xcij).</font>
-             *
-             */
-            base.parse_element (/<cim:GenICompensationForGenJ.xcij>([\s\S]*?)<\/cim:GenICompensationForGenJ.xcij>/g, obj, "xcij", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * The standard IEEE Type 2 voltage compensator of this compensation.
-             *
-             */
-            base.parse_attribute (/<cim:GenICompensationForGenJ.VcompIEEEType2\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "VcompIEEEType2", sub, context, true);
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "GenICompensationForGenJ";
+                base.parse_element (/<cim:GenICompensationForGenJ.rcij>([\s\S]*?)<\/cim:GenICompensationForGenJ.rcij>/g, obj, "rcij", base.to_string, sub, context);
+                base.parse_element (/<cim:GenICompensationForGenJ.xcij>([\s\S]*?)<\/cim:GenICompensationForGenJ.xcij>/g, obj, "xcij", base.to_string, sub, context);
+                base.parse_attribute (/<cim:GenICompensationForGenJ.VcompIEEEType2\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "VcompIEEEType2", sub, context);
+                base.parse_attribute (/<cim:GenICompensationForGenJ.SynchronousMachineDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SynchronousMachineDynamics", sub, context);
 
-            /**
-             * Standard synchronous machine out of which current flow is being compensated for.
-             *
-             */
-            base.parse_attribute (/<cim:GenICompensationForGenJ.SynchronousMachineDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SynchronousMachineDynamics", sub, context, true);
+                var bucket = context.parsed.GenICompensationForGenJ;
+                if (null == bucket)
+                   context.parsed.GenICompensationForGenJ = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.GenICompensationForGenJ;
-            if (null == bucket)
-                context.parsed.GenICompensationForGenJ = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "GenICompensationForGenJ", "rcij", base.from_string, fields);
+                base.export_element (obj, "GenICompensationForGenJ", "xcij", base.from_string, fields);
+                base.export_attribute (obj, "GenICompensationForGenJ", "VcompIEEEType2", fields);
+                base.export_attribute (obj, "GenICompensationForGenJ", "SynchronousMachineDynamics", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#GenICompensationForGenJ_collapse" aria-expanded="true" aria-controls="GenICompensationForGenJ_collapse">GenICompensationForGenJ</a>
+<div id="GenICompensationForGenJ_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#rcij}}<div><b>rcij</b>: {{rcij}}</div>{{/rcij}}
+{{#xcij}}<div><b>xcij</b>: {{xcij}}</div>{{/xcij}}
+{{#VcompIEEEType2}}<div><b>VcompIEEEType2</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{VcompIEEEType2}}&quot;);})'>{{VcompIEEEType2}}</a></div>{{/VcompIEEEType2}}
+{{#SynchronousMachineDynamics}}<div><b>SynchronousMachineDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SynchronousMachineDynamics}}&quot;);})'>{{SynchronousMachineDynamics}}</a></div>{{/SynchronousMachineDynamics}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Voltage compensator function block whose behaviour is described by reference to a standard model <font color="#0f0f0f">or by definition of a user-defined model.</font>
          *
          */
-        function parse_VoltageCompensatorDynamics (context, sub)
+        class VoltageCompensatorDynamics extends StandardModels.DynamicsFunctionBlock
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.VoltageCompensatorDynamics;
+                if (null == bucket)
+                   cim_data.VoltageCompensatorDynamics = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = StandardModels.parse_DynamicsFunctionBlock (context, sub);
-            obj.cls = "VoltageCompensatorDynamics";
-            /**
-             * Remote input signal used by this voltage compensator model.
-             *
-             */
-            base.parse_attribute (/<cim:VoltageCompensatorDynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.VoltageCompensatorDynamics[this._id];
+            }
 
-            /**
-             * Excitation system model with which this voltage compensator is associated.
-             *
-             */
-            base.parse_attribute (/<cim:VoltageCompensatorDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context, true);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.VoltageCompensatorDynamics;
-            if (null == bucket)
-                context.parsed.VoltageCompensatorDynamics = bucket = {};
-            bucket[obj.id] = obj;
+                obj = StandardModels.DynamicsFunctionBlock.prototype.parse.call (this, context, sub);
+                obj.cls = "VoltageCompensatorDynamics";
+                base.parse_attribute (/<cim:VoltageCompensatorDynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context);
+                base.parse_attribute (/<cim:VoltageCompensatorDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.VoltageCompensatorDynamics;
+                if (null == bucket)
+                   context.parsed.VoltageCompensatorDynamics = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = StandardModels.DynamicsFunctionBlock.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "VoltageCompensatorDynamics", "RemoteInputSignal", fields);
+                base.export_attribute (obj, "VoltageCompensatorDynamics", "ExcitationSystemDynamics", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#VoltageCompensatorDynamics_collapse" aria-expanded="true" aria-controls="VoltageCompensatorDynamics_collapse">VoltageCompensatorDynamics</a>
+<div id="VoltageCompensatorDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
+`
+{{#RemoteInputSignal}}<div><b>RemoteInputSignal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{RemoteInputSignal}}&quot;);})'>{{RemoteInputSignal}}</a></div>{{/RemoteInputSignal}}
+{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+</div>
+`
+                );
+           }        }
 
         /**
          * <font color="#0f0f0f">The class represents the terminal voltage transducer and the load compensator as defined in the IEEE Std 421.5-2005, Section 4.
@@ -129,33 +158,146 @@ define
          * This model is designed to cover the following types of compensation: </font>
          *
          */
-        function parse_VCompIEEEType2 (context, sub)
+        class VCompIEEEType2 extends VoltageCompensatorDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.VCompIEEEType2;
+                if (null == bucket)
+                   cim_data.VCompIEEEType2 = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_VoltageCompensatorDynamics (context, sub);
-            obj.cls = "VCompIEEEType2";
-            /**
-             * <font color="#0f0f0f">Time constant which is used for the combined voltage sensing and compensation signal (Tr).</font>
-             *
-             */
-            base.parse_element (/<cim:VCompIEEEType2.tr>([\s\S]*?)<\/cim:VCompIEEEType2.tr>/g, obj, "tr", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.VCompIEEEType2[this._id];
+            }
 
-            bucket = context.parsed.VCompIEEEType2;
-            if (null == bucket)
-                context.parsed.VCompIEEEType2 = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = VoltageCompensatorDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "VCompIEEEType2";
+                base.parse_element (/<cim:VCompIEEEType2.tr>([\s\S]*?)<\/cim:VCompIEEEType2.tr>/g, obj, "tr", base.to_string, sub, context);
+
+                var bucket = context.parsed.VCompIEEEType2;
+                if (null == bucket)
+                   context.parsed.VCompIEEEType2 = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = VoltageCompensatorDynamics.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "VCompIEEEType2", "tr", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#VCompIEEEType2_collapse" aria-expanded="true" aria-controls="VCompIEEEType2_collapse">VCompIEEEType2</a>
+<div id="VCompIEEEType2_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + VoltageCompensatorDynamics.prototype.template.call (this) +
+`
+{{#tr}}<div><b>tr</b>: {{tr}}</div>{{/tr}}
+</div>
+`
+                );
+           }        }
+
+        /**
+         * <font color="#0f0f0f">The class represents the terminal voltage transducer and the load compensator as defined in the IEEE Std 421.5-2005, Section 4.
+         *
+         * This model is common to all excitation system models described in the IEEE Standard. </font>
+         *
+         */
+        class VCompIEEEType1 extends VoltageCompensatorDynamics
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.VCompIEEEType1;
+                if (null == bucket)
+                   cim_data.VCompIEEEType1 = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.VCompIEEEType1[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = VoltageCompensatorDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "VCompIEEEType1";
+                base.parse_element (/<cim:VCompIEEEType1.rc>([\s\S]*?)<\/cim:VCompIEEEType1.rc>/g, obj, "rc", base.to_string, sub, context);
+                base.parse_element (/<cim:VCompIEEEType1.tr>([\s\S]*?)<\/cim:VCompIEEEType1.tr>/g, obj, "tr", base.to_string, sub, context);
+                base.parse_element (/<cim:VCompIEEEType1.xc>([\s\S]*?)<\/cim:VCompIEEEType1.xc>/g, obj, "xc", base.to_string, sub, context);
+
+                var bucket = context.parsed.VCompIEEEType1;
+                if (null == bucket)
+                   context.parsed.VCompIEEEType1 = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = VoltageCompensatorDynamics.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "VCompIEEEType1", "rc", base.from_string, fields);
+                base.export_element (obj, "VCompIEEEType1", "tr", base.from_string, fields);
+                base.export_element (obj, "VCompIEEEType1", "xc", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#VCompIEEEType1_collapse" aria-expanded="true" aria-controls="VCompIEEEType1_collapse">VCompIEEEType1</a>
+<div id="VCompIEEEType1_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + VoltageCompensatorDynamics.prototype.template.call (this) +
+`
+{{#rc}}<div><b>rc</b>: {{rc}}</div>{{/rc}}
+{{#tr}}<div><b>tr</b>: {{tr}}</div>{{/tr}}
+{{#xc}}<div><b>xc</b>: {{xc}}</div>{{/xc}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_VoltageCompensatorDynamics: parse_VoltageCompensatorDynamics,
-                parse_VCompIEEEType1: parse_VCompIEEEType1,
-                parse_VCompIEEEType2: parse_VCompIEEEType2,
-                parse_GenICompensationForGenJ: parse_GenICompensationForGenJ
+                VCompIEEEType1: VCompIEEEType1,
+                GenICompensationForGenJ: GenICompensationForGenJ,
+                VoltageCompensatorDynamics: VoltageCompensatorDynamics,
+                VCompIEEEType2: VCompIEEEType2
             }
         );
     }

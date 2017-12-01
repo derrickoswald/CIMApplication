@@ -11,55 +11,151 @@ define
     {
 
         /**
+         * Discontinuous excitation control function block whose behaviour is described by reference to a standard model <font color="#0f0f0f">or by definition of a user-defined model</font>.
+         *
+         */
+        class DiscontinuousExcitationControlDynamics extends StandardModels.DynamicsFunctionBlock
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DiscontinuousExcitationControlDynamics;
+                if (null == bucket)
+                   cim_data.DiscontinuousExcitationControlDynamics = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DiscontinuousExcitationControlDynamics[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = StandardModels.DynamicsFunctionBlock.prototype.parse.call (this, context, sub);
+                obj.cls = "DiscontinuousExcitationControlDynamics";
+                base.parse_attribute (/<cim:DiscontinuousExcitationControlDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
+                base.parse_attribute (/<cim:DiscontinuousExcitationControlDynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context);
+
+                var bucket = context.parsed.DiscontinuousExcitationControlDynamics;
+                if (null == bucket)
+                   context.parsed.DiscontinuousExcitationControlDynamics = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = StandardModels.DynamicsFunctionBlock.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "DiscontinuousExcitationControlDynamics", "ExcitationSystemDynamics", fields);
+                base.export_attribute (obj, "DiscontinuousExcitationControlDynamics", "RemoteInputSignal", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DiscontinuousExcitationControlDynamics_collapse" aria-expanded="true" aria-controls="DiscontinuousExcitationControlDynamics_collapse">DiscontinuousExcitationControlDynamics</a>
+<div id="DiscontinuousExcitationControlDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
+`
+{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+{{#RemoteInputSignal}}<div><b>RemoteInputSignal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{RemoteInputSignal}}&quot;);})'>{{RemoteInputSignal}}</a></div>{{/RemoteInputSignal}}
+</div>
+`
+                );
+           }        }
+
+        /**
          * The class represents IEEE Type DEC2A model for the discontinuous excitation control.
          *
          * This system provides transient excitation boosting via an open-loop control as initiated by a trigger signal generated remotely.
          *
          */
-        function parse_DiscExcContIEEEDEC2A (context, sub)
+        class DiscExcContIEEEDEC2A extends DiscontinuousExcitationControlDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DiscExcContIEEEDEC2A;
+                if (null == bucket)
+                   cim_data.DiscExcContIEEEDEC2A = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_DiscontinuousExcitationControlDynamics (context, sub);
-            obj.cls = "DiscExcContIEEEDEC2A";
-            /**
-             * Discontinuous controller time constant (<i>T</i><i><sub>D1</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC2A.td1>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.td1>/g, obj, "td1", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DiscExcContIEEEDEC2A[this._id];
+            }
 
-            /**
-             * Discontinuous controller washout time constant (<i>T</i><i><sub>D2</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC2A.td2>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.td2>/g, obj, "td2", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Limiter (<i>V</i><i><sub>DMAX</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC2A.vdmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vdmax>/g, obj, "vdmax", base.to_string, sub, context);
+                obj = DiscontinuousExcitationControlDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "DiscExcContIEEEDEC2A";
+                base.parse_element (/<cim:DiscExcContIEEEDEC2A.td1>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.td1>/g, obj, "td1", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC2A.td2>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.td2>/g, obj, "td2", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC2A.vdmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vdmax>/g, obj, "vdmax", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC2A.vdmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vdmin>/g, obj, "vdmin", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC2A.vk>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vk>/g, obj, "vk", base.to_string, sub, context);
 
-            /**
-             * Limiter (<i>V</i><i><sub>DMIN</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC2A.vdmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vdmin>/g, obj, "vdmin", base.to_string, sub, context);
+                var bucket = context.parsed.DiscExcContIEEEDEC2A;
+                if (null == bucket)
+                   context.parsed.DiscExcContIEEEDEC2A = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Discontinuous controller input reference (<i>V</i><i><sub>K</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC2A.vk>([\s\S]*?)<\/cim:DiscExcContIEEEDEC2A.vk>/g, obj, "vk", base.to_string, sub, context);
+                return (obj);
+            }
 
-            bucket = context.parsed.DiscExcContIEEEDEC2A;
-            if (null == bucket)
-                context.parsed.DiscExcContIEEEDEC2A = bucket = {};
-            bucket[obj.id] = obj;
+            export (obj, full)
+            {
+                var fields = DiscontinuousExcitationControlDynamics.prototype.export.call (this, obj, false);
 
-            return (obj);
-        }
+                base.export_element (obj, "DiscExcContIEEEDEC2A", "td1", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC2A", "td2", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC2A", "vdmax", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC2A", "vdmin", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC2A", "vk", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DiscExcContIEEEDEC2A_collapse" aria-expanded="true" aria-controls="DiscExcContIEEEDEC2A_collapse">DiscExcContIEEEDEC2A</a>
+<div id="DiscExcContIEEEDEC2A_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + DiscontinuousExcitationControlDynamics.prototype.template.call (this) +
+`
+{{#td1}}<div><b>td1</b>: {{td1}}</div>{{/td1}}
+{{#td2}}<div><b>td2</b>: {{td2}}</div>{{/td2}}
+{{#vdmax}}<div><b>vdmax</b>: {{vdmax}}</div>{{/vdmax}}
+{{#vdmin}}<div><b>vdmin</b>: {{vdmin}}</div>{{/vdmin}}
+{{#vk}}<div><b>vk</b>: {{vk}}</div>{{/vk}}
+</div>
+`
+                );
+           }        }
 
         /**
          * The class represents IEEE Type DEC1A discontinuous excitation control model that boosts generator excitation to a level higher than that demanded by the voltage regulator and stabilizer immediately following a system fault.
@@ -67,162 +163,117 @@ define
          * Reference: IEEE Standard 421.5-2005 Section 12.2.
          *
          */
-        function parse_DiscExcContIEEEDEC1A (context, sub)
+        class DiscExcContIEEEDEC1A extends DiscontinuousExcitationControlDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DiscExcContIEEEDEC1A;
+                if (null == bucket)
+                   cim_data.DiscExcContIEEEDEC1A = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_DiscontinuousExcitationControlDynamics (context, sub);
-            obj.cls = "DiscExcContIEEEDEC1A";
-            /**
-             * Speed change reference (<i>E</i><i><sub>SC</sub></i>).
-             *
-             * Typical Value = 0.0015.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.esc>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.esc>/g, obj, "esc", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DiscExcContIEEEDEC1A[this._id];
+            }
 
-            /**
-             * Discontinuous controller gain (<i>K</i><i><sub>AN</sub></i>).
-             *
-             * Typical Value = 400.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.kan>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.kan>/g, obj, "kan", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Terminal voltage limiter gain (<i>K</i><i><sub>ETL</sub></i>).
-             *
-             * Typical Value = 47.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.ketl>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.ketl>/g, obj, "ketl", base.to_string, sub, context);
+                obj = DiscontinuousExcitationControlDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "DiscExcContIEEEDEC1A";
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.esc>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.esc>/g, obj, "esc", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.kan>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.kan>/g, obj, "kan", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.ketl>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.ketl>/g, obj, "ketl", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.tan>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tan>/g, obj, "tan", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.td>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.td>/g, obj, "td", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.tl1>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tl1>/g, obj, "tl1", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.tl2>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tl2>/g, obj, "tl2", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.tw5>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tw5>/g, obj, "tw5", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.val>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.val>/g, obj, "val", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vanmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vanmax>/g, obj, "vanmax", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vomax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vomax>/g, obj, "vomax", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vomin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vomin>/g, obj, "vomin", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vsmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vsmax>/g, obj, "vsmax", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vsmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vsmin>/g, obj, "vsmin", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtc>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtc>/g, obj, "vtc", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtlmt>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtlmt>/g, obj, "vtlmt", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtm>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtm>/g, obj, "vtm", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtn>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtn>/g, obj, "vtn", base.to_string, sub, context);
 
-            /**
-             * Discontinuous controller time constant (<i>T</i><i><sub>AN</sub></i>).
-             *
-             * Typical Value = 0.08.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.tan>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tan>/g, obj, "tan", base.to_string, sub, context);
+                var bucket = context.parsed.DiscExcContIEEEDEC1A;
+                if (null == bucket)
+                   context.parsed.DiscExcContIEEEDEC1A = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Time constant (<i>T</i><i><sub>D</sub></i>).
-             *
-             * Typical Value = 0.03.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.td>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.td>/g, obj, "td", base.to_string, sub, context);
+                return (obj);
+            }
 
-            /**
-             * Time constant (<i>T</i><i><sub>L</sub></i><sub>1</sub>).
-             *
-             * Typical Value = 0.025.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.tl1>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tl1>/g, obj, "tl1", base.to_string, sub, context);
+            export (obj, full)
+            {
+                var fields = DiscontinuousExcitationControlDynamics.prototype.export.call (this, obj, false);
 
-            /**
-             * Time constant (<i>T</i><i><sub>L</sub></i><sub>2</sub>).
-             *
-             * Typical Value = 1.25.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.tl2>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tl2>/g, obj, "tl2", base.to_string, sub, context);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "esc", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "kan", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "ketl", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "tan", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "td", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "tl1", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "tl2", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "tw5", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "val", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vanmax", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vomax", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vomin", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vsmax", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vsmin", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vtc", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vtlmt", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vtm", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC1A", "vtn", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            /**
-             * DEC washout time constant (<i>T</i><i><sub>W</sub></i><sub>5</sub>).
-             *
-             * Typical Value = 5.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.tw5>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.tw5>/g, obj, "tw5", base.to_string, sub, context);
+                return (fields);
+            }
 
-            /**
-             * Regulator voltage reference (<i>V</i><i><sub>AL</sub></i>).
-             *
-             * Typical Value = 5.5.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.val>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.val>/g, obj, "val", base.to_string, sub, context);
 
-            /**
-             * Limiter for Van (<i>V</i><i><sub>ANMAX</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vanmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vanmax>/g, obj, "vanmax", base.to_string, sub, context);
-
-            /**
-             * Limiter (<i>V</i><i><sub>OMAX</sub></i>).
-             *
-             * Typical Value = 0.3.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vomax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vomax>/g, obj, "vomax", base.to_string, sub, context);
-
-            /**
-             * Limiter (<i>V</i><i><sub>OMIN</sub></i>).
-             *
-             * Typical Value = 0.1.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vomin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vomin>/g, obj, "vomin", base.to_string, sub, context);
-
-            /**
-             * Limiter (<i>V</i><i><sub>SMAX</sub></i>).
-             *
-             * Typical Value = 0.2.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vsmax>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vsmax>/g, obj, "vsmax", base.to_string, sub, context);
-
-            /**
-             * Limiter (<i>V</i><i><sub>SMIN</sub></i>).
-             *
-             * Typical Value = -0.066.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vsmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vsmin>/g, obj, "vsmin", base.to_string, sub, context);
-
-            /**
-             * Terminal voltage level reference (<i>V</i><i><sub>TC</sub></i>).
-             *
-             * Typical Value = 0.95.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtc>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtc>/g, obj, "vtc", base.to_string, sub, context);
-
-            /**
-             * Voltage reference (<i>V</i><i><sub>TLMT</sub></i>).
-             *
-             * Typical Value = 1.1.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtlmt>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtlmt>/g, obj, "vtlmt", base.to_string, sub, context);
-
-            /**
-             * Voltage limits (<i>V</i><i><sub>TM</sub></i>).
-             *
-             * Typical Value = 1.13.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtm>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtm>/g, obj, "vtm", base.to_string, sub, context);
-
-            /**
-             * Voltage limits (<i>V</i><i><sub>TN</sub></i>).
-             *
-             * Typical Value = 1.12.
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC1A.vtn>([\s\S]*?)<\/cim:DiscExcContIEEEDEC1A.vtn>/g, obj, "vtn", base.to_string, sub, context);
-
-            bucket = context.parsed.DiscExcContIEEEDEC1A;
-            if (null == bucket)
-                context.parsed.DiscExcContIEEEDEC1A = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DiscExcContIEEEDEC1A_collapse" aria-expanded="true" aria-controls="DiscExcContIEEEDEC1A_collapse">DiscExcContIEEEDEC1A</a>
+<div id="DiscExcContIEEEDEC1A_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + DiscontinuousExcitationControlDynamics.prototype.template.call (this) +
+`
+{{#esc}}<div><b>esc</b>: {{esc}}</div>{{/esc}}
+{{#kan}}<div><b>kan</b>: {{kan}}</div>{{/kan}}
+{{#ketl}}<div><b>ketl</b>: {{ketl}}</div>{{/ketl}}
+{{#tan}}<div><b>tan</b>: {{tan}}</div>{{/tan}}
+{{#td}}<div><b>td</b>: {{td}}</div>{{/td}}
+{{#tl1}}<div><b>tl1</b>: {{tl1}}</div>{{/tl1}}
+{{#tl2}}<div><b>tl2</b>: {{tl2}}</div>{{/tl2}}
+{{#tw5}}<div><b>tw5</b>: {{tw5}}</div>{{/tw5}}
+{{#val}}<div><b>val</b>: {{val}}</div>{{/val}}
+{{#vanmax}}<div><b>vanmax</b>: {{vanmax}}</div>{{/vanmax}}
+{{#vomax}}<div><b>vomax</b>: {{vomax}}</div>{{/vomax}}
+{{#vomin}}<div><b>vomin</b>: {{vomin}}</div>{{/vomin}}
+{{#vsmax}}<div><b>vsmax</b>: {{vsmax}}</div>{{/vsmax}}
+{{#vsmin}}<div><b>vsmin</b>: {{vsmin}}</div>{{/vsmin}}
+{{#vtc}}<div><b>vtc</b>: {{vtc}}</div>{{/vtc}}
+{{#vtlmt}}<div><b>vtlmt</b>: {{vtlmt}}</div>{{/vtlmt}}
+{{#vtm}}<div><b>vtm</b>: {{vtm}}</div>{{/vtm}}
+{{#vtn}}<div><b>vtn</b>: {{vtn}}</div>{{/vtn}}
+</div>
+`
+                );
+           }        }
 
         /**
          * The class represents IEEE Type DEC3A model.
@@ -230,70 +281,76 @@ define
          * In some systems, the stabilizer output is disconnected from the regulator immediately following a severe fault to prevent the stabilizer from competing with action of voltage regulator during the first swing.
          *
          */
-        function parse_DiscExcContIEEEDEC3A (context, sub)
+        class DiscExcContIEEEDEC3A extends DiscontinuousExcitationControlDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DiscExcContIEEEDEC3A;
+                if (null == bucket)
+                   cim_data.DiscExcContIEEEDEC3A = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_DiscontinuousExcitationControlDynamics (context, sub);
-            obj.cls = "DiscExcContIEEEDEC3A";
-            /**
-             * Reset time delay (<i>T</i><i><sub>DR</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC3A.tdr>([\s\S]*?)<\/cim:DiscExcContIEEEDEC3A.tdr>/g, obj, "tdr", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DiscExcContIEEEDEC3A[this._id];
+            }
 
-            /**
-             * Terminal undervoltage comparison level (<i>V</i><i><sub>TMIN</sub></i>).
-             *
-             */
-            base.parse_element (/<cim:DiscExcContIEEEDEC3A.vtmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC3A.vtmin>/g, obj, "vtmin", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.DiscExcContIEEEDEC3A;
-            if (null == bucket)
-                context.parsed.DiscExcContIEEEDEC3A = bucket = {};
-            bucket[obj.id] = obj;
+                obj = DiscontinuousExcitationControlDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "DiscExcContIEEEDEC3A";
+                base.parse_element (/<cim:DiscExcContIEEEDEC3A.tdr>([\s\S]*?)<\/cim:DiscExcContIEEEDEC3A.tdr>/g, obj, "tdr", base.to_string, sub, context);
+                base.parse_element (/<cim:DiscExcContIEEEDEC3A.vtmin>([\s\S]*?)<\/cim:DiscExcContIEEEDEC3A.vtmin>/g, obj, "vtmin", base.to_string, sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.DiscExcContIEEEDEC3A;
+                if (null == bucket)
+                   context.parsed.DiscExcContIEEEDEC3A = bucket = {};
+                bucket[obj.id] = obj;
 
-        /**
-         * Discontinuous excitation control function block whose behaviour is described by reference to a standard model <font color="#0f0f0f">or by definition of a user-defined model</font>.
-         *
-         */
-        function parse_DiscontinuousExcitationControlDynamics (context, sub)
-        {
-            var obj;
-            var bucket;
+                return (obj);
+            }
 
-            obj = StandardModels.parse_DynamicsFunctionBlock (context, sub);
-            obj.cls = "DiscontinuousExcitationControlDynamics";
-            /**
-             * Excitation system model with which this discontinuous excitation control model is associated.
-             *
-             */
-            base.parse_attribute (/<cim:DiscontinuousExcitationControlDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context, true);
+            export (obj, full)
+            {
+                var fields = DiscontinuousExcitationControlDynamics.prototype.export.call (this, obj, false);
 
-            /**
-             * Remote input signal used by this discontinuous excitation control system model.
-             *
-             */
-            base.parse_attribute (/<cim:DiscontinuousExcitationControlDynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context, true);
+                base.export_element (obj, "DiscExcContIEEEDEC3A", "tdr", base.from_string, fields);
+                base.export_element (obj, "DiscExcContIEEEDEC3A", "vtmin", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            bucket = context.parsed.DiscontinuousExcitationControlDynamics;
-            if (null == bucket)
-                context.parsed.DiscontinuousExcitationControlDynamics = bucket = {};
-            bucket[obj.id] = obj;
+                return (fields);
+            }
 
-            return (obj);
-        }
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DiscExcContIEEEDEC3A_collapse" aria-expanded="true" aria-controls="DiscExcContIEEEDEC3A_collapse">DiscExcContIEEEDEC3A</a>
+<div id="DiscExcContIEEEDEC3A_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + DiscontinuousExcitationControlDynamics.prototype.template.call (this) +
+`
+{{#tdr}}<div><b>tdr</b>: {{tdr}}</div>{{/tdr}}
+{{#vtmin}}<div><b>vtmin</b>: {{vtmin}}</div>{{/vtmin}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_DiscExcContIEEEDEC2A: parse_DiscExcContIEEEDEC2A,
-                parse_DiscontinuousExcitationControlDynamics: parse_DiscontinuousExcitationControlDynamics,
-                parse_DiscExcContIEEEDEC3A: parse_DiscExcContIEEEDEC3A,
-                parse_DiscExcContIEEEDEC1A: parse_DiscExcContIEEEDEC1A
+                DiscExcContIEEEDEC1A: DiscExcContIEEEDEC1A,
+                DiscExcContIEEEDEC2A: DiscExcContIEEEDEC2A,
+                DiscontinuousExcitationControlDynamics: DiscontinuousExcitationControlDynamics,
+                DiscExcContIEEEDEC3A: DiscExcContIEEEDEC3A
             }
         );
     }

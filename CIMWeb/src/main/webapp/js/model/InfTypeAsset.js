@@ -10,116 +10,111 @@ define
          * It defines both the Real and Reactive power properties (modelled at the PSR level as a GeneratingUnit + SynchronousMachine).
          *
          */
-        function parse_GeneratorTypeAsset (context, sub)
+        class GeneratorTypeAsset extends InfAssets.GenericAssetModelOrMaterial
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.GeneratorTypeAsset;
+                if (null == bucket)
+                   cim_data.GeneratorTypeAsset = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = InfAssets.parse_GenericAssetModelOrMaterial (context, sub);
-            obj.cls = "GeneratorTypeAsset";
-            /**
-             * Maximum real power limit.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.maxP>([\s\S]*?)<\/cim:GeneratorTypeAsset.maxP>/g, obj, "maxP", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.GeneratorTypeAsset[this._id];
+            }
 
-            /**
-             * Maximum reactive power limit.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.maxQ>([\s\S]*?)<\/cim:GeneratorTypeAsset.maxQ>/g, obj, "maxQ", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Minimum real power generated.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.minP>([\s\S]*?)<\/cim:GeneratorTypeAsset.minP>/g, obj, "minP", base.to_string, sub, context);
+                obj = InfAssets.GenericAssetModelOrMaterial.prototype.parse.call (this, context, sub);
+                obj.cls = "GeneratorTypeAsset";
+                base.parse_element (/<cim:GeneratorTypeAsset.maxP>([\s\S]*?)<\/cim:GeneratorTypeAsset.maxP>/g, obj, "maxP", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.maxQ>([\s\S]*?)<\/cim:GeneratorTypeAsset.maxQ>/g, obj, "maxQ", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.minP>([\s\S]*?)<\/cim:GeneratorTypeAsset.minP>/g, obj, "minP", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.minQ>([\s\S]*?)<\/cim:GeneratorTypeAsset.minQ>/g, obj, "minQ", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rDirectSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectSubtrans>/g, obj, "rDirectSubtrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rDirectSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectSync>/g, obj, "rDirectSync", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rDirectTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectTrans>/g, obj, "rDirectTrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rQuadSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadSubtrans>/g, obj, "rQuadSubtrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rQuadSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadSync>/g, obj, "rQuadSync", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.rQuadTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadTrans>/g, obj, "rQuadTrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xDirectSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectSubtrans>/g, obj, "xDirectSubtrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xDirectSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectSync>/g, obj, "xDirectSync", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xDirectTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectTrans>/g, obj, "xDirectTrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xQuadSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadSubtrans>/g, obj, "xQuadSubtrans", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xQuadSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadSync>/g, obj, "xQuadSync", base.to_string, sub, context);
+                base.parse_element (/<cim:GeneratorTypeAsset.xQuadTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadTrans>/g, obj, "xQuadTrans", base.to_string, sub, context);
 
-            /**
-             * Minimum reactive power generated.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.minQ>([\s\S]*?)<\/cim:GeneratorTypeAsset.minQ>/g, obj, "minQ", base.to_string, sub, context);
+                var bucket = context.parsed.GeneratorTypeAsset;
+                if (null == bucket)
+                   context.parsed.GeneratorTypeAsset = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Direct-axis subtransient resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rDirectSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectSubtrans>/g, obj, "rDirectSubtrans", base.to_string, sub, context);
+                return (obj);
+            }
 
-            /**
-             * Direct-axis synchronous resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rDirectSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectSync>/g, obj, "rDirectSync", base.to_string, sub, context);
+            export (obj, full)
+            {
+                var fields = InfAssets.GenericAssetModelOrMaterial.prototype.export.call (this, obj, false);
 
-            /**
-             * Direct-axis transient resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rDirectTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rDirectTrans>/g, obj, "rDirectTrans", base.to_string, sub, context);
+                base.export_element (obj, "GeneratorTypeAsset", "maxP", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "maxQ", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "minP", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "minQ", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rDirectSubtrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rDirectSync", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rDirectTrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rQuadSubtrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rQuadSync", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "rQuadTrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xDirectSubtrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xDirectSync", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xDirectTrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xQuadSubtrans", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xQuadSync", base.from_string, fields);
+                base.export_element (obj, "GeneratorTypeAsset", "xQuadTrans", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            /**
-             * Quadrature-axis subtransient resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rQuadSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadSubtrans>/g, obj, "rQuadSubtrans", base.to_string, sub, context);
+                return (fields);
+            }
 
-            /**
-             * Quadrature-axis synchronous resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rQuadSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadSync>/g, obj, "rQuadSync", base.to_string, sub, context);
 
-            /**
-             * Quadrature-axis transient resistance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.rQuadTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.rQuadTrans>/g, obj, "rQuadTrans", base.to_string, sub, context);
-
-            /**
-             * Direct-axis subtransient reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xDirectSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectSubtrans>/g, obj, "xDirectSubtrans", base.to_string, sub, context);
-
-            /**
-             * Direct-axis synchronous reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xDirectSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectSync>/g, obj, "xDirectSync", base.to_string, sub, context);
-
-            /**
-             * Direct-axis transient reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xDirectTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xDirectTrans>/g, obj, "xDirectTrans", base.to_string, sub, context);
-
-            /**
-             * Quadrature-axis subtransient reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xQuadSubtrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadSubtrans>/g, obj, "xQuadSubtrans", base.to_string, sub, context);
-
-            /**
-             * Quadrature-axis synchronous reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xQuadSync>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadSync>/g, obj, "xQuadSync", base.to_string, sub, context);
-
-            /**
-             * Quadrature-axis transient reactance.
-             *
-             */
-            base.parse_element (/<cim:GeneratorTypeAsset.xQuadTrans>([\s\S]*?)<\/cim:GeneratorTypeAsset.xQuadTrans>/g, obj, "xQuadTrans", base.to_string, sub, context);
-
-            bucket = context.parsed.GeneratorTypeAsset;
-            if (null == bucket)
-                context.parsed.GeneratorTypeAsset = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#GeneratorTypeAsset_collapse" aria-expanded="true" aria-controls="GeneratorTypeAsset_collapse">GeneratorTypeAsset</a>
+<div id="GeneratorTypeAsset_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + InfAssets.GenericAssetModelOrMaterial.prototype.template.call (this) +
+`
+{{#maxP}}<div><b>maxP</b>: {{maxP}}</div>{{/maxP}}
+{{#maxQ}}<div><b>maxQ</b>: {{maxQ}}</div>{{/maxQ}}
+{{#minP}}<div><b>minP</b>: {{minP}}</div>{{/minP}}
+{{#minQ}}<div><b>minQ</b>: {{minQ}}</div>{{/minQ}}
+{{#rDirectSubtrans}}<div><b>rDirectSubtrans</b>: {{rDirectSubtrans}}</div>{{/rDirectSubtrans}}
+{{#rDirectSync}}<div><b>rDirectSync</b>: {{rDirectSync}}</div>{{/rDirectSync}}
+{{#rDirectTrans}}<div><b>rDirectTrans</b>: {{rDirectTrans}}</div>{{/rDirectTrans}}
+{{#rQuadSubtrans}}<div><b>rQuadSubtrans</b>: {{rQuadSubtrans}}</div>{{/rQuadSubtrans}}
+{{#rQuadSync}}<div><b>rQuadSync</b>: {{rQuadSync}}</div>{{/rQuadSync}}
+{{#rQuadTrans}}<div><b>rQuadTrans</b>: {{rQuadTrans}}</div>{{/rQuadTrans}}
+{{#xDirectSubtrans}}<div><b>xDirectSubtrans</b>: {{xDirectSubtrans}}</div>{{/xDirectSubtrans}}
+{{#xDirectSync}}<div><b>xDirectSync</b>: {{xDirectSync}}</div>{{/xDirectSync}}
+{{#xDirectTrans}}<div><b>xDirectTrans</b>: {{xDirectTrans}}</div>{{/xDirectTrans}}
+{{#xQuadSubtrans}}<div><b>xQuadSubtrans</b>: {{xQuadSubtrans}}</div>{{/xQuadSubtrans}}
+{{#xQuadSync}}<div><b>xQuadSync</b>: {{xQuadSync}}</div>{{/xQuadSync}}
+{{#xQuadTrans}}<div><b>xQuadTrans</b>: {{xQuadTrans}}</div>{{/xQuadTrans}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Catalogue of generic types of assets (TypeAsset) that may be used for design purposes.
@@ -127,27 +122,71 @@ define
          * It is not associated with a particular manufacturer.
          *
          */
-        function parse_TypeAssetCatalogue (context, sub)
+        class TypeAssetCatalogue extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.TypeAssetCatalogue;
+                if (null == bucket)
+                   cim_data.TypeAssetCatalogue = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "TypeAssetCatalogue";
-            base.parse_element (/<cim:TypeAssetCatalogue.status>([\s\S]*?)<\/cim:TypeAssetCatalogue.status>/g, obj, "status", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.TypeAssetCatalogue[this._id];
+            }
 
-            bucket = context.parsed.TypeAssetCatalogue;
-            if (null == bucket)
-                context.parsed.TypeAssetCatalogue = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "TypeAssetCatalogue";
+                base.parse_element (/<cim:TypeAssetCatalogue.status>([\s\S]*?)<\/cim:TypeAssetCatalogue.status>/g, obj, "status", base.to_string, sub, context);
+
+                var bucket = context.parsed.TypeAssetCatalogue;
+                if (null == bucket)
+                   context.parsed.TypeAssetCatalogue = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "TypeAssetCatalogue", "status", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#TypeAssetCatalogue_collapse" aria-expanded="true" aria-controls="TypeAssetCatalogue_collapse">TypeAssetCatalogue</a>
+<div id="TypeAssetCatalogue_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_GeneratorTypeAsset: parse_GeneratorTypeAsset,
-                parse_TypeAssetCatalogue: parse_TypeAssetCatalogue
+                GeneratorTypeAsset: GeneratorTypeAsset,
+                TypeAssetCatalogue: TypeAssetCatalogue
             }
         );
     }

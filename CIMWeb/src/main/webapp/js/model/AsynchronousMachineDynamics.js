@@ -20,44 +20,75 @@ define
          * However, some references use the symbol L instead of X. </li>
          *
          */
-        function parse_AsynchronousMachineDynamics (context, sub)
+        class AsynchronousMachineDynamics extends StandardModels.RotatingMachineDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.AsynchronousMachineDynamics;
+                if (null == bucket)
+                   cim_data.AsynchronousMachineDynamics = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = StandardModels.parse_RotatingMachineDynamics (context, sub);
-            obj.cls = "AsynchronousMachineDynamics";
-            /**
-             * Turbine-governor model associated with this asynchronous machine model.
-             *
-             */
-            base.parse_attribute (/<cim:AsynchronousMachineDynamics.TurbineGovernorDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TurbineGovernorDynamics", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.AsynchronousMachineDynamics[this._id];
+            }
 
-            /**
-             * Asynchronous machine to which this asynchronous machine dynamics model applies.
-             *
-             */
-            base.parse_attribute (/<cim:AsynchronousMachineDynamics.AsynchronousMachine\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "AsynchronousMachine", sub, context, true);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Wind generator type 1 or 2 model associated with this asynchronous machine model.
-             *
-             */
-            base.parse_attribute (/<cim:AsynchronousMachineDynamics.WindTurbineType1or2Dynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "WindTurbineType1or2Dynamics", sub, context, true);
+                obj = StandardModels.RotatingMachineDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "AsynchronousMachineDynamics";
+                base.parse_attribute (/<cim:AsynchronousMachineDynamics.TurbineGovernorDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TurbineGovernorDynamics", sub, context);
+                base.parse_attribute (/<cim:AsynchronousMachineDynamics.AsynchronousMachine\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "AsynchronousMachine", sub, context);
+                base.parse_attribute (/<cim:AsynchronousMachineDynamics.WindTurbineType1or2Dynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "WindTurbineType1or2Dynamics", sub, context);
+                base.parse_attribute (/<cim:AsynchronousMachineDynamics.MechanicalLoadDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MechanicalLoadDynamics", sub, context);
 
-            /**
-             * Mechanical load model associated with this asynchronous machine model.
-             *
-             */
-            base.parse_attribute (/<cim:AsynchronousMachineDynamics.MechanicalLoadDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MechanicalLoadDynamics", sub, context, true);
+                var bucket = context.parsed.AsynchronousMachineDynamics;
+                if (null == bucket)
+                   context.parsed.AsynchronousMachineDynamics = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.AsynchronousMachineDynamics;
-            if (null == bucket)
-                context.parsed.AsynchronousMachineDynamics = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = StandardModels.RotatingMachineDynamics.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "AsynchronousMachineDynamics", "TurbineGovernorDynamics", fields);
+                base.export_attribute (obj, "AsynchronousMachineDynamics", "AsynchronousMachine", fields);
+                base.export_attribute (obj, "AsynchronousMachineDynamics", "WindTurbineType1or2Dynamics", fields);
+                base.export_attribute (obj, "AsynchronousMachineDynamics", "MechanicalLoadDynamics", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#AsynchronousMachineDynamics_collapse" aria-expanded="true" aria-controls="AsynchronousMachineDynamics_collapse">AsynchronousMachineDynamics</a>
+<div id="AsynchronousMachineDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + StandardModels.RotatingMachineDynamics.prototype.template.call (this) +
+`
+{{#TurbineGovernorDynamics}}<div><b>TurbineGovernorDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{TurbineGovernorDynamics}}&quot;);})'>{{TurbineGovernorDynamics}}</a></div>{{/TurbineGovernorDynamics}}
+{{#AsynchronousMachine}}<div><b>AsynchronousMachine</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{AsynchronousMachine}}&quot;);})'>{{AsynchronousMachine}}</a></div>{{/AsynchronousMachine}}
+{{#WindTurbineType1or2Dynamics}}<div><b>WindTurbineType1or2Dynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{WindTurbineType1or2Dynamics}}&quot;);})'>{{WindTurbineType1or2Dynamics}}</a></div>{{/WindTurbineType1or2Dynamics}}
+{{#MechanicalLoadDynamics}}<div><b>MechanicalLoadDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MechanicalLoadDynamics}}&quot;);})'>{{MechanicalLoadDynamics}}</a></div>{{/MechanicalLoadDynamics}}
+</div>
+`
+                );
+           }        }
 
         /**
          * The electrical equations of all variations of the asynchronous model are based on the AsynchronousEquivalentCircuit diagram for the direct and quadrature axes, with two equivalent rotor windings in each axis.
@@ -78,50 +109,78 @@ define
          * tppo = (xm * xlr1 + xm * xlr2 + xlr1 * xlr2) / (2*pi*nominal frequency * rr2 * (xm + xlr1).
          *
          */
-        function parse_AsynchronousMachineEquivalentCircuit (context, sub)
+        class AsynchronousMachineEquivalentCircuit extends AsynchronousMachineDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.AsynchronousMachineEquivalentCircuit;
+                if (null == bucket)
+                   cim_data.AsynchronousMachineEquivalentCircuit = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_AsynchronousMachineDynamics (context, sub);
-            obj.cls = "AsynchronousMachineEquivalentCircuit";
-            /**
-             * Damper 1 winding resistance.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.rr1>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.rr1>/g, obj, "rr1", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.AsynchronousMachineEquivalentCircuit[this._id];
+            }
 
-            /**
-             * Damper 2 winding resistance.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.rr2>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.rr2>/g, obj, "rr2", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Damper 1 winding leakage reactance.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xlr1>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xlr1>/g, obj, "xlr1", base.to_string, sub, context);
+                obj = AsynchronousMachineDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "AsynchronousMachineEquivalentCircuit";
+                base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.rr1>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.rr1>/g, obj, "rr1", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.rr2>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.rr2>/g, obj, "rr2", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xlr1>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xlr1>/g, obj, "xlr1", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xlr2>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xlr2>/g, obj, "xlr2", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xm>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xm>/g, obj, "xm", base.to_string, sub, context);
 
-            /**
-             * Damper 2 winding leakage reactance.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xlr2>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xlr2>/g, obj, "xlr2", base.to_string, sub, context);
+                var bucket = context.parsed.AsynchronousMachineEquivalentCircuit;
+                if (null == bucket)
+                   context.parsed.AsynchronousMachineEquivalentCircuit = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Magnetizing reactance.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineEquivalentCircuit.xm>([\s\S]*?)<\/cim:AsynchronousMachineEquivalentCircuit.xm>/g, obj, "xm", base.to_string, sub, context);
+                return (obj);
+            }
 
-            bucket = context.parsed.AsynchronousMachineEquivalentCircuit;
-            if (null == bucket)
-                context.parsed.AsynchronousMachineEquivalentCircuit = bucket = {};
-            bucket[obj.id] = obj;
+            export (obj, full)
+            {
+                var fields = AsynchronousMachineDynamics.prototype.export.call (this, obj, false);
 
-            return (obj);
-        }
+                base.export_element (obj, "AsynchronousMachineEquivalentCircuit", "rr1", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineEquivalentCircuit", "rr2", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineEquivalentCircuit", "xlr1", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineEquivalentCircuit", "xlr2", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineEquivalentCircuit", "xm", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#AsynchronousMachineEquivalentCircuit_collapse" aria-expanded="true" aria-controls="AsynchronousMachineEquivalentCircuit_collapse">AsynchronousMachineEquivalentCircuit</a>
+<div id="AsynchronousMachineEquivalentCircuit_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + AsynchronousMachineDynamics.prototype.template.call (this) +
+`
+{{#rr1}}<div><b>rr1</b>: {{rr1}}</div>{{/rr1}}
+{{#rr2}}<div><b>rr2</b>: {{rr2}}</div>{{/rr2}}
+{{#xlr1}}<div><b>xlr1</b>: {{xlr1}}</div>{{/xlr1}}
+{{#xlr2}}<div><b>xlr2</b>: {{xlr2}}</div>{{/xlr2}}
+{{#xm}}<div><b>xm</b>: {{xm}}</div>{{/xm}}
+</div>
+`
+                );
+           }        }
 
         /**
          * <b>Parameter Notes:</b>
@@ -148,66 +207,84 @@ define
          * </ul>
          *
          */
-        function parse_AsynchronousMachineTimeConstantReactance (context, sub)
+        class AsynchronousMachineTimeConstantReactance extends AsynchronousMachineDynamics
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.AsynchronousMachineTimeConstantReactance;
+                if (null == bucket)
+                   cim_data.AsynchronousMachineTimeConstantReactance = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_AsynchronousMachineDynamics (context, sub);
-            obj.cls = "AsynchronousMachineTimeConstantReactance";
-            /**
-             * Transient rotor time constant (T'o) (&gt; T''o).
-             *
-             * Typical Value = 5.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.tpo>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.tpo>/g, obj, "tpo", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.AsynchronousMachineTimeConstantReactance[this._id];
+            }
 
-            /**
-             * Subtransient rotor time constant (T''o) (&gt; 0).
-             *
-             * Typical Value = 0.03.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.tppo>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.tppo>/g, obj, "tppo", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Transient reactance (unsaturated) (X') (&gt;=X'').
-             *
-             * Typical Value = 0.5.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xp>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xp>/g, obj, "xp", base.to_string, sub, context);
+                obj = AsynchronousMachineDynamics.prototype.parse.call (this, context, sub);
+                obj.cls = "AsynchronousMachineTimeConstantReactance";
+                base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.tpo>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.tpo>/g, obj, "tpo", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.tppo>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.tppo>/g, obj, "tppo", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xp>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xp>/g, obj, "xp", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xpp>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xpp>/g, obj, "xpp", base.to_string, sub, context);
+                base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xs>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xs>/g, obj, "xs", base.to_string, sub, context);
 
-            /**
-             * Subtransient reactance (unsaturated) (X'') (&gt; Xl).
-             *
-             * Typical Value = 0.2.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xpp>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xpp>/g, obj, "xpp", base.to_string, sub, context);
+                var bucket = context.parsed.AsynchronousMachineTimeConstantReactance;
+                if (null == bucket)
+                   context.parsed.AsynchronousMachineTimeConstantReactance = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Synchronous reactance (Xs) (&gt;= X').
-             *
-             * Typical Value = 1.8.
-             *
-             */
-            base.parse_element (/<cim:AsynchronousMachineTimeConstantReactance.xs>([\s\S]*?)<\/cim:AsynchronousMachineTimeConstantReactance.xs>/g, obj, "xs", base.to_string, sub, context);
+                return (obj);
+            }
 
-            bucket = context.parsed.AsynchronousMachineTimeConstantReactance;
-            if (null == bucket)
-                context.parsed.AsynchronousMachineTimeConstantReactance = bucket = {};
-            bucket[obj.id] = obj;
+            export (obj, full)
+            {
+                var fields = AsynchronousMachineDynamics.prototype.export.call (this, obj, false);
 
-            return (obj);
-        }
+                base.export_element (obj, "AsynchronousMachineTimeConstantReactance", "tpo", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineTimeConstantReactance", "tppo", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineTimeConstantReactance", "xp", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineTimeConstantReactance", "xpp", base.from_string, fields);
+                base.export_element (obj, "AsynchronousMachineTimeConstantReactance", "xs", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#AsynchronousMachineTimeConstantReactance_collapse" aria-expanded="true" aria-controls="AsynchronousMachineTimeConstantReactance_collapse">AsynchronousMachineTimeConstantReactance</a>
+<div id="AsynchronousMachineTimeConstantReactance_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + AsynchronousMachineDynamics.prototype.template.call (this) +
+`
+{{#tpo}}<div><b>tpo</b>: {{tpo}}</div>{{/tpo}}
+{{#tppo}}<div><b>tppo</b>: {{tppo}}</div>{{/tppo}}
+{{#xp}}<div><b>xp</b>: {{xp}}</div>{{/xp}}
+{{#xpp}}<div><b>xpp</b>: {{xpp}}</div>{{/xpp}}
+{{#xs}}<div><b>xs</b>: {{xs}}</div>{{/xs}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_AsynchronousMachineEquivalentCircuit: parse_AsynchronousMachineEquivalentCircuit,
-                parse_AsynchronousMachineTimeConstantReactance: parse_AsynchronousMachineTimeConstantReactance,
-                parse_AsynchronousMachineDynamics: parse_AsynchronousMachineDynamics
+                AsynchronousMachineDynamics: AsynchronousMachineDynamics,
+                AsynchronousMachineEquivalentCircuit: AsynchronousMachineEquivalentCircuit,
+                AsynchronousMachineTimeConstantReactance: AsynchronousMachineTimeConstantReactance
             }
         );
     }

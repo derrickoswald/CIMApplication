@@ -10,30 +10,70 @@ define
          * The tie point can be a network branch (e.g., transmission line or transformer) or a switching device. For transmission lines, the interchange area boundary is usually at a designated point such as the middle of the line. Line end metering is then corrected for line losses.
          *
          */
-        function parse_TiePoint (context, sub)
+        class TiePoint extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.TiePoint;
+                if (null == bucket)
+                   cim_data.TiePoint = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "TiePoint";
-            /**
-             * The MW rating of the tie point.
-             *
-             */
-            base.parse_element (/<cim:TiePoint.tiePointMWRating>([\s\S]*?)<\/cim:TiePoint.tiePointMWRating>/g, obj, "tiePointMWRating", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.TiePoint[this._id];
+            }
 
-            bucket = context.parsed.TiePoint;
-            if (null == bucket)
-                context.parsed.TiePoint = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "TiePoint";
+                base.parse_element (/<cim:TiePoint.tiePointMWRating>([\s\S]*?)<\/cim:TiePoint.tiePointMWRating>/g, obj, "tiePointMWRating", base.to_string, sub, context);
+
+                var bucket = context.parsed.TiePoint;
+                if (null == bucket)
+                   context.parsed.TiePoint = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "TiePoint", "tiePointMWRating", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#TiePoint_collapse" aria-expanded="true" aria-controls="TiePoint_collapse">TiePoint</a>
+<div id="TiePoint_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#tiePointMWRating}}<div><b>tiePointMWRating</b>: {{tiePointMWRating}}</div>{{/tiePointMWRating}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_TiePoint: parse_TiePoint
+                TiePoint: TiePoint
             }
         );
     }

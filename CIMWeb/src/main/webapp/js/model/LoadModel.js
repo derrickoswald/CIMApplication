@@ -1,145 +1,215 @@
 define
 (
-    ["model/base", "model/Core", "model/Wires"],
+    ["model/base", "model/Core"],
     /**
      * This package is responsible for modeling the energy consumers and the system load as curves and associated curve data.
      *
      * Special circumstances that may affect the load, such as seasons and daytypes, are also included here.
      *
      */
-    function (base, Core, Wires)
+    function (base, Core)
     {
-
-        /**
-         * The class is the second level in a hierarchical structure for grouping of loads for the purpose of load flow load scaling.
-         *
-         */
-        function parse_SubLoadArea (context, sub)
-        {
-            var obj;
-            var bucket;
-
-            obj = parse_EnergyArea (context, sub);
-            obj.cls = "SubLoadArea";
-            /**
-             * The LoadArea where the SubLoadArea belongs.
-             *
-             */
-            base.parse_attribute (/<cim:SubLoadArea.LoadArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LoadArea", sub, context, true);
-
-            bucket = context.parsed.SubLoadArea;
-            if (null == bucket)
-                context.parsed.SubLoadArea = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
 
         /**
          * A specified time period of the year.
          *
          */
-        function parse_Season (context, sub)
+        class Season extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.Season;
+                if (null == bucket)
+                   cim_data.Season = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "Season";
-            /**
-             * Date season ends.
-             *
-             */
-            base.parse_element (/<cim:Season.endDate>([\s\S]*?)<\/cim:Season.endDate>/g, obj, "endDate", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.Season[this._id];
+            }
 
-            /**
-             * Date season starts.
-             *
-             */
-            base.parse_element (/<cim:Season.startDate>([\s\S]*?)<\/cim:Season.startDate>/g, obj, "startDate", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.Season;
-            if (null == bucket)
-                context.parsed.Season = bucket = {};
-            bucket[obj.id] = obj;
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "Season";
+                base.parse_element (/<cim:Season.endDate>([\s\S]*?)<\/cim:Season.endDate>/g, obj, "endDate", base.to_string, sub, context);
+                base.parse_element (/<cim:Season.startDate>([\s\S]*?)<\/cim:Season.startDate>/g, obj, "startDate", base.to_string, sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.Season;
+                if (null == bucket)
+                   context.parsed.Season = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "Season", "endDate", base.from_string, fields);
+                base.export_element (obj, "Season", "startDate", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#Season_collapse" aria-expanded="true" aria-controls="Season_collapse">Season</a>
+<div id="Season_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#endDate}}<div><b>endDate</b>: {{endDate}}</div>{{/endDate}}
+{{#startDate}}<div><b>startDate</b>: {{startDate}}</div>{{/startDate}}
+</div>
+`
+                );
+           }        }
 
         /**
          * A time schedule covering a 24 hour period, with curve data for a specific type of season and day.
          *
          */
-        function parse_SeasonDayTypeSchedule (context, sub)
+        class SeasonDayTypeSchedule extends Core.RegularIntervalSchedule
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.SeasonDayTypeSchedule;
+                if (null == bucket)
+                   cim_data.SeasonDayTypeSchedule = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_RegularIntervalSchedule (context, sub);
-            obj.cls = "SeasonDayTypeSchedule";
-            /**
-             * Season for the Schedule.
-             *
-             */
-            base.parse_attribute (/<cim:SeasonDayTypeSchedule.Season\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Season", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.SeasonDayTypeSchedule[this._id];
+            }
 
-            /**
-             * DayType for the Schedule.
-             *
-             */
-            base.parse_attribute (/<cim:SeasonDayTypeSchedule.DayType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "DayType", sub, context, true);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.SeasonDayTypeSchedule;
-            if (null == bucket)
-                context.parsed.SeasonDayTypeSchedule = bucket = {};
-            bucket[obj.id] = obj;
+                obj = Core.RegularIntervalSchedule.prototype.parse.call (this, context, sub);
+                obj.cls = "SeasonDayTypeSchedule";
+                base.parse_attribute (/<cim:SeasonDayTypeSchedule.Season\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Season", sub, context);
+                base.parse_attribute (/<cim:SeasonDayTypeSchedule.DayType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "DayType", sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.SeasonDayTypeSchedule;
+                if (null == bucket)
+                   context.parsed.SeasonDayTypeSchedule = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.RegularIntervalSchedule.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "SeasonDayTypeSchedule", "Season", fields);
+                base.export_attribute (obj, "SeasonDayTypeSchedule", "DayType", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#SeasonDayTypeSchedule_collapse" aria-expanded="true" aria-controls="SeasonDayTypeSchedule_collapse">SeasonDayTypeSchedule</a>
+<div id="SeasonDayTypeSchedule_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.RegularIntervalSchedule.prototype.template.call (this) +
+`
+{{#Season}}<div><b>Season</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Season}}&quot;);})'>{{Season}}</a></div>{{/Season}}
+{{#DayType}}<div><b>DayType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{DayType}}&quot;);})'>{{DayType}}</a></div>{{/DayType}}
+</div>
+`
+                );
+           }        }
 
         /**
          * The class is the third level in a hierarchical structure for grouping of loads for the purpose of load flow load scaling.
          *
          */
-        function parse_LoadGroup (context, sub)
+        class LoadGroup extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LoadGroup;
+                if (null == bucket)
+                   cim_data.LoadGroup = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "LoadGroup";
-            /**
-             * The SubLoadArea where the Loadgroup belongs.
-             *
-             */
-            base.parse_attribute (/<cim:LoadGroup.SubLoadArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SubLoadArea", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LoadGroup[this._id];
+            }
 
-            bucket = context.parsed.LoadGroup;
-            if (null == bucket)
-                context.parsed.LoadGroup = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "LoadGroup";
+                base.parse_attribute (/<cim:LoadGroup.SubLoadArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SubLoadArea", sub, context);
 
-        /**
-         * The class is the root or first level in a hierarchical structure for grouping of loads for the purpose of load flow load scaling.
-         *
-         */
-        function parse_LoadArea (context, sub)
-        {
-            var obj;
-            var bucket;
+                var bucket = context.parsed.LoadGroup;
+                if (null == bucket)
+                   context.parsed.LoadGroup = bucket = {};
+                bucket[obj.id] = obj;
 
-            obj = parse_EnergyArea (context, sub);
-            obj.cls = "LoadArea";
-            bucket = context.parsed.LoadArea;
-            if (null == bucket)
-                context.parsed.LoadArea = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "LoadGroup", "SubLoadArea", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LoadGroup_collapse" aria-expanded="true" aria-controls="LoadGroup_collapse">LoadGroup</a>
+<div id="LoadGroup_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#SubLoadArea}}<div><b>SubLoadArea</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SubLoadArea}}&quot;);})'>{{SubLoadArea}}</a></div>{{/SubLoadArea}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Describes an area having energy production or consumption.
@@ -147,51 +217,66 @@ define
          * Specializations are intended to support the load allocation function as typically required in energy management systems or planning studies to allocate hypothesized load levels to individual load points for power flow analysis.  Often the energy area can be linked to both measured and forecast load levels.
          *
          */
-        function parse_EnergyArea (context, sub)
+        class EnergyArea extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.EnergyArea;
+                if (null == bucket)
+                   cim_data.EnergyArea = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "EnergyArea";
-            /**
-             * The control area specification that is used for the load forecast.
-             *
-             */
-            base.parse_attribute (/<cim:EnergyArea.ControlArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ControlArea", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.EnergyArea[this._id];
+            }
 
-            bucket = context.parsed.EnergyArea;
-            if (null == bucket)
-                context.parsed.EnergyArea = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "EnergyArea";
+                base.parse_attribute (/<cim:EnergyArea.ControlArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ControlArea", sub, context);
 
-        /**
-         * NonConformLoad represent loads that do not follow a daily load change pattern and changes are not correlated with the daily load change pattern.
-         *
-         */
-        function parse_NonConformLoad (context, sub)
-        {
-            var obj;
-            var bucket;
+                var bucket = context.parsed.EnergyArea;
+                if (null == bucket)
+                   context.parsed.EnergyArea = bucket = {};
+                bucket[obj.id] = obj;
 
-            obj = Wires.parse_EnergyConsumer (context, sub);
-            obj.cls = "NonConformLoad";
-            /**
-             * Group of this ConformLoad.
-             *
-             */
-            base.parse_attribute (/<cim:NonConformLoad.LoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LoadGroup", sub, context, true);
+                return (obj);
+            }
 
-            bucket = context.parsed.NonConformLoad;
-            if (null == bucket)
-                context.parsed.NonConformLoad = bucket = {};
-            bucket[obj.id] = obj;
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-            return (obj);
-        }
+                base.export_attribute (obj, "EnergyArea", "ControlArea", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#EnergyArea_collapse" aria-expanded="true" aria-controls="EnergyArea_collapse">EnergyArea</a>
+<div id="EnergyArea_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#ControlArea}}<div><b>ControlArea</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ControlArea}}&quot;);})'>{{ControlArea}}</a></div>{{/ControlArea}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Group of similar days.
@@ -199,108 +284,63 @@ define
          * For example it could be used to represent weekdays, weekend, or holidays.
          *
          */
-        function parse_DayType (context, sub)
+        class DayType extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DayType;
+                if (null == bucket)
+                   cim_data.DayType = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "DayType";
-            bucket = context.parsed.DayType;
-            if (null == bucket)
-                context.parsed.DayType = bucket = {};
-            bucket[obj.id] = obj;
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DayType[this._id];
+            }
 
-            return (obj);
-        }
+            parse (context, sub)
+            {
+                var obj;
 
-        /**
-         * ConformLoad represent loads that follow a daily load change pattern where the pattern can be used to scale the load with a system load.
-         *
-         */
-        function parse_ConformLoad (context, sub)
-        {
-            var obj;
-            var bucket;
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "DayType";
 
-            obj = Wires.parse_EnergyConsumer (context, sub);
-            obj.cls = "ConformLoad";
-            /**
-             * Group of this ConformLoad.
-             *
-             */
-            base.parse_attribute (/<cim:ConformLoad.LoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LoadGroup", sub, context, true);
+                var bucket = context.parsed.DayType;
+                if (null == bucket)
+                   context.parsed.DayType = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.ConformLoad;
-            if (null == bucket)
-                context.parsed.ConformLoad = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-        /**
-         * An active power (Y1-axis) and reactive power (Y2-axis) schedule (curves) versus time (X-axis) for non-conforming loads, e.g., large industrial load or power station service (where modeled).
-         *
-         */
-        function parse_NonConformLoadSchedule (context, sub)
-        {
-            var obj;
-            var bucket;
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            obj = parse_SeasonDayTypeSchedule (context, sub);
-            obj.cls = "NonConformLoadSchedule";
-            /**
-             * The NonConformLoadGroup where the NonConformLoadSchedule belongs.
-             *
-             */
-            base.parse_attribute (/<cim:NonConformLoadSchedule.NonConformLoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "NonConformLoadGroup", sub, context, true);
+                return (fields);
+            }
 
-            bucket = context.parsed.NonConformLoadSchedule;
-            if (null == bucket)
-                context.parsed.NonConformLoadSchedule = bucket = {};
-            bucket[obj.id] = obj;
 
-            return (obj);
-        }
-
-        /**
-         * Station supply with load derived from the station output.
-         *
-         */
-        function parse_StationSupply (context, sub)
-        {
-            var obj;
-            var bucket;
-
-            obj = Wires.parse_EnergyConsumer (context, sub);
-            obj.cls = "StationSupply";
-            bucket = context.parsed.StationSupply;
-            if (null == bucket)
-                context.parsed.StationSupply = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
-
-        /**
-         * Loads that do not follow a daily and seasonal load variation pattern.
-         *
-         */
-        function parse_NonConformLoadGroup (context, sub)
-        {
-            var obj;
-            var bucket;
-
-            obj = parse_LoadGroup (context, sub);
-            obj.cls = "NonConformLoadGroup";
-            bucket = context.parsed.NonConformLoadGroup;
-            if (null == bucket)
-                context.parsed.NonConformLoadGroup = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DayType_collapse" aria-expanded="true" aria-controls="DayType_collapse">DayType</a>
+<div id="DayType_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+</div>
+`
+                );
+           }        }
 
         /**
          * Models the characteristic response of the load demand due to changes in system conditions such as voltage and frequency.
@@ -308,138 +348,229 @@ define
          * This is not related to demand response.
          *
          */
-        function parse_LoadResponseCharacteristic (context, sub)
+        class LoadResponseCharacteristic extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LoadResponseCharacteristic;
+                if (null == bucket)
+                   cim_data.LoadResponseCharacteristic = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "LoadResponseCharacteristic";
-            /**
-             * Indicates the exponential voltage dependency model is to be used.
-             *
-             * If false, the coefficient model is to be used.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.exponentModel>([\s\S]*?)<\/cim:LoadResponseCharacteristic.exponentModel>/g, obj, "exponentModel", base.to_boolean, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LoadResponseCharacteristic[this._id];
+            }
 
-            /**
-             * Portion of active power load modeled as constant current.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.pConstantCurrent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantCurrent>/g, obj, "pConstantCurrent", base.to_float, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Portion of active power load modeled as constant impedance.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.pConstantImpedance>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantImpedance>/g, obj, "pConstantImpedance", base.to_float, sub, context);
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "LoadResponseCharacteristic";
+                base.parse_element (/<cim:LoadResponseCharacteristic.exponentModel>([\s\S]*?)<\/cim:LoadResponseCharacteristic.exponentModel>/g, obj, "exponentModel", base.to_boolean, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.pConstantCurrent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantCurrent>/g, obj, "pConstantCurrent", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.pConstantImpedance>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantImpedance>/g, obj, "pConstantImpedance", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.pConstantPower>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantPower>/g, obj, "pConstantPower", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.pFrequencyExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pFrequencyExponent>/g, obj, "pFrequencyExponent", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.pVoltageExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pVoltageExponent>/g, obj, "pVoltageExponent", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.qConstantCurrent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantCurrent>/g, obj, "qConstantCurrent", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.qConstantImpedance>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantImpedance>/g, obj, "qConstantImpedance", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.qConstantPower>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantPower>/g, obj, "qConstantPower", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.qFrequencyExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qFrequencyExponent>/g, obj, "qFrequencyExponent", base.to_float, sub, context);
+                base.parse_element (/<cim:LoadResponseCharacteristic.qVoltageExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qVoltageExponent>/g, obj, "qVoltageExponent", base.to_float, sub, context);
 
-            /**
-             * Portion of active power load modeled as constant power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.pConstantPower>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pConstantPower>/g, obj, "pConstantPower", base.to_float, sub, context);
+                var bucket = context.parsed.LoadResponseCharacteristic;
+                if (null == bucket)
+                   context.parsed.LoadResponseCharacteristic = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Exponent of per unit frequency effecting active power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.pFrequencyExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pFrequencyExponent>/g, obj, "pFrequencyExponent", base.to_float, sub, context);
+                return (obj);
+            }
 
-            /**
-             * Exponent of per unit voltage effecting real power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.pVoltageExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.pVoltageExponent>/g, obj, "pVoltageExponent", base.to_float, sub, context);
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-            /**
-             * Portion of reactive power load modeled as constant current.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.qConstantCurrent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantCurrent>/g, obj, "qConstantCurrent", base.to_float, sub, context);
+                base.export_element (obj, "LoadResponseCharacteristic", "exponentModel", base.from_boolean, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "pConstantCurrent", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "pConstantImpedance", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "pConstantPower", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "pFrequencyExponent", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "pVoltageExponent", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "qConstantCurrent", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "qConstantImpedance", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "qConstantPower", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "qFrequencyExponent", base.from_float, fields);
+                base.export_element (obj, "LoadResponseCharacteristic", "qVoltageExponent", base.from_float, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            /**
-             * Portion of reactive power load modeled as constant impedance.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.qConstantImpedance>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantImpedance>/g, obj, "qConstantImpedance", base.to_float, sub, context);
+                return (fields);
+            }
 
-            /**
-             * Portion of reactive power load modeled as constant power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.qConstantPower>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qConstantPower>/g, obj, "qConstantPower", base.to_float, sub, context);
 
-            /**
-             * Exponent of per unit frequency effecting reactive power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.qFrequencyExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qFrequencyExponent>/g, obj, "qFrequencyExponent", base.to_float, sub, context);
-
-            /**
-             * Exponent of per unit voltage effecting reactive power.
-             *
-             */
-            base.parse_element (/<cim:LoadResponseCharacteristic.qVoltageExponent>([\s\S]*?)<\/cim:LoadResponseCharacteristic.qVoltageExponent>/g, obj, "qVoltageExponent", base.to_float, sub, context);
-
-            bucket = context.parsed.LoadResponseCharacteristic;
-            if (null == bucket)
-                context.parsed.LoadResponseCharacteristic = bucket = {};
-            bucket[obj.id] = obj;
-
-            return (obj);
-        }
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LoadResponseCharacteristic_collapse" aria-expanded="true" aria-controls="LoadResponseCharacteristic_collapse">LoadResponseCharacteristic</a>
+<div id="LoadResponseCharacteristic_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#exponentModel}}<div><b>exponentModel</b>: {{exponentModel}}</div>{{/exponentModel}}
+{{#pConstantCurrent}}<div><b>pConstantCurrent</b>: {{pConstantCurrent}}</div>{{/pConstantCurrent}}
+{{#pConstantImpedance}}<div><b>pConstantImpedance</b>: {{pConstantImpedance}}</div>{{/pConstantImpedance}}
+{{#pConstantPower}}<div><b>pConstantPower</b>: {{pConstantPower}}</div>{{/pConstantPower}}
+{{#pFrequencyExponent}}<div><b>pFrequencyExponent</b>: {{pFrequencyExponent}}</div>{{/pFrequencyExponent}}
+{{#pVoltageExponent}}<div><b>pVoltageExponent</b>: {{pVoltageExponent}}</div>{{/pVoltageExponent}}
+{{#qConstantCurrent}}<div><b>qConstantCurrent</b>: {{qConstantCurrent}}</div>{{/qConstantCurrent}}
+{{#qConstantImpedance}}<div><b>qConstantImpedance</b>: {{qConstantImpedance}}</div>{{/qConstantImpedance}}
+{{#qConstantPower}}<div><b>qConstantPower</b>: {{qConstantPower}}</div>{{/qConstantPower}}
+{{#qFrequencyExponent}}<div><b>qFrequencyExponent</b>: {{qFrequencyExponent}}</div>{{/qFrequencyExponent}}
+{{#qVoltageExponent}}<div><b>qVoltageExponent</b>: {{qVoltageExponent}}</div>{{/qVoltageExponent}}
+</div>
+`
+                );
+           }        }
 
         /**
          * An area or zone of the power system which is used for load shedding purposes.
          *
          */
-        function parse_PowerCutZone (context, sub)
+        class PowerCutZone extends Core.PowerSystemResource
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.PowerCutZone;
+                if (null == bucket)
+                   cim_data.PowerCutZone = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_PowerSystemResource (context, sub);
-            obj.cls = "PowerCutZone";
-            /**
-             * First level (amount) of load to cut as a percentage of total zone load.
-             *
-             */
-            base.parse_element (/<cim:PowerCutZone.cutLevel1>([\s\S]*?)<\/cim:PowerCutZone.cutLevel1>/g, obj, "cutLevel1", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.PowerCutZone[this._id];
+            }
 
-            /**
-             * Second level (amount) of load to cut as a percentage of total zone load.
-             *
-             */
-            base.parse_element (/<cim:PowerCutZone.cutLevel2>([\s\S]*?)<\/cim:PowerCutZone.cutLevel2>/g, obj, "cutLevel2", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.PowerCutZone;
-            if (null == bucket)
-                context.parsed.PowerCutZone = bucket = {};
-            bucket[obj.id] = obj;
+                obj = Core.PowerSystemResource.prototype.parse.call (this, context, sub);
+                obj.cls = "PowerCutZone";
+                base.parse_element (/<cim:PowerCutZone.cutLevel1>([\s\S]*?)<\/cim:PowerCutZone.cutLevel1>/g, obj, "cutLevel1", base.to_string, sub, context);
+                base.parse_element (/<cim:PowerCutZone.cutLevel2>([\s\S]*?)<\/cim:PowerCutZone.cutLevel2>/g, obj, "cutLevel2", base.to_string, sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.PowerCutZone;
+                if (null == bucket)
+                   context.parsed.PowerCutZone = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.PowerSystemResource.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "PowerCutZone", "cutLevel1", base.from_string, fields);
+                base.export_element (obj, "PowerCutZone", "cutLevel2", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#PowerCutZone_collapse" aria-expanded="true" aria-controls="PowerCutZone_collapse">PowerCutZone</a>
+<div id="PowerCutZone_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.PowerSystemResource.prototype.template.call (this) +
+`
+{{#cutLevel1}}<div><b>cutLevel1</b>: {{cutLevel1}}</div>{{/cutLevel1}}
+{{#cutLevel2}}<div><b>cutLevel2</b>: {{cutLevel2}}</div>{{/cutLevel2}}
+</div>
+`
+                );
+           }        }
 
         /**
-         * A group of loads conforming to an allocation pattern.
+         * An active power (Y1-axis) and reactive power (Y2-axis) schedule (curves) versus time (X-axis) for non-conforming loads, e.g., large industrial load or power station service (where modeled).
          *
          */
-        function parse_ConformLoadGroup (context, sub)
+        class NonConformLoadSchedule extends SeasonDayTypeSchedule
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.NonConformLoadSchedule;
+                if (null == bucket)
+                   cim_data.NonConformLoadSchedule = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_LoadGroup (context, sub);
-            obj.cls = "ConformLoadGroup";
-            bucket = context.parsed.ConformLoadGroup;
-            if (null == bucket)
-                context.parsed.ConformLoadGroup = bucket = {};
-            bucket[obj.id] = obj;
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.NonConformLoadSchedule[this._id];
+            }
 
-            return (obj);
-        }
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = SeasonDayTypeSchedule.prototype.parse.call (this, context, sub);
+                obj.cls = "NonConformLoadSchedule";
+                base.parse_attribute (/<cim:NonConformLoadSchedule.NonConformLoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "NonConformLoadGroup", sub, context);
+
+                var bucket = context.parsed.NonConformLoadSchedule;
+                if (null == bucket)
+                   context.parsed.NonConformLoadSchedule = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = SeasonDayTypeSchedule.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "NonConformLoadSchedule", "NonConformLoadGroup", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#NonConformLoadSchedule_collapse" aria-expanded="true" aria-controls="NonConformLoadSchedule_collapse">NonConformLoadSchedule</a>
+<div id="NonConformLoadSchedule_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + SeasonDayTypeSchedule.prototype.template.call (this) +
+`
+{{#NonConformLoadGroup}}<div><b>NonConformLoadGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{NonConformLoadGroup}}&quot;);})'>{{NonConformLoadGroup}}</a></div>{{/NonConformLoadGroup}}
+</div>
+`
+                );
+           }        }
 
         /**
          * A curve of load  versus time (X-axis) showing the active power values (Y1-axis) and reactive power (Y2-axis) for each unit of the period covered.
@@ -447,45 +578,333 @@ define
          * This curve represents a typical pattern of load over the time period for a given day type and season.
          *
          */
-        function parse_ConformLoadSchedule (context, sub)
+        class ConformLoadSchedule extends SeasonDayTypeSchedule
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.ConformLoadSchedule;
+                if (null == bucket)
+                   cim_data.ConformLoadSchedule = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = parse_SeasonDayTypeSchedule (context, sub);
-            obj.cls = "ConformLoadSchedule";
-            /**
-             * The ConformLoadGroup where the ConformLoadSchedule belongs.
-             *
-             */
-            base.parse_attribute (/<cim:ConformLoadSchedule.ConformLoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ConformLoadGroup", sub, context, true);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.ConformLoadSchedule[this._id];
+            }
 
-            bucket = context.parsed.ConformLoadSchedule;
-            if (null == bucket)
-                context.parsed.ConformLoadSchedule = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = SeasonDayTypeSchedule.prototype.parse.call (this, context, sub);
+                obj.cls = "ConformLoadSchedule";
+                base.parse_attribute (/<cim:ConformLoadSchedule.ConformLoadGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ConformLoadGroup", sub, context);
+
+                var bucket = context.parsed.ConformLoadSchedule;
+                if (null == bucket)
+                   context.parsed.ConformLoadSchedule = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = SeasonDayTypeSchedule.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "ConformLoadSchedule", "ConformLoadGroup", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#ConformLoadSchedule_collapse" aria-expanded="true" aria-controls="ConformLoadSchedule_collapse">ConformLoadSchedule</a>
+<div id="ConformLoadSchedule_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + SeasonDayTypeSchedule.prototype.template.call (this) +
+`
+{{#ConformLoadGroup}}<div><b>ConformLoadGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ConformLoadGroup}}&quot;);})'>{{ConformLoadGroup}}</a></div>{{/ConformLoadGroup}}
+</div>
+`
+                );
+           }        }
+
+        /**
+         * Loads that do not follow a daily and seasonal load variation pattern.
+         *
+         */
+        class NonConformLoadGroup extends LoadGroup
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.NonConformLoadGroup;
+                if (null == bucket)
+                   cim_data.NonConformLoadGroup = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.NonConformLoadGroup[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = LoadGroup.prototype.parse.call (this, context, sub);
+                obj.cls = "NonConformLoadGroup";
+
+                var bucket = context.parsed.NonConformLoadGroup;
+                if (null == bucket)
+                   context.parsed.NonConformLoadGroup = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = LoadGroup.prototype.export.call (this, obj, false);
+
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#NonConformLoadGroup_collapse" aria-expanded="true" aria-controls="NonConformLoadGroup_collapse">NonConformLoadGroup</a>
+<div id="NonConformLoadGroup_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + LoadGroup.prototype.template.call (this) +
+`
+</div>
+`
+                );
+           }        }
+
+        /**
+         * A group of loads conforming to an allocation pattern.
+         *
+         */
+        class ConformLoadGroup extends LoadGroup
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.ConformLoadGroup;
+                if (null == bucket)
+                   cim_data.ConformLoadGroup = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.ConformLoadGroup[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = LoadGroup.prototype.parse.call (this, context, sub);
+                obj.cls = "ConformLoadGroup";
+
+                var bucket = context.parsed.ConformLoadGroup;
+                if (null == bucket)
+                   context.parsed.ConformLoadGroup = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = LoadGroup.prototype.export.call (this, obj, false);
+
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#ConformLoadGroup_collapse" aria-expanded="true" aria-controls="ConformLoadGroup_collapse">ConformLoadGroup</a>
+<div id="ConformLoadGroup_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + LoadGroup.prototype.template.call (this) +
+`
+</div>
+`
+                );
+           }        }
+
+        /**
+         * The class is the second level in a hierarchical structure for grouping of loads for the purpose of load flow load scaling.
+         *
+         */
+        class SubLoadArea extends EnergyArea
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.SubLoadArea;
+                if (null == bucket)
+                   cim_data.SubLoadArea = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.SubLoadArea[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = EnergyArea.prototype.parse.call (this, context, sub);
+                obj.cls = "SubLoadArea";
+                base.parse_attribute (/<cim:SubLoadArea.LoadArea\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LoadArea", sub, context);
+
+                var bucket = context.parsed.SubLoadArea;
+                if (null == bucket)
+                   context.parsed.SubLoadArea = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = EnergyArea.prototype.export.call (this, obj, false);
+
+                base.export_attribute (obj, "SubLoadArea", "LoadArea", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#SubLoadArea_collapse" aria-expanded="true" aria-controls="SubLoadArea_collapse">SubLoadArea</a>
+<div id="SubLoadArea_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + EnergyArea.prototype.template.call (this) +
+`
+{{#LoadArea}}<div><b>LoadArea</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{LoadArea}}&quot;);})'>{{LoadArea}}</a></div>{{/LoadArea}}
+</div>
+`
+                );
+           }        }
+
+        /**
+         * The class is the root or first level in a hierarchical structure for grouping of loads for the purpose of load flow load scaling.
+         *
+         */
+        class LoadArea extends EnergyArea
+        {
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LoadArea;
+                if (null == bucket)
+                   cim_data.LoadArea = bucket = {};
+                bucket[this._id] = template;
+            }
+
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LoadArea[this._id];
+            }
+
+            parse (context, sub)
+            {
+                var obj;
+
+                obj = EnergyArea.prototype.parse.call (this, context, sub);
+                obj.cls = "LoadArea";
+
+                var bucket = context.parsed.LoadArea;
+                if (null == bucket)
+                   context.parsed.LoadArea = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = EnergyArea.prototype.export.call (this, obj, false);
+
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LoadArea_collapse" aria-expanded="true" aria-controls="LoadArea_collapse">LoadArea</a>
+<div id="LoadArea_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + EnergyArea.prototype.template.call (this) +
+`
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_DayType: parse_DayType,
-                parse_ConformLoad: parse_ConformLoad,
-                parse_LoadGroup: parse_LoadGroup,
-                parse_NonConformLoad: parse_NonConformLoad,
-                parse_ConformLoadSchedule: parse_ConformLoadSchedule,
-                parse_SeasonDayTypeSchedule: parse_SeasonDayTypeSchedule,
-                parse_LoadResponseCharacteristic: parse_LoadResponseCharacteristic,
-                parse_LoadArea: parse_LoadArea,
-                parse_ConformLoadGroup: parse_ConformLoadGroup,
-                parse_Season: parse_Season,
-                parse_NonConformLoadSchedule: parse_NonConformLoadSchedule,
-                parse_SubLoadArea: parse_SubLoadArea,
-                parse_EnergyArea: parse_EnergyArea,
-                parse_PowerCutZone: parse_PowerCutZone,
-                parse_StationSupply: parse_StationSupply,
-                parse_NonConformLoadGroup: parse_NonConformLoadGroup
+                NonConformLoadGroup: NonConformLoadGroup,
+                ConformLoadSchedule: ConformLoadSchedule,
+                NonConformLoadSchedule: NonConformLoadSchedule,
+                ConformLoadGroup: ConformLoadGroup,
+                EnergyArea: EnergyArea,
+                SeasonDayTypeSchedule: SeasonDayTypeSchedule,
+                DayType: DayType,
+                Season: Season,
+                LoadResponseCharacteristic: LoadResponseCharacteristic,
+                LoadGroup: LoadGroup,
+                SubLoadArea: SubLoadArea,
+                PowerCutZone: PowerCutZone,
+                LoadArea: LoadArea
             }
         );
     }

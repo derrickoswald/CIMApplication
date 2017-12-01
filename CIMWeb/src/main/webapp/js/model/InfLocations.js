@@ -10,22 +10,66 @@ define
          * A red line can be associated with any Location object.
          *
          */
-        function parse_RedLine (context, sub)
+        class RedLine extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.RedLine;
+                if (null == bucket)
+                   cim_data.RedLine = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "RedLine";
-            base.parse_element (/<cim:RedLine.status>([\s\S]*?)<\/cim:RedLine.status>/g, obj, "status", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.RedLine[this._id];
+            }
 
-            bucket = context.parsed.RedLine;
-            if (null == bucket)
-                context.parsed.RedLine = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "RedLine";
+                base.parse_element (/<cim:RedLine.status>([\s\S]*?)<\/cim:RedLine.status>/g, obj, "status", base.to_string, sub, context);
+
+                var bucket = context.parsed.RedLine;
+                if (null == bucket)
+                   context.parsed.RedLine = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "RedLine", "status", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#RedLine_collapse" aria-expanded="true" aria-controls="RedLine_collapse">RedLine</a>
+<div id="RedLine_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Area divided off from other areas.
@@ -33,53 +77,140 @@ define
          * It may be part of the electrical network, a land area where special restrictions apply, weather areas, etc. For weather, it is an area where a set of relatively homogenous weather measurements apply.
          *
          */
-        function parse_Zone (context, sub)
+        class Zone extends Common.Location
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.Zone;
+                if (null == bucket)
+                   cim_data.Zone = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Common.parse_Location (context, sub);
-            obj.cls = "Zone";
-            /**
-             * Kind of this zone.
-             *
-             */
-            base.parse_element (/<cim:Zone.kind>([\s\S]*?)<\/cim:Zone.kind>/g, obj, "kind", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.Zone[this._id];
+            }
 
-            bucket = context.parsed.Zone;
-            if (null == bucket)
-                context.parsed.Zone = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Common.Location.prototype.parse.call (this, context, sub);
+                obj.cls = "Zone";
+                base.parse_element (/<cim:Zone.kind>([\s\S]*?)<\/cim:Zone.kind>/g, obj, "kind", base.to_string, sub, context);
+
+                var bucket = context.parsed.Zone;
+                if (null == bucket)
+                   context.parsed.Zone = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Common.Location.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "Zone", "kind", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#Zone_collapse" aria-expanded="true" aria-controls="Zone_collapse">Zone</a>
+<div id="Zone_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Common.Location.prototype.template.call (this) +
+`
+{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Kind of zone.
          *
          */
-        function parse_ZoneKind (context, sub)
+        class ZoneKind extends base.Element
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.ZoneKind;
+                if (null == bucket)
+                   cim_data.ZoneKind = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = base.parse_Element (context, sub);
-            obj.cls = "ZoneKind";
-            base.parse_element (/<cim:ZoneKind.electricalNetwork>([\s\S]*?)<\/cim:ZoneKind.electricalNetwork>/g, obj, "electricalNetwork", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.ZoneKind[this._id];
+            }
 
-            base.parse_element (/<cim:ZoneKind.specialRestrictionLand>([\s\S]*?)<\/cim:ZoneKind.specialRestrictionLand>/g, obj, "specialRestrictionLand", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            base.parse_element (/<cim:ZoneKind.weatherZone>([\s\S]*?)<\/cim:ZoneKind.weatherZone>/g, obj, "weatherZone", base.to_string, sub, context);
+                obj = base.Element.prototype.parse.call (this, context, sub);
+                obj.cls = "ZoneKind";
+                base.parse_element (/<cim:ZoneKind.electricalNetwork>([\s\S]*?)<\/cim:ZoneKind.electricalNetwork>/g, obj, "electricalNetwork", base.to_string, sub, context);
+                base.parse_element (/<cim:ZoneKind.specialRestrictionLand>([\s\S]*?)<\/cim:ZoneKind.specialRestrictionLand>/g, obj, "specialRestrictionLand", base.to_string, sub, context);
+                base.parse_element (/<cim:ZoneKind.weatherZone>([\s\S]*?)<\/cim:ZoneKind.weatherZone>/g, obj, "weatherZone", base.to_string, sub, context);
+                base.parse_element (/<cim:ZoneKind.other>([\s\S]*?)<\/cim:ZoneKind.other>/g, obj, "other", base.to_string, sub, context);
 
-            base.parse_element (/<cim:ZoneKind.other>([\s\S]*?)<\/cim:ZoneKind.other>/g, obj, "other", base.to_string, sub, context);
+                var bucket = context.parsed.ZoneKind;
+                if (null == bucket)
+                   context.parsed.ZoneKind = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.ZoneKind;
-            if (null == bucket)
-                context.parsed.ZoneKind = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = [];
+
+                base.export_element (obj, "ZoneKind", "electricalNetwork", base.from_string, fields);
+                base.export_element (obj, "ZoneKind", "specialRestrictionLand", base.from_string, fields);
+                base.export_element (obj, "ZoneKind", "weatherZone", base.from_string, fields);
+                base.export_element (obj, "ZoneKind", "other", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#ZoneKind_collapse" aria-expanded="true" aria-controls="ZoneKind_collapse">ZoneKind</a>
+<div id="ZoneKind_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + base.Element.prototype.template.call (this) +
+`
+{{#electricalNetwork}}<div><b>electricalNetwork</b>: {{electricalNetwork}}</div>{{/electricalNetwork}}
+{{#specialRestrictionLand}}<div><b>specialRestrictionLand</b>: {{specialRestrictionLand}}</div>{{/specialRestrictionLand}}
+{{#weatherZone}}<div><b>weatherZone</b>: {{weatherZone}}</div>{{/weatherZone}}
+{{#other}}<div><b>other</b>: {{other}}</div>{{/other}}
+</div>
+`
+                );
+           }        }
 
         /**
          * A grant provides a right, as defined by type, for a parcel of land.
@@ -87,147 +218,291 @@ define
          * Note that the association to Location, Asset, Organisation, etc. for the Grant is inherited from Agreement, a type of Document.
          *
          */
-        function parse_LocationGrant (context, sub)
+        class LocationGrant extends Common.Agreement
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LocationGrant;
+                if (null == bucket)
+                   cim_data.LocationGrant = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Common.parse_Agreement (context, sub);
-            obj.cls = "LocationGrant";
-            /**
-             * Property related information that describes the Grant's land parcel.
-             *
-             * For example, it may be a deed book number, deed book page number, and parcel number.
-             *
-             */
-            base.parse_element (/<cim:LocationGrant.propertyData>([\s\S]*?)<\/cim:LocationGrant.propertyData>/g, obj, "propertyData", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LocationGrant[this._id];
+            }
 
-            /**
-             * Land property this location grant applies to.
-             *
-             */
-            base.parse_attribute (/<cim:LocationGrant.LandProperty\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LandProperty", sub, context, true);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.LocationGrant;
-            if (null == bucket)
-                context.parsed.LocationGrant = bucket = {};
-            bucket[obj.id] = obj;
+                obj = Common.Agreement.prototype.parse.call (this, context, sub);
+                obj.cls = "LocationGrant";
+                base.parse_element (/<cim:LocationGrant.propertyData>([\s\S]*?)<\/cim:LocationGrant.propertyData>/g, obj, "propertyData", base.to_string, sub, context);
+                base.parse_attribute (/<cim:LocationGrant.LandProperty\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LandProperty", sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.LocationGrant;
+                if (null == bucket)
+                   context.parsed.LocationGrant = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Common.Agreement.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "LocationGrant", "propertyData", base.from_string, fields);
+                base.export_attribute (obj, "LocationGrant", "LandProperty", fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LocationGrant_collapse" aria-expanded="true" aria-controls="LocationGrant_collapse">LocationGrant</a>
+<div id="LocationGrant_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Common.Agreement.prototype.template.call (this) +
+`
+{{#propertyData}}<div><b>propertyData</b>: {{propertyData}}</div>{{/propertyData}}
+{{#LandProperty}}<div><b>LandProperty</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{LandProperty}}&quot;);})'>{{LandProperty}}</a></div>{{/LandProperty}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Route that is followed, for example by service crews.
          *
          */
-        function parse_Route (context, sub)
+        class Route extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.Route;
+                if (null == bucket)
+                   cim_data.Route = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "Route";
-            base.parse_element (/<cim:Route.status>([\s\S]*?)<\/cim:Route.status>/g, obj, "status", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.Route[this._id];
+            }
 
-            /**
-             * Classification by utility's work management standards and practices.
-             *
-             */
-            base.parse_element (/<cim:Route.type>([\s\S]*?)<\/cim:Route.type>/g, obj, "type", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            bucket = context.parsed.Route;
-            if (null == bucket)
-                context.parsed.Route = bucket = {};
-            bucket[obj.id] = obj;
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "Route";
+                base.parse_element (/<cim:Route.status>([\s\S]*?)<\/cim:Route.status>/g, obj, "status", base.to_string, sub, context);
+                base.parse_element (/<cim:Route.type>([\s\S]*?)<\/cim:Route.type>/g, obj, "type", base.to_string, sub, context);
 
-            return (obj);
-        }
+                var bucket = context.parsed.Route;
+                if (null == bucket)
+                   context.parsed.Route = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "Route", "status", base.from_string, fields);
+                base.export_element (obj, "Route", "type", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#Route_collapse" aria-expanded="true" aria-controls="Route_collapse">Route</a>
+<div id="Route_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
+{{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Kind of (land) property.
          *
          */
-        function parse_LandPropertyKind (context, sub)
+        class LandPropertyKind extends base.Element
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LandPropertyKind;
+                if (null == bucket)
+                   cim_data.LandPropertyKind = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = base.parse_Element (context, sub);
-            obj.cls = "LandPropertyKind";
-            /**
-             * Site enclosed within a building.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.building>([\s\S]*?)<\/cim:LandPropertyKind.building>/g, obj, "building", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LandPropertyKind[this._id];
+            }
 
-            /**
-             * Site with a customer.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.customerPremise>([\s\S]*?)<\/cim:LandPropertyKind.customerPremise>/g, obj, "customerPremise", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Storehouse for supplies that also serves as a station for supporting crews.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.depot>([\s\S]*?)<\/cim:LandPropertyKind.depot>/g, obj, "depot", base.to_string, sub, context);
+                obj = base.Element.prototype.parse.call (this, context, sub);
+                obj.cls = "LandPropertyKind";
+                base.parse_element (/<cim:LandPropertyKind.building>([\s\S]*?)<\/cim:LandPropertyKind.building>/g, obj, "building", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.customerPremise>([\s\S]*?)<\/cim:LandPropertyKind.customerPremise>/g, obj, "customerPremise", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.depot>([\s\S]*?)<\/cim:LandPropertyKind.depot>/g, obj, "depot", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.store>([\s\S]*?)<\/cim:LandPropertyKind.store>/g, obj, "store", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.substation>([\s\S]*?)<\/cim:LandPropertyKind.substation>/g, obj, "substation", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.gridSupplyPoint>([\s\S]*?)<\/cim:LandPropertyKind.gridSupplyPoint>/g, obj, "gridSupplyPoint", base.to_string, sub, context);
+                base.parse_element (/<cim:LandPropertyKind.external>([\s\S]*?)<\/cim:LandPropertyKind.external>/g, obj, "external", base.to_string, sub, context);
 
-            /**
-             * Place of storage (e.g., a warehouse) to put aside, or accumulate, material and equipment for use when needed.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.store>([\s\S]*?)<\/cim:LandPropertyKind.store>/g, obj, "store", base.to_string, sub, context);
+                var bucket = context.parsed.LandPropertyKind;
+                if (null == bucket)
+                   context.parsed.LandPropertyKind = bucket = {};
+                bucket[obj.id] = obj;
 
-            /**
-             * Transmission network switchyard.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.substation>([\s\S]*?)<\/cim:LandPropertyKind.substation>/g, obj, "substation", base.to_string, sub, context);
+                return (obj);
+            }
 
-            /**
-             * Substation where the distribution and transmission networks meet and hence have mixed ownership and mixed operational control.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.gridSupplyPoint>([\s\S]*?)<\/cim:LandPropertyKind.gridSupplyPoint>/g, obj, "gridSupplyPoint", base.to_string, sub, context);
+            export (obj, full)
+            {
+                var fields = [];
 
-            /**
-             * Property owned or used by an external party that is not a customer.
-             *
-             */
-            base.parse_element (/<cim:LandPropertyKind.external>([\s\S]*?)<\/cim:LandPropertyKind.external>/g, obj, "external", base.to_string, sub, context);
+                base.export_element (obj, "LandPropertyKind", "building", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "customerPremise", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "depot", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "store", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "substation", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "gridSupplyPoint", base.from_string, fields);
+                base.export_element (obj, "LandPropertyKind", "external", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
 
-            bucket = context.parsed.LandPropertyKind;
-            if (null == bucket)
-                context.parsed.LandPropertyKind = bucket = {};
-            bucket[obj.id] = obj;
+                return (fields);
+            }
 
-            return (obj);
-        }
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LandPropertyKind_collapse" aria-expanded="true" aria-controls="LandPropertyKind_collapse">LandPropertyKind</a>
+<div id="LandPropertyKind_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + base.Element.prototype.template.call (this) +
+`
+{{#building}}<div><b>building</b>: {{building}}</div>{{/building}}
+{{#customerPremise}}<div><b>customerPremise</b>: {{customerPremise}}</div>{{/customerPremise}}
+{{#depot}}<div><b>depot</b>: {{depot}}</div>{{/depot}}
+{{#store}}<div><b>store</b>: {{store}}</div>{{/store}}
+{{#substation}}<div><b>substation</b>: {{substation}}</div>{{/substation}}
+{{#gridSupplyPoint}}<div><b>gridSupplyPoint</b>: {{gridSupplyPoint}}</div>{{/gridSupplyPoint}}
+{{#external}}<div><b>external</b>: {{external}}</div>{{/external}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Demographic kind of a land property.
          *
          */
-        function parse_DemographicKind (context, sub)
+        class DemographicKind extends base.Element
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.DemographicKind;
+                if (null == bucket)
+                   cim_data.DemographicKind = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = base.parse_Element (context, sub);
-            obj.cls = "DemographicKind";
-            base.parse_element (/<cim:DemographicKind.urban>([\s\S]*?)<\/cim:DemographicKind.urban>/g, obj, "urban", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.DemographicKind[this._id];
+            }
 
-            base.parse_element (/<cim:DemographicKind.rural>([\s\S]*?)<\/cim:DemographicKind.rural>/g, obj, "rural", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            base.parse_element (/<cim:DemographicKind.other>([\s\S]*?)<\/cim:DemographicKind.other>/g, obj, "other", base.to_string, sub, context);
+                obj = base.Element.prototype.parse.call (this, context, sub);
+                obj.cls = "DemographicKind";
+                base.parse_element (/<cim:DemographicKind.urban>([\s\S]*?)<\/cim:DemographicKind.urban>/g, obj, "urban", base.to_string, sub, context);
+                base.parse_element (/<cim:DemographicKind.rural>([\s\S]*?)<\/cim:DemographicKind.rural>/g, obj, "rural", base.to_string, sub, context);
+                base.parse_element (/<cim:DemographicKind.other>([\s\S]*?)<\/cim:DemographicKind.other>/g, obj, "other", base.to_string, sub, context);
 
-            bucket = context.parsed.DemographicKind;
-            if (null == bucket)
-                context.parsed.DemographicKind = bucket = {};
-            bucket[obj.id] = obj;
+                var bucket = context.parsed.DemographicKind;
+                if (null == bucket)
+                   context.parsed.DemographicKind = bucket = {};
+                bucket[obj.id] = obj;
 
-            return (obj);
-        }
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = [];
+
+                base.export_element (obj, "DemographicKind", "urban", base.from_string, fields);
+                base.export_element (obj, "DemographicKind", "rural", base.from_string, fields);
+                base.export_element (obj, "DemographicKind", "other", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#DemographicKind_collapse" aria-expanded="true" aria-controls="DemographicKind_collapse">DemographicKind</a>
+<div id="DemographicKind_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + base.Element.prototype.template.call (this) +
+`
+{{#urban}}<div><b>urban</b>: {{urban}}</div>{{/urban}}
+{{#rural}}<div><b>rural</b>: {{rural}}</div>{{/rural}}
+{{#other}}<div><b>other</b>: {{other}}</div>{{/other}}
+</div>
+`
+                );
+           }        }
 
         /**
          * Information about a particular piece of (land) property such as its use.
@@ -235,42 +510,75 @@ define
          * Ownership of the property may be determined through associations to Organisations and/or ErpPersons.
          *
          */
-        function parse_LandProperty (context, sub)
+        class LandProperty extends Core.IdentifiedObject
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.LandProperty;
+                if (null == bucket)
+                   cim_data.LandProperty = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Core.parse_IdentifiedObject (context, sub);
-            obj.cls = "LandProperty";
-            /**
-             * Demographics around the site.
-             *
-             */
-            base.parse_element (/<cim:LandProperty.demographicKind>([\s\S]*?)<\/cim:LandProperty.demographicKind>/g, obj, "demographicKind", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.LandProperty[this._id];
+            }
 
-            /**
-             * Reference allocated by the governing organisation (such as municipality) to this piece of land that has a formal reference to Surveyor General's records.
-             *
-             * The governing organisation is specified in associated Organisation.
-             *
-             */
-            base.parse_element (/<cim:LandProperty.externalRecordReference>([\s\S]*?)<\/cim:LandProperty.externalRecordReference>/g, obj, "externalRecordReference", base.to_string, sub, context);
+            parse (context, sub)
+            {
+                var obj;
 
-            /**
-             * Kind of (land) property, categorised according to its main functional use from the utility's perspective.
-             *
-             */
-            base.parse_element (/<cim:LandProperty.kind>([\s\S]*?)<\/cim:LandProperty.kind>/g, obj, "kind", base.to_string, sub, context);
+                obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
+                obj.cls = "LandProperty";
+                base.parse_element (/<cim:LandProperty.demographicKind>([\s\S]*?)<\/cim:LandProperty.demographicKind>/g, obj, "demographicKind", base.to_string, sub, context);
+                base.parse_element (/<cim:LandProperty.externalRecordReference>([\s\S]*?)<\/cim:LandProperty.externalRecordReference>/g, obj, "externalRecordReference", base.to_string, sub, context);
+                base.parse_element (/<cim:LandProperty.kind>([\s\S]*?)<\/cim:LandProperty.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_element (/<cim:LandProperty.status>([\s\S]*?)<\/cim:LandProperty.status>/g, obj, "status", base.to_string, sub, context);
 
-            base.parse_element (/<cim:LandProperty.status>([\s\S]*?)<\/cim:LandProperty.status>/g, obj, "status", base.to_string, sub, context);
+                var bucket = context.parsed.LandProperty;
+                if (null == bucket)
+                   context.parsed.LandProperty = bucket = {};
+                bucket[obj.id] = obj;
 
-            bucket = context.parsed.LandProperty;
-            if (null == bucket)
-                context.parsed.LandProperty = bucket = {};
-            bucket[obj.id] = obj;
+                return (obj);
+            }
 
-            return (obj);
-        }
+            export (obj, full)
+            {
+                var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "LandProperty", "demographicKind", base.from_string, fields);
+                base.export_element (obj, "LandProperty", "externalRecordReference", base.from_string, fields);
+                base.export_element (obj, "LandProperty", "kind", base.from_string, fields);
+                base.export_element (obj, "LandProperty", "status", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#LandProperty_collapse" aria-expanded="true" aria-controls="LandProperty_collapse">LandProperty</a>
+<div id="LandProperty_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Core.IdentifiedObject.prototype.template.call (this) +
+`
+{{#demographicKind}}<div><b>demographicKind</b>: {{demographicKind}}</div>{{/demographicKind}}
+{{#externalRecordReference}}<div><b>externalRecordReference</b>: {{externalRecordReference}}</div>{{/externalRecordReference}}
+{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+{{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
+</div>
+`
+                );
+           }        }
 
         /**
          * A right-of-way (ROW) is for land where it is lawful to use for a public road, an electric power line, etc.
@@ -278,40 +586,78 @@ define
          * Note that the association to Location, Asset, Organisation, etc. for the Grant is inherited from Agreement, a type of Document.
          *
          */
-        function parse_RightOfWay (context, sub)
+        class RightOfWay extends Common.Agreement
         {
-            var obj;
-            var bucket;
+            constructor (template, cim_data)
+            {
+                super (template, cim_data);
+                this._id = template.id;
+                var bucket = cim_data.RightOfWay;
+                if (null == bucket)
+                   cim_data.RightOfWay = bucket = {};
+                bucket[this._id] = template;
+            }
 
-            obj = Common.parse_Agreement (context, sub);
-            obj.cls = "RightOfWay";
-            /**
-             * Property related information that describes the ROW's land parcel.
-             *
-             * For example, it may be a deed book number, deed book page number, and parcel number.
-             *
-             */
-            base.parse_element (/<cim:RightOfWay.propertyData>([\s\S]*?)<\/cim:RightOfWay.propertyData>/g, obj, "propertyData", base.to_string, sub, context);
+            remove (cim_data)
+            {
+               super.remove (cim_data);
+               delete cim_data.RightOfWay[this._id];
+            }
 
-            bucket = context.parsed.RightOfWay;
-            if (null == bucket)
-                context.parsed.RightOfWay = bucket = {};
-            bucket[obj.id] = obj;
+            parse (context, sub)
+            {
+                var obj;
 
-            return (obj);
-        }
+                obj = Common.Agreement.prototype.parse.call (this, context, sub);
+                obj.cls = "RightOfWay";
+                base.parse_element (/<cim:RightOfWay.propertyData>([\s\S]*?)<\/cim:RightOfWay.propertyData>/g, obj, "propertyData", base.to_string, sub, context);
+
+                var bucket = context.parsed.RightOfWay;
+                if (null == bucket)
+                   context.parsed.RightOfWay = bucket = {};
+                bucket[obj.id] = obj;
+
+                return (obj);
+            }
+
+            export (obj, full)
+            {
+                var fields = Common.Agreement.prototype.export.call (this, obj, false);
+
+                base.export_element (obj, "RightOfWay", "propertyData", base.from_string, fields);
+                if (full)
+                    base.Element.prototype.export.call (this, obj, fields)
+
+                return (fields);
+            }
+
+
+            template ()
+            {
+                return (
+`
+<a data-toggle="collapse" href="#RightOfWay_collapse" aria-expanded="true" aria-controls="RightOfWay_collapse">RightOfWay</a>
+<div id="RightOfWay_collapse" class="collapse in" style="margin-left: 10px;">
+`
+      + Common.Agreement.prototype.template.call (this) +
+`
+{{#propertyData}}<div><b>propertyData</b>: {{propertyData}}</div>{{/propertyData}}
+</div>
+`
+                );
+           }        }
 
         return (
             {
-                parse_LandPropertyKind: parse_LandPropertyKind,
-                parse_Route: parse_Route,
-                parse_LandProperty: parse_LandProperty,
-                parse_DemographicKind: parse_DemographicKind,
-                parse_ZoneKind: parse_ZoneKind,
-                parse_RightOfWay: parse_RightOfWay,
-                parse_RedLine: parse_RedLine,
-                parse_Zone: parse_Zone,
-                parse_LocationGrant: parse_LocationGrant
+                RightOfWay: RightOfWay,
+                DemographicKind: DemographicKind,
+                ZoneKind: ZoneKind,
+                Zone: Zone,
+                LandProperty: LandProperty,
+                RedLine: RedLine,
+                LandPropertyKind: LandPropertyKind,
+                LocationGrant: LocationGrant,
+                Route: Route
             }
         );
     }

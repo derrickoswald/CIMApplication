@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["es6-promise", "util"],
+    ["util"],
     /**
      * @summary Application utilities.
      * @description Performs application checks.
@@ -12,11 +12,8 @@ define
      * @exports cimapp
      * @version 1.0
      */
-    function (es6_promise, util)
+    function (util)
     {
-        // using Promise: backwards compatibility for older browsers
-        es6_promise.polyfill ();
-
         /**
          * @summary Connect to the server to see if it's alive.
          * @description Invoke the server-side ping function.

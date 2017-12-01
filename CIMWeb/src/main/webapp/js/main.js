@@ -7,9 +7,6 @@ requirejs
     ["cimapp", "cimfiles", "cimmap", "cimquery", "cimexport", "cimsimulate"],
     function (cimapp, cimfiles, cimmap, cimquery, cimexport, cimsimulate)
     {
-        // initialize material design for bootstrap (https://github.com/FezVrasta/bootstrap-material-design)
-        $.material.init ();
-
         /**
          * Get the hash portion of the url.
          * @param {String} url the full URL to get the hash from
@@ -107,6 +104,7 @@ requirejs
 
         document.getElementById ("internal_features").onchange = cimmap.redraw;
         document.getElementById ("buildings_3d").onchange = cimmap.buildings_3d;
+        document.getElementById ("scale_bar").onchange = cimmap.scale_bar;
         document.getElementById ("trace").onclick = cimmap.trace;
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;
