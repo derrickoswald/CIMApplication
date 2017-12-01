@@ -50,6 +50,7 @@ class View extends RESTful
     def Read (
         @PathParam ("about") about: String, // the about string if any
         @DefaultValue ("false") @MatrixParam ("zip") zip: String,
+        @DefaultValue ("true") @MatrixParam ("all") all: String,
         @DefaultValue ("7.71") @MatrixParam ("xmin") xmin: String,
         @DefaultValue ("46.57") @MatrixParam ("ymin") ymin: String,
         @DefaultValue ("7.73") @MatrixParam ("xmax") xmax: String,
@@ -65,8 +66,11 @@ class View extends RESTful
         val response: Response = if (null != connection)
             try
             {
-                _Logger.info ("View (\"%s\", [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, try { reduceLines.toBoolean } catch { case _: Throwable => false }, maxLines.toInt, try { dougPeuk.toBoolean } catch { case _: Throwable => false }, dougPeukFactor.toDouble, resolution.toDouble))
-                val function = ViewFunction (about, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, try { reduceLines.toBoolean } catch { case _: Throwable => false }, maxLines.toInt, try { dougPeuk.toBoolean } catch { case _: Throwable => false }, dougPeukFactor.toDouble, resolution.toDouble)
+                val everything = try { all.toBoolean } catch { case _: Throwable => true }
+                val reduce = try { reduceLines.toBoolean } catch { case _: Throwable => false }
+                val doug = try { dougPeuk.toBoolean } catch { case _: Throwable => false }
+                _Logger.info ("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
+                val function = ViewFunction (about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")

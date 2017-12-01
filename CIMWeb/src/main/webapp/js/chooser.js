@@ -194,6 +194,10 @@ define
             var target;
             var index;
 
+            // stop the normal link action
+            event.preventDefault ();
+            event.stopPropagation ();
+
             link = event.target;
             value = link.innerHTML;
             while (link && (null === (target = link.getAttribute (this.data_target))))

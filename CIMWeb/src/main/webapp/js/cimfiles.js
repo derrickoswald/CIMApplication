@@ -106,7 +106,7 @@ define
                                 "          <tr>\n" +
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
-                                "            <td><a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_fetch (\"" + parent + "\");})'><b>..</b></a></td>\n" +
+                                "            <td><a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_fetch (\"" + parent + "\");}); return false;'><b>..</b></a></td>\n" +
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
@@ -122,7 +122,7 @@ define
                             if (this.is_directory)
                                 text = ""
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml") || this.path.endsWith (".csv"))
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-open'></span></a>";
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-open'></span></a>";
                             else
                                 text = ""
                             return (text);
@@ -133,7 +133,7 @@ define
                             if (this.is_directory)
                                 text = ""
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml"))
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-eye-open'></span></a>";
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-eye-open'></span></a>";
                             else
                             {
                                 var url = util.home () + "cim/file" + root + this.path;
@@ -145,7 +145,7 @@ define
                         {
                             var text;
                             if (this.is_directory)
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_fetch (\"" + root + this.path + "/\");})'>" + this.path + "</a>";
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_fetch (\"" + root + this.path + "/\");}); return false;'>" + this.path + "</a>";
                             else
                                 text = this.path;
                             return (text);
@@ -156,7 +156,7 @@ define
                         },
                         remove: function ()
                         {
-                            return ("<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_remove (\"" + root + this.path + "\");})'><span class='glyphicon glyphicon-remove'></span></a>");
+                            return ("<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_remove (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-remove'></span></a>");
                         }
                     }
                 );
@@ -364,8 +364,6 @@ define
                     var end = new Date ().getTime ();
                     console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds)");
                     // display the results on the map
-                    cimmap.terminate ();
-                    cimmap.initialize ();
                     cimmap.set_data (result.parsed);
                 }
             );
@@ -412,8 +410,9 @@ define
         }
 
         /**
-         * @summary Show the file contents.
+         * @summary View the file contents.
          * @description Fetch the file and display in a cimmap.
+         * @param {String} path the CIM RDF file path
          * @function do_view
          * @memberOf module:cimfiles
          */
@@ -422,8 +421,42 @@ define
             var url;
             var xmlhttp;
 
+            // switch to the map tab
+            window.location.hash = "map";
+
             path = path.startsWith ("/") ? path : "/" + path;
             url = util.home () + "cim/file" + path + ";zip=true";
+            xmlhttp = util.createCORSRequest ("GET", url);
+            xmlhttp.setRequestHeader ("Accept", "application/zip");
+            xmlhttp.responseType = "blob";
+            xmlhttp.onreadystatechange = function ()
+            {
+                var resp;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                        read_zip (xmlhttp.response, read_cim);
+                    else
+                        alert ("status: " + xmlhttp.status);
+            };
+            xmlhttp.send ();
+        }
+
+        /**
+         * @summary Show what's loaded in Spark.
+         * @description Fetch the full export and display in a cimmap.
+         * @function do_fetch
+         * @memberOf module:cimfiles
+         */
+        function do_show ()
+        {
+            var url;
+            var xmlhttp;
+
+            // switch to the map tab
+            window.location.hash = "map";
+
+            url = util.home () + "cim/view/spark;all=true;zip=true";
             xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.setRequestHeader ("Accept", "application/zip");
             xmlhttp.responseType = "blob";
@@ -697,7 +730,8 @@ define
                         resp = JSON.parse (xmlhttp.responseText);
                         if (resp.status == "OK")
                         {
-                            alert (JSON.stringify (resp, null, 4));
+                            console.log (JSON.stringify (resp, null, 4));
+                            do_show ();
                         }
                         else
                             alert (resp.message);
@@ -729,8 +763,9 @@ define
                 put: put,
                 do_put: do_put,
                 do_remove: do_remove,
-                do_view, do_view,
-                do_load, do_load
+                do_view: do_view,
+                do_load: do_load,
+                do_fetch: do_fetch
             }
         );
     }

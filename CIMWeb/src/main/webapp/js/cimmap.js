@@ -238,7 +238,7 @@ define
             if (typeof value === "string")
                 if (null != (feature = CIM_Data.Element[value]))
                 {
-                    value = "<a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;" + value + "&quot;);})'>" + value + "</a>"
+                    value = "<a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;" + value + "&quot;);}); return false;'>" + value + "</a>"
                 }
             return (value);
         }
@@ -263,7 +263,7 @@ define
                         for (var i = 0; i < CURRENT_SELECTION.length; i++)
                         {
                             if (CURRENT_SELECTION[i] != CURRENT_FEATURE)
-                                text = text + "\n<a href='#' onclick='require([\"cimmap\"], function(cimmap) {cimmap.select (\"" + CURRENT_SELECTION[i] + "\");})'>" + CURRENT_SELECTION[i] + "</a>";
+                                text = text + "\n<a href='#' onclick='require([\"cimmap\"], function(cimmap) {cimmap.select (\"" + CURRENT_SELECTION[i] + "\");}); return false;'>" + CURRENT_SELECTION[i] + "</a>";
                         }
                     showDetails (text);
                     glow (["in", "mRID", CURRENT_FEATURE]);
@@ -604,7 +604,7 @@ define
                         for (var i = 0; i < CURRENT_SELECTION.length; i++)
                         {
                             if (CURRENT_SELECTION[i] != CURRENT_FEATURE)
-                                text = text + "\n<a href='#' onclick='require([\"cimmap\"], function(cimmap) {cimmap.select (\"" + CURRENT_SELECTION[i] + "\");})'>" + CURRENT_SELECTION[i] + "</a>";
+                                text = text + "\n<a href='#' onclick='require([\"cimmap\"], function(cimmap) {cimmap.select (\"" + CURRENT_SELECTION[i] + "\");}); return false;'>" + CURRENT_SELECTION[i] + "</a>";
                         }
                     // post the text
                     showDetails (text);

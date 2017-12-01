@@ -245,8 +245,8 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // register CIMReader classes
             configuration.registerKryoClasses (CIMClasses.list ());
 
-            if (null != logger)
-                logger.println ("SparkConf:\n" + configuration.toDebugString ());
+//            if (null != logger)
+//                logger.println ("SparkConf:\n" + configuration.toDebugString ());
 
             // setting spark.executor.memory as a property of SparkConf doesn't work:
             if (null != _RequestInfo.getProperties ().get ("spark.executor.memory"))

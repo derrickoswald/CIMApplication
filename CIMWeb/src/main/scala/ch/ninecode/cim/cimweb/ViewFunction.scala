@@ -1,6 +1,7 @@
 package ch.ninecode.cim.cimweb
 
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.Text
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -21,6 +22,7 @@ import ch.ninecode.model.PositionPoint
  * @author Markus Jung
  *
  * @param about md:FullModel rdf:about contents
+ * @param all if <code>true</code> return all features, otherwise filter as dictated by the other oarameters
  * @param xmin minimum longitude
  * @param ymin minimum latitude
  * @param xmax maximum longitude
@@ -34,6 +36,7 @@ import ch.ninecode.model.PositionPoint
  */
 case class ViewFunction (
     about: String,
+    all: Boolean,
     xmin: Double,
     ymin: Double,
     xmax: Double,
@@ -45,7 +48,6 @@ case class ViewFunction (
     resolution: Double = 1.0e-4
     ) extends CIMWebFunction with CIMRDD
 {
-
     jars = Array (jarForObject (this))
 
     override def getReturnType: Return = Return.String
@@ -104,40 +106,61 @@ case class ViewFunction (
                 List (list.head, list.last)
         }
 
-        def elements (arg: ((ACLineSegment, List[PositionPointPlus]), Location)): List[Element] =
+        def to_elements (arg: ((ACLineSegment, List[PositionPointPlus]), Location)): List[Element] =
         {
             arg._1._1.asInstanceOf[Element] :: arg._2.asInstanceOf[Element] :: arg._1._2.map (_.pp.asInstanceOf[Element])
         }
 
-        // get the spatially filtered points
-        val filteredOrderedPositions: RDD[(String, List[PositionPointPlus])] =
-            if (dougPeuk)
-                preparePositionPoints.mapValues (douglasPeuker)
-            else
-                preparePositionPoints
-        log.debug ("points count %d".format (filteredOrderedPositions.count))
+        val elements = if (all)
+            get[Element]("Elements")
+        else
+        {
+            // get the spatially filtered points
+            val filteredOrderedPositions: RDD[(String, List[PositionPointPlus])] =
+                if (dougPeuk)
+                    preparePositionPoints.mapValues (douglasPeuker)
+                else
+                    preparePositionPoints
+            log.debug ("points count %d".format (filteredOrderedPositions.count))
 
-        // get the reduced lines
-        val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get[ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join (filteredOrderedPositions).join (get[Location].keyBy (_.id))
-        val numbLines = lines.count
-        log.debug ("lines count %d".format (numbLines))
-        val result: RDD[((ACLineSegment, List[PositionPointPlus]), Location)] =
-            if (reduceLines && (numbLines > maxLines))
-                lines.values.sample (true, maxLines.toDouble / numbLines.toDouble)
-            else
-                lines.values
+            // get the reduced lines
+            val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get[ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join (filteredOrderedPositions).join (get[Location].keyBy (_.id))
+            val numbLines = lines.count
+            log.debug ("lines count %d".format (numbLines))
+            val result: RDD[((ACLineSegment, List[PositionPointPlus]), Location)] =
+                if (reduceLines && (numbLines > maxLines))
+                    lines.values.sample (true, maxLines.toDouble / numbLines.toDouble)
+                else
+                    lines.values
 
-        // get the reduced element list - just lines, locations and positions
-        val e: RDD[Element] = result.flatMap (elements)
+            // get the reduced element list - just lines, locations and positions
+            result.flatMap (to_elements)
+        }
 
         // write the reduced RDF
         val file: Path = new Path ("/tmp/view.rdf")
+        val f: Path = new Path (hdfs.getUri.toString, file)
+        hdfs.delete (f, false)
         log.info ("exporting %s".format (file.toString))
         val export = new CIMExport (spark)
-        export.export (e, file.toString, about)
+        export.export (elements, file.toString, about)
 
         // read the file
-        scala.io.Source.fromFile (file.toString, "utf-8").getLines.mkString ("\n")
+        log.info ("reading %s".format (f.toString))
+        try
+        {
+            val data = hdfs.open (f)
+            // ToDo: handle files bigger than 2GB
+            val size = hdfs.getFileStatus (f).getLen.toInt
+            val bytes = new Array[Byte] (size)
+            data.readFully (0, bytes)
+            Text.decode (bytes, 0, size)
+        }
+        catch
+        {
+            case e: Exception =>
+                e.getMessage
+        }
     }
 
     override def toString: String =
@@ -145,7 +168,9 @@ case class ViewFunction (
         val sb = new StringBuilder (super.toString)
         sb.append (" (\"")
         sb.append (about)
-        sb.append ("\", [")
+        sb.append ("\",all=")
+        sb.append (all)
+        sb.append (", [")
         sb.append (xmin)
         sb.append (",")
         sb.append (ymin)
