@@ -47,6 +47,11 @@ define
                 sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
                 execute: makeplayers
             },
+            {
+                title: "Constant power for all EnergyConsumer with PSRType == 'PSRType_HouseService' from cassandra table 'measured_value_by_day'",
+                sql: "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                execute: makeplayers_using_Cassandra
+            }
         ];
 
         // User specified recorder object queries
@@ -499,7 +504,7 @@ define
                                     );
                                     if (0 == measurements.length)
                                     {
-                                        row.error = "mo measurements";
+                                        row.error = "no measurements";
                                         strings.push ("1970-01-01 00:00:00,0.0,0.0");
                                     }
                                     var target = "/" + getStation () + "/" + getName () + "/" + name;
@@ -512,7 +517,69 @@ define
                     );
                 }
             );
+        }
 
+        function makeplayers_using_Cassandra (choice, callback)
+        {
+            cimquery.query (
+                choice.sql,
+                false,
+                "",
+                "",
+                function (players)
+                {
+                    var houses = players.length;
+                    function done ()
+                    {
+                        houses = houses - 1;
+                        if (0 == houses)
+                            callback (players);
+                    }
+                    players.forEach (
+                        function (row)
+                        {
+//    {
+//        "name": "HAS2104_load",
+//        "parent": "HAS2104_fuse_topo",
+//        "property": "constant_power",
+//        "unit": "Watt"
+//    },
+                            var house = row.name.substring (0, row.name.indexOf ("_"));
+                            cimquery.query (
+                                "select cast (time as text) as time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where type='energy' and mrid='" + house + "' ALLOW FILTERING",
+                                true,
+                                "",
+                                "",
+                                function (measurements)
+                                {
+                                    var name = "input_data/" + house + ".csv";
+                                    row.file = name;
+                                    var strings = measurements.sort (function (a, b) { return (a.time.localeCompare (b.time)); }).map (
+                                        function (measurement)
+                                        {
+//    {
+//        "time": "2017-07-18 00:15:00",
+//        "real": 4037.5,
+//        "imag": 1327.062075
+//    },
+                                            return (measurement.time + "," + measurement.real + "," + measurement.imag);
+                                        }
+                                    );
+                                    if (0 == measurements.length)
+                                    {
+                                        row.error = "no measurements";
+                                        strings.push ("1970-01-01 00:00:00,0.0,0.0");
+                                    }
+                                    var target = "/" + getStation () + "/" + getName () + "/" + name;
+                                    strings.unshift ("# " + target);
+                                    var text = strings.join ("\n");
+                                    cimfiles.put (target, text, done);
+                                }
+                            );
+                        }
+                    );
+                }
+            );
         }
 
         function outfile (choice, callback)
