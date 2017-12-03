@@ -18,6 +18,47 @@ define
         // The island RDF export.
         var TheRDF;
 
+        // The simulation details.
+        // provisional schema:
+        // {
+        //     name: <the name of the simulation and this JSON file>
+        //     description: <textual description suitable for GUI display>,
+        //     island: <topological node of the island to simulate>,
+        //     station: <station of the island to simulate>,
+        //     cim: <CIM RDF file containing the island>,
+        //     glm: <generated GridLAB-D Model file>
+        //     player_choices: [
+        //        <the titles of player selections from the drop down menu>,
+        //        ...
+        //     ],
+        //     players: [
+        //         {
+        //            "name": "HAS2987_load",
+        //            "parent": "HAS2987_fuse_topo",
+        //            "property": "constant_power",
+        //            "unit": "Watt",
+        //            "file": "input_data/HAS2987.csv"
+        //         },
+        //         ...
+        //     ],
+        //     recorder_choices: [
+        //        <the titles of recorder selections from the drop down menu>,
+        //        ...
+        //     ],
+        //     recorders: [
+        //         {
+        //            "name": "TRA2755_losses_recorder",
+        //            "parent": "TRA2755",
+        //            "property": "power_losses",
+        //            "unit": "Volt-Amperes",
+        //            "interval": 900,
+        //            "file": "output_data/TRA2755_losses.csv"
+        //        },
+        //     ...
+        //     ]
+        // }
+        var TheSimulation;
+
         // User specified player object queries
         var PlayerChooser;
         var PlayerChoices = [
@@ -61,7 +102,8 @@ define
         var RecorderChoices = [
             {
                 title: "All node voltages",
-                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, 'Volts' unit, Double(900.0) interval, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n",
+                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, 'Volts' unit, Double(900.0) interval, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n where n.TopologicalIsland = '%1'",
+                binder: function (match) { return (TheSimulation.island); },
                 target_directory: "output_data/",
                 execute: outfile
             },
@@ -96,47 +138,6 @@ define
                 execute: outfile
             }
         ];
-
-        // The simulation details.
-        // provisional schema:
-        // {
-        //     name: <the name of the simulation and this JSON file>
-        //     description: <textual description suitable for GUI display>,
-        //     island: <topological node of the island to simulate>,
-        //     station: <station of the island to simulate>,
-        //     cim: <CIM RDF file containing the island>,
-        //     glm: <generated GridLAB-D Model file>
-        //     player_choices: [
-        //        <the titles of player selections from the drop down menu>,
-        //        ...
-        //     ],
-        //     players: [
-        //         {
-        //            "name": "HAS2987_load",
-        //            "parent": "HAS2987_fuse_topo",
-        //            "property": "constant_power",
-        //            "unit": "Watt",
-        //            "file": "input_data/HAS2987.csv"
-        //         },
-        //         ...
-        //     ],
-        //     recorder_choices: [
-        //        <the titles of recorder selections from the drop down menu>,
-        //        ...
-        //     ],
-        //     recorders: [
-        //         {
-        //            "name": "TRA2755_losses_recorder",
-        //            "parent": "TRA2755",
-        //            "property": "power_losses",
-        //            "unit": "Volt-Amperes",
-        //            "interval": 900,
-        //            "file": "output_data/TRA2755_losses.csv"
-        //        },
-        //     ...
-        //     ]
-        // }
-        var TheSimulation;
 
         // accessors
         function getName ()
@@ -589,12 +590,17 @@ define
                 function (response)
                 {
                     if (response.status == "OK")
+                    {
+                        var sql = choice.sql;
+                        if (choice.binder)
+                            sql = sql.replace (/\%\d?/g, choice.binder); // Todo: should be ?1 not %1
                         cimquery.query (
-                            choice.sql,
+                            sql,
                             false,
                             "",
                             "",
                             callback);
+                    }
                     else
                         alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
                 }

@@ -264,7 +264,7 @@ class GridLAB extends RESTful
         @DefaultValue ("false") @MatrixParam ("all") all: String
     ): Response =
     {
-        _Logger.info ("gridlab %s;all=%s".format (simulation, all))
+        _Logger.info ("gridlab export %s;all=%s".format (simulation, all))
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         val response: Response = if (null != connection)
@@ -323,7 +323,7 @@ class GridLAB extends RESTful
         @PathParam ("simulation") simulation: String // the name of the JSON simulation file on HDFS
     ): String =
     {
-        _Logger.info ("gridlab %s".format (simulation))
+        _Logger.info ("gridlab simulate %s".format (simulation))
         var ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         if (null != connection)
@@ -333,7 +333,8 @@ class GridLAB extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 // set up the function with parameters
-                val gridlab = GridLABSimulateFunction (if (simulation.startsWith ("/")) simulation else "/" + simulation)
+                val simfile = if (simulation.startsWith ("/")) simulation else "/" + simulation
+                val gridlab = GridLABSimulateFunction (simfile)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, gridlab)
                 val interaction = connection.createInteraction
                 val output = interaction.execute (spec, input)
