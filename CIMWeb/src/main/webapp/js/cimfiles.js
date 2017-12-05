@@ -363,6 +363,9 @@ define
                 {
                     var end = new Date ().getTime ();
                     console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds)");
+                    if (result.parsed.ignored != 0)
+                        console.log ("ignored " + result.parsed.ignored + " elements");
+                    delete result.parsed.ignored;
                     // display the results on the map
                     cimmap.set_data (result.parsed);
                 }

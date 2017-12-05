@@ -17,6 +17,10 @@ body {
     cursor: crosshair;
 }
 
+.slider-selection {
+	background: #BABABA;
+}
+
 /* allow div in dropdown menus, not just a */
 .dropdown-menu > li > div
 {

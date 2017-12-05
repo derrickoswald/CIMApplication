@@ -6,14 +6,14 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimquery", "cim", "chooser"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimquery, cim, chooser)
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, chooser, SimulationTheme)
     {
         // The island RDF export.
         var TheRDF;
@@ -109,7 +109,7 @@ define
             },
             {
                 title: "All cable currents",
-                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a",
+                sql: "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_in' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID,  '_current.csv') file from ACLineSegment a, Terminal t1, Terminal t2 where Conductor.len != 0 and (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != '') and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode != '')",
                 target_directory: "output_data/",
                 execute: outfile
             },
@@ -547,7 +547,7 @@ define
 //    },
                             var house = row.name.substring (0, row.name.indexOf ("_"));
                             cimquery.query (
-                                "select cast (time as text) as time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where type='energy' and mrid='" + house + "' ALLOW FILTERING",
+                                "select time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where type='energy' and mrid='" + house + "' allow filtering",
                                 true,
                                 "",
                                 "",
@@ -555,15 +555,17 @@ define
                                 {
                                     var name = "input_data/" + house + ".csv";
                                     row.file = name;
-                                    var strings = measurements.sort (function (a, b) { return (a.time.localeCompare (b.time)); }).map (
+                                    var strings = measurements.sort (function (a, b) { return (a.time - b.time); }).map (
                                         function (measurement)
                                         {
 //    {
-//        "time": "2017-07-18 00:15:00",
+//        "time": 1500336000000,
 //        "real": 4037.5,
 //        "imag": 1327.062075
 //    },
-                                            return (measurement.time + "," + measurement.real + "," + measurement.imag);
+                                            var date = new Date (measurement.time);
+                                            var timestamp = date.toISOString ().replace ("T", " ").replace ("0.000", "0").replace ("Z", " UTC");
+                                            return (timestamp + "," + measurement.real + "," + measurement.imag);
                                         }
                                     );
                                     if (0 == measurements.length)
@@ -842,6 +844,7 @@ define
                 "        <button id='do_refresh' name='do_refresh' type='button' class='btn btn-primary'>Refresh</button>\n" +
                 "        <button id='do_save' name='do_save' type='button' class='btn btn-primary'>Save</button>\n" +
                 "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
+                "        <button id='to_map' name='to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
                 "      </form>\n" +
                 "      <div id='cim'>\n" +
                 "      </div>\n" +
@@ -864,6 +867,7 @@ define
             document.getElementById ("do_refresh").onclick = do_refresh;
             document.getElementById ("do_save").onclick = do_save;
             document.getElementById ("do_simulate").onclick = do_simulate;
+            document.getElementById ("to_map").onclick = to_map;
             if (null == PlayerChooser)
             {
                 var help =
@@ -999,6 +1003,73 @@ define
                 });
             else
                 render ([ TheSimulation ]);
+        }
+
+        function query_results ()
+        {
+            var data = cimmap.get_data ();
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        // ToDo: where simulation = blah
+                        // ToDo: is there a sqrt function in Cassandra
+                        // ToDo: make a relative value with cable max current: select Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, w.ratedCurrent from ACLineSegment a, WireInfo w where a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet = w.AssetInfo.IdentifiedObject.mRID
+                        cimquery.query ("select mrid, time, real_a, imag_a  from cimapplication.simulated_value_by_day where type = 'current_in' allow filtering",
+                            true,
+                            "",
+                            "",
+                            function (records)
+                            {
+                                var start = 2000000000000;
+                                var finish = 0;
+                                records.forEach (
+                                    function (record)
+                                    {
+                                        //    {
+                                        //        "mrid": "KLE2827",
+                                        //        "time": 1500336000000,
+                                        //        "imag_a": 0.263108,
+                                        //        "real_a": -8.94582,
+                                        //    },
+                                        var time = record.time;
+                                        if (time < start)
+                                            start = time;
+                                        if (time > finish)
+                                            finish = time;
+                                        var magnitude = Math.sqrt (record.real_a * record.real_a + record.imag_a * record.imag_a);
+                                        data.Element[record.mrid]["T" + time] = magnitude;
+                                    }
+                                );
+                                resolve ({ start: start, finish: finish });
+                            },
+                            function (message)
+                            {
+                                reject (message);
+                            }
+
+                        );
+                    }
+                )
+            );
+        }
+
+        function to_map ()
+        {
+            function successCallback (times)
+            {
+                var theme = new SimulationTheme (TheSimulation, times);
+                cimmap.get_themer ().removeTheme (theme);
+                cimmap.get_themer ().addTheme (theme);
+                alert ("successfully sent results to the map");
+            }
+
+            function failureCallback (message)
+            {
+                alert ("failed to send results to the map: " + message);
+            }
+
+            query_results ().then (successCallback, failureCallback);
         }
 
         return (
