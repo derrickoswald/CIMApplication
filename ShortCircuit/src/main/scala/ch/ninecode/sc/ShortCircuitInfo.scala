@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.sc
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -9,20 +9,13 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
 
 /**
- * Station short circuit power availability (pre-computed).
- * The available power and phase from the mid-voltage network if the primary is shorted.
- * @param mRID CIM MRID of the station.
- * @param Sk Available short circuit power available at the primary of the transformer (MW).
- * @param Ikw Short circuit phase angle at the primary of the transformer (degrees).
- * @param valid Indicates if the station was found in the pre-computed list, default values otherwise (and thus not valid).
+ * Generate the RDD of available short circuit power and angle at each station.
+ * Reads a CSV (in a particular format) to extract the ShortCircuitData information.
+ *
+ * @param session
+ * @param storage_level
  */
-case class ShortCircuitData (
-    mRID: String,
-    Sk: Double,
-    Ikw: Double,
-    valid: Boolean)
-
-class ShortCircuit (session: SparkSession, storage_level: StorageLevel) extends Serializable
+class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel) extends Serializable
 {
     def read_csv (csv: String): RDD[ShortCircuitData] =
     {

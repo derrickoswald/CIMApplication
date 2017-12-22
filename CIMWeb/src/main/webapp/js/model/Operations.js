@@ -9,6 +9,70 @@ define
     {
 
         /**
+         * Kind of action on switch.
+         *
+         */
+        var SwitchActionKind =
+        {
+            open: "open",
+            close: "close",
+            disableReclosing: "disableReclosing",
+            enableReclosing: "enableReclosing"
+        };
+        Object.freeze (SwitchActionKind);
+
+        /**
+         * Kind of action on temporary equipment (such as cut, jumper, ground, energy source).
+         *
+         */
+        var TempEquipActionKind =
+        {
+            place: "place",
+            remove: "remove"
+        };
+        Object.freeze (TempEquipActionKind);
+
+        /**
+         * Type of clearance action.
+         *
+         */
+        var ClearanceActionKind =
+        {
+            issue: "issue",
+            update: "update",
+            release: "release"
+        };
+        Object.freeze (ClearanceActionKind);
+
+        /**
+         * Kind of power system resource event.
+         *
+         */
+        var PSREventKind =
+        {
+            inService: "inService",
+            outOfService: "outOfService",
+            pendingAdd: "pendingAdd",
+            pendingRemove: "pendingRemove",
+            pendingReplace: "pendingReplace",
+            other: "other",
+            unknown: "unknown"
+        };
+        Object.freeze (PSREventKind);
+
+        /**
+         * Kind of action on tag.
+         *
+         */
+        var TagActionKind =
+        {
+            place: "place",
+            remove: "remove",
+            verify: "verify"
+        };
+        Object.freeze (TagActionKind);
+
+        /**
          * A logical step, grouping atomic switching steps that are important to distinguish when they may change topology (e.g. placing a jumper between two cuts).
          *
          */
@@ -17,17 +81,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SwitchingStepGroup;
                 if (null == bucket)
                    cim_data.SwitchingStepGroup = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SwitchingStepGroup[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SwitchingStepGroup[obj.id];
             }
 
             parse (context, sub)
@@ -38,8 +101,15 @@ define
                 obj.cls = "SwitchingStepGroup";
                 base.parse_element (/<cim:SwitchingStepGroup.isFreeSequence>([\s\S]*?)<\/cim:SwitchingStepGroup.isFreeSequence>/g, obj, "isFreeSequence", base.to_boolean, sub, context);
                 base.parse_element (/<cim:SwitchingStepGroup.sequenceNumber>([\s\S]*?)<\/cim:SwitchingStepGroup.sequenceNumber>/g, obj, "sequenceNumber", base.to_string, sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.CutActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "CutActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.ClearanceActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ClearanceActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.GenericActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "GenericActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.EnergySourceActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EnergySourceActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.TagActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TagActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.JumperActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "JumperActions", sub, context);
                 base.parse_attribute (/<cim:SwitchingStepGroup.SwitchingPlan\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingPlan", sub, context);
-
+                base.parse_attributes (/<cim:SwitchingStepGroup.SwitchActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchActions", sub, context);
+                base.parse_attributes (/<cim:SwitchingStepGroup.GroundActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "GroundActions", sub, context);
                 var bucket = context.parsed.SwitchingStepGroup;
                 if (null == bucket)
                    context.parsed.SwitchingStepGroup = bucket = {};
@@ -52,49 +122,144 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SwitchingStepGroup", "isFreeSequence", base.from_boolean, fields);
-                base.export_element (obj, "SwitchingStepGroup", "sequenceNumber", base.from_string, fields);
-                base.export_attribute (obj, "SwitchingStepGroup", "SwitchingPlan", fields);
+                base.export_element (obj, "SwitchingStepGroup", "isFreeSequence", "isFreeSequence",  base.from_boolean, fields);
+                base.export_element (obj, "SwitchingStepGroup", "sequenceNumber", "sequenceNumber",  base.from_string, fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "CutActions", "CutActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "ClearanceActions", "ClearanceActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "GenericActions", "GenericActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "EnergySourceActions", "EnergySourceActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "TagActions", "TagActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "JumperActions", "JumperActions", fields);
+                base.export_attribute (obj, "SwitchingStepGroup", "SwitchingPlan", "SwitchingPlan", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "SwitchActions", "SwitchActions", fields);
+                base.export_attributes (obj, "SwitchingStepGroup", "GroundActions", "GroundActions", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SwitchingStepGroup_collapse" aria-expanded="true" aria-controls="SwitchingStepGroup_collapse">SwitchingStepGroup</a>
-<div id="SwitchingStepGroup_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#isFreeSequence}}<div><b>isFreeSequence</b>: {{isFreeSequence}}</div>{{/isFreeSequence}}
-{{#sequenceNumber}}<div><b>sequenceNumber</b>: {{sequenceNumber}}</div>{{/sequenceNumber}}
-{{#SwitchingPlan}}<div><b>SwitchingPlan</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingPlan}}&quot;);})'>{{SwitchingPlan}}</a></div>{{/SwitchingPlan}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SwitchingStepGroup_collapse" aria-expanded="true" aria-controls="SwitchingStepGroup_collapse" style="margin-left: 10px;">SwitchingStepGroup</a></legend>
+                    <div id="SwitchingStepGroup_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#isFreeSequence}}<div><b>isFreeSequence</b>: {{isFreeSequence}}</div>{{/isFreeSequence}}
+                    {{#sequenceNumber}}<div><b>sequenceNumber</b>: {{sequenceNumber}}</div>{{/sequenceNumber}}
+                    {{#CutActions}}<div><b>CutActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/CutActions}}
+                    {{#ClearanceActions}}<div><b>ClearanceActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/ClearanceActions}}
+                    {{#GenericActions}}<div><b>GenericActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/GenericActions}}
+                    {{#EnergySourceActions}}<div><b>EnergySourceActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/EnergySourceActions}}
+                    {{#TagActions}}<div><b>TagActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/TagActions}}
+                    {{#JumperActions}}<div><b>JumperActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/JumperActions}}
+                    {{#SwitchingPlan}}<div><b>SwitchingPlan</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingPlan}}&quot;);})'>{{SwitchingPlan}}</a></div>{{/SwitchingPlan}}
+                    {{#SwitchActions}}<div><b>SwitchActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/SwitchActions}}
+                    {{#GroundActions}}<div><b>GroundActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/GroundActions}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.CutActions) obj.CutActions_string = obj.CutActions.join ();
+                if (obj.ClearanceActions) obj.ClearanceActions_string = obj.ClearanceActions.join ();
+                if (obj.GenericActions) obj.GenericActions_string = obj.GenericActions.join ();
+                if (obj.EnergySourceActions) obj.EnergySourceActions_string = obj.EnergySourceActions.join ();
+                if (obj.TagActions) obj.TagActions_string = obj.TagActions.join ();
+                if (obj.JumperActions) obj.JumperActions_string = obj.JumperActions.join ();
+                if (obj.SwitchActions) obj.SwitchActions_string = obj.SwitchActions.join ();
+                if (obj.GroundActions) obj.GroundActions_string = obj.GroundActions.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.CutActions_string;
+                delete obj.ClearanceActions_string;
+                delete obj.GenericActions_string;
+                delete obj.EnergySourceActions_string;
+                delete obj.TagActions_string;
+                delete obj.JumperActions_string;
+                delete obj.SwitchActions_string;
+                delete obj.GroundActions_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SwitchingStepGroup_collapse" aria-expanded="true" aria-controls="{{id}}_SwitchingStepGroup_collapse" style="margin-left: 10px;">SwitchingStepGroup</a></legend>
+                    <div id="{{id}}_SwitchingStepGroup_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isFreeSequence'>isFreeSequence: </label><div class='col-sm-8'><input id='{{id}}_isFreeSequence' class='form-check-input' type='checkbox'{{#isFreeSequence}} checked{{/isFreeSequence}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_sequenceNumber'>sequenceNumber: </label><div class='col-sm-8'><input id='{{id}}_sequenceNumber' class='form-control' type='text'{{#sequenceNumber}} value='{{sequenceNumber}}'{{/sequenceNumber}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingPlan'>SwitchingPlan: </label><div class='col-sm-8'><input id='{{id}}_SwitchingPlan' class='form-control' type='text'{{#SwitchingPlan}} value='{{SwitchingPlan}}'{{/SwitchingPlan}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SwitchingStepGroup" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_isFreeSequence").checked; if (temp) obj.isFreeSequence = true;
+                temp = document.getElementById (id + "_sequenceNumber").value; if ("" != temp) obj.sequenceNumber = temp;
+                temp = document.getElementById (id + "_SwitchingPlan").value; if ("" != temp) obj.SwitchingPlan = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["CutActions", "0..*", "0..1", "CutAction", "SwitchingStepGroup"],
+                            ["ClearanceActions", "0..*", "0..1", "ClearanceAction", "SwitchingStepGroup"],
+                            ["GenericActions", "0..*", "0..1", "GenericAction", "SwitchingStepGroup"],
+                            ["EnergySourceActions", "0..*", "0..1", "EnergySourceAction", "SwitchingStepGroup"],
+                            ["TagActions", "0..*", "0..1", "TagAction", "SwitchingStepGroup"],
+                            ["JumperActions", "0..*", "0..1", "JumperAction", "SwitchingStepGroup"],
+                            ["SwitchingPlan", "0..1", "0..*", "SwitchingPlan", "SwitchingStepGroups"],
+                            ["SwitchActions", "0..*", "0..1", "SwitchAction", "SwitchingStepGroup"],
+                            ["GroundActions", "0..*", "0..1", "GroundAction", "SwitchingStepGroup"]
+                        ]
+                    )
+                );
+            }
+        }
 
         class OperationTag extends Common.Document
         {
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OperationTag;
                 if (null == bucket)
                    cim_data.OperationTag = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OperationTag[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OperationTag[obj.id];
             }
 
             parse (context, sub)
@@ -106,7 +271,6 @@ define
                 base.parse_attribute (/<cim:OperationTag.Asset\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Asset", sub, context);
                 base.parse_attribute (/<cim:OperationTag.TagAction\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TagAction", sub, context);
                 base.parse_attribute (/<cim:OperationTag.PowerSystemResource\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PowerSystemResource", sub, context);
-
                 var bucket = context.parsed.OperationTag;
                 if (null == bucket)
                    context.parsed.OperationTag = bucket = {};
@@ -119,32 +283,90 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "OperationTag", "Asset", fields);
-                base.export_attribute (obj, "OperationTag", "TagAction", fields);
-                base.export_attribute (obj, "OperationTag", "PowerSystemResource", fields);
+                base.export_attribute (obj, "OperationTag", "Asset", "Asset", fields);
+                base.export_attribute (obj, "OperationTag", "TagAction", "TagAction", fields);
+                base.export_attribute (obj, "OperationTag", "PowerSystemResource", "PowerSystemResource", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OperationTag_collapse" aria-expanded="true" aria-controls="OperationTag_collapse">OperationTag</a>
-<div id="OperationTag_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#Asset}}<div><b>Asset</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Asset}}&quot;);})'>{{Asset}}</a></div>{{/Asset}}
-{{#TagAction}}<div><b>TagAction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{TagAction}}&quot;);})'>{{TagAction}}</a></div>{{/TagAction}}
-{{#PowerSystemResource}}<div><b>PowerSystemResource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PowerSystemResource}}&quot;);})'>{{PowerSystemResource}}</a></div>{{/PowerSystemResource}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OperationTag_collapse" aria-expanded="true" aria-controls="OperationTag_collapse" style="margin-left: 10px;">OperationTag</a></legend>
+                    <div id="OperationTag_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#Asset}}<div><b>Asset</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Asset}}&quot;);})'>{{Asset}}</a></div>{{/Asset}}
+                    {{#TagAction}}<div><b>TagAction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{TagAction}}&quot;);})'>{{TagAction}}</a></div>{{/TagAction}}
+                    {{#PowerSystemResource}}<div><b>PowerSystemResource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PowerSystemResource}}&quot;);})'>{{PowerSystemResource}}</a></div>{{/PowerSystemResource}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OperationTag_collapse" aria-expanded="true" aria-controls="{{id}}_OperationTag_collapse" style="margin-left: 10px;">OperationTag</a></legend>
+                    <div id="{{id}}_OperationTag_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Asset'>Asset: </label><div class='col-sm-8'><input id='{{id}}_Asset' class='form-control' type='text'{{#Asset}} value='{{Asset}}'{{/Asset}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TagAction'>TagAction: </label><div class='col-sm-8'><input id='{{id}}_TagAction' class='form-control' type='text'{{#TagAction}} value='{{TagAction}}'{{/TagAction}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PowerSystemResource'>PowerSystemResource: </label><div class='col-sm-8'><input id='{{id}}_PowerSystemResource' class='form-control' type='text'{{#PowerSystemResource}} value='{{PowerSystemResource}}'{{/PowerSystemResource}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OperationTag" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_Asset").value; if ("" != temp) obj.Asset = temp;
+                temp = document.getElementById (id + "_TagAction").value; if ("" != temp) obj.TagAction = temp;
+                temp = document.getElementById (id + "_PowerSystemResource").value; if ("" != temp) obj.PowerSystemResource = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Asset", "0..1", "0..*", "Asset", "OperationTags"],
+                            ["TagAction", "0..1", "0..1", "TagAction", "OperationTag"],
+                            ["PowerSystemResource", "0..1", "0..*", "PowerSystemResource", "OperationTags"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Event recording the change in operational status of a power system resource; may be for an event that has already occurred or for a planned activity.
@@ -155,17 +377,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.PSREvent;
                 if (null == bucket)
                    cim_data.PSREvent = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.PSREvent[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.PSREvent[obj.id];
             }
 
             parse (context, sub)
@@ -174,9 +395,8 @@ define
 
                 obj = Common.ActivityRecord.prototype.parse.call (this, context, sub);
                 obj.cls = "PSREvent";
-                base.parse_element (/<cim:PSREvent.kind>([\s\S]*?)<\/cim:PSREvent.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:PSREvent.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:PSREvent.PowerSystemResource\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PowerSystemResource", sub, context);
-
                 var bucket = context.parsed.PSREvent;
                 if (null == bucket)
                    context.parsed.PSREvent = bucket = {};
@@ -189,30 +409,86 @@ define
             {
                 var fields = Common.ActivityRecord.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "PSREvent", "kind", base.from_string, fields);
-                base.export_attribute (obj, "PSREvent", "PowerSystemResource", fields);
+                base.export_attribute (obj, "PSREvent", "kind", "kind", fields);
+                base.export_attribute (obj, "PSREvent", "PowerSystemResource", "PowerSystemResource", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#PSREvent_collapse" aria-expanded="true" aria-controls="PSREvent_collapse">PSREvent</a>
-<div id="PSREvent_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.ActivityRecord.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#PowerSystemResource}}<div><b>PowerSystemResource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PowerSystemResource}}&quot;);})'>{{PowerSystemResource}}</a></div>{{/PowerSystemResource}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#PSREvent_collapse" aria-expanded="true" aria-controls="PSREvent_collapse" style="margin-left: 10px;">PSREvent</a></legend>
+                    <div id="PSREvent_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.ActivityRecord.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#PowerSystemResource}}<div><b>PowerSystemResource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PowerSystemResource}}&quot;);})'>{{PowerSystemResource}}</a></div>{{/PowerSystemResource}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.PSREventKind = []; if (!obj.kind) obj.PSREventKind.push ({ id: '', selected: true}); for (var property in PSREventKind) obj.PSREventKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.PSREventKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_PSREvent_collapse" aria-expanded="true" aria-controls="{{id}}_PSREvent_collapse" style="margin-left: 10px;">PSREvent</a></legend>
+                    <div id="{{id}}_PSREvent_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.ActivityRecord.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#PSREventKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/PSREventKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PowerSystemResource'>PowerSystemResource: </label><div class='col-sm-8'><input id='{{id}}_PowerSystemResource' class='form-control' type='text'{{#PowerSystemResource}} value='{{PowerSystemResource}}'{{/PowerSystemResource}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "PSREvent" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = PSREventKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#PSREventKind." + temp; }
+                temp = document.getElementById (id + "_PowerSystemResource").value; if ("" != temp) obj.PowerSystemResource = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["PowerSystemResource", "0..1", "0..*", "PowerSystemResource", "PSREvents"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Document describing details of an active or planned outage in a part of the electrical network.
@@ -225,17 +501,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.Outage;
                 if (null == bucket)
                    cim_data.Outage = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.Outage[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.Outage[obj.id];
             }
 
             parse (context, sub)
@@ -251,8 +526,14 @@ define
                 base.parse_element (/<cim:Outage.summary>([\s\S]*?)<\/cim:Outage.summary>/g, obj, "summary", base.to_string, sub, context);
                 base.parse_element (/<cim:Outage.cancelledDateTime>([\s\S]*?)<\/cim:Outage.cancelledDateTime>/g, obj, "cancelledDateTime", base.to_datetime, sub, context);
                 base.parse_attribute (/<cim:Outage.OutageSchedule\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "OutageSchedule", sub, context);
+                base.parse_attributes (/<cim:Outage.PlannedSwitchActions\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PlannedSwitchActions", sub, context);
+                base.parse_attributes (/<cim:Outage.Equipments\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Equipments", sub, context);
+                base.parse_attributes (/<cim:Outage.OpenedSwitches\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "OpenedSwitches", sub, context);
+                base.parse_attributes (/<cim:Outage.Faults\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Faults", sub, context);
+                base.parse_attributes (/<cim:Outage.SwitchingPlans\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingPlans", sub, context);
+                base.parse_attributes (/<cim:Outage.UpdatedRatings\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "UpdatedRatings", sub, context);
+                base.parse_attributes (/<cim:Outage.UsagePoints\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "UsagePoints", sub, context);
                 base.parse_attribute (/<cim:Outage.Incident\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Incident", sub, context);
-
                 var bucket = context.parsed.Outage;
                 if (null == bucket)
                    context.parsed.Outage = bucket = {};
@@ -265,116 +546,148 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "Outage", "cause", base.from_string, fields);
-                base.export_element (obj, "Outage", "estimatedPeriod", base.from_string, fields);
-                base.export_element (obj, "Outage", "isPlanned", base.from_boolean, fields);
-                base.export_element (obj, "Outage", "actualPeriod", base.from_string, fields);
-                base.export_element (obj, "Outage", "summary", base.from_string, fields);
-                base.export_element (obj, "Outage", "cancelledDateTime", base.from_datetime, fields);
-                base.export_attribute (obj, "Outage", "OutageSchedule", fields);
-                base.export_attribute (obj, "Outage", "Incident", fields);
+                base.export_element (obj, "Outage", "cause", "cause",  base.from_string, fields);
+                base.export_element (obj, "Outage", "estimatedPeriod", "estimatedPeriod",  base.from_string, fields);
+                base.export_element (obj, "Outage", "isPlanned", "isPlanned",  base.from_boolean, fields);
+                base.export_element (obj, "Outage", "actualPeriod", "actualPeriod",  base.from_string, fields);
+                base.export_element (obj, "Outage", "summary", "summary",  base.from_string, fields);
+                base.export_element (obj, "Outage", "cancelledDateTime", "cancelledDateTime",  base.from_datetime, fields);
+                base.export_attribute (obj, "Outage", "OutageSchedule", "OutageSchedule", fields);
+                base.export_attributes (obj, "Outage", "PlannedSwitchActions", "PlannedSwitchActions", fields);
+                base.export_attributes (obj, "Outage", "Equipments", "Equipments", fields);
+                base.export_attributes (obj, "Outage", "OpenedSwitches", "OpenedSwitches", fields);
+                base.export_attributes (obj, "Outage", "Faults", "Faults", fields);
+                base.export_attributes (obj, "Outage", "SwitchingPlans", "SwitchingPlans", fields);
+                base.export_attributes (obj, "Outage", "UpdatedRatings", "UpdatedRatings", fields);
+                base.export_attributes (obj, "Outage", "UsagePoints", "UsagePoints", fields);
+                base.export_attribute (obj, "Outage", "Incident", "Incident", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#Outage_collapse" aria-expanded="true" aria-controls="Outage_collapse">Outage</a>
-<div id="Outage_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#cause}}<div><b>cause</b>: {{cause}}</div>{{/cause}}
-{{#estimatedPeriod}}<div><b>estimatedPeriod</b>: {{estimatedPeriod}}</div>{{/estimatedPeriod}}
-{{#isPlanned}}<div><b>isPlanned</b>: {{isPlanned}}</div>{{/isPlanned}}
-{{#actualPeriod}}<div><b>actualPeriod</b>: {{actualPeriod}}</div>{{/actualPeriod}}
-{{#summary}}<div><b>summary</b>: {{summary}}</div>{{/summary}}
-{{#cancelledDateTime}}<div><b>cancelledDateTime</b>: {{cancelledDateTime}}</div>{{/cancelledDateTime}}
-{{#OutageSchedule}}<div><b>OutageSchedule</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OutageSchedule}}&quot;);})'>{{OutageSchedule}}</a></div>{{/OutageSchedule}}
-{{#Incident}}<div><b>Incident</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Incident}}&quot;);})'>{{Incident}}</a></div>{{/Incident}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#Outage_collapse" aria-expanded="true" aria-controls="Outage_collapse" style="margin-left: 10px;">Outage</a></legend>
+                    <div id="Outage_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#cause}}<div><b>cause</b>: {{cause}}</div>{{/cause}}
+                    {{#estimatedPeriod}}<div><b>estimatedPeriod</b>: {{estimatedPeriod}}</div>{{/estimatedPeriod}}
+                    {{#isPlanned}}<div><b>isPlanned</b>: {{isPlanned}}</div>{{/isPlanned}}
+                    {{#actualPeriod}}<div><b>actualPeriod</b>: {{actualPeriod}}</div>{{/actualPeriod}}
+                    {{#summary}}<div><b>summary</b>: {{summary}}</div>{{/summary}}
+                    {{#cancelledDateTime}}<div><b>cancelledDateTime</b>: {{cancelledDateTime}}</div>{{/cancelledDateTime}}
+                    {{#OutageSchedule}}<div><b>OutageSchedule</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OutageSchedule}}&quot;);})'>{{OutageSchedule}}</a></div>{{/OutageSchedule}}
+                    {{#PlannedSwitchActions}}<div><b>PlannedSwitchActions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/PlannedSwitchActions}}
+                    {{#Equipments}}<div><b>Equipments</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Equipments}}
+                    {{#OpenedSwitches}}<div><b>OpenedSwitches</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/OpenedSwitches}}
+                    {{#Faults}}<div><b>Faults</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Faults}}
+                    {{#SwitchingPlans}}<div><b>SwitchingPlans</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/SwitchingPlans}}
+                    {{#UpdatedRatings}}<div><b>UpdatedRatings</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/UpdatedRatings}}
+                    {{#UsagePoints}}<div><b>UsagePoints</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/UsagePoints}}
+                    {{#Incident}}<div><b>Incident</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Incident}}&quot;);})'>{{Incident}}</a></div>{{/Incident}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Kind of action on switch.
-         *
-         */
-        class SwitchActionKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.SwitchActionKind;
-                if (null == bucket)
-                   cim_data.SwitchActionKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.SwitchActionKind[this._id];
+                super.condition (obj);
+                if (obj.PlannedSwitchActions) obj.PlannedSwitchActions_string = obj.PlannedSwitchActions.join ();
+                if (obj.Equipments) obj.Equipments_string = obj.Equipments.join ();
+                if (obj.OpenedSwitches) obj.OpenedSwitches_string = obj.OpenedSwitches.join ();
+                if (obj.Faults) obj.Faults_string = obj.Faults.join ();
+                if (obj.SwitchingPlans) obj.SwitchingPlans_string = obj.SwitchingPlans.join ();
+                if (obj.UpdatedRatings) obj.UpdatedRatings_string = obj.UpdatedRatings.join ();
+                if (obj.UsagePoints) obj.UsagePoints_string = obj.UsagePoints.join ();
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+                delete obj.PlannedSwitchActions_string;
+                delete obj.Equipments_string;
+                delete obj.OpenedSwitches_string;
+                delete obj.Faults_string;
+                delete obj.SwitchingPlans_string;
+                delete obj.UpdatedRatings_string;
+                delete obj.UsagePoints_string;
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "SwitchActionKind";
-                base.parse_element (/<cim:SwitchActionKind.open>([\s\S]*?)<\/cim:SwitchActionKind.open>/g, obj, "open", base.to_string, sub, context);
-                base.parse_element (/<cim:SwitchActionKind.close>([\s\S]*?)<\/cim:SwitchActionKind.close>/g, obj, "close", base.to_string, sub, context);
-                base.parse_element (/<cim:SwitchActionKind.disableReclosing>([\s\S]*?)<\/cim:SwitchActionKind.disableReclosing>/g, obj, "disableReclosing", base.to_string, sub, context);
-                base.parse_element (/<cim:SwitchActionKind.enableReclosing>([\s\S]*?)<\/cim:SwitchActionKind.enableReclosing>/g, obj, "enableReclosing", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_Outage_collapse" aria-expanded="true" aria-controls="{{id}}_Outage_collapse" style="margin-left: 10px;">Outage</a></legend>
+                    <div id="{{id}}_Outage_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_cause'>cause: </label><div class='col-sm-8'><input id='{{id}}_cause' class='form-control' type='text'{{#cause}} value='{{cause}}'{{/cause}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_estimatedPeriod'>estimatedPeriod: </label><div class='col-sm-8'><input id='{{id}}_estimatedPeriod' class='form-control' type='text'{{#estimatedPeriod}} value='{{estimatedPeriod}}'{{/estimatedPeriod}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isPlanned'>isPlanned: </label><div class='col-sm-8'><input id='{{id}}_isPlanned' class='form-check-input' type='checkbox'{{#isPlanned}} checked{{/isPlanned}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_actualPeriod'>actualPeriod: </label><div class='col-sm-8'><input id='{{id}}_actualPeriod' class='form-control' type='text'{{#actualPeriod}} value='{{actualPeriod}}'{{/actualPeriod}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_summary'>summary: </label><div class='col-sm-8'><input id='{{id}}_summary' class='form-control' type='text'{{#summary}} value='{{summary}}'{{/summary}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_cancelledDateTime'>cancelledDateTime: </label><div class='col-sm-8'><input id='{{id}}_cancelledDateTime' class='form-control' type='text'{{#cancelledDateTime}} value='{{cancelledDateTime}}'{{/cancelledDateTime}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_OutageSchedule'>OutageSchedule: </label><div class='col-sm-8'><input id='{{id}}_OutageSchedule' class='form-control' type='text'{{#OutageSchedule}} value='{{OutageSchedule}}'{{/OutageSchedule}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Equipments'>Equipments: </label><div class='col-sm-8'><input id='{{id}}_Equipments' class='form-control' type='text'{{#Equipments}} value='{{Equipments}}_string'{{/Equipments}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints}}_string'{{/UsagePoints}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Incident'>Incident: </label><div class='col-sm-8'><input id='{{id}}_Incident' class='form-control' type='text'{{#Incident}} value='{{Incident}}'{{/Incident}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.SwitchActionKind;
-                if (null == bucket)
-                   context.parsed.SwitchActionKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "Outage" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_cause").value; if ("" != temp) obj.cause = temp;
+                temp = document.getElementById (id + "_estimatedPeriod").value; if ("" != temp) obj.estimatedPeriod = temp;
+                temp = document.getElementById (id + "_isPlanned").checked; if (temp) obj.isPlanned = true;
+                temp = document.getElementById (id + "_actualPeriod").value; if ("" != temp) obj.actualPeriod = temp;
+                temp = document.getElementById (id + "_summary").value; if ("" != temp) obj.summary = temp;
+                temp = document.getElementById (id + "_cancelledDateTime").value; if ("" != temp) obj.cancelledDateTime = temp;
+                temp = document.getElementById (id + "_OutageSchedule").value; if ("" != temp) obj.OutageSchedule = temp;
+                temp = document.getElementById (id + "_Equipments").value; if ("" != temp) obj.Equipments = temp.split (",");
+                temp = document.getElementById (id + "_UsagePoints").value; if ("" != temp) obj.UsagePoints = temp.split (",");
+                temp = document.getElementById (id + "_Incident").value; if ("" != temp) obj.Incident = temp;
 
                 return (obj);
             }
 
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "SwitchActionKind", "open", base.from_string, fields);
-                base.export_element (obj, "SwitchActionKind", "close", base.from_string, fields);
-                base.export_element (obj, "SwitchActionKind", "disableReclosing", base.from_string, fields);
-                base.export_element (obj, "SwitchActionKind", "enableReclosing", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
+            relations ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SwitchActionKind_collapse" aria-expanded="true" aria-controls="SwitchActionKind_collapse">SwitchActionKind</a>
-<div id="SwitchActionKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#open}}<div><b>open</b>: {{open}}</div>{{/open}}
-{{#close}}<div><b>close</b>: {{close}}</div>{{/close}}
-{{#disableReclosing}}<div><b>disableReclosing</b>: {{disableReclosing}}</div>{{/disableReclosing}}
-{{#enableReclosing}}<div><b>enableReclosing</b>: {{enableReclosing}}</div>{{/enableReclosing}}
-</div>
-`
+                    super.relations ().concat (
+                        [
+                            ["OutageSchedule", "0..1", "0..*", "OutageSchedule", "PlannedOutages"],
+                            ["PlannedSwitchActions", "0..*", "0..1", "SwitchAction", "PlannedOutage"],
+                            ["Equipments", "0..*", "0..*", "Equipment", "Outages"],
+                            ["OpenedSwitches", "0..*", "0..1", "Switch", "Outage"],
+                            ["Faults", "0..*", "0..1", "Fault", "Outage"],
+                            ["SwitchingPlans", "0..*", "0..1", "SwitchingPlan", "Outage"],
+                            ["UpdatedRatings", "0..*", "1", "OperationalUpdatedRating", "PlannedOutage"],
+                            ["UsagePoints", "0..*", "0..*", "UsagePoint", "Outages"],
+                            ["Incident", "0..1", "0..1", "Incident", "Outage"]
+                        ]
+                    )
                 );
-           }        }
+            }
+        }
 
         /**
          * Description of a problem in the field that may be reported in a trouble ticket or come from another source.
@@ -387,17 +700,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.Incident;
                 if (null == bucket)
                    cim_data.Incident = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.Incident[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.Incident[obj.id];
             }
 
             parse (context, sub)
@@ -407,9 +719,12 @@ define
                 obj = Common.Document.prototype.parse.call (this, context, sub);
                 obj.cls = "Incident";
                 base.parse_element (/<cim:Incident.cause>([\s\S]*?)<\/cim:Incident.cause>/g, obj, "cause", base.to_string, sub, context);
+                base.parse_attributes (/<cim:Incident.Hazards\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Hazards", sub, context);
                 base.parse_attribute (/<cim:Incident.Owner\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Owner", sub, context);
+                base.parse_attributes (/<cim:Incident.TroubleTickets\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TroubleTickets", sub, context);
+                base.parse_attributes (/<cim:Incident.Works\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Works", sub, context);
+                base.parse_attributes (/<cim:Incident.CustomerNotifications\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "CustomerNotifications", sub, context);
                 base.parse_attribute (/<cim:Incident.Outage\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Outage", sub, context);
-
                 var bucket = context.parsed.Incident;
                 if (null == bucket)
                    context.parsed.Incident = bucket = {};
@@ -422,100 +737,111 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "Incident", "cause", base.from_string, fields);
-                base.export_attribute (obj, "Incident", "Owner", fields);
-                base.export_attribute (obj, "Incident", "Outage", fields);
+                base.export_element (obj, "Incident", "cause", "cause",  base.from_string, fields);
+                base.export_attributes (obj, "Incident", "Hazards", "Hazards", fields);
+                base.export_attribute (obj, "Incident", "Owner", "Owner", fields);
+                base.export_attributes (obj, "Incident", "TroubleTickets", "TroubleTickets", fields);
+                base.export_attributes (obj, "Incident", "Works", "Works", fields);
+                base.export_attributes (obj, "Incident", "CustomerNotifications", "CustomerNotifications", fields);
+                base.export_attribute (obj, "Incident", "Outage", "Outage", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#Incident_collapse" aria-expanded="true" aria-controls="Incident_collapse">Incident</a>
-<div id="Incident_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#cause}}<div><b>cause</b>: {{cause}}</div>{{/cause}}
-{{#Owner}}<div><b>Owner</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Owner}}&quot;);})'>{{Owner}}</a></div>{{/Owner}}
-{{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#Incident_collapse" aria-expanded="true" aria-controls="Incident_collapse" style="margin-left: 10px;">Incident</a></legend>
+                    <div id="Incident_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#cause}}<div><b>cause</b>: {{cause}}</div>{{/cause}}
+                    {{#Hazards}}<div><b>Hazards</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Hazards}}
+                    {{#Owner}}<div><b>Owner</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Owner}}&quot;);})'>{{Owner}}</a></div>{{/Owner}}
+                    {{#TroubleTickets}}<div><b>TroubleTickets</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/TroubleTickets}}
+                    {{#Works}}<div><b>Works</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Works}}
+                    {{#CustomerNotifications}}<div><b>CustomerNotifications</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/CustomerNotifications}}
+                    {{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Kind of action on temporary equipment (such as cut, jumper, ground, energy source).
-         *
-         */
-        class TempEquipActionKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.TempEquipActionKind;
-                if (null == bucket)
-                   cim_data.TempEquipActionKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.TempEquipActionKind[this._id];
+                super.condition (obj);
+                if (obj.Hazards) obj.Hazards_string = obj.Hazards.join ();
+                if (obj.TroubleTickets) obj.TroubleTickets_string = obj.TroubleTickets.join ();
+                if (obj.Works) obj.Works_string = obj.Works.join ();
+                if (obj.CustomerNotifications) obj.CustomerNotifications_string = obj.CustomerNotifications.join ();
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+                delete obj.Hazards_string;
+                delete obj.TroubleTickets_string;
+                delete obj.Works_string;
+                delete obj.CustomerNotifications_string;
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "TempEquipActionKind";
-                base.parse_element (/<cim:TempEquipActionKind.place>([\s\S]*?)<\/cim:TempEquipActionKind.place>/g, obj, "place", base.to_string, sub, context);
-                base.parse_element (/<cim:TempEquipActionKind.remove>([\s\S]*?)<\/cim:TempEquipActionKind.remove>/g, obj, "remove", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_Incident_collapse" aria-expanded="true" aria-controls="{{id}}_Incident_collapse" style="margin-left: 10px;">Incident</a></legend>
+                    <div id="{{id}}_Incident_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_cause'>cause: </label><div class='col-sm-8'><input id='{{id}}_cause' class='form-control' type='text'{{#cause}} value='{{cause}}'{{/cause}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Owner'>Owner: </label><div class='col-sm-8'><input id='{{id}}_Owner' class='form-control' type='text'{{#Owner}} value='{{Owner}}'{{/Owner}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Works'>Works: </label><div class='col-sm-8'><input id='{{id}}_Works' class='form-control' type='text'{{#Works}} value='{{Works}}_string'{{/Works}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Outage'>Outage: </label><div class='col-sm-8'><input id='{{id}}_Outage' class='form-control' type='text'{{#Outage}} value='{{Outage}}'{{/Outage}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.TempEquipActionKind;
-                if (null == bucket)
-                   context.parsed.TempEquipActionKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "Incident" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_cause").value; if ("" != temp) obj.cause = temp;
+                temp = document.getElementById (id + "_Owner").value; if ("" != temp) obj.Owner = temp;
+                temp = document.getElementById (id + "_Works").value; if ("" != temp) obj.Works = temp.split (",");
+                temp = document.getElementById (id + "_Outage").value; if ("" != temp) obj.Outage = temp;
 
                 return (obj);
             }
 
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "TempEquipActionKind", "place", base.from_string, fields);
-                base.export_element (obj, "TempEquipActionKind", "remove", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
+            relations ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#TempEquipActionKind_collapse" aria-expanded="true" aria-controls="TempEquipActionKind_collapse">TempEquipActionKind</a>
-<div id="TempEquipActionKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#place}}<div><b>place</b>: {{place}}</div>{{/place}}
-{{#remove}}<div><b>remove</b>: {{remove}}</div>{{/remove}}
-</div>
-`
+                    super.relations ().concat (
+                        [
+                            ["Hazards", "0..*", "0..1", "IncidentHazard", "Incident"],
+                            ["Owner", "0..1", "0..*", "Operator", "Incidents"],
+                            ["TroubleTickets", "0..*", "0..1", "TroubleTicket", "Incident"],
+                            ["Works", "0..*", "0..*", "Work", "Incidents"],
+                            ["CustomerNotifications", "0..*", "0..1", "CustomerNotification", "Incident"],
+                            ["Outage", "0..1", "0..1", "Outage", "Incident"]
+                        ]
+                    )
                 );
-           }        }
+            }
+        }
 
         /**
          * A document that can be associated with equipment to describe any sort of restrictions compared with the original manufacturer's specification or with the usual operational practice e.g. temporary maximum loadings, maximum switching current, do not operate if bus couplers are open, etc.
@@ -528,17 +854,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OperationalRestriction;
                 if (null == bucket)
                    cim_data.OperationalRestriction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OperationalRestriction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OperationalRestriction[obj.id];
             }
 
             parse (context, sub)
@@ -549,8 +874,8 @@ define
                 obj.cls = "OperationalRestriction";
                 base.parse_element (/<cim:OperationalRestriction.activePeriod>([\s\S]*?)<\/cim:OperationalRestriction.activePeriod>/g, obj, "activePeriod", base.to_string, sub, context);
                 base.parse_element (/<cim:OperationalRestriction.restrictedValue>([\s\S]*?)<\/cim:OperationalRestriction.restrictedValue>/g, obj, "restrictedValue", base.to_string, sub, context);
+                base.parse_attributes (/<cim:OperationalRestriction.Equipments\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Equipments", sub, context);
                 base.parse_attribute (/<cim:OperationalRestriction.ProductAssetModel\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ProductAssetModel", sub, context);
-
                 var bucket = context.parsed.OperationalRestriction;
                 if (null == bucket)
                    context.parsed.OperationalRestriction = bucket = {};
@@ -563,103 +888,95 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OperationalRestriction", "activePeriod", base.from_string, fields);
-                base.export_element (obj, "OperationalRestriction", "restrictedValue", base.from_string, fields);
-                base.export_attribute (obj, "OperationalRestriction", "ProductAssetModel", fields);
+                base.export_element (obj, "OperationalRestriction", "activePeriod", "activePeriod",  base.from_string, fields);
+                base.export_element (obj, "OperationalRestriction", "restrictedValue", "restrictedValue",  base.from_string, fields);
+                base.export_attributes (obj, "OperationalRestriction", "Equipments", "Equipments", fields);
+                base.export_attribute (obj, "OperationalRestriction", "ProductAssetModel", "ProductAssetModel", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OperationalRestriction_collapse" aria-expanded="true" aria-controls="OperationalRestriction_collapse">OperationalRestriction</a>
-<div id="OperationalRestriction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#activePeriod}}<div><b>activePeriod</b>: {{activePeriod}}</div>{{/activePeriod}}
-{{#restrictedValue}}<div><b>restrictedValue</b>: {{restrictedValue}}</div>{{/restrictedValue}}
-{{#ProductAssetModel}}<div><b>ProductAssetModel</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ProductAssetModel}}&quot;);})'>{{ProductAssetModel}}</a></div>{{/ProductAssetModel}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OperationalRestriction_collapse" aria-expanded="true" aria-controls="OperationalRestriction_collapse" style="margin-left: 10px;">OperationalRestriction</a></legend>
+                    <div id="OperationalRestriction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#activePeriod}}<div><b>activePeriod</b>: {{activePeriod}}</div>{{/activePeriod}}
+                    {{#restrictedValue}}<div><b>restrictedValue</b>: {{restrictedValue}}</div>{{/restrictedValue}}
+                    {{#Equipments}}<div><b>Equipments</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Equipments}}
+                    {{#ProductAssetModel}}<div><b>ProductAssetModel</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ProductAssetModel}}&quot;);})'>{{ProductAssetModel}}</a></div>{{/ProductAssetModel}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Type of clearance action.
-         *
-         */
-        class ClearanceActionKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.ClearanceActionKind;
-                if (null == bucket)
-                   cim_data.ClearanceActionKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.ClearanceActionKind[this._id];
+                super.condition (obj);
+                if (obj.Equipments) obj.Equipments_string = obj.Equipments.join ();
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+                delete obj.Equipments_string;
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "ClearanceActionKind";
-                base.parse_element (/<cim:ClearanceActionKind.issue>([\s\S]*?)<\/cim:ClearanceActionKind.issue>/g, obj, "issue", base.to_string, sub, context);
-                base.parse_element (/<cim:ClearanceActionKind.update>([\s\S]*?)<\/cim:ClearanceActionKind.update>/g, obj, "update", base.to_string, sub, context);
-                base.parse_element (/<cim:ClearanceActionKind.release>([\s\S]*?)<\/cim:ClearanceActionKind.release>/g, obj, "release", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OperationalRestriction_collapse" aria-expanded="true" aria-controls="{{id}}_OperationalRestriction_collapse" style="margin-left: 10px;">OperationalRestriction</a></legend>
+                    <div id="{{id}}_OperationalRestriction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_activePeriod'>activePeriod: </label><div class='col-sm-8'><input id='{{id}}_activePeriod' class='form-control' type='text'{{#activePeriod}} value='{{activePeriod}}'{{/activePeriod}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_restrictedValue'>restrictedValue: </label><div class='col-sm-8'><input id='{{id}}_restrictedValue' class='form-control' type='text'{{#restrictedValue}} value='{{restrictedValue}}'{{/restrictedValue}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Equipments'>Equipments: </label><div class='col-sm-8'><input id='{{id}}_Equipments' class='form-control' type='text'{{#Equipments}} value='{{Equipments}}_string'{{/Equipments}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ProductAssetModel'>ProductAssetModel: </label><div class='col-sm-8'><input id='{{id}}_ProductAssetModel' class='form-control' type='text'{{#ProductAssetModel}} value='{{ProductAssetModel}}'{{/ProductAssetModel}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.ClearanceActionKind;
-                if (null == bucket)
-                   context.parsed.ClearanceActionKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OperationalRestriction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_activePeriod").value; if ("" != temp) obj.activePeriod = temp;
+                temp = document.getElementById (id + "_restrictedValue").value; if ("" != temp) obj.restrictedValue = temp;
+                temp = document.getElementById (id + "_Equipments").value; if ("" != temp) obj.Equipments = temp.split (",");
+                temp = document.getElementById (id + "_ProductAssetModel").value; if ("" != temp) obj.ProductAssetModel = temp;
 
                 return (obj);
             }
 
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "ClearanceActionKind", "issue", base.from_string, fields);
-                base.export_element (obj, "ClearanceActionKind", "update", base.from_string, fields);
-                base.export_element (obj, "ClearanceActionKind", "release", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
+            relations ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ClearanceActionKind_collapse" aria-expanded="true" aria-controls="ClearanceActionKind_collapse">ClearanceActionKind</a>
-<div id="ClearanceActionKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#issue}}<div><b>issue</b>: {{issue}}</div>{{/issue}}
-{{#update}}<div><b>update</b>: {{update}}</div>{{/update}}
-{{#release}}<div><b>release</b>: {{release}}</div>{{/release}}
-</div>
-`
+                    super.relations ().concat (
+                        [
+                            ["Equipments", "0..*", "0..*", "Equipment", "OperationalRestrictions"],
+                            ["ProductAssetModel", "0..1", "0..*", "ProductAssetModel", "OperationalRestrictions"]
+                        ]
+                    )
                 );
-           }        }
+            }
+        }
 
         /**
          * Document restricting or authorising works on electrical equipment (for example a permit to work, sanction for test, limitation of access, or certificate of isolation), defined based upon organisational practices.
@@ -670,17 +987,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SafetyDocument;
                 if (null == bucket)
                    cim_data.SafetyDocument = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SafetyDocument[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SafetyDocument[obj.id];
             }
 
             parse (context, sub)
@@ -690,7 +1006,6 @@ define
                 obj = Common.Document.prototype.parse.call (this, context, sub);
                 obj.cls = "SafetyDocument";
                 base.parse_attribute (/<cim:SafetyDocument.SwitchingPlan\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingPlan", sub, context);
-
                 var bucket = context.parsed.SafetyDocument;
                 if (null == bucket)
                    context.parsed.SafetyDocument = bucket = {};
@@ -703,28 +1018,80 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "SafetyDocument", "SwitchingPlan", fields);
+                base.export_attribute (obj, "SafetyDocument", "SwitchingPlan", "SwitchingPlan", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SafetyDocument_collapse" aria-expanded="true" aria-controls="SafetyDocument_collapse">SafetyDocument</a>
-<div id="SafetyDocument_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-{{#SwitchingPlan}}<div><b>SwitchingPlan</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingPlan}}&quot;);})'>{{SwitchingPlan}}</a></div>{{/SwitchingPlan}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SafetyDocument_collapse" aria-expanded="true" aria-controls="SafetyDocument_collapse" style="margin-left: 10px;">SafetyDocument</a></legend>
+                    <div id="SafetyDocument_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#SwitchingPlan}}<div><b>SwitchingPlan</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingPlan}}&quot;);})'>{{SwitchingPlan}}</a></div>{{/SwitchingPlan}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SafetyDocument_collapse" aria-expanded="true" aria-controls="{{id}}_SafetyDocument_collapse" style="margin-left: 10px;">SafetyDocument</a></legend>
+                    <div id="{{id}}_SafetyDocument_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingPlan'>SwitchingPlan: </label><div class='col-sm-8'><input id='{{id}}_SwitchingPlan' class='form-control' type='text'{{#SwitchingPlan}} value='{{SwitchingPlan}}'{{/SwitchingPlan}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SafetyDocument" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_SwitchingPlan").value; if ("" != temp) obj.SwitchingPlan = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["SwitchingPlan", "0..1", "0..*", "SwitchingPlan", "SafetyDocuments"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Summary counts of service points affected by an outage.
@@ -737,17 +1104,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.ServicePointOutageSummary;
                 if (null == bucket)
                    cim_data.ServicePointOutageSummary = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.ServicePointOutageSummary[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.ServicePointOutageSummary[obj.id];
             }
 
             parse (context, sub)
@@ -758,7 +1124,6 @@ define
                 obj.cls = "ServicePointOutageSummary";
                 base.parse_element (/<cim:ServicePointOutageSummary.criticalCount>([\s\S]*?)<\/cim:ServicePointOutageSummary.criticalCount>/g, obj, "criticalCount", base.to_string, sub, context);
                 base.parse_element (/<cim:ServicePointOutageSummary.totalCount>([\s\S]*?)<\/cim:ServicePointOutageSummary.totalCount>/g, obj, "totalCount", base.to_string, sub, context);
-
                 var bucket = context.parsed.ServicePointOutageSummary;
                 if (null == bucket)
                    context.parsed.ServicePointOutageSummary = bucket = {};
@@ -771,113 +1136,73 @@ define
             {
                 var fields = [];
 
-                base.export_element (obj, "ServicePointOutageSummary", "criticalCount", base.from_string, fields);
-                base.export_element (obj, "ServicePointOutageSummary", "totalCount", base.from_string, fields);
+                base.export_element (obj, "ServicePointOutageSummary", "criticalCount", "criticalCount",  base.from_string, fields);
+                base.export_element (obj, "ServicePointOutageSummary", "totalCount", "totalCount",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ServicePointOutageSummary_collapse" aria-expanded="true" aria-controls="ServicePointOutageSummary_collapse">ServicePointOutageSummary</a>
-<div id="ServicePointOutageSummary_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#criticalCount}}<div><b>criticalCount</b>: {{criticalCount}}</div>{{/criticalCount}}
-{{#totalCount}}<div><b>totalCount</b>: {{totalCount}}</div>{{/totalCount}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#ServicePointOutageSummary_collapse" aria-expanded="true" aria-controls="ServicePointOutageSummary_collapse" style="margin-left: 10px;">ServicePointOutageSummary</a></legend>
+                    <div id="ServicePointOutageSummary_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.template.call (this) +
+                    `
+                    {{#criticalCount}}<div><b>criticalCount</b>: {{criticalCount}}</div>{{/criticalCount}}
+                    {{#totalCount}}<div><b>totalCount</b>: {{totalCount}}</div>{{/totalCount}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Kind of power system resource event.
-         *
-         */
-        class PSREventKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.PSREventKind;
-                if (null == bucket)
-                   cim_data.PSREventKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.PSREventKind[this._id];
+                super.condition (obj);
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "PSREventKind";
-                base.parse_element (/<cim:PSREventKind.inService>([\s\S]*?)<\/cim:PSREventKind.inService>/g, obj, "inService", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.outOfService>([\s\S]*?)<\/cim:PSREventKind.outOfService>/g, obj, "outOfService", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.pendingAdd>([\s\S]*?)<\/cim:PSREventKind.pendingAdd>/g, obj, "pendingAdd", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.pendingRemove>([\s\S]*?)<\/cim:PSREventKind.pendingRemove>/g, obj, "pendingRemove", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.pendingReplace>([\s\S]*?)<\/cim:PSREventKind.pendingReplace>/g, obj, "pendingReplace", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.other>([\s\S]*?)<\/cim:PSREventKind.other>/g, obj, "other", base.to_string, sub, context);
-                base.parse_element (/<cim:PSREventKind.unknown>([\s\S]*?)<\/cim:PSREventKind.unknown>/g, obj, "unknown", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_ServicePointOutageSummary_collapse" aria-expanded="true" aria-controls="{{id}}_ServicePointOutageSummary_collapse" style="margin-left: 10px;">ServicePointOutageSummary</a></legend>
+                    <div id="{{id}}_ServicePointOutageSummary_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_criticalCount'>criticalCount: </label><div class='col-sm-8'><input id='{{id}}_criticalCount' class='form-control' type='text'{{#criticalCount}} value='{{criticalCount}}'{{/criticalCount}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_totalCount'>totalCount: </label><div class='col-sm-8'><input id='{{id}}_totalCount' class='form-control' type='text'{{#totalCount}} value='{{totalCount}}'{{/totalCount}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.PSREventKind;
-                if (null == bucket)
-                   context.parsed.PSREventKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "ServicePointOutageSummary" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_criticalCount").value; if ("" != temp) obj.criticalCount = temp;
+                temp = document.getElementById (id + "_totalCount").value; if ("" != temp) obj.totalCount = temp;
 
                 return (obj);
             }
-
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "PSREventKind", "inService", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "outOfService", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "pendingAdd", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "pendingRemove", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "pendingReplace", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "other", base.from_string, fields);
-                base.export_element (obj, "PSREventKind", "unknown", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
-            {
-                return (
-`
-<a data-toggle="collapse" href="#PSREventKind_collapse" aria-expanded="true" aria-controls="PSREventKind_collapse">PSREventKind</a>
-<div id="PSREventKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#inService}}<div><b>inService</b>: {{inService}}</div>{{/inService}}
-{{#outOfService}}<div><b>outOfService</b>: {{outOfService}}</div>{{/outOfService}}
-{{#pendingAdd}}<div><b>pendingAdd</b>: {{pendingAdd}}</div>{{/pendingAdd}}
-{{#pendingRemove}}<div><b>pendingRemove</b>: {{pendingRemove}}</div>{{/pendingRemove}}
-{{#pendingReplace}}<div><b>pendingReplace</b>: {{pendingReplace}}</div>{{/pendingReplace}}
-{{#other}}<div><b>other</b>: {{other}}</div>{{/other}}
-{{#unknown}}<div><b>unknown</b>: {{unknown}}</div>{{/unknown}}
-</div>
-`
-                );
-           }        }
+        }
 
         /**
          * Document containing the definition of planned outages of equipment and/or service (delivery) points (sometimes referred to as customers).
@@ -890,17 +1215,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OutageSchedule;
                 if (null == bucket)
                    cim_data.OutageSchedule = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OutageSchedule[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OutageSchedule[obj.id];
             }
 
             parse (context, sub)
@@ -909,7 +1233,7 @@ define
 
                 obj = Common.Document.prototype.parse.call (this, context, sub);
                 obj.cls = "OutageSchedule";
-
+                base.parse_attributes (/<cim:OutageSchedule.PlannedOutages\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PlannedOutages", sub, context);
                 var bucket = context.parsed.OutageSchedule;
                 if (null == bucket)
                    context.parsed.OutageSchedule = bucket = {};
@@ -922,97 +1246,78 @@ define
             {
                 var fields = Common.Document.prototype.export.call (this, obj, false);
 
+                base.export_attributes (obj, "OutageSchedule", "PlannedOutages", "PlannedOutages", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OutageSchedule_collapse" aria-expanded="true" aria-controls="OutageSchedule_collapse">OutageSchedule</a>
-<div id="OutageSchedule_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Document.prototype.template.call (this) +
-`
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OutageSchedule_collapse" aria-expanded="true" aria-controls="OutageSchedule_collapse" style="margin-left: 10px;">OutageSchedule</a></legend>
+                    <div id="OutageSchedule_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.template.call (this) +
+                    `
+                    {{#PlannedOutages}}<div><b>PlannedOutages</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/PlannedOutages}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Kind of action on tag.
-         *
-         */
-        class TagActionKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.TagActionKind;
-                if (null == bucket)
-                   cim_data.TagActionKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.TagActionKind[this._id];
+                super.condition (obj);
+                if (obj.PlannedOutages) obj.PlannedOutages_string = obj.PlannedOutages.join ();
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+                delete obj.PlannedOutages_string;
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "TagActionKind";
-                base.parse_element (/<cim:TagActionKind.place>([\s\S]*?)<\/cim:TagActionKind.place>/g, obj, "place", base.to_string, sub, context);
-                base.parse_element (/<cim:TagActionKind.remove>([\s\S]*?)<\/cim:TagActionKind.remove>/g, obj, "remove", base.to_string, sub, context);
-                base.parse_element (/<cim:TagActionKind.verify>([\s\S]*?)<\/cim:TagActionKind.verify>/g, obj, "verify", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OutageSchedule_collapse" aria-expanded="true" aria-controls="{{id}}_OutageSchedule_collapse" style="margin-left: 10px;">OutageSchedule</a></legend>
+                    <div id="{{id}}_OutageSchedule_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Document.prototype.edit_template.call (this) +
+                    `
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.TagActionKind;
-                if (null == bucket)
-                   context.parsed.TagActionKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var obj = obj || { id: id, cls: "OutageSchedule" };
+                super.submit (id, obj);
 
                 return (obj);
             }
 
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "TagActionKind", "place", base.from_string, fields);
-                base.export_element (obj, "TagActionKind", "remove", base.from_string, fields);
-                base.export_element (obj, "TagActionKind", "verify", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
+            relations ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#TagActionKind_collapse" aria-expanded="true" aria-controls="TagActionKind_collapse">TagActionKind</a>
-<div id="TagActionKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#place}}<div><b>place</b>: {{place}}</div>{{/place}}
-{{#remove}}<div><b>remove</b>: {{remove}}</div>{{/remove}}
-{{#verify}}<div><b>verify</b>: {{verify}}</div>{{/verify}}
-</div>
-`
+                    super.relations ().concat (
+                        [
+                            ["PlannedOutages", "0..*", "0..1", "Outage", "OutageSchedule"]
+                        ]
+                    )
                 );
-           }        }
+            }
+        }
 
         /**
          * Atomic switching step; can be part of a switching step group, or of the switching plan.
@@ -1023,17 +1328,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SwitchingStep;
                 if (null == bucket)
                    cim_data.SwitchingStep = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SwitchingStep[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SwitchingStep[obj.id];
             }
 
             parse (context, sub)
@@ -1049,7 +1353,6 @@ define
                 base.parse_element (/<cim:SwitchingStep.sequenceNumber>([\s\S]*?)<\/cim:SwitchingStep.sequenceNumber>/g, obj, "sequenceNumber", base.to_string, sub, context);
                 base.parse_attribute (/<cim:SwitchingStep.CrewMember\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "CrewMember", sub, context);
                 base.parse_attribute (/<cim:SwitchingStep.Operator\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Operator", sub, context);
-
                 var bucket = context.parsed.SwitchingStep;
                 if (null == bucket)
                    context.parsed.SwitchingStep = bucket = {};
@@ -1062,40 +1365,105 @@ define
             {
                 var fields = [];
 
-                base.export_element (obj, "SwitchingStep", "executedDateTime", base.from_datetime, fields);
-                base.export_element (obj, "SwitchingStep", "plannedDateTime", base.from_datetime, fields);
-                base.export_element (obj, "SwitchingStep", "description", base.from_string, fields);
-                base.export_element (obj, "SwitchingStep", "isFreeSequence", base.from_boolean, fields);
-                base.export_element (obj, "SwitchingStep", "sequenceNumber", base.from_string, fields);
-                base.export_attribute (obj, "SwitchingStep", "CrewMember", fields);
-                base.export_attribute (obj, "SwitchingStep", "Operator", fields);
+                base.export_element (obj, "SwitchingStep", "executedDateTime", "executedDateTime",  base.from_datetime, fields);
+                base.export_element (obj, "SwitchingStep", "plannedDateTime", "plannedDateTime",  base.from_datetime, fields);
+                base.export_element (obj, "SwitchingStep", "description", "description",  base.from_string, fields);
+                base.export_element (obj, "SwitchingStep", "isFreeSequence", "isFreeSequence",  base.from_boolean, fields);
+                base.export_element (obj, "SwitchingStep", "sequenceNumber", "sequenceNumber",  base.from_string, fields);
+                base.export_attribute (obj, "SwitchingStep", "CrewMember", "CrewMember", fields);
+                base.export_attribute (obj, "SwitchingStep", "Operator", "Operator", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SwitchingStep_collapse" aria-expanded="true" aria-controls="SwitchingStep_collapse">SwitchingStep</a>
-<div id="SwitchingStep_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#executedDateTime}}<div><b>executedDateTime</b>: {{executedDateTime}}</div>{{/executedDateTime}}
-{{#plannedDateTime}}<div><b>plannedDateTime</b>: {{plannedDateTime}}</div>{{/plannedDateTime}}
-{{#description}}<div><b>description</b>: {{description}}</div>{{/description}}
-{{#isFreeSequence}}<div><b>isFreeSequence</b>: {{isFreeSequence}}</div>{{/isFreeSequence}}
-{{#sequenceNumber}}<div><b>sequenceNumber</b>: {{sequenceNumber}}</div>{{/sequenceNumber}}
-{{#CrewMember}}<div><b>CrewMember</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{CrewMember}}&quot;);})'>{{CrewMember}}</a></div>{{/CrewMember}}
-{{#Operator}}<div><b>Operator</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Operator}}&quot;);})'>{{Operator}}</a></div>{{/Operator}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SwitchingStep_collapse" aria-expanded="true" aria-controls="SwitchingStep_collapse" style="margin-left: 10px;">SwitchingStep</a></legend>
+                    <div id="SwitchingStep_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.template.call (this) +
+                    `
+                    {{#executedDateTime}}<div><b>executedDateTime</b>: {{executedDateTime}}</div>{{/executedDateTime}}
+                    {{#plannedDateTime}}<div><b>plannedDateTime</b>: {{plannedDateTime}}</div>{{/plannedDateTime}}
+                    {{#description}}<div><b>description</b>: {{description}}</div>{{/description}}
+                    {{#isFreeSequence}}<div><b>isFreeSequence</b>: {{isFreeSequence}}</div>{{/isFreeSequence}}
+                    {{#sequenceNumber}}<div><b>sequenceNumber</b>: {{sequenceNumber}}</div>{{/sequenceNumber}}
+                    {{#CrewMember}}<div><b>CrewMember</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{CrewMember}}&quot;);})'>{{CrewMember}}</a></div>{{/CrewMember}}
+                    {{#Operator}}<div><b>Operator</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Operator}}&quot;);})'>{{Operator}}</a></div>{{/Operator}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SwitchingStep_collapse" aria-expanded="true" aria-controls="{{id}}_SwitchingStep_collapse" style="margin-left: 10px;">SwitchingStep</a></legend>
+                    <div id="{{id}}_SwitchingStep_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_executedDateTime'>executedDateTime: </label><div class='col-sm-8'><input id='{{id}}_executedDateTime' class='form-control' type='text'{{#executedDateTime}} value='{{executedDateTime}}'{{/executedDateTime}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_plannedDateTime'>plannedDateTime: </label><div class='col-sm-8'><input id='{{id}}_plannedDateTime' class='form-control' type='text'{{#plannedDateTime}} value='{{plannedDateTime}}'{{/plannedDateTime}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_description'>description: </label><div class='col-sm-8'><input id='{{id}}_description' class='form-control' type='text'{{#description}} value='{{description}}'{{/description}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isFreeSequence'>isFreeSequence: </label><div class='col-sm-8'><input id='{{id}}_isFreeSequence' class='form-check-input' type='checkbox'{{#isFreeSequence}} checked{{/isFreeSequence}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_sequenceNumber'>sequenceNumber: </label><div class='col-sm-8'><input id='{{id}}_sequenceNumber' class='form-control' type='text'{{#sequenceNumber}} value='{{sequenceNumber}}'{{/sequenceNumber}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_CrewMember'>CrewMember: </label><div class='col-sm-8'><input id='{{id}}_CrewMember' class='form-control' type='text'{{#CrewMember}} value='{{CrewMember}}'{{/CrewMember}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Operator'>Operator: </label><div class='col-sm-8'><input id='{{id}}_Operator' class='form-control' type='text'{{#Operator}} value='{{Operator}}'{{/Operator}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SwitchingStep" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_executedDateTime").value; if ("" != temp) obj.executedDateTime = temp;
+                temp = document.getElementById (id + "_plannedDateTime").value; if ("" != temp) obj.plannedDateTime = temp;
+                temp = document.getElementById (id + "_description").value; if ("" != temp) obj.description = temp;
+                temp = document.getElementById (id + "_isFreeSequence").checked; if (temp) obj.isFreeSequence = true;
+                temp = document.getElementById (id + "_sequenceNumber").value; if ("" != temp) obj.sequenceNumber = temp;
+                temp = document.getElementById (id + "_CrewMember").value; if ("" != temp) obj.CrewMember = temp;
+                temp = document.getElementById (id + "_Operator").value; if ("" != temp) obj.Operator = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["CrewMember", "0..1", "0..*", "CrewMember", "SwitchingSteps"],
+                            ["Operator", "0..1", "0..*", "Operator", "SwitchingSteps"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * A sequence of grouped or atomic steps intended to:
@@ -1109,17 +1477,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SwitchingPlan;
                 if (null == bucket)
                    cim_data.SwitchingPlan = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SwitchingPlan[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SwitchingPlan[obj.id];
             }
 
             parse (context, sub)
@@ -1130,8 +1497,10 @@ define
                 obj.cls = "SwitchingPlan";
                 base.parse_element (/<cim:SwitchingPlan.rank>([\s\S]*?)<\/cim:SwitchingPlan.rank>/g, obj, "rank", base.to_string, sub, context);
                 base.parse_element (/<cim:SwitchingPlan.purpose>([\s\S]*?)<\/cim:SwitchingPlan.purpose>/g, obj, "purpose", base.to_string, sub, context);
+                base.parse_attributes (/<cim:SwitchingPlan.SafetyDocuments\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SafetyDocuments", sub, context);
                 base.parse_attribute (/<cim:SwitchingPlan.Outage\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Outage", sub, context);
-
+                base.parse_attributes (/<cim:SwitchingPlan.SwitchingStepGroups\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroups", sub, context);
+                base.parse_attributes (/<cim:SwitchingPlan.WorkTasks\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "WorkTasks", sub, context);
                 var bucket = context.parsed.SwitchingPlan;
                 if (null == bucket)
                    context.parsed.SwitchingPlan = bucket = {};
@@ -1144,32 +1513,103 @@ define
             {
                 var fields = SwitchingStepGroup.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SwitchingPlan", "rank", base.from_string, fields);
-                base.export_element (obj, "SwitchingPlan", "purpose", base.from_string, fields);
-                base.export_attribute (obj, "SwitchingPlan", "Outage", fields);
+                base.export_element (obj, "SwitchingPlan", "rank", "rank",  base.from_string, fields);
+                base.export_element (obj, "SwitchingPlan", "purpose", "purpose",  base.from_string, fields);
+                base.export_attributes (obj, "SwitchingPlan", "SafetyDocuments", "SafetyDocuments", fields);
+                base.export_attribute (obj, "SwitchingPlan", "Outage", "Outage", fields);
+                base.export_attributes (obj, "SwitchingPlan", "SwitchingStepGroups", "SwitchingStepGroups", fields);
+                base.export_attributes (obj, "SwitchingPlan", "WorkTasks", "WorkTasks", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SwitchingPlan_collapse" aria-expanded="true" aria-controls="SwitchingPlan_collapse">SwitchingPlan</a>
-<div id="SwitchingPlan_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStepGroup.prototype.template.call (this) +
-`
-{{#rank}}<div><b>rank</b>: {{rank}}</div>{{/rank}}
-{{#purpose}}<div><b>purpose</b>: {{purpose}}</div>{{/purpose}}
-{{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SwitchingPlan_collapse" aria-expanded="true" aria-controls="SwitchingPlan_collapse" style="margin-left: 10px;">SwitchingPlan</a></legend>
+                    <div id="SwitchingPlan_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStepGroup.prototype.template.call (this) +
+                    `
+                    {{#rank}}<div><b>rank</b>: {{rank}}</div>{{/rank}}
+                    {{#purpose}}<div><b>purpose</b>: {{purpose}}</div>{{/purpose}}
+                    {{#SafetyDocuments}}<div><b>SafetyDocuments</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/SafetyDocuments}}
+                    {{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
+                    {{#SwitchingStepGroups}}<div><b>SwitchingStepGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/SwitchingStepGroups}}
+                    {{#WorkTasks}}<div><b>WorkTasks</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/WorkTasks}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.SafetyDocuments) obj.SafetyDocuments_string = obj.SafetyDocuments.join ();
+                if (obj.SwitchingStepGroups) obj.SwitchingStepGroups_string = obj.SwitchingStepGroups.join ();
+                if (obj.WorkTasks) obj.WorkTasks_string = obj.WorkTasks.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.SafetyDocuments_string;
+                delete obj.SwitchingStepGroups_string;
+                delete obj.WorkTasks_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SwitchingPlan_collapse" aria-expanded="true" aria-controls="{{id}}_SwitchingPlan_collapse" style="margin-left: 10px;">SwitchingPlan</a></legend>
+                    <div id="{{id}}_SwitchingPlan_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStepGroup.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rank'>rank: </label><div class='col-sm-8'><input id='{{id}}_rank' class='form-control' type='text'{{#rank}} value='{{rank}}'{{/rank}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_purpose'>purpose: </label><div class='col-sm-8'><input id='{{id}}_purpose' class='form-control' type='text'{{#purpose}} value='{{purpose}}'{{/purpose}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Outage'>Outage: </label><div class='col-sm-8'><input id='{{id}}_Outage' class='form-control' type='text'{{#Outage}} value='{{Outage}}'{{/Outage}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SwitchingPlan" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_rank").value; if ("" != temp) obj.rank = temp;
+                temp = document.getElementById (id + "_purpose").value; if ("" != temp) obj.purpose = temp;
+                temp = document.getElementById (id + "_Outage").value; if ("" != temp) obj.Outage = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["SafetyDocuments", "0..*", "0..1", "SafetyDocument", "SwitchingPlan"],
+                            ["Outage", "0..1", "0..*", "Outage", "SwitchingPlans"],
+                            ["SwitchingStepGroups", "0..*", "0..1", "SwitchingStepGroup", "SwitchingPlan"],
+                            ["WorkTasks", "0..*", "0..1", "WorkTask", "SwitchingPlan"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Lowered capability because of deterioration or inadequacy (sometimes referred to as derating or partial outage) or other kind of operational rating change.
@@ -1180,17 +1620,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OperationalUpdatedRating;
                 if (null == bucket)
                    cim_data.OperationalUpdatedRating = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OperationalUpdatedRating[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OperationalUpdatedRating[obj.id];
             }
 
             parse (context, sub)
@@ -1201,7 +1640,6 @@ define
                 obj.cls = "OperationalUpdatedRating";
                 base.parse_element (/<cim:OperationalUpdatedRating.changeType>([\s\S]*?)<\/cim:OperationalUpdatedRating.changeType>/g, obj, "changeType", base.to_string, sub, context);
                 base.parse_attribute (/<cim:OperationalUpdatedRating.PlannedOutage\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PlannedOutage", sub, context);
-
                 var bucket = context.parsed.OperationalUpdatedRating;
                 if (null == bucket)
                    context.parsed.OperationalUpdatedRating = bucket = {};
@@ -1214,30 +1652,84 @@ define
             {
                 var fields = OperationalRestriction.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OperationalUpdatedRating", "changeType", base.from_string, fields);
-                base.export_attribute (obj, "OperationalUpdatedRating", "PlannedOutage", fields);
+                base.export_element (obj, "OperationalUpdatedRating", "changeType", "changeType",  base.from_string, fields);
+                base.export_attribute (obj, "OperationalUpdatedRating", "PlannedOutage", "PlannedOutage", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OperationalUpdatedRating_collapse" aria-expanded="true" aria-controls="OperationalUpdatedRating_collapse">OperationalUpdatedRating</a>
-<div id="OperationalUpdatedRating_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + OperationalRestriction.prototype.template.call (this) +
-`
-{{#changeType}}<div><b>changeType</b>: {{changeType}}</div>{{/changeType}}
-{{#PlannedOutage}}<div><b>PlannedOutage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PlannedOutage}}&quot;);})'>{{PlannedOutage}}</a></div>{{/PlannedOutage}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OperationalUpdatedRating_collapse" aria-expanded="true" aria-controls="OperationalUpdatedRating_collapse" style="margin-left: 10px;">OperationalUpdatedRating</a></legend>
+                    <div id="OperationalUpdatedRating_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OperationalRestriction.prototype.template.call (this) +
+                    `
+                    {{#changeType}}<div><b>changeType</b>: {{changeType}}</div>{{/changeType}}
+                    {{#PlannedOutage}}<div><b>PlannedOutage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PlannedOutage}}&quot;);})'>{{PlannedOutage}}</a></div>{{/PlannedOutage}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OperationalUpdatedRating_collapse" aria-expanded="true" aria-controls="{{id}}_OperationalUpdatedRating_collapse" style="margin-left: 10px;">OperationalUpdatedRating</a></legend>
+                    <div id="{{id}}_OperationalUpdatedRating_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OperationalRestriction.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_changeType'>changeType: </label><div class='col-sm-8'><input id='{{id}}_changeType' class='form-control' type='text'{{#changeType}} value='{{changeType}}'{{/changeType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PlannedOutage'>PlannedOutage: </label><div class='col-sm-8'><input id='{{id}}_PlannedOutage' class='form-control' type='text'{{#PlannedOutage}} value='{{PlannedOutage}}'{{/PlannedOutage}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OperationalUpdatedRating" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_changeType").value; if ("" != temp) obj.changeType = temp;
+                temp = document.getElementById (id + "_PlannedOutage").value; if ("" != temp) obj.PlannedOutage = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["PlannedOutage", "1", "0..*", "Outage", "UpdatedRatings"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Safety document used to authorise work on conducting equipment in the field.
@@ -1250,17 +1742,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.ClearanceDocument;
                 if (null == bucket)
                    cim_data.ClearanceDocument = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.ClearanceDocument[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.ClearanceDocument[obj.id];
             }
 
             parse (context, sub)
@@ -1271,8 +1762,8 @@ define
                 obj.cls = "ClearanceDocument";
                 base.parse_element (/<cim:ClearanceDocument.mustBeDeenergised>([\s\S]*?)<\/cim:ClearanceDocument.mustBeDeenergised>/g, obj, "mustBeDeenergised", base.to_boolean, sub, context);
                 base.parse_element (/<cim:ClearanceDocument.mustBeGrounded>([\s\S]*?)<\/cim:ClearanceDocument.mustBeGrounded>/g, obj, "mustBeGrounded", base.to_boolean, sub, context);
+                base.parse_attributes (/<cim:ClearanceDocument.TaggedPSRs\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TaggedPSRs", sub, context);
                 base.parse_attribute (/<cim:ClearanceDocument.ClearanceAction\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ClearanceAction", sub, context);
-
                 var bucket = context.parsed.ClearanceDocument;
                 if (null == bucket)
                    context.parsed.ClearanceDocument = bucket = {};
@@ -1285,32 +1776,95 @@ define
             {
                 var fields = SafetyDocument.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "ClearanceDocument", "mustBeDeenergised", base.from_boolean, fields);
-                base.export_element (obj, "ClearanceDocument", "mustBeGrounded", base.from_boolean, fields);
-                base.export_attribute (obj, "ClearanceDocument", "ClearanceAction", fields);
+                base.export_element (obj, "ClearanceDocument", "mustBeDeenergised", "mustBeDeenergised",  base.from_boolean, fields);
+                base.export_element (obj, "ClearanceDocument", "mustBeGrounded", "mustBeGrounded",  base.from_boolean, fields);
+                base.export_attributes (obj, "ClearanceDocument", "TaggedPSRs", "TaggedPSRs", fields);
+                base.export_attribute (obj, "ClearanceDocument", "ClearanceAction", "ClearanceAction", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ClearanceDocument_collapse" aria-expanded="true" aria-controls="ClearanceDocument_collapse">ClearanceDocument</a>
-<div id="ClearanceDocument_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SafetyDocument.prototype.template.call (this) +
-`
-{{#mustBeDeenergised}}<div><b>mustBeDeenergised</b>: {{mustBeDeenergised}}</div>{{/mustBeDeenergised}}
-{{#mustBeGrounded}}<div><b>mustBeGrounded</b>: {{mustBeGrounded}}</div>{{/mustBeGrounded}}
-{{#ClearanceAction}}<div><b>ClearanceAction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ClearanceAction}}&quot;);})'>{{ClearanceAction}}</a></div>{{/ClearanceAction}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#ClearanceDocument_collapse" aria-expanded="true" aria-controls="ClearanceDocument_collapse" style="margin-left: 10px;">ClearanceDocument</a></legend>
+                    <div id="ClearanceDocument_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SafetyDocument.prototype.template.call (this) +
+                    `
+                    {{#mustBeDeenergised}}<div><b>mustBeDeenergised</b>: {{mustBeDeenergised}}</div>{{/mustBeDeenergised}}
+                    {{#mustBeGrounded}}<div><b>mustBeGrounded</b>: {{mustBeGrounded}}</div>{{/mustBeGrounded}}
+                    {{#TaggedPSRs}}<div><b>TaggedPSRs</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/TaggedPSRs}}
+                    {{#ClearanceAction}}<div><b>ClearanceAction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ClearanceAction}}&quot;);})'>{{ClearanceAction}}</a></div>{{/ClearanceAction}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.TaggedPSRs) obj.TaggedPSRs_string = obj.TaggedPSRs.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TaggedPSRs_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_ClearanceDocument_collapse" aria-expanded="true" aria-controls="{{id}}_ClearanceDocument_collapse" style="margin-left: 10px;">ClearanceDocument</a></legend>
+                    <div id="{{id}}_ClearanceDocument_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SafetyDocument.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_mustBeDeenergised'>mustBeDeenergised: </label><div class='col-sm-8'><input id='{{id}}_mustBeDeenergised' class='form-check-input' type='checkbox'{{#mustBeDeenergised}} checked{{/mustBeDeenergised}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_mustBeGrounded'>mustBeGrounded: </label><div class='col-sm-8'><input id='{{id}}_mustBeGrounded' class='form-check-input' type='checkbox'{{#mustBeGrounded}} checked{{/mustBeGrounded}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TaggedPSRs'>TaggedPSRs: </label><div class='col-sm-8'><input id='{{id}}_TaggedPSRs' class='form-control' type='text'{{#TaggedPSRs}} value='{{TaggedPSRs}}_string'{{/TaggedPSRs}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ClearanceAction'>ClearanceAction: </label><div class='col-sm-8'><input id='{{id}}_ClearanceAction' class='form-control' type='text'{{#ClearanceAction}} value='{{ClearanceAction}}'{{/ClearanceAction}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "ClearanceDocument" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_mustBeDeenergised").checked; if (temp) obj.mustBeDeenergised = true;
+                temp = document.getElementById (id + "_mustBeGrounded").checked; if (temp) obj.mustBeGrounded = true;
+                temp = document.getElementById (id + "_TaggedPSRs").value; if ("" != temp) obj.TaggedPSRs = temp.split (",");
+                temp = document.getElementById (id + "_ClearanceAction").value; if ("" != temp) obj.ClearanceAction = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["TaggedPSRs", "0..*", "0..*", "PowerSystemResource", "Clearances"],
+                            ["ClearanceAction", "0..1", "0..1", "ClearanceAction", "Clearance"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * An arbitrary switching step.
@@ -1321,17 +1875,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.GenericAction;
                 if (null == bucket)
                    cim_data.GenericAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.GenericAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.GenericAction[obj.id];
             }
 
             parse (context, sub)
@@ -1341,7 +1894,6 @@ define
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "GenericAction";
                 base.parse_attribute (/<cim:GenericAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.GenericAction;
                 if (null == bucket)
                    context.parsed.GenericAction = bucket = {};
@@ -1354,28 +1906,80 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "GenericAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "GenericAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#GenericAction_collapse" aria-expanded="true" aria-controls="GenericAction_collapse">GenericAction</a>
-<div id="GenericAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#GenericAction_collapse" aria-expanded="true" aria-controls="GenericAction_collapse" style="margin-left: 10px;">GenericAction</a></legend>
+                    <div id="GenericAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_GenericAction_collapse" aria-expanded="true" aria-controls="{{id}}_GenericAction_collapse" style="margin-left: 10px;">GenericAction</a></legend>
+                    <div id="{{id}}_GenericAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "GenericAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "GenericActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on clearance document as a switching step.
@@ -1386,17 +1990,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.ClearanceAction;
                 if (null == bucket)
                    cim_data.ClearanceAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.ClearanceAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.ClearanceAction[obj.id];
             }
 
             parse (context, sub)
@@ -1405,10 +2008,9 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "ClearanceAction";
-                base.parse_element (/<cim:ClearanceAction.kind>([\s\S]*?)<\/cim:ClearanceAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:ClearanceAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:ClearanceAction.Clearance\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Clearance", sub, context);
                 base.parse_attribute (/<cim:ClearanceAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.ClearanceAction;
                 if (null == bucket)
                    context.parsed.ClearanceAction = bucket = {};
@@ -1421,32 +2023,91 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "ClearanceAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "ClearanceAction", "Clearance", fields);
-                base.export_attribute (obj, "ClearanceAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "ClearanceAction", "kind", "kind", fields);
+                base.export_attribute (obj, "ClearanceAction", "Clearance", "Clearance", fields);
+                base.export_attribute (obj, "ClearanceAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ClearanceAction_collapse" aria-expanded="true" aria-controls="ClearanceAction_collapse">ClearanceAction</a>
-<div id="ClearanceAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#Clearance}}<div><b>Clearance</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Clearance}}&quot;);})'>{{Clearance}}</a></div>{{/Clearance}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#ClearanceAction_collapse" aria-expanded="true" aria-controls="ClearanceAction_collapse" style="margin-left: 10px;">ClearanceAction</a></legend>
+                    <div id="ClearanceAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#Clearance}}<div><b>Clearance</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Clearance}}&quot;);})'>{{Clearance}}</a></div>{{/Clearance}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.ClearanceActionKind = []; if (!obj.kind) obj.ClearanceActionKind.push ({ id: '', selected: true}); for (var property in ClearanceActionKind) obj.ClearanceActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.ClearanceActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_ClearanceAction_collapse" aria-expanded="true" aria-controls="{{id}}_ClearanceAction_collapse" style="margin-left: 10px;">ClearanceAction</a></legend>
+                    <div id="{{id}}_ClearanceAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#ClearanceActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ClearanceActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Clearance'>Clearance: </label><div class='col-sm-8'><input id='{{id}}_Clearance' class='form-control' type='text'{{#Clearance}} value='{{Clearance}}'{{/Clearance}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "ClearanceAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = ClearanceActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#ClearanceActionKind." + temp; }
+                temp = document.getElementById (id + "_Clearance").value; if ("" != temp) obj.Clearance = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Clearance", "0..1", "0..1", "ClearanceDocument", "ClearanceAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "ClearanceActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on ground as a switching step.
@@ -1457,17 +2118,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.GroundAction;
                 if (null == bucket)
                    cim_data.GroundAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.GroundAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.GroundAction[obj.id];
             }
 
             parse (context, sub)
@@ -1476,12 +2136,11 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "GroundAction";
-                base.parse_element (/<cim:GroundAction.kind>([\s\S]*?)<\/cim:GroundAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:GroundAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:GroundAction.Ground\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Ground", sub, context);
                 base.parse_attribute (/<cim:GroundAction.AlongACLineSegment\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "AlongACLineSegment", sub, context);
                 base.parse_attribute (/<cim:GroundAction.GroundedEquipment\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "GroundedEquipment", sub, context);
                 base.parse_attribute (/<cim:GroundAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.GroundAction;
                 if (null == bucket)
                    context.parsed.GroundAction = bucket = {};
@@ -1494,36 +2153,101 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "GroundAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "GroundAction", "Ground", fields);
-                base.export_attribute (obj, "GroundAction", "AlongACLineSegment", fields);
-                base.export_attribute (obj, "GroundAction", "GroundedEquipment", fields);
-                base.export_attribute (obj, "GroundAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "GroundAction", "kind", "kind", fields);
+                base.export_attribute (obj, "GroundAction", "Ground", "Ground", fields);
+                base.export_attribute (obj, "GroundAction", "AlongACLineSegment", "AlongACLineSegment", fields);
+                base.export_attribute (obj, "GroundAction", "GroundedEquipment", "GroundedEquipment", fields);
+                base.export_attribute (obj, "GroundAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#GroundAction_collapse" aria-expanded="true" aria-controls="GroundAction_collapse">GroundAction</a>
-<div id="GroundAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#Ground}}<div><b>Ground</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Ground}}&quot;);})'>{{Ground}}</a></div>{{/Ground}}
-{{#AlongACLineSegment}}<div><b>AlongACLineSegment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{AlongACLineSegment}}&quot;);})'>{{AlongACLineSegment}}</a></div>{{/AlongACLineSegment}}
-{{#GroundedEquipment}}<div><b>GroundedEquipment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{GroundedEquipment}}&quot;);})'>{{GroundedEquipment}}</a></div>{{/GroundedEquipment}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#GroundAction_collapse" aria-expanded="true" aria-controls="GroundAction_collapse" style="margin-left: 10px;">GroundAction</a></legend>
+                    <div id="GroundAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#Ground}}<div><b>Ground</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Ground}}&quot;);})'>{{Ground}}</a></div>{{/Ground}}
+                    {{#AlongACLineSegment}}<div><b>AlongACLineSegment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{AlongACLineSegment}}&quot;);})'>{{AlongACLineSegment}}</a></div>{{/AlongACLineSegment}}
+                    {{#GroundedEquipment}}<div><b>GroundedEquipment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{GroundedEquipment}}&quot;);})'>{{GroundedEquipment}}</a></div>{{/GroundedEquipment}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.TempEquipActionKind = []; if (!obj.kind) obj.TempEquipActionKind.push ({ id: '', selected: true}); for (var property in TempEquipActionKind) obj.TempEquipActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TempEquipActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_GroundAction_collapse" aria-expanded="true" aria-controls="{{id}}_GroundAction_collapse" style="margin-left: 10px;">GroundAction</a></legend>
+                    <div id="{{id}}_GroundAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#TempEquipActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TempEquipActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Ground'>Ground: </label><div class='col-sm-8'><input id='{{id}}_Ground' class='form-control' type='text'{{#Ground}} value='{{Ground}}'{{/Ground}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AlongACLineSegment'>AlongACLineSegment: </label><div class='col-sm-8'><input id='{{id}}_AlongACLineSegment' class='form-control' type='text'{{#AlongACLineSegment}} value='{{AlongACLineSegment}}'{{/AlongACLineSegment}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_GroundedEquipment'>GroundedEquipment: </label><div class='col-sm-8'><input id='{{id}}_GroundedEquipment' class='form-control' type='text'{{#GroundedEquipment}} value='{{GroundedEquipment}}'{{/GroundedEquipment}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "GroundAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = TempEquipActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#TempEquipActionKind." + temp; }
+                temp = document.getElementById (id + "_Ground").value; if ("" != temp) obj.Ground = temp;
+                temp = document.getElementById (id + "_AlongACLineSegment").value; if ("" != temp) obj.AlongACLineSegment = temp;
+                temp = document.getElementById (id + "_GroundedEquipment").value; if ("" != temp) obj.GroundedEquipment = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Ground", "0..1", "0..1", "Ground", "GroundAction"],
+                            ["AlongACLineSegment", "0..1", "0..1", "ACLineSegment", "LineGroundingAction"],
+                            ["GroundedEquipment", "0..1", "0..1", "ConductingEquipment", "GroundingAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "GroundActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on cut as a switching step.
@@ -1534,17 +2258,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.CutAction;
                 if (null == bucket)
                    cim_data.CutAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.CutAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.CutAction[obj.id];
             }
 
             parse (context, sub)
@@ -1553,10 +2276,9 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "CutAction";
-                base.parse_element (/<cim:CutAction.kind>([\s\S]*?)<\/cim:CutAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:CutAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:CutAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
                 base.parse_attribute (/<cim:CutAction.Cut\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Cut", sub, context);
-
                 var bucket = context.parsed.CutAction;
                 if (null == bucket)
                    context.parsed.CutAction = bucket = {};
@@ -1569,32 +2291,91 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "CutAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "CutAction", "SwitchingStepGroup", fields);
-                base.export_attribute (obj, "CutAction", "Cut", fields);
+                base.export_attribute (obj, "CutAction", "kind", "kind", fields);
+                base.export_attribute (obj, "CutAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "CutAction", "Cut", "Cut", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#CutAction_collapse" aria-expanded="true" aria-controls="CutAction_collapse">CutAction</a>
-<div id="CutAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-{{#Cut}}<div><b>Cut</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Cut}}&quot;);})'>{{Cut}}</a></div>{{/Cut}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#CutAction_collapse" aria-expanded="true" aria-controls="CutAction_collapse" style="margin-left: 10px;">CutAction</a></legend>
+                    <div id="CutAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    {{#Cut}}<div><b>Cut</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Cut}}&quot;);})'>{{Cut}}</a></div>{{/Cut}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.TempEquipActionKind = []; if (!obj.kind) obj.TempEquipActionKind.push ({ id: '', selected: true}); for (var property in TempEquipActionKind) obj.TempEquipActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TempEquipActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_CutAction_collapse" aria-expanded="true" aria-controls="{{id}}_CutAction_collapse" style="margin-left: 10px;">CutAction</a></legend>
+                    <div id="{{id}}_CutAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#TempEquipActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TempEquipActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Cut'>Cut: </label><div class='col-sm-8'><input id='{{id}}_Cut' class='form-control' type='text'{{#Cut}} value='{{Cut}}'{{/Cut}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "CutAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = TempEquipActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#TempEquipActionKind." + temp; }
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+                temp = document.getElementById (id + "_Cut").value; if ("" != temp) obj.Cut = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "CutActions"],
+                            ["Cut", "0..1", "0..1", "Cut", "CutAction"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on switch as a switching step.
@@ -1605,17 +2386,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SwitchAction;
                 if (null == bucket)
                    cim_data.SwitchAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SwitchAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SwitchAction[obj.id];
             }
 
             parse (context, sub)
@@ -1624,11 +2404,10 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "SwitchAction";
-                base.parse_element (/<cim:SwitchAction.kind>([\s\S]*?)<\/cim:SwitchAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:SwitchAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:SwitchAction.PlannedOutage\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "PlannedOutage", sub, context);
                 base.parse_attribute (/<cim:SwitchAction.OperatedSwitch\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "OperatedSwitch", sub, context);
                 base.parse_attribute (/<cim:SwitchAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.SwitchAction;
                 if (null == bucket)
                    context.parsed.SwitchAction = bucket = {};
@@ -1641,34 +2420,96 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SwitchAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "SwitchAction", "PlannedOutage", fields);
-                base.export_attribute (obj, "SwitchAction", "OperatedSwitch", fields);
-                base.export_attribute (obj, "SwitchAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "SwitchAction", "kind", "kind", fields);
+                base.export_attribute (obj, "SwitchAction", "PlannedOutage", "PlannedOutage", fields);
+                base.export_attribute (obj, "SwitchAction", "OperatedSwitch", "OperatedSwitch", fields);
+                base.export_attribute (obj, "SwitchAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SwitchAction_collapse" aria-expanded="true" aria-controls="SwitchAction_collapse">SwitchAction</a>
-<div id="SwitchAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#PlannedOutage}}<div><b>PlannedOutage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PlannedOutage}}&quot;);})'>{{PlannedOutage}}</a></div>{{/PlannedOutage}}
-{{#OperatedSwitch}}<div><b>OperatedSwitch</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OperatedSwitch}}&quot;);})'>{{OperatedSwitch}}</a></div>{{/OperatedSwitch}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SwitchAction_collapse" aria-expanded="true" aria-controls="SwitchAction_collapse" style="margin-left: 10px;">SwitchAction</a></legend>
+                    <div id="SwitchAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#PlannedOutage}}<div><b>PlannedOutage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PlannedOutage}}&quot;);})'>{{PlannedOutage}}</a></div>{{/PlannedOutage}}
+                    {{#OperatedSwitch}}<div><b>OperatedSwitch</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OperatedSwitch}}&quot;);})'>{{OperatedSwitch}}</a></div>{{/OperatedSwitch}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.SwitchActionKind = []; if (!obj.kind) obj.SwitchActionKind.push ({ id: '', selected: true}); for (var property in SwitchActionKind) obj.SwitchActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.SwitchActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SwitchAction_collapse" aria-expanded="true" aria-controls="{{id}}_SwitchAction_collapse" style="margin-left: 10px;">SwitchAction</a></legend>
+                    <div id="{{id}}_SwitchAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#SwitchActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/SwitchActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PlannedOutage'>PlannedOutage: </label><div class='col-sm-8'><input id='{{id}}_PlannedOutage' class='form-control' type='text'{{#PlannedOutage}} value='{{PlannedOutage}}'{{/PlannedOutage}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_OperatedSwitch'>OperatedSwitch: </label><div class='col-sm-8'><input id='{{id}}_OperatedSwitch' class='form-control' type='text'{{#OperatedSwitch}} value='{{OperatedSwitch}}'{{/OperatedSwitch}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SwitchAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = SwitchActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#SwitchActionKind." + temp; }
+                temp = document.getElementById (id + "_PlannedOutage").value; if ("" != temp) obj.PlannedOutage = temp;
+                temp = document.getElementById (id + "_OperatedSwitch").value; if ("" != temp) obj.OperatedSwitch = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["PlannedOutage", "0..1", "0..*", "Outage", "PlannedSwitchActions"],
+                            ["OperatedSwitch", "0..1", "0..1", "Switch", "SwitchAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "SwitchActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on jumper as a switching step.
@@ -1679,17 +2520,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.JumperAction;
                 if (null == bucket)
                    cim_data.JumperAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.JumperAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.JumperAction[obj.id];
             }
 
             parse (context, sub)
@@ -1698,10 +2538,11 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "JumperAction";
-                base.parse_element (/<cim:JumperAction.kind>([\s\S]*?)<\/cim:JumperAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:JumperAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
+                base.parse_attributes (/<cim:JumperAction.AlongACLineSegments\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "AlongACLineSegments", sub, context);
                 base.parse_attribute (/<cim:JumperAction.Jumper\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Jumper", sub, context);
                 base.parse_attribute (/<cim:JumperAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
+                base.parse_attributes (/<cim:JumperAction.JumpedEquipments\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "JumpedEquipments", sub, context);
                 var bucket = context.parsed.JumperAction;
                 if (null == bucket)
                    context.parsed.JumperAction = bucket = {};
@@ -1714,32 +2555,101 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "JumperAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "JumperAction", "Jumper", fields);
-                base.export_attribute (obj, "JumperAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "JumperAction", "kind", "kind", fields);
+                base.export_attributes (obj, "JumperAction", "AlongACLineSegments", "AlongACLineSegments", fields);
+                base.export_attribute (obj, "JumperAction", "Jumper", "Jumper", fields);
+                base.export_attribute (obj, "JumperAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
+                base.export_attributes (obj, "JumperAction", "JumpedEquipments", "JumpedEquipments", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#JumperAction_collapse" aria-expanded="true" aria-controls="JumperAction_collapse">JumperAction</a>
-<div id="JumperAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#Jumper}}<div><b>Jumper</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Jumper}}&quot;);})'>{{Jumper}}</a></div>{{/Jumper}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#JumperAction_collapse" aria-expanded="true" aria-controls="JumperAction_collapse" style="margin-left: 10px;">JumperAction</a></legend>
+                    <div id="JumperAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#AlongACLineSegments}}<div><b>AlongACLineSegments</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/AlongACLineSegments}}
+                    {{#Jumper}}<div><b>Jumper</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Jumper}}&quot;);})'>{{Jumper}}</a></div>{{/Jumper}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    {{#JumpedEquipments}}<div><b>JumpedEquipments</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/JumpedEquipments}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.TempEquipActionKind = []; if (!obj.kind) obj.TempEquipActionKind.push ({ id: '', selected: true}); for (var property in TempEquipActionKind) obj.TempEquipActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                if (obj.AlongACLineSegments) obj.AlongACLineSegments_string = obj.AlongACLineSegments.join ();
+                if (obj.JumpedEquipments) obj.JumpedEquipments_string = obj.JumpedEquipments.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TempEquipActionKind;
+                delete obj.AlongACLineSegments_string;
+                delete obj.JumpedEquipments_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_JumperAction_collapse" aria-expanded="true" aria-controls="{{id}}_JumperAction_collapse" style="margin-left: 10px;">JumperAction</a></legend>
+                    <div id="{{id}}_JumperAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#TempEquipActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TempEquipActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Jumper'>Jumper: </label><div class='col-sm-8'><input id='{{id}}_Jumper' class='form-control' type='text'{{#Jumper}} value='{{Jumper}}'{{/Jumper}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "JumperAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = TempEquipActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#TempEquipActionKind." + temp; }
+                temp = document.getElementById (id + "_Jumper").value; if ("" != temp) obj.Jumper = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["AlongACLineSegments", "0..*", "0..1", "ACLineSegment", "LineJumpingAction"],
+                            ["Jumper", "0..1", "0..1", "Jumper", "JumperAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "JumperActions"],
+                            ["JumpedEquipments", "0..*", "0..1", "ConductingEquipment", "JumpingAction"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on operation tag as a switching step.
@@ -1750,17 +2660,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.TagAction;
                 if (null == bucket)
                    cim_data.TagAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.TagAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.TagAction[obj.id];
             }
 
             parse (context, sub)
@@ -1769,10 +2678,9 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "TagAction";
-                base.parse_element (/<cim:TagAction.kind>([\s\S]*?)<\/cim:TagAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:TagAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:TagAction.OperationTag\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "OperationTag", sub, context);
                 base.parse_attribute (/<cim:TagAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.TagAction;
                 if (null == bucket)
                    context.parsed.TagAction = bucket = {};
@@ -1785,32 +2693,91 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "TagAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "TagAction", "OperationTag", fields);
-                base.export_attribute (obj, "TagAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "TagAction", "kind", "kind", fields);
+                base.export_attribute (obj, "TagAction", "OperationTag", "OperationTag", fields);
+                base.export_attribute (obj, "TagAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#TagAction_collapse" aria-expanded="true" aria-controls="TagAction_collapse">TagAction</a>
-<div id="TagAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#OperationTag}}<div><b>OperationTag</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OperationTag}}&quot;);})'>{{OperationTag}}</a></div>{{/OperationTag}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#TagAction_collapse" aria-expanded="true" aria-controls="TagAction_collapse" style="margin-left: 10px;">TagAction</a></legend>
+                    <div id="TagAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#OperationTag}}<div><b>OperationTag</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OperationTag}}&quot;);})'>{{OperationTag}}</a></div>{{/OperationTag}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.TagActionKind = []; if (!obj.kind) obj.TagActionKind.push ({ id: '', selected: true}); for (var property in TagActionKind) obj.TagActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TagActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_TagAction_collapse" aria-expanded="true" aria-controls="{{id}}_TagAction_collapse" style="margin-left: 10px;">TagAction</a></legend>
+                    <div id="{{id}}_TagAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#TagActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TagActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_OperationTag'>OperationTag: </label><div class='col-sm-8'><input id='{{id}}_OperationTag' class='form-control' type='text'{{#OperationTag}} value='{{OperationTag}}'{{/OperationTag}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "TagAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = TagActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#TagActionKind." + temp; }
+                temp = document.getElementById (id + "_OperationTag").value; if ("" != temp) obj.OperationTag = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["OperationTag", "0..1", "0..1", "OperationTag", "TagAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "TagActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Action on energy source as a switching step.
@@ -1821,17 +2788,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.EnergySourceAction;
                 if (null == bucket)
                    cim_data.EnergySourceAction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.EnergySourceAction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.EnergySourceAction[obj.id];
             }
 
             parse (context, sub)
@@ -1840,10 +2806,9 @@ define
 
                 obj = SwitchingStep.prototype.parse.call (this, context, sub);
                 obj.cls = "EnergySourceAction";
-                base.parse_element (/<cim:EnergySourceAction.kind>([\s\S]*?)<\/cim:EnergySourceAction.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EnergySourceAction.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_attribute (/<cim:EnergySourceAction.EnergySource\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EnergySource", sub, context);
                 base.parse_attribute (/<cim:EnergySourceAction.SwitchingStepGroup\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SwitchingStepGroup", sub, context);
-
                 var bucket = context.parsed.EnergySourceAction;
                 if (null == bucket)
                    context.parsed.EnergySourceAction = bucket = {};
@@ -1856,32 +2821,91 @@ define
             {
                 var fields = SwitchingStep.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "EnergySourceAction", "kind", base.from_string, fields);
-                base.export_attribute (obj, "EnergySourceAction", "EnergySource", fields);
-                base.export_attribute (obj, "EnergySourceAction", "SwitchingStepGroup", fields);
+                base.export_attribute (obj, "EnergySourceAction", "kind", "kind", fields);
+                base.export_attribute (obj, "EnergySourceAction", "EnergySource", "EnergySource", fields);
+                base.export_attribute (obj, "EnergySourceAction", "SwitchingStepGroup", "SwitchingStepGroup", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#EnergySourceAction_collapse" aria-expanded="true" aria-controls="EnergySourceAction_collapse">EnergySourceAction</a>
-<div id="EnergySourceAction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SwitchingStep.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#EnergySource}}<div><b>EnergySource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EnergySource}}&quot;);})'>{{EnergySource}}</a></div>{{/EnergySource}}
-{{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#EnergySourceAction_collapse" aria-expanded="true" aria-controls="EnergySourceAction_collapse" style="margin-left: 10px;">EnergySourceAction</a></legend>
+                    <div id="EnergySourceAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#EnergySource}}<div><b>EnergySource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EnergySource}}&quot;);})'>{{EnergySource}}</a></div>{{/EnergySource}}
+                    {{#SwitchingStepGroup}}<div><b>SwitchingStepGroup</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SwitchingStepGroup}}&quot;);})'>{{SwitchingStepGroup}}</a></div>{{/SwitchingStepGroup}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.TempEquipActionKind = []; if (!obj.kind) obj.TempEquipActionKind.push ({ id: '', selected: true}); for (var property in TempEquipActionKind) obj.TempEquipActionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.TempEquipActionKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_EnergySourceAction_collapse" aria-expanded="true" aria-controls="{{id}}_EnergySourceAction_collapse" style="margin-left: 10px;">EnergySourceAction</a></legend>
+                    <div id="{{id}}_EnergySourceAction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SwitchingStep.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#TempEquipActionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TempEquipActionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EnergySource'>EnergySource: </label><div class='col-sm-8'><input id='{{id}}_EnergySource' class='form-control' type='text'{{#EnergySource}} value='{{EnergySource}}'{{/EnergySource}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SwitchingStepGroup'>SwitchingStepGroup: </label><div class='col-sm-8'><input id='{{id}}_SwitchingStepGroup' class='form-control' type='text'{{#SwitchingStepGroup}} value='{{SwitchingStepGroup}}'{{/SwitchingStepGroup}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "EnergySourceAction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = TempEquipActionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#TempEquipActionKind." + temp; }
+                temp = document.getElementById (id + "_EnergySource").value; if ("" != temp) obj.EnergySource = temp;
+                temp = document.getElementById (id + "_SwitchingStepGroup").value; if ("" != temp) obj.SwitchingStepGroup = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["EnergySource", "0..1", "0..1", "EnergySource", "EnergySourceAction"],
+                            ["SwitchingStepGroup", "0..1", "0..*", "SwitchingStepGroup", "EnergySourceActions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         return (
             {
@@ -1893,15 +2917,11 @@ define
                 JumperAction: JumperAction,
                 ClearanceDocument: ClearanceDocument,
                 SwitchingStepGroup: SwitchingStepGroup,
-                TempEquipActionKind: TempEquipActionKind,
-                SwitchActionKind: SwitchActionKind,
                 OperationalUpdatedRating: OperationalUpdatedRating,
                 CutAction: CutAction,
                 SwitchAction: SwitchAction,
                 OperationTag: OperationTag,
                 OperationalRestriction: OperationalRestriction,
-                PSREventKind: PSREventKind,
-                ClearanceActionKind: ClearanceActionKind,
                 ServicePointOutageSummary: ServicePointOutageSummary,
                 GenericAction: GenericAction,
                 GroundAction: GroundAction,
@@ -1909,8 +2929,7 @@ define
                 OutageSchedule: OutageSchedule,
                 TagAction: TagAction,
                 EnergySourceAction: EnergySourceAction,
-                Incident: Incident,
-                TagActionKind: TagActionKind
+                Incident: Incident
             }
         );
     }

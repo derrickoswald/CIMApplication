@@ -6,7 +6,7 @@
  */
 define
 (
-    ["model/base", "model/AssetInfo", "model/Assets", "model/AsynchronousMachineDynamics", "model/AuxiliaryEquipment", "model/Common", "model/CongestionRevenueRights", "model/Contingency", "model/ControlArea", "model/Core", "model/Customers", "model/DC", "model/DiagramLayout", "model/DiscontinuousExcitationControlDynamics", "model/Domain", "model/Equivalents", "model/ExcitationSystemDynamics", "model/ExistingEnumExtensions", "model/ExternalInputs", "model/Faults", "model/GenerationTrainingSimulation", "model/ICCP", "model/IEC61968", "model/IEC61970", "model/IEC62325", "model/InfAssetInfo", "model/InfAssets", "model/InfCommon", "model/InfCongestionRevenueRights", "model/InfCustomers", "model/InfDomain", "model/InfERPSupport", "model/InfEnergyScheduling", "model/InfEnergySource", "model/InfExternalInputs", "model/InfFinancial", "model/InfLocations", "model/InfMarketOperations", "model/InfMarketResults", "model/InfNewAssets", "model/InfOperationalLimits", "model/InfParticipantInterfaces", "model/InfReservation", "model/InfSIPS", "model/InfTypeAsset", "model/InfWiresExt", "model/InfWork", "model/LoadControl", "model/LoadDynamics", "model/LoadModel", "model/LoadModel2", "model/MarketCommon", "model/MarketManagement", "model/MarketOpCommon", "model/MarketPlan", "model/MarketQualitySystem", "model/MarketResults", "model/Meas", "model/MechanicalLoadDynamics", "model/Metering", "model/MktDomain", "model/ModelAuthority", "model/ModelDescription", "model/OperationalLimits", "model/Operations", "model/OverexcitationLimiterDynamics", "model/PFVArControllerType1Dynamics", "model/PFVArControllerType2Dynamics", "model/PackageDependencies", "model/ParticipantInterfaces", "model/PaymentMetering", "model/PowerSystemProject", "model/PowerSystemStabilizerDynamics", "model/Production", "model/Protection", "model/ReadingTypeEnumerations", "model/ReferenceData", "model/SCADA", "model/StandardInterconnections", "model/StandardModels", "model/StateVariables", "model/SynchronousMachineDynamics", "model/Topology", "model/TurbineGovernorDynamics", "model/TurbineLoadControllerDynamics", "model/UnderexcitationLimiterDynamics", "model/UserDefinedModels", "model/VoltageAdjusterDynamics", "model/VoltageCompensatorDynamics", "model/WindDynamics", "model/Wires", "model/Work"],
+    ["model/base", "model/AssetInfo", "model/Assets", "model/AsynchronousMachineDynamics", "model/AuxiliaryEquipment", "model/Common", "model/CongestionRevenueRights", "model/Contingency", "model/ControlArea", "model/Core", "model/Customers", "model/DC", "model/DiagramLayout", "model/DiscontinuousExcitationControlDynamics", "model/Domain", "model/Equivalents", "model/ExcitationSystemDynamics", "model/ExternalInputs", "model/Faults", "model/GenerationTrainingSimulation", "model/ICCP", "model/IEC61968", "model/IEC61970", "model/IEC62325", "model/InfAssetInfo", "model/InfAssets", "model/InfCommon", "model/InfCongestionRevenueRights", "model/InfCustomers", "model/InfERPSupport", "model/InfEnergyScheduling", "model/InfEnergySource", "model/InfExternalInputs", "model/InfFinancial", "model/InfLocations", "model/InfMarketOperations", "model/InfMarketResults", "model/InfNewAssets", "model/InfOperationalLimits", "model/InfParticipantInterfaces", "model/InfReservation", "model/InfSIPS", "model/InfTypeAsset", "model/InfWiresExt", "model/InfWork", "model/LoadControl", "model/LoadDynamics", "model/LoadModel", "model/LoadModel2", "model/MarketCommon", "model/MarketManagement", "model/MarketOpCommon", "model/MarketPlan", "model/MarketQualitySystem", "model/MarketResults", "model/Meas", "model/MechanicalLoadDynamics", "model/Metering", "model/ModelAuthority", "model/ModelDescription", "model/OperationalLimits", "model/Operations", "model/OverexcitationLimiterDynamics", "model/PFVArControllerType1Dynamics", "model/PFVArControllerType2Dynamics", "model/PackageDependencies", "model/ParticipantInterfaces", "model/PaymentMetering", "model/PowerSystemProject", "model/PowerSystemStabilizerDynamics", "model/Production", "model/Protection", "model/ReferenceData", "model/SCADA", "model/StandardInterconnections", "model/StandardModels", "model/StateVariables", "model/SynchronousMachineDynamics", "model/Topology", "model/TurbineGovernorDynamics", "model/TurbineLoadControllerDynamics", "model/UnderexcitationLimiterDynamics", "model/UserDefinedModels", "model/VoltageAdjusterDynamics", "model/VoltageCompensatorDynamics", "model/WindDynamics", "model/Wires", "model/Work"],
     /**
      * @summary CIM file reading functions.
      * @description Read an XML file with a restricted profile
@@ -15,7 +15,7 @@ define
      * @exports cim
      * @version 1.0
      */
-    function (base, AssetInfo, Assets, AsynchronousMachineDynamics, AuxiliaryEquipment, Common, CongestionRevenueRights, Contingency, ControlArea, Core, Customers, DC, DiagramLayout, DiscontinuousExcitationControlDynamics, Domain, Equivalents, ExcitationSystemDynamics, ExistingEnumExtensions, ExternalInputs, Faults, GenerationTrainingSimulation, ICCP, IEC61968, IEC61970, IEC62325, InfAssetInfo, InfAssets, InfCommon, InfCongestionRevenueRights, InfCustomers, InfDomain, InfERPSupport, InfEnergyScheduling, InfEnergySource, InfExternalInputs, InfFinancial, InfLocations, InfMarketOperations, InfMarketResults, InfNewAssets, InfOperationalLimits, InfParticipantInterfaces, InfReservation, InfSIPS, InfTypeAsset, InfWiresExt, InfWork, LoadControl, LoadDynamics, LoadModel, LoadModel2, MarketCommon, MarketManagement, MarketOpCommon, MarketPlan, MarketQualitySystem, MarketResults, Meas, MechanicalLoadDynamics, Metering, MktDomain, ModelAuthority, ModelDescription, OperationalLimits, Operations, OverexcitationLimiterDynamics, PFVArControllerType1Dynamics, PFVArControllerType2Dynamics, PackageDependencies, ParticipantInterfaces, PaymentMetering, PowerSystemProject, PowerSystemStabilizerDynamics, Production, Protection, ReadingTypeEnumerations, ReferenceData, SCADA, StandardInterconnections, StandardModels, StateVariables, SynchronousMachineDynamics, Topology, TurbineGovernorDynamics, TurbineLoadControllerDynamics, UnderexcitationLimiterDynamics, UserDefinedModels, VoltageAdjusterDynamics, VoltageCompensatorDynamics, WindDynamics, Wires, Work)
+    function (base, AssetInfo, Assets, AsynchronousMachineDynamics, AuxiliaryEquipment, Common, CongestionRevenueRights, Contingency, ControlArea, Core, Customers, DC, DiagramLayout, DiscontinuousExcitationControlDynamics, Domain, Equivalents, ExcitationSystemDynamics, ExternalInputs, Faults, GenerationTrainingSimulation, ICCP, IEC61968, IEC61970, IEC62325, InfAssetInfo, InfAssets, InfCommon, InfCongestionRevenueRights, InfCustomers, InfERPSupport, InfEnergyScheduling, InfEnergySource, InfExternalInputs, InfFinancial, InfLocations, InfMarketOperations, InfMarketResults, InfNewAssets, InfOperationalLimits, InfParticipantInterfaces, InfReservation, InfSIPS, InfTypeAsset, InfWiresExt, InfWork, LoadControl, LoadDynamics, LoadModel, LoadModel2, MarketCommon, MarketManagement, MarketOpCommon, MarketPlan, MarketQualitySystem, MarketResults, Meas, MechanicalLoadDynamics, Metering, ModelAuthority, ModelDescription, OperationalLimits, Operations, OverexcitationLimiterDynamics, PFVArControllerType1Dynamics, PFVArControllerType2Dynamics, PackageDependencies, ParticipantInterfaces, PaymentMetering, PowerSystemProject, PowerSystemStabilizerDynamics, Production, Protection, ReferenceData, SCADA, StandardInterconnections, StandardModels, StateVariables, SynchronousMachineDynamics, Topology, TurbineGovernorDynamics, TurbineLoadControllerDynamics, UnderexcitationLimiterDynamics, UserDefinedModels, VoltageAdjusterDynamics, VoltageCompensatorDynamics, WindDynamics, Wires, Work)
     {
         /**
          * The size of chunks to read into memory.
@@ -55,6 +55,17 @@ define
         );
 
         /**
+         * Get the registered classes.
+         * @return the map between class name and ES6 class
+         * @function classes
+         * @memberOf module:cim
+         */
+        function classes ()
+        {
+            return (theExportMap);
+        }
+
+        /**
          * Get the class for a given object.
          * @param {Object} obj the JavaScript bucket-o-properies' object.
          * @return the ES6 class for the object
@@ -63,7 +74,7 @@ define
          */
         function class_map (obj)
         {
-            return (theExportMap[obj.cls]);
+            return (classes ()[obj.cls]);
         }
 
         /**
@@ -343,7 +354,7 @@ define
                     obj = elements[property];
                     if (filter (obj))
                     {
-                        exporter = theExportMap[obj.cls];
+                        exporter = class_map (obj);
                         if ("undefined" != typeof (exporter))
                             Array.prototype.push.apply (ret, exporter.prototype.export (obj, true));
                         else
@@ -414,14 +425,14 @@ define
             {
                 // ToDo: check if we need to handle individual attributes with "rdf:Description rdf:about", or if we can use the sledgehammer: delete then new
                 xml.push ("		<dm:reverseDifferences parseType=\"Statements\">");
-                Array.prototype.push.apply (xml, write_elements (elements, function (obj) { var disp = obj.EditDisposition; return (disp == "delete" || disp == "edit"); }));
+                Array.prototype.push.apply (xml, write_elements (elements, function (obj) { return (obj.EditDisposition == "delete" && obj.id.startsWith ("1:")); }));
                 xml.push ("		</dm:reverseDifferences>");
                 xml.push ("		<dm:forwardDifferences parseType=\"Statements\">");
                 Array.prototype.push.apply (xml, write_elements (elements, function (obj) { var disp = obj.EditDisposition; return (disp == "new" || disp == "edit"); }));
                 xml.push ("		</dm:forwardDifferences>");
             }
             else
-                Array.prototype.push.apply (xml, write_elements (elements, function (obj) { return (true); }));
+                Array.prototype.push.apply (xml, write_elements (elements, function (obj) { var disp = obj.EditDisposition; return ("undefined" == typeof (disp) || disp != "delete"); }));
             Array.prototype.push.apply (xml, trailer);
 
             return (xml.join ("\n"));
@@ -429,6 +440,7 @@ define
 
         return (
             {
+                classes: classes,
                 class_map: class_map,
                 read_full_xml: read_full_xml,
                 read_xml_blob: read_xml_blob,

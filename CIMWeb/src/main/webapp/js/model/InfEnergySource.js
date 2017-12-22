@@ -13,17 +13,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.EnergySchedulingType;
                 if (null == bucket)
                    cim_data.EnergySchedulingType = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.EnergySchedulingType[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.EnergySchedulingType[obj.id];
             }
 
             parse (context, sub)
@@ -32,7 +31,7 @@ define
 
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "EnergySchedulingType";
-
+                base.parse_attributes (/<cim:EnergySchedulingType.EnergySource\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EnergySource", sub, context);
                 var bucket = context.parsed.EnergySchedulingType;
                 if (null == bucket)
                    context.parsed.EnergySchedulingType = bucket = {};
@@ -45,26 +44,78 @@ define
             {
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
+                base.export_attributes (obj, "EnergySchedulingType", "EnergySource", "EnergySource", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#EnergySchedulingType_collapse" aria-expanded="true" aria-controls="EnergySchedulingType_collapse">EnergySchedulingType</a>
-<div id="EnergySchedulingType_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Core.IdentifiedObject.prototype.template.call (this) +
-`
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#EnergySchedulingType_collapse" aria-expanded="true" aria-controls="EnergySchedulingType_collapse" style="margin-left: 10px;">EnergySchedulingType</a></legend>
+                    <div id="EnergySchedulingType_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.template.call (this) +
+                    `
+                    {{#EnergySource}}<div><b>EnergySource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/EnergySource}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.EnergySource) obj.EnergySource_string = obj.EnergySource.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.EnergySource_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_EnergySchedulingType_collapse" aria-expanded="true" aria-controls="{{id}}_EnergySchedulingType_collapse" style="margin-left: 10px;">EnergySchedulingType</a></legend>
+                    <div id="{{id}}_EnergySchedulingType_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.edit_template.call (this) +
+                    `
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var obj = obj || { id: id, cls: "EnergySchedulingType" };
+                super.submit (id, obj);
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["EnergySource", "0..*", "0..1", "EnergySource", "EnergySchedulingType"]
+                        ]
+                    )
+                );
+            }
+        }
 
         return (
             {

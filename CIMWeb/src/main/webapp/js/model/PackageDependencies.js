@@ -19,17 +19,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.PackageDependenciesCIMVersion;
                 if (null == bucket)
                    cim_data.PackageDependenciesCIMVersion = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.PackageDependenciesCIMVersion[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.PackageDependenciesCIMVersion[obj.id];
             }
 
             parse (context, sub)
@@ -40,7 +39,6 @@ define
                 obj.cls = "PackageDependenciesCIMVersion";
                 base.parse_element (/<cim:PackageDependenciesCIMVersion.date>([\s\S]*?)<\/cim:PackageDependenciesCIMVersion.date>/g, obj, "date", base.to_string, sub, context);
                 base.parse_element (/<cim:PackageDependenciesCIMVersion.version>([\s\S]*?)<\/cim:PackageDependenciesCIMVersion.version>/g, obj, "version", base.to_string, sub, context);
-
                 var bucket = context.parsed.PackageDependenciesCIMVersion;
                 if (null == bucket)
                    context.parsed.PackageDependenciesCIMVersion = bucket = {};
@@ -53,30 +51,73 @@ define
             {
                 var fields = [];
 
-                base.export_element (obj, "PackageDependenciesCIMVersion", "date", base.from_string, fields);
-                base.export_element (obj, "PackageDependenciesCIMVersion", "version", base.from_string, fields);
+                base.export_element (obj, "PackageDependenciesCIMVersion", "date", "date",  base.from_string, fields);
+                base.export_element (obj, "PackageDependenciesCIMVersion", "version", "version",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#PackageDependenciesCIMVersion_collapse" aria-expanded="true" aria-controls="PackageDependenciesCIMVersion_collapse">PackageDependenciesCIMVersion</a>
-<div id="PackageDependenciesCIMVersion_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#date}}<div><b>date</b>: {{date}}</div>{{/date}}
-{{#version}}<div><b>version</b>: {{version}}</div>{{/version}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#PackageDependenciesCIMVersion_collapse" aria-expanded="true" aria-controls="PackageDependenciesCIMVersion_collapse" style="margin-left: 10px;">PackageDependenciesCIMVersion</a></legend>
+                    <div id="PackageDependenciesCIMVersion_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.template.call (this) +
+                    `
+                    {{#date}}<div><b>date</b>: {{date}}</div>{{/date}}
+                    {{#version}}<div><b>version</b>: {{version}}</div>{{/version}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_PackageDependenciesCIMVersion_collapse" aria-expanded="true" aria-controls="{{id}}_PackageDependenciesCIMVersion_collapse" style="margin-left: 10px;">PackageDependenciesCIMVersion</a></legend>
+                    <div id="{{id}}_PackageDependenciesCIMVersion_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_date'>date: </label><div class='col-sm-8'><input id='{{id}}_date' class='form-control' type='text'{{#date}} value='{{date}}'{{/date}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_version'>version: </label><div class='col-sm-8'><input id='{{id}}_version' class='form-control' type='text'{{#version}} value='{{version}}'{{/version}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "PackageDependenciesCIMVersion" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_date").value; if ("" != temp) obj.date = temp;
+                temp = document.getElementById (id + "_version").value; if ("" != temp) obj.version = temp;
+
+                return (obj);
+            }
+        }
 
         return (
             {

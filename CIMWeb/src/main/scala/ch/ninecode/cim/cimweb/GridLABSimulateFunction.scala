@@ -234,8 +234,10 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
                     i = i + 1
                     if (i < 60)
                         (record.mrid, "broken", "1970-01-01", "1970-01-01T00:00:%02d".format (i), 0.0, 0.0, s)
-                    else
+                    else if (i < 120)
                         (record.mrid, "broken", "1970-01-01", "1970-01-01T00:01:%02d".format (i), 0.0, 0.0, s)
+                    else
+                        (record.mrid, "broken", "1970-01-01", "1970-01-01T00:02:%02d".format (i), 0.0, 0.0, s)
                 }
             }
         ).toIterable

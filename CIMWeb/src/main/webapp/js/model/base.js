@@ -186,6 +186,34 @@ define
         }
 
         /**
+         * Parse multiple attribute - the second capture group of a regular expression.
+         *
+         * @param {Object} regex - the regular expression
+         * @param {Object} obj - the object to assign the attribute to
+         * @param {String} attribute - the attribute name
+         * @param {String} str - the string to look in
+         * @param {Object} context - the context object
+         * @param {Number[]} context.newlines - the index of newline positions within the text
+         * @param {Number} context.start_character - the starting character position for this context
+         * @memberOf module:model/base
+         */
+        function parse_attributes (regex, obj, attribute, str, context)
+        {
+            var result;
+            var value;
+            var array = [];
+
+            while (null != (result = regex.exec (str)))
+            {
+                value = result[2];
+                if (value.charAt (0) == '#') // remove '#'
+                    value = value.substring (1);
+                array.push (value);
+                obj[attribute] = array;
+            }
+        }
+
+        /**
          * Change the value into a string.
          * @param {object} value - the value of the element
          * @returns {String} the element value converted to a string
@@ -236,11 +264,12 @@ define
          * @param {String} cls - the CIM class being written e.g. Location in the example above
          * Note that this is not necessarily the same as obj.cls due to hierarchy
          * @param {String} attribute - the attribute being written, e.g. type in the example above
+         * @param {String} name - the JavaScript property name
          * @param {Function} fn - the conversion function to be applied to the attribute, e.g. from_datetime
          * @param {String[]} fields - the forming element array of strings to add to
          * @memberOf module:model/base
          */
-        function export_element (obj, cls, attribute, fn, fields)
+        function export_element (obj, cls, attribute, name, fn, fields)
         {
             var value = obj[attribute];
             if ("undefined" != typeof (value))
@@ -257,14 +286,35 @@ define
          * @param {String} cls - the CIM class being written e.g. Location in the example above
          * Note that this is not necessarily the same as obj.cls due to hierarchy
          * @param {String} attribute - the attribute being written, e.g. CoordinateSystem in the example above
+         * @param {String} name - the JavaScript property name
          * @param {String[]} fields - the forming element array of strings to add to
          * @memberOf module:model/base
          */
-        function export_attribute (obj, cls, attribute, fields)
+        function export_attribute (obj, cls, attribute, name, fields)
         {
             var value = obj[attribute];
             if ("undefined" != typeof (value))
                 fields.push ("\t\t<cim:" + cls + "." + attribute + " rdf:resource=\"#" + value.toString () + "\"/>");
+        }
+
+        /**
+         * Export multiple attributes.
+         * e.g. &lt;cim:Asset.PowerSystemResources rdf:resource="#STA196"/&gt;
+         *	    &lt;cim:Asset.PowerSystemResources rdf:resource="#STA197"/&gt;
+         * @param {Object} obj - the CIM object
+         * @param {String} cls - the CIM class being written e.g. Location in the example above
+         * Note that this is not necessarily the same as obj.cls due to hierarchy
+         * @param {String} attribute - the attribute being written, e.g. PowerSystemResources in the example above
+         * @param {String} name - the JavaScript property name
+         * @param {String[]} fields - the forming element array of strings to add to
+         * @memberOf module:model/base
+         */
+        function export_attributes (obj, cls, attribute, name, fields)
+        {
+            var value = obj[attribute];
+            if ("undefined" != typeof (value))
+                for (var i = 0; i < value.length; i++)
+                    fields.push ("\t\t<cim:" + cls + "." + attribute + " rdf:resource=\"#" + value[i].toString () + "\"/>");
         }
 
         class Element
@@ -276,18 +326,17 @@ define
                     UNIQUE_NUMBER++;
                     template.id = "element_" + UNIQUE_NUMBER;
                 }
-                this._id = template.id;
                 var bucket = cim_data.Element;
                 if (null == bucket)
                    cim_data.Element = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
                 if (null != this)
                     Object.assign (this, template);
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-                delete cim_data.Element[this._id];
+                delete cim_data.Element[obj.id];
             }
 
             /**
@@ -318,6 +367,21 @@ define
                 return (ret);
             }
 
+            id (feature)
+            {
+                var id = feature.id.startsWith ("element_") ? null : feature.id;
+
+                if (id)
+                {
+                    while (!isNaN (Number (id.charAt (0))))
+                        id = id.substring (1);
+                    if (":" == id.charAt (0))
+                        id = id.substring (1);
+                }
+
+                return (id);
+            }
+
             /**
              * Add the main element header and tail to the beginning and end, respectively, of the forming element.
              * @param {Object} obj - the CIM object
@@ -325,7 +389,7 @@ define
              */
             export (obj, fields)
             {
-                var id = obj.id.startsWith ("element_") ? null : obj.id;
+                var id = this.id (obj);
                 fields.splice (0, 0, "\t<cim:" + obj.cls + (id ? (" rdf:ID=\"" + id + "\">") : ">"));
                 fields.push ("\t</cim:" + obj.cls + ">");
             }
@@ -336,6 +400,35 @@ define
             template ()
             {
                 return ("");
+            }
+
+            condition (obj)
+            {
+            }
+
+            uncondition (obj)
+            {
+            }
+
+            /**
+             * Edit template HTML for Element.
+             */
+            edit_template ()
+            {
+                return ("");
+            }
+
+            /**
+             * Form scraping function for Element.
+             */
+            submit (id, obj)
+            {
+                return (obj || { id: id });
+            }
+
+            relations ()
+            {
+                return ([]);
             }
          }
 
@@ -349,12 +442,14 @@ define
                 line_number: line_number,
                 parse_element: parse_element,
                 parse_attribute: parse_attribute,
+                parse_attributes: parse_attributes,
                 from_string: from_string,
                 from_boolean: from_boolean,
                 from_float: from_float,
                 from_datetime: from_datetime,
                 export_element: export_element,
                 export_attribute: export_attribute,
+                export_attributes: export_attributes,
                 Element: Element
             }
         );

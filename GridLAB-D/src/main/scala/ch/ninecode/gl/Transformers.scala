@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import scala.collection.Map
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
@@ -18,6 +19,13 @@ import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.VoltageLevel
 
+/**
+ * Get information about transformers.
+ * Joins PowerTransformer, PowerTransformerEnd and BaseVoltage objects to form complete details (TData) about transformers.
+ *
+ * @param session the Spark session
+ * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
+ */
 class Transformers (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
@@ -173,10 +181,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).flatMap (addTerminals)
 
         // optionally read in the short circuit data
-        val short_circuit = 
+        val short_circuit =
             if ((null != shortcircuitdata) && ("" != shortcircuitdata))
             {
-                val sc = new ShortCircuit (session, storage_level)
+                val sc = new ShortCircuitInfo (session, storage_level)
                 sc.read_csv (shortcircuitdata)
             }
             else

@@ -12,72 +12,13 @@ define
          * The type of fault connection among phases.
          *
          */
-        class PhaseConnectedFaultKind extends base.Element
+        var PhaseConnectedFaultKind =
         {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.PhaseConnectedFaultKind;
-                if (null == bucket)
-                   cim_data.PhaseConnectedFaultKind = bucket = {};
-                bucket[this._id] = template;
-            }
-
-            remove (cim_data)
-            {
-               super.remove (cim_data);
-               delete cim_data.PhaseConnectedFaultKind[this._id];
-            }
-
-            parse (context, sub)
-            {
-                var obj;
-
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "PhaseConnectedFaultKind";
-                base.parse_element (/<cim:PhaseConnectedFaultKind.lineToGround>([\s\S]*?)<\/cim:PhaseConnectedFaultKind.lineToGround>/g, obj, "lineToGround", base.to_string, sub, context);
-                base.parse_element (/<cim:PhaseConnectedFaultKind.lineToLine>([\s\S]*?)<\/cim:PhaseConnectedFaultKind.lineToLine>/g, obj, "lineToLine", base.to_string, sub, context);
-                base.parse_element (/<cim:PhaseConnectedFaultKind.lineToLineToGround>([\s\S]*?)<\/cim:PhaseConnectedFaultKind.lineToLineToGround>/g, obj, "lineToLineToGround", base.to_string, sub, context);
-
-                var bucket = context.parsed.PhaseConnectedFaultKind;
-                if (null == bucket)
-                   context.parsed.PhaseConnectedFaultKind = bucket = {};
-                bucket[obj.id] = obj;
-
-                return (obj);
-            }
-
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "PhaseConnectedFaultKind", "lineToGround", base.from_string, fields);
-                base.export_element (obj, "PhaseConnectedFaultKind", "lineToLine", base.from_string, fields);
-                base.export_element (obj, "PhaseConnectedFaultKind", "lineToLineToGround", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
-            {
-                return (
-`
-<a data-toggle="collapse" href="#PhaseConnectedFaultKind_collapse" aria-expanded="true" aria-controls="PhaseConnectedFaultKind_collapse">PhaseConnectedFaultKind</a>
-<div id="PhaseConnectedFaultKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#lineToGround}}<div><b>lineToGround</b>: {{lineToGround}}</div>{{/lineToGround}}
-{{#lineToLine}}<div><b>lineToLine</b>: {{lineToLine}}</div>{{/lineToLine}}
-{{#lineToLineToGround}}<div><b>lineToLineToGround</b>: {{lineToLineToGround}}</div>{{/lineToLineToGround}}
-</div>
-`
-                );
-           }        }
+            lineToGround: "lineToGround",
+            lineToLine: "lineToLine",
+            lineToLineToGround: "lineToLineToGround"
+        };
+        Object.freeze (PhaseConnectedFaultKind);
 
         /**
          * Type of cause of the fault.
@@ -88,17 +29,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.FaultCauseType;
                 if (null == bucket)
                    cim_data.FaultCauseType = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.FaultCauseType[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.FaultCauseType[obj.id];
             }
 
             parse (context, sub)
@@ -107,7 +47,7 @@ define
 
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "FaultCauseType";
-
+                base.parse_attributes (/<cim:FaultCauseType.Faults\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Faults", sub, context);
                 var bucket = context.parsed.FaultCauseType;
                 if (null == bucket)
                    context.parsed.FaultCauseType = bucket = {};
@@ -120,26 +60,82 @@ define
             {
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
+                base.export_attributes (obj, "FaultCauseType", "Faults", "Faults", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#FaultCauseType_collapse" aria-expanded="true" aria-controls="FaultCauseType_collapse">FaultCauseType</a>
-<div id="FaultCauseType_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Core.IdentifiedObject.prototype.template.call (this) +
-`
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#FaultCauseType_collapse" aria-expanded="true" aria-controls="FaultCauseType_collapse" style="margin-left: 10px;">FaultCauseType</a></legend>
+                    <div id="FaultCauseType_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.template.call (this) +
+                    `
+                    {{#Faults}}<div><b>Faults</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Faults}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.Faults) obj.Faults_string = obj.Faults.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.Faults_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_FaultCauseType_collapse" aria-expanded="true" aria-controls="{{id}}_FaultCauseType_collapse" style="margin-left: 10px;">FaultCauseType</a></legend>
+                    <div id="{{id}}_FaultCauseType_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Faults'>Faults: </label><div class='col-sm-8'><input id='{{id}}_Faults' class='form-control' type='text'{{#Faults}} value='{{Faults}}_string'{{/Faults}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "FaultCauseType" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_Faults").value; if ("" != temp) obj.Faults = temp.split (",");
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Faults", "0..*", "0..*", "Fault", "FaultCauseTypes"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Impedance description for the fault.
@@ -150,17 +146,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.FaultImpedance;
                 if (null == bucket)
                    cim_data.FaultImpedance = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.FaultImpedance[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.FaultImpedance[obj.id];
             }
 
             parse (context, sub)
@@ -173,7 +168,6 @@ define
                 base.parse_element (/<cim:FaultImpedance.rLineToLine>([\s\S]*?)<\/cim:FaultImpedance.rLineToLine>/g, obj, "rLineToLine", base.to_string, sub, context);
                 base.parse_element (/<cim:FaultImpedance.xGround>([\s\S]*?)<\/cim:FaultImpedance.xGround>/g, obj, "xGround", base.to_string, sub, context);
                 base.parse_element (/<cim:FaultImpedance.xLineToLine>([\s\S]*?)<\/cim:FaultImpedance.xLineToLine>/g, obj, "xLineToLine", base.to_string, sub, context);
-
                 var bucket = context.parsed.FaultImpedance;
                 if (null == bucket)
                    context.parsed.FaultImpedance = bucket = {};
@@ -186,34 +180,81 @@ define
             {
                 var fields = [];
 
-                base.export_element (obj, "FaultImpedance", "rGround", base.from_string, fields);
-                base.export_element (obj, "FaultImpedance", "rLineToLine", base.from_string, fields);
-                base.export_element (obj, "FaultImpedance", "xGround", base.from_string, fields);
-                base.export_element (obj, "FaultImpedance", "xLineToLine", base.from_string, fields);
+                base.export_element (obj, "FaultImpedance", "rGround", "rGround",  base.from_string, fields);
+                base.export_element (obj, "FaultImpedance", "rLineToLine", "rLineToLine",  base.from_string, fields);
+                base.export_element (obj, "FaultImpedance", "xGround", "xGround",  base.from_string, fields);
+                base.export_element (obj, "FaultImpedance", "xLineToLine", "xLineToLine",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#FaultImpedance_collapse" aria-expanded="true" aria-controls="FaultImpedance_collapse">FaultImpedance</a>
-<div id="FaultImpedance_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#rGround}}<div><b>rGround</b>: {{rGround}}</div>{{/rGround}}
-{{#rLineToLine}}<div><b>rLineToLine</b>: {{rLineToLine}}</div>{{/rLineToLine}}
-{{#xGround}}<div><b>xGround</b>: {{xGround}}</div>{{/xGround}}
-{{#xLineToLine}}<div><b>xLineToLine</b>: {{xLineToLine}}</div>{{/xLineToLine}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#FaultImpedance_collapse" aria-expanded="true" aria-controls="FaultImpedance_collapse" style="margin-left: 10px;">FaultImpedance</a></legend>
+                    <div id="FaultImpedance_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.template.call (this) +
+                    `
+                    {{#rGround}}<div><b>rGround</b>: {{rGround}}</div>{{/rGround}}
+                    {{#rLineToLine}}<div><b>rLineToLine</b>: {{rLineToLine}}</div>{{/rLineToLine}}
+                    {{#xGround}}<div><b>xGround</b>: {{xGround}}</div>{{/xGround}}
+                    {{#xLineToLine}}<div><b>xLineToLine</b>: {{xLineToLine}}</div>{{/xLineToLine}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_FaultImpedance_collapse" aria-expanded="true" aria-controls="{{id}}_FaultImpedance_collapse" style="margin-left: 10px;">FaultImpedance</a></legend>
+                    <div id="{{id}}_FaultImpedance_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rGround'>rGround: </label><div class='col-sm-8'><input id='{{id}}_rGround' class='form-control' type='text'{{#rGround}} value='{{rGround}}'{{/rGround}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rLineToLine'>rLineToLine: </label><div class='col-sm-8'><input id='{{id}}_rLineToLine' class='form-control' type='text'{{#rLineToLine}} value='{{rLineToLine}}'{{/rLineToLine}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xGround'>xGround: </label><div class='col-sm-8'><input id='{{id}}_xGround' class='form-control' type='text'{{#xGround}} value='{{xGround}}'{{/xGround}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xLineToLine'>xLineToLine: </label><div class='col-sm-8'><input id='{{id}}_xLineToLine' class='form-control' type='text'{{#xLineToLine}} value='{{xLineToLine}}'{{/xLineToLine}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "FaultImpedance" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_rGround").value; if ("" != temp) obj.rGround = temp;
+                temp = document.getElementById (id + "_rLineToLine").value; if ("" != temp) obj.rLineToLine = temp;
+                temp = document.getElementById (id + "_xGround").value; if ("" != temp) obj.xGround = temp;
+                temp = document.getElementById (id + "_xLineToLine").value; if ("" != temp) obj.xLineToLine = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * Abnormal condition causing current flow through conducting equipment, such as caused by equipment failure or short circuits from objects not typically modeled (for example, a tree falling on a line).
@@ -224,17 +265,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.Fault;
                 if (null == bucket)
                    cim_data.Fault = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.Fault[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.Fault[obj.id];
             }
 
             parse (context, sub)
@@ -243,12 +283,12 @@ define
 
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "Fault";
-                base.parse_element (/<cim:Fault.kind>([\s\S]*?)<\/cim:Fault.kind>/g, obj, "kind", base.to_string, sub, context);
+                base.parse_attribute (/<cim:Fault.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
                 base.parse_element (/<cim:Fault.phases>([\s\S]*?)<\/cim:Fault.phases>/g, obj, "phases", base.to_string, sub, context);
                 base.parse_element (/<cim:Fault.impedance>([\s\S]*?)<\/cim:Fault.impedance>/g, obj, "impedance", base.to_string, sub, context);
                 base.parse_attribute (/<cim:Fault.FaultyEquipment\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "FaultyEquipment", sub, context);
+                base.parse_attributes (/<cim:Fault.FaultCauseTypes\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "FaultCauseTypes", sub, context);
                 base.parse_attribute (/<cim:Fault.Outage\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Outage", sub, context);
-
                 var bucket = context.parsed.Fault;
                 if (null == bucket)
                    context.parsed.Fault = bucket = {};
@@ -261,36 +301,106 @@ define
             {
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "Fault", "kind", base.from_string, fields);
-                base.export_element (obj, "Fault", "phases", base.from_string, fields);
-                base.export_element (obj, "Fault", "impedance", base.from_string, fields);
-                base.export_attribute (obj, "Fault", "FaultyEquipment", fields);
-                base.export_attribute (obj, "Fault", "Outage", fields);
+                base.export_attribute (obj, "Fault", "kind", "kind", fields);
+                base.export_element (obj, "Fault", "phases", "phases",  base.from_string, fields);
+                base.export_element (obj, "Fault", "impedance", "impedance",  base.from_string, fields);
+                base.export_attribute (obj, "Fault", "FaultyEquipment", "FaultyEquipment", fields);
+                base.export_attributes (obj, "Fault", "FaultCauseTypes", "FaultCauseTypes", fields);
+                base.export_attribute (obj, "Fault", "Outage", "Outage", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#Fault_collapse" aria-expanded="true" aria-controls="Fault_collapse">Fault</a>
-<div id="Fault_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Core.IdentifiedObject.prototype.template.call (this) +
-`
-{{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-{{#phases}}<div><b>phases</b>: {{phases}}</div>{{/phases}}
-{{#impedance}}<div><b>impedance</b>: {{impedance}}</div>{{/impedance}}
-{{#FaultyEquipment}}<div><b>FaultyEquipment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{FaultyEquipment}}&quot;);})'>{{FaultyEquipment}}</a></div>{{/FaultyEquipment}}
-{{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#Fault_collapse" aria-expanded="true" aria-controls="Fault_collapse" style="margin-left: 10px;">Fault</a></legend>
+                    <div id="Fault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.template.call (this) +
+                    `
+                    {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
+                    {{#phases}}<div><b>phases</b>: {{phases}}</div>{{/phases}}
+                    {{#impedance}}<div><b>impedance</b>: {{impedance}}</div>{{/impedance}}
+                    {{#FaultyEquipment}}<div><b>FaultyEquipment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{FaultyEquipment}}&quot;);})'>{{FaultyEquipment}}</a></div>{{/FaultyEquipment}}
+                    {{#FaultCauseTypes}}<div><b>FaultCauseTypes</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/FaultCauseTypes}}
+                    {{#Outage}}<div><b>Outage</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Outage}}&quot;);})'>{{Outage}}</a></div>{{/Outage}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.PhaseConnectedFaultKind = []; if (!obj.kind) obj.PhaseConnectedFaultKind.push ({ id: '', selected: true}); for (var property in PhaseConnectedFaultKind) obj.PhaseConnectedFaultKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                if (obj.FaultCauseTypes) obj.FaultCauseTypes_string = obj.FaultCauseTypes.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.PhaseConnectedFaultKind;
+                delete obj.FaultCauseTypes_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_Fault_collapse" aria-expanded="true" aria-controls="{{id}}_Fault_collapse" style="margin-left: 10px;">Fault</a></legend>
+                    <div id="{{id}}_Fault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Core.IdentifiedObject.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#PhaseConnectedFaultKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/PhaseConnectedFaultKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_phases'>phases: </label><div class='col-sm-8'><input id='{{id}}_phases' class='form-control' type='text'{{#phases}} value='{{phases}}'{{/phases}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_impedance'>impedance: </label><div class='col-sm-8'><input id='{{id}}_impedance' class='form-control' type='text'{{#impedance}} value='{{impedance}}'{{/impedance}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_FaultyEquipment'>FaultyEquipment: </label><div class='col-sm-8'><input id='{{id}}_FaultyEquipment' class='form-control' type='text'{{#FaultyEquipment}} value='{{FaultyEquipment}}'{{/FaultyEquipment}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_FaultCauseTypes'>FaultCauseTypes: </label><div class='col-sm-8'><input id='{{id}}_FaultCauseTypes' class='form-control' type='text'{{#FaultCauseTypes}} value='{{FaultCauseTypes}}_string'{{/FaultCauseTypes}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Outage'>Outage: </label><div class='col-sm-8'><input id='{{id}}_Outage' class='form-control' type='text'{{#Outage}} value='{{Outage}}'{{/Outage}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "Fault" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = PhaseConnectedFaultKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseConnectedFaultKind." + temp; }
+                temp = document.getElementById (id + "_phases").value; if ("" != temp) obj.phases = temp;
+                temp = document.getElementById (id + "_impedance").value; if ("" != temp) obj.impedance = temp;
+                temp = document.getElementById (id + "_FaultyEquipment").value; if ("" != temp) obj.FaultyEquipment = temp;
+                temp = document.getElementById (id + "_FaultCauseTypes").value; if ("" != temp) obj.FaultCauseTypes = temp.split (",");
+                temp = document.getElementById (id + "_Outage").value; if ("" != temp) obj.Outage = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["FaultyEquipment", "0..1", "0..*", "Equipment", "Faults"],
+                            ["FaultCauseTypes", "0..*", "0..*", "FaultCauseType", "Faults"],
+                            ["Outage", "0..1", "0..*", "Outage", "Faults"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * A fault that occurs on an AC line segment at some point along the length.
@@ -301,17 +411,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.LineFault;
                 if (null == bucket)
                    cim_data.LineFault = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.LineFault[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.LineFault[obj.id];
             }
 
             parse (context, sub)
@@ -322,7 +431,6 @@ define
                 obj.cls = "LineFault";
                 base.parse_element (/<cim:LineFault.lengthFromTerminal1>([\s\S]*?)<\/cim:LineFault.lengthFromTerminal1>/g, obj, "lengthFromTerminal1", base.to_string, sub, context);
                 base.parse_attribute (/<cim:LineFault.ACLineSegment\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ACLineSegment", sub, context);
-
                 var bucket = context.parsed.LineFault;
                 if (null == bucket)
                    context.parsed.LineFault = bucket = {};
@@ -335,30 +443,84 @@ define
             {
                 var fields = Fault.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "LineFault", "lengthFromTerminal1", base.from_string, fields);
-                base.export_attribute (obj, "LineFault", "ACLineSegment", fields);
+                base.export_element (obj, "LineFault", "lengthFromTerminal1", "lengthFromTerminal1",  base.from_string, fields);
+                base.export_attribute (obj, "LineFault", "ACLineSegment", "ACLineSegment", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#LineFault_collapse" aria-expanded="true" aria-controls="LineFault_collapse">LineFault</a>
-<div id="LineFault_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Fault.prototype.template.call (this) +
-`
-{{#lengthFromTerminal1}}<div><b>lengthFromTerminal1</b>: {{lengthFromTerminal1}}</div>{{/lengthFromTerminal1}}
-{{#ACLineSegment}}<div><b>ACLineSegment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ACLineSegment}}&quot;);})'>{{ACLineSegment}}</a></div>{{/ACLineSegment}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#LineFault_collapse" aria-expanded="true" aria-controls="LineFault_collapse" style="margin-left: 10px;">LineFault</a></legend>
+                    <div id="LineFault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Fault.prototype.template.call (this) +
+                    `
+                    {{#lengthFromTerminal1}}<div><b>lengthFromTerminal1</b>: {{lengthFromTerminal1}}</div>{{/lengthFromTerminal1}}
+                    {{#ACLineSegment}}<div><b>ACLineSegment</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ACLineSegment}}&quot;);})'>{{ACLineSegment}}</a></div>{{/ACLineSegment}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_LineFault_collapse" aria-expanded="true" aria-controls="{{id}}_LineFault_collapse" style="margin-left: 10px;">LineFault</a></legend>
+                    <div id="{{id}}_LineFault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Fault.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_lengthFromTerminal1'>lengthFromTerminal1: </label><div class='col-sm-8'><input id='{{id}}_lengthFromTerminal1' class='form-control' type='text'{{#lengthFromTerminal1}} value='{{lengthFromTerminal1}}'{{/lengthFromTerminal1}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ACLineSegment'>ACLineSegment: </label><div class='col-sm-8'><input id='{{id}}_ACLineSegment' class='form-control' type='text'{{#ACLineSegment}} value='{{ACLineSegment}}'{{/ACLineSegment}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "LineFault" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_lengthFromTerminal1").value; if ("" != temp) obj.lengthFromTerminal1 = temp;
+                temp = document.getElementById (id + "_ACLineSegment").value; if ("" != temp) obj.ACLineSegment = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["ACLineSegment", "0..1", "0..*", "ACLineSegment", "LineFaults"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * A fault applied at the terminal, external to the equipment.
@@ -371,17 +533,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.EquipmentFault;
                 if (null == bucket)
                    cim_data.EquipmentFault = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.EquipmentFault[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.EquipmentFault[obj.id];
             }
 
             parse (context, sub)
@@ -391,7 +552,6 @@ define
                 obj = Fault.prototype.parse.call (this, context, sub);
                 obj.cls = "EquipmentFault";
                 base.parse_attribute (/<cim:EquipmentFault.Terminal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Terminal", sub, context);
-
                 var bucket = context.parsed.EquipmentFault;
                 if (null == bucket)
                    context.parsed.EquipmentFault = bucket = {};
@@ -404,35 +564,86 @@ define
             {
                 var fields = Fault.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "EquipmentFault", "Terminal", fields);
+                base.export_attribute (obj, "EquipmentFault", "Terminal", "Terminal", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#EquipmentFault_collapse" aria-expanded="true" aria-controls="EquipmentFault_collapse">EquipmentFault</a>
-<div id="EquipmentFault_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Fault.prototype.template.call (this) +
-`
-{{#Terminal}}<div><b>Terminal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Terminal}}&quot;);})'>{{Terminal}}</a></div>{{/Terminal}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#EquipmentFault_collapse" aria-expanded="true" aria-controls="EquipmentFault_collapse" style="margin-left: 10px;">EquipmentFault</a></legend>
+                    <div id="EquipmentFault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Fault.prototype.template.call (this) +
+                    `
+                    {{#Terminal}}<div><b>Terminal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Terminal}}&quot;);})'>{{Terminal}}</a></div>{{/Terminal}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_EquipmentFault_collapse" aria-expanded="true" aria-controls="{{id}}_EquipmentFault_collapse" style="margin-left: 10px;">EquipmentFault</a></legend>
+                    <div id="{{id}}_EquipmentFault_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Fault.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Terminal'>Terminal: </label><div class='col-sm-8'><input id='{{id}}_Terminal' class='form-control' type='text'{{#Terminal}} value='{{Terminal}}'{{/Terminal}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "EquipmentFault" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_Terminal").value; if ("" != temp) obj.Terminal = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Terminal", "0..1", "0..*", "Terminal", "EquipmentFaults"]
+                        ]
+                    )
+                );
+            }
+        }
 
         return (
             {
                 LineFault: LineFault,
                 FaultCauseType: FaultCauseType,
                 Fault: Fault,
-                PhaseConnectedFaultKind: PhaseConnectedFaultKind,
                 FaultImpedance: FaultImpedance,
                 EquipmentFault: EquipmentFault
             }

@@ -18,7 +18,35 @@ body {
 }
 
 .slider-selection {
-	background: #BABABA;
+    background: #BABABA;
+}
+
+.form-control {
+    padding: 4px, 8px;
+}
+
+.col-form-label {
+  padding-top: calc(0.375rem + 1px);
+  padding-bottom: calc(0.375rem + 1px);
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+.col-form-legend {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+#edit_frame {
+    height: 100%;
+}
+
+#edit_contents {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    margin-bottom: 20px;
 }
 
 /* allow div in dropdown menus, not just a */

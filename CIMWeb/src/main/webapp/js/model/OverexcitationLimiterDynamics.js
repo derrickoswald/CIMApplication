@@ -19,17 +19,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OverexcitationLimiterDynamics;
                 if (null == bucket)
                    cim_data.OverexcitationLimiterDynamics = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OverexcitationLimiterDynamics[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OverexcitationLimiterDynamics[obj.id];
             }
 
             parse (context, sub)
@@ -39,7 +38,6 @@ define
                 obj = StandardModels.DynamicsFunctionBlock.prototype.parse.call (this, context, sub);
                 obj.cls = "OverexcitationLimiterDynamics";
                 base.parse_attribute (/<cim:OverexcitationLimiterDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
-
                 var bucket = context.parsed.OverexcitationLimiterDynamics;
                 if (null == bucket)
                    context.parsed.OverexcitationLimiterDynamics = bucket = {};
@@ -52,28 +50,80 @@ define
             {
                 var fields = StandardModels.DynamicsFunctionBlock.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "OverexcitationLimiterDynamics", "ExcitationSystemDynamics", fields);
+                base.export_attribute (obj, "OverexcitationLimiterDynamics", "ExcitationSystemDynamics", "ExcitationSystemDynamics", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OverexcitationLimiterDynamics_collapse" aria-expanded="true" aria-controls="OverexcitationLimiterDynamics_collapse">OverexcitationLimiterDynamics</a>
-<div id="OverexcitationLimiterDynamics_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
-`
-{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OverexcitationLimiterDynamics_collapse" aria-expanded="true" aria-controls="OverexcitationLimiterDynamics_collapse" style="margin-left: 10px;">OverexcitationLimiterDynamics</a></legend>
+                    <div id="OverexcitationLimiterDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
+                    `
+                    {{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OverexcitationLimiterDynamics_collapse" aria-expanded="true" aria-controls="{{id}}_OverexcitationLimiterDynamics_collapse" style="margin-left: 10px;">OverexcitationLimiterDynamics</a></legend>
+                    <div id="{{id}}_OverexcitationLimiterDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.DynamicsFunctionBlock.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ExcitationSystemDynamics'>ExcitationSystemDynamics: </label><div class='col-sm-8'><input id='{{id}}_ExcitationSystemDynamics' class='form-control' type='text'{{#ExcitationSystemDynamics}} value='{{ExcitationSystemDynamics}}'{{/ExcitationSystemDynamics}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OverexcitationLimiterDynamics" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_ExcitationSystemDynamics").value; if ("" != temp) obj.ExcitationSystemDynamics = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["ExcitationSystemDynamics", "1", "0..1", "ExcitationSystemDynamics", "OverexcitationLimiterDynamics"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Different from LimIEEEOEL, LimOEL2 has a fixed pickup threshold and reduces the excitation set-point by mean of non-windup integral regulator.
@@ -86,17 +136,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OverexcLim2;
                 if (null == bucket)
                    cim_data.OverexcLim2 = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OverexcLim2[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OverexcLim2[obj.id];
             }
 
             parse (context, sub)
@@ -109,7 +158,6 @@ define
                 base.parse_element (/<cim:OverexcLim2.koi>([\s\S]*?)<\/cim:OverexcLim2.koi>/g, obj, "koi", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLim2.voimax>([\s\S]*?)<\/cim:OverexcLim2.voimax>/g, obj, "voimax", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLim2.voimin>([\s\S]*?)<\/cim:OverexcLim2.voimin>/g, obj, "voimin", base.to_string, sub, context);
-
                 var bucket = context.parsed.OverexcLim2;
                 if (null == bucket)
                    context.parsed.OverexcLim2 = bucket = {};
@@ -122,34 +170,81 @@ define
             {
                 var fields = OverexcitationLimiterDynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OverexcLim2", "ifdlim", base.from_string, fields);
-                base.export_element (obj, "OverexcLim2", "koi", base.from_string, fields);
-                base.export_element (obj, "OverexcLim2", "voimax", base.from_string, fields);
-                base.export_element (obj, "OverexcLim2", "voimin", base.from_string, fields);
+                base.export_element (obj, "OverexcLim2", "ifdlim", "ifdlim",  base.from_string, fields);
+                base.export_element (obj, "OverexcLim2", "koi", "koi",  base.from_string, fields);
+                base.export_element (obj, "OverexcLim2", "voimax", "voimax",  base.from_string, fields);
+                base.export_element (obj, "OverexcLim2", "voimin", "voimin",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OverexcLim2_collapse" aria-expanded="true" aria-controls="OverexcLim2_collapse">OverexcLim2</a>
-<div id="OverexcLim2_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + OverexcitationLimiterDynamics.prototype.template.call (this) +
-`
-{{#ifdlim}}<div><b>ifdlim</b>: {{ifdlim}}</div>{{/ifdlim}}
-{{#koi}}<div><b>koi</b>: {{koi}}</div>{{/koi}}
-{{#voimax}}<div><b>voimax</b>: {{voimax}}</div>{{/voimax}}
-{{#voimin}}<div><b>voimin</b>: {{voimin}}</div>{{/voimin}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OverexcLim2_collapse" aria-expanded="true" aria-controls="OverexcLim2_collapse" style="margin-left: 10px;">OverexcLim2</a></legend>
+                    <div id="OverexcLim2_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.template.call (this) +
+                    `
+                    {{#ifdlim}}<div><b>ifdlim</b>: {{ifdlim}}</div>{{/ifdlim}}
+                    {{#koi}}<div><b>koi</b>: {{koi}}</div>{{/koi}}
+                    {{#voimax}}<div><b>voimax</b>: {{voimax}}</div>{{/voimax}}
+                    {{#voimin}}<div><b>voimin</b>: {{voimin}}</div>{{/voimin}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OverexcLim2_collapse" aria-expanded="true" aria-controls="{{id}}_OverexcLim2_collapse" style="margin-left: 10px;">OverexcLim2</a></legend>
+                    <div id="{{id}}_OverexcLim2_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ifdlim'>ifdlim: </label><div class='col-sm-8'><input id='{{id}}_ifdlim' class='form-control' type='text'{{#ifdlim}} value='{{ifdlim}}'{{/ifdlim}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_koi'>koi: </label><div class='col-sm-8'><input id='{{id}}_koi' class='form-control' type='text'{{#koi}} value='{{koi}}'{{/koi}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_voimax'>voimax: </label><div class='col-sm-8'><input id='{{id}}_voimax' class='form-control' type='text'{{#voimax}} value='{{voimax}}'{{/voimax}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_voimin'>voimin: </label><div class='col-sm-8'><input id='{{id}}_voimin' class='form-control' type='text'{{#voimin}} value='{{voimin}}'{{/voimin}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OverexcLim2" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_ifdlim").value; if ("" != temp) obj.ifdlim = temp;
+                temp = document.getElementById (id + "_koi").value; if ("" != temp) obj.koi = temp;
+                temp = document.getElementById (id + "_voimax").value; if ("" != temp) obj.voimax = temp;
+                temp = document.getElementById (id + "_voimin").value; if ("" != temp) obj.voimin = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * The over excitation limiter model is intended to represent the significant features of OELs necessary for some large-scale system studies.
@@ -162,17 +257,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OverexcLimIEEE;
                 if (null == bucket)
                    cim_data.OverexcLimIEEE = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OverexcLimIEEE[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OverexcLimIEEE[obj.id];
             }
 
             parse (context, sub)
@@ -187,7 +281,6 @@ define
                 base.parse_element (/<cim:OverexcLimIEEE.itfpu>([\s\S]*?)<\/cim:OverexcLimIEEE.itfpu>/g, obj, "itfpu", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimIEEE.kcd>([\s\S]*?)<\/cim:OverexcLimIEEE.kcd>/g, obj, "kcd", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimIEEE.kramp>([\s\S]*?)<\/cim:OverexcLimIEEE.kramp>/g, obj, "kramp", base.to_float, sub, context);
-
                 var bucket = context.parsed.OverexcLimIEEE;
                 if (null == bucket)
                    context.parsed.OverexcLimIEEE = bucket = {};
@@ -200,38 +293,89 @@ define
             {
                 var fields = OverexcitationLimiterDynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OverexcLimIEEE", "hyst", base.from_string, fields);
-                base.export_element (obj, "OverexcLimIEEE", "ifdlim", base.from_string, fields);
-                base.export_element (obj, "OverexcLimIEEE", "ifdmax", base.from_string, fields);
-                base.export_element (obj, "OverexcLimIEEE", "itfpu", base.from_string, fields);
-                base.export_element (obj, "OverexcLimIEEE", "kcd", base.from_string, fields);
-                base.export_element (obj, "OverexcLimIEEE", "kramp", base.from_float, fields);
+                base.export_element (obj, "OverexcLimIEEE", "hyst", "hyst",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimIEEE", "ifdlim", "ifdlim",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimIEEE", "ifdmax", "ifdmax",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimIEEE", "itfpu", "itfpu",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimIEEE", "kcd", "kcd",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimIEEE", "kramp", "kramp",  base.from_float, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OverexcLimIEEE_collapse" aria-expanded="true" aria-controls="OverexcLimIEEE_collapse">OverexcLimIEEE</a>
-<div id="OverexcLimIEEE_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + OverexcitationLimiterDynamics.prototype.template.call (this) +
-`
-{{#hyst}}<div><b>hyst</b>: {{hyst}}</div>{{/hyst}}
-{{#ifdlim}}<div><b>ifdlim</b>: {{ifdlim}}</div>{{/ifdlim}}
-{{#ifdmax}}<div><b>ifdmax</b>: {{ifdmax}}</div>{{/ifdmax}}
-{{#itfpu}}<div><b>itfpu</b>: {{itfpu}}</div>{{/itfpu}}
-{{#kcd}}<div><b>kcd</b>: {{kcd}}</div>{{/kcd}}
-{{#kramp}}<div><b>kramp</b>: {{kramp}}</div>{{/kramp}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OverexcLimIEEE_collapse" aria-expanded="true" aria-controls="OverexcLimIEEE_collapse" style="margin-left: 10px;">OverexcLimIEEE</a></legend>
+                    <div id="OverexcLimIEEE_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.template.call (this) +
+                    `
+                    {{#hyst}}<div><b>hyst</b>: {{hyst}}</div>{{/hyst}}
+                    {{#ifdlim}}<div><b>ifdlim</b>: {{ifdlim}}</div>{{/ifdlim}}
+                    {{#ifdmax}}<div><b>ifdmax</b>: {{ifdmax}}</div>{{/ifdmax}}
+                    {{#itfpu}}<div><b>itfpu</b>: {{itfpu}}</div>{{/itfpu}}
+                    {{#kcd}}<div><b>kcd</b>: {{kcd}}</div>{{/kcd}}
+                    {{#kramp}}<div><b>kramp</b>: {{kramp}}</div>{{/kramp}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OverexcLimIEEE_collapse" aria-expanded="true" aria-controls="{{id}}_OverexcLimIEEE_collapse" style="margin-left: 10px;">OverexcLimIEEE</a></legend>
+                    <div id="{{id}}_OverexcLimIEEE_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_hyst'>hyst: </label><div class='col-sm-8'><input id='{{id}}_hyst' class='form-control' type='text'{{#hyst}} value='{{hyst}}'{{/hyst}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ifdlim'>ifdlim: </label><div class='col-sm-8'><input id='{{id}}_ifdlim' class='form-control' type='text'{{#ifdlim}} value='{{ifdlim}}'{{/ifdlim}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ifdmax'>ifdmax: </label><div class='col-sm-8'><input id='{{id}}_ifdmax' class='form-control' type='text'{{#ifdmax}} value='{{ifdmax}}'{{/ifdmax}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_itfpu'>itfpu: </label><div class='col-sm-8'><input id='{{id}}_itfpu' class='form-control' type='text'{{#itfpu}} value='{{itfpu}}'{{/itfpu}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kcd'>kcd: </label><div class='col-sm-8'><input id='{{id}}_kcd' class='form-control' type='text'{{#kcd}} value='{{kcd}}'{{/kcd}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kramp'>kramp: </label><div class='col-sm-8'><input id='{{id}}_kramp' class='form-control' type='text'{{#kramp}} value='{{kramp}}'{{/kramp}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OverexcLimIEEE" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_hyst").value; if ("" != temp) obj.hyst = temp;
+                temp = document.getElementById (id + "_ifdlim").value; if ("" != temp) obj.ifdlim = temp;
+                temp = document.getElementById (id + "_ifdmax").value; if ("" != temp) obj.ifdmax = temp;
+                temp = document.getElementById (id + "_itfpu").value; if ("" != temp) obj.itfpu = temp;
+                temp = document.getElementById (id + "_kcd").value; if ("" != temp) obj.kcd = temp;
+                temp = document.getElementById (id + "_kramp").value; if ("" != temp) obj.kramp = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * Field voltage over excitation limiter.
@@ -242,17 +386,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OverexcLimX1;
                 if (null == bucket)
                    cim_data.OverexcLimX1 = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OverexcLimX1[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OverexcLimX1[obj.id];
             }
 
             parse (context, sub)
@@ -271,7 +414,6 @@ define
                 base.parse_element (/<cim:OverexcLimX1.t2>([\s\S]*?)<\/cim:OverexcLimX1.t2>/g, obj, "t2", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimX1.t3>([\s\S]*?)<\/cim:OverexcLimX1.t3>/g, obj, "t3", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimX1.vlow>([\s\S]*?)<\/cim:OverexcLimX1.vlow>/g, obj, "vlow", base.to_string, sub, context);
-
                 var bucket = context.parsed.OverexcLimX1;
                 if (null == bucket)
                    context.parsed.OverexcLimX1 = bucket = {};
@@ -284,46 +426,105 @@ define
             {
                 var fields = OverexcitationLimiterDynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OverexcLimX1", "efd1", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "efd2", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "efd3", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "efddes", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "efdrated", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "kmx", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "t1", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "t2", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "t3", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX1", "vlow", base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "efd1", "efd1",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "efd2", "efd2",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "efd3", "efd3",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "efddes", "efddes",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "efdrated", "efdrated",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "kmx", "kmx",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "t1", "t1",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "t2", "t2",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "t3", "t3",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX1", "vlow", "vlow",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OverexcLimX1_collapse" aria-expanded="true" aria-controls="OverexcLimX1_collapse">OverexcLimX1</a>
-<div id="OverexcLimX1_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + OverexcitationLimiterDynamics.prototype.template.call (this) +
-`
-{{#efd1}}<div><b>efd1</b>: {{efd1}}</div>{{/efd1}}
-{{#efd2}}<div><b>efd2</b>: {{efd2}}</div>{{/efd2}}
-{{#efd3}}<div><b>efd3</b>: {{efd3}}</div>{{/efd3}}
-{{#efddes}}<div><b>efddes</b>: {{efddes}}</div>{{/efddes}}
-{{#efdrated}}<div><b>efdrated</b>: {{efdrated}}</div>{{/efdrated}}
-{{#kmx}}<div><b>kmx</b>: {{kmx}}</div>{{/kmx}}
-{{#t1}}<div><b>t1</b>: {{t1}}</div>{{/t1}}
-{{#t2}}<div><b>t2</b>: {{t2}}</div>{{/t2}}
-{{#t3}}<div><b>t3</b>: {{t3}}</div>{{/t3}}
-{{#vlow}}<div><b>vlow</b>: {{vlow}}</div>{{/vlow}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OverexcLimX1_collapse" aria-expanded="true" aria-controls="OverexcLimX1_collapse" style="margin-left: 10px;">OverexcLimX1</a></legend>
+                    <div id="OverexcLimX1_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.template.call (this) +
+                    `
+                    {{#efd1}}<div><b>efd1</b>: {{efd1}}</div>{{/efd1}}
+                    {{#efd2}}<div><b>efd2</b>: {{efd2}}</div>{{/efd2}}
+                    {{#efd3}}<div><b>efd3</b>: {{efd3}}</div>{{/efd3}}
+                    {{#efddes}}<div><b>efddes</b>: {{efddes}}</div>{{/efddes}}
+                    {{#efdrated}}<div><b>efdrated</b>: {{efdrated}}</div>{{/efdrated}}
+                    {{#kmx}}<div><b>kmx</b>: {{kmx}}</div>{{/kmx}}
+                    {{#t1}}<div><b>t1</b>: {{t1}}</div>{{/t1}}
+                    {{#t2}}<div><b>t2</b>: {{t2}}</div>{{/t2}}
+                    {{#t3}}<div><b>t3</b>: {{t3}}</div>{{/t3}}
+                    {{#vlow}}<div><b>vlow</b>: {{vlow}}</div>{{/vlow}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OverexcLimX1_collapse" aria-expanded="true" aria-controls="{{id}}_OverexcLimX1_collapse" style="margin-left: 10px;">OverexcLimX1</a></legend>
+                    <div id="{{id}}_OverexcLimX1_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd1'>efd1: </label><div class='col-sm-8'><input id='{{id}}_efd1' class='form-control' type='text'{{#efd1}} value='{{efd1}}'{{/efd1}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd2'>efd2: </label><div class='col-sm-8'><input id='{{id}}_efd2' class='form-control' type='text'{{#efd2}} value='{{efd2}}'{{/efd2}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd3'>efd3: </label><div class='col-sm-8'><input id='{{id}}_efd3' class='form-control' type='text'{{#efd3}} value='{{efd3}}'{{/efd3}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efddes'>efddes: </label><div class='col-sm-8'><input id='{{id}}_efddes' class='form-control' type='text'{{#efddes}} value='{{efddes}}'{{/efddes}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efdrated'>efdrated: </label><div class='col-sm-8'><input id='{{id}}_efdrated' class='form-control' type='text'{{#efdrated}} value='{{efdrated}}'{{/efdrated}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kmx'>kmx: </label><div class='col-sm-8'><input id='{{id}}_kmx' class='form-control' type='text'{{#kmx}} value='{{kmx}}'{{/kmx}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t1'>t1: </label><div class='col-sm-8'><input id='{{id}}_t1' class='form-control' type='text'{{#t1}} value='{{t1}}'{{/t1}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t2'>t2: </label><div class='col-sm-8'><input id='{{id}}_t2' class='form-control' type='text'{{#t2}} value='{{t2}}'{{/t2}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t3'>t3: </label><div class='col-sm-8'><input id='{{id}}_t3' class='form-control' type='text'{{#t3}} value='{{t3}}'{{/t3}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vlow'>vlow: </label><div class='col-sm-8'><input id='{{id}}_vlow' class='form-control' type='text'{{#vlow}} value='{{vlow}}'{{/vlow}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OverexcLimX1" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_efd1").value; if ("" != temp) obj.efd1 = temp;
+                temp = document.getElementById (id + "_efd2").value; if ("" != temp) obj.efd2 = temp;
+                temp = document.getElementById (id + "_efd3").value; if ("" != temp) obj.efd3 = temp;
+                temp = document.getElementById (id + "_efddes").value; if ("" != temp) obj.efddes = temp;
+                temp = document.getElementById (id + "_efdrated").value; if ("" != temp) obj.efdrated = temp;
+                temp = document.getElementById (id + "_kmx").value; if ("" != temp) obj.kmx = temp;
+                temp = document.getElementById (id + "_t1").value; if ("" != temp) obj.t1 = temp;
+                temp = document.getElementById (id + "_t2").value; if ("" != temp) obj.t2 = temp;
+                temp = document.getElementById (id + "_t3").value; if ("" != temp) obj.t3 = temp;
+                temp = document.getElementById (id + "_vlow").value; if ("" != temp) obj.vlow = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * Field Voltage or Current overexcitation limiter designed to protect the generator field of an AC machine with automatic excitation control from overheating due to prolonged overexcitation.
@@ -334,17 +535,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.OverexcLimX2;
                 if (null == bucket)
                    cim_data.OverexcLimX2 = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.OverexcLimX2[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.OverexcLimX2[obj.id];
             }
 
             parse (context, sub)
@@ -364,7 +564,6 @@ define
                 base.parse_element (/<cim:OverexcLimX2.t2>([\s\S]*?)<\/cim:OverexcLimX2.t2>/g, obj, "t2", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimX2.t3>([\s\S]*?)<\/cim:OverexcLimX2.t3>/g, obj, "t3", base.to_string, sub, context);
                 base.parse_element (/<cim:OverexcLimX2.vlow>([\s\S]*?)<\/cim:OverexcLimX2.vlow>/g, obj, "vlow", base.to_string, sub, context);
-
                 var bucket = context.parsed.OverexcLimX2;
                 if (null == bucket)
                    context.parsed.OverexcLimX2 = bucket = {};
@@ -377,48 +576,109 @@ define
             {
                 var fields = OverexcitationLimiterDynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "OverexcLimX2", "efd1", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "efd2", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "efd3", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "efddes", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "efdrated", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "kmx", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "m", base.from_boolean, fields);
-                base.export_element (obj, "OverexcLimX2", "t1", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "t2", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "t3", base.from_string, fields);
-                base.export_element (obj, "OverexcLimX2", "vlow", base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "efd1", "efd1",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "efd2", "efd2",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "efd3", "efd3",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "efddes", "efddes",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "efdrated", "efdrated",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "kmx", "kmx",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "m", "m",  base.from_boolean, fields);
+                base.export_element (obj, "OverexcLimX2", "t1", "t1",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "t2", "t2",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "t3", "t3",  base.from_string, fields);
+                base.export_element (obj, "OverexcLimX2", "vlow", "vlow",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#OverexcLimX2_collapse" aria-expanded="true" aria-controls="OverexcLimX2_collapse">OverexcLimX2</a>
-<div id="OverexcLimX2_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + OverexcitationLimiterDynamics.prototype.template.call (this) +
-`
-{{#efd1}}<div><b>efd1</b>: {{efd1}}</div>{{/efd1}}
-{{#efd2}}<div><b>efd2</b>: {{efd2}}</div>{{/efd2}}
-{{#efd3}}<div><b>efd3</b>: {{efd3}}</div>{{/efd3}}
-{{#efddes}}<div><b>efddes</b>: {{efddes}}</div>{{/efddes}}
-{{#efdrated}}<div><b>efdrated</b>: {{efdrated}}</div>{{/efdrated}}
-{{#kmx}}<div><b>kmx</b>: {{kmx}}</div>{{/kmx}}
-{{#m}}<div><b>m</b>: {{m}}</div>{{/m}}
-{{#t1}}<div><b>t1</b>: {{t1}}</div>{{/t1}}
-{{#t2}}<div><b>t2</b>: {{t2}}</div>{{/t2}}
-{{#t3}}<div><b>t3</b>: {{t3}}</div>{{/t3}}
-{{#vlow}}<div><b>vlow</b>: {{vlow}}</div>{{/vlow}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#OverexcLimX2_collapse" aria-expanded="true" aria-controls="OverexcLimX2_collapse" style="margin-left: 10px;">OverexcLimX2</a></legend>
+                    <div id="OverexcLimX2_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.template.call (this) +
+                    `
+                    {{#efd1}}<div><b>efd1</b>: {{efd1}}</div>{{/efd1}}
+                    {{#efd2}}<div><b>efd2</b>: {{efd2}}</div>{{/efd2}}
+                    {{#efd3}}<div><b>efd3</b>: {{efd3}}</div>{{/efd3}}
+                    {{#efddes}}<div><b>efddes</b>: {{efddes}}</div>{{/efddes}}
+                    {{#efdrated}}<div><b>efdrated</b>: {{efdrated}}</div>{{/efdrated}}
+                    {{#kmx}}<div><b>kmx</b>: {{kmx}}</div>{{/kmx}}
+                    {{#m}}<div><b>m</b>: {{m}}</div>{{/m}}
+                    {{#t1}}<div><b>t1</b>: {{t1}}</div>{{/t1}}
+                    {{#t2}}<div><b>t2</b>: {{t2}}</div>{{/t2}}
+                    {{#t3}}<div><b>t3</b>: {{t3}}</div>{{/t3}}
+                    {{#vlow}}<div><b>vlow</b>: {{vlow}}</div>{{/vlow}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_OverexcLimX2_collapse" aria-expanded="true" aria-controls="{{id}}_OverexcLimX2_collapse" style="margin-left: 10px;">OverexcLimX2</a></legend>
+                    <div id="{{id}}_OverexcLimX2_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + OverexcitationLimiterDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd1'>efd1: </label><div class='col-sm-8'><input id='{{id}}_efd1' class='form-control' type='text'{{#efd1}} value='{{efd1}}'{{/efd1}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd2'>efd2: </label><div class='col-sm-8'><input id='{{id}}_efd2' class='form-control' type='text'{{#efd2}} value='{{efd2}}'{{/efd2}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efd3'>efd3: </label><div class='col-sm-8'><input id='{{id}}_efd3' class='form-control' type='text'{{#efd3}} value='{{efd3}}'{{/efd3}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efddes'>efddes: </label><div class='col-sm-8'><input id='{{id}}_efddes' class='form-control' type='text'{{#efddes}} value='{{efddes}}'{{/efddes}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efdrated'>efdrated: </label><div class='col-sm-8'><input id='{{id}}_efdrated' class='form-control' type='text'{{#efdrated}} value='{{efdrated}}'{{/efdrated}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kmx'>kmx: </label><div class='col-sm-8'><input id='{{id}}_kmx' class='form-control' type='text'{{#kmx}} value='{{kmx}}'{{/kmx}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_m'>m: </label><div class='col-sm-8'><input id='{{id}}_m' class='form-check-input' type='checkbox'{{#m}} checked{{/m}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t1'>t1: </label><div class='col-sm-8'><input id='{{id}}_t1' class='form-control' type='text'{{#t1}} value='{{t1}}'{{/t1}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t2'>t2: </label><div class='col-sm-8'><input id='{{id}}_t2' class='form-control' type='text'{{#t2}} value='{{t2}}'{{/t2}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_t3'>t3: </label><div class='col-sm-8'><input id='{{id}}_t3' class='form-control' type='text'{{#t3}} value='{{t3}}'{{/t3}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vlow'>vlow: </label><div class='col-sm-8'><input id='{{id}}_vlow' class='form-control' type='text'{{#vlow}} value='{{vlow}}'{{/vlow}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "OverexcLimX2" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_efd1").value; if ("" != temp) obj.efd1 = temp;
+                temp = document.getElementById (id + "_efd2").value; if ("" != temp) obj.efd2 = temp;
+                temp = document.getElementById (id + "_efd3").value; if ("" != temp) obj.efd3 = temp;
+                temp = document.getElementById (id + "_efddes").value; if ("" != temp) obj.efddes = temp;
+                temp = document.getElementById (id + "_efdrated").value; if ("" != temp) obj.efdrated = temp;
+                temp = document.getElementById (id + "_kmx").value; if ("" != temp) obj.kmx = temp;
+                temp = document.getElementById (id + "_m").checked; if (temp) obj.m = true;
+                temp = document.getElementById (id + "_t1").value; if ("" != temp) obj.t1 = temp;
+                temp = document.getElementById (id + "_t2").value; if ("" != temp) obj.t2 = temp;
+                temp = document.getElementById (id + "_t3").value; if ("" != temp) obj.t3 = temp;
+                temp = document.getElementById (id + "_vlow").value; if ("" != temp) obj.vlow = temp;
+
+                return (obj);
+            }
+        }
 
         return (
             {

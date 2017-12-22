@@ -19,17 +19,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.RemoteConnectDisconnectInfo;
                 if (null == bucket)
                    cim_data.RemoteConnectDisconnectInfo = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.RemoteConnectDisconnectInfo[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.RemoteConnectDisconnectInfo[obj.id];
             }
 
             parse (context, sub)
@@ -50,7 +49,6 @@ define
                 base.parse_element (/<cim:RemoteConnectDisconnectInfo.needsVoltageLimitCheck>([\s\S]*?)<\/cim:RemoteConnectDisconnectInfo.needsVoltageLimitCheck>/g, obj, "needsVoltageLimitCheck", base.to_boolean, sub, context);
                 base.parse_element (/<cim:RemoteConnectDisconnectInfo.powerLimit>([\s\S]*?)<\/cim:RemoteConnectDisconnectInfo.powerLimit>/g, obj, "powerLimit", base.to_string, sub, context);
                 base.parse_element (/<cim:RemoteConnectDisconnectInfo.usePushbutton>([\s\S]*?)<\/cim:RemoteConnectDisconnectInfo.usePushbutton>/g, obj, "usePushbutton", base.to_boolean, sub, context);
-
                 var bucket = context.parsed.RemoteConnectDisconnectInfo;
                 if (null == bucket)
                    context.parsed.RemoteConnectDisconnectInfo = bucket = {};
@@ -63,50 +61,113 @@ define
             {
                 var fields = [];
 
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "armedTimeout", base.from_string, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "customerVoltageLimit", base.from_string, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyLimit", base.from_string, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyUsageStartDateTime", base.from_datetime, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyUsageWarning", base.from_string, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "isArmConnect", base.from_boolean, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "isArmDisconnect", base.from_boolean, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "isEnergyLimiting", base.from_boolean, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "needsPowerLimitCheck", base.from_boolean, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "needsVoltageLimitCheck", base.from_boolean, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "powerLimit", base.from_string, fields);
-                base.export_element (obj, "RemoteConnectDisconnectInfo", "usePushbutton", base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "armedTimeout", "armedTimeout",  base.from_string, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "customerVoltageLimit", "customerVoltageLimit",  base.from_string, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyLimit", "energyLimit",  base.from_string, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyUsageStartDateTime", "energyUsageStartDateTime",  base.from_datetime, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "energyUsageWarning", "energyUsageWarning",  base.from_string, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "isArmConnect", "isArmConnect",  base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "isArmDisconnect", "isArmDisconnect",  base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "isEnergyLimiting", "isEnergyLimiting",  base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "needsPowerLimitCheck", "needsPowerLimitCheck",  base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "needsVoltageLimitCheck", "needsVoltageLimitCheck",  base.from_boolean, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "powerLimit", "powerLimit",  base.from_string, fields);
+                base.export_element (obj, "RemoteConnectDisconnectInfo", "usePushbutton", "usePushbutton",  base.from_boolean, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#RemoteConnectDisconnectInfo_collapse" aria-expanded="true" aria-controls="RemoteConnectDisconnectInfo_collapse">RemoteConnectDisconnectInfo</a>
-<div id="RemoteConnectDisconnectInfo_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#armedTimeout}}<div><b>armedTimeout</b>: {{armedTimeout}}</div>{{/armedTimeout}}
-{{#customerVoltageLimit}}<div><b>customerVoltageLimit</b>: {{customerVoltageLimit}}</div>{{/customerVoltageLimit}}
-{{#energyLimit}}<div><b>energyLimit</b>: {{energyLimit}}</div>{{/energyLimit}}
-{{#energyUsageStartDateTime}}<div><b>energyUsageStartDateTime</b>: {{energyUsageStartDateTime}}</div>{{/energyUsageStartDateTime}}
-{{#energyUsageWarning}}<div><b>energyUsageWarning</b>: {{energyUsageWarning}}</div>{{/energyUsageWarning}}
-{{#isArmConnect}}<div><b>isArmConnect</b>: {{isArmConnect}}</div>{{/isArmConnect}}
-{{#isArmDisconnect}}<div><b>isArmDisconnect</b>: {{isArmDisconnect}}</div>{{/isArmDisconnect}}
-{{#isEnergyLimiting}}<div><b>isEnergyLimiting</b>: {{isEnergyLimiting}}</div>{{/isEnergyLimiting}}
-{{#needsPowerLimitCheck}}<div><b>needsPowerLimitCheck</b>: {{needsPowerLimitCheck}}</div>{{/needsPowerLimitCheck}}
-{{#needsVoltageLimitCheck}}<div><b>needsVoltageLimitCheck</b>: {{needsVoltageLimitCheck}}</div>{{/needsVoltageLimitCheck}}
-{{#powerLimit}}<div><b>powerLimit</b>: {{powerLimit}}</div>{{/powerLimit}}
-{{#usePushbutton}}<div><b>usePushbutton</b>: {{usePushbutton}}</div>{{/usePushbutton}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#RemoteConnectDisconnectInfo_collapse" aria-expanded="true" aria-controls="RemoteConnectDisconnectInfo_collapse" style="margin-left: 10px;">RemoteConnectDisconnectInfo</a></legend>
+                    <div id="RemoteConnectDisconnectInfo_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.template.call (this) +
+                    `
+                    {{#armedTimeout}}<div><b>armedTimeout</b>: {{armedTimeout}}</div>{{/armedTimeout}}
+                    {{#customerVoltageLimit}}<div><b>customerVoltageLimit</b>: {{customerVoltageLimit}}</div>{{/customerVoltageLimit}}
+                    {{#energyLimit}}<div><b>energyLimit</b>: {{energyLimit}}</div>{{/energyLimit}}
+                    {{#energyUsageStartDateTime}}<div><b>energyUsageStartDateTime</b>: {{energyUsageStartDateTime}}</div>{{/energyUsageStartDateTime}}
+                    {{#energyUsageWarning}}<div><b>energyUsageWarning</b>: {{energyUsageWarning}}</div>{{/energyUsageWarning}}
+                    {{#isArmConnect}}<div><b>isArmConnect</b>: {{isArmConnect}}</div>{{/isArmConnect}}
+                    {{#isArmDisconnect}}<div><b>isArmDisconnect</b>: {{isArmDisconnect}}</div>{{/isArmDisconnect}}
+                    {{#isEnergyLimiting}}<div><b>isEnergyLimiting</b>: {{isEnergyLimiting}}</div>{{/isEnergyLimiting}}
+                    {{#needsPowerLimitCheck}}<div><b>needsPowerLimitCheck</b>: {{needsPowerLimitCheck}}</div>{{/needsPowerLimitCheck}}
+                    {{#needsVoltageLimitCheck}}<div><b>needsVoltageLimitCheck</b>: {{needsVoltageLimitCheck}}</div>{{/needsVoltageLimitCheck}}
+                    {{#powerLimit}}<div><b>powerLimit</b>: {{powerLimit}}</div>{{/powerLimit}}
+                    {{#usePushbutton}}<div><b>usePushbutton</b>: {{usePushbutton}}</div>{{/usePushbutton}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_RemoteConnectDisconnectInfo_collapse" aria-expanded="true" aria-controls="{{id}}_RemoteConnectDisconnectInfo_collapse" style="margin-left: 10px;">RemoteConnectDisconnectInfo</a></legend>
+                    <div id="{{id}}_RemoteConnectDisconnectInfo_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + base.Element.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_armedTimeout'>armedTimeout: </label><div class='col-sm-8'><input id='{{id}}_armedTimeout' class='form-control' type='text'{{#armedTimeout}} value='{{armedTimeout}}'{{/armedTimeout}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_customerVoltageLimit'>customerVoltageLimit: </label><div class='col-sm-8'><input id='{{id}}_customerVoltageLimit' class='form-control' type='text'{{#customerVoltageLimit}} value='{{customerVoltageLimit}}'{{/customerVoltageLimit}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_energyLimit'>energyLimit: </label><div class='col-sm-8'><input id='{{id}}_energyLimit' class='form-control' type='text'{{#energyLimit}} value='{{energyLimit}}'{{/energyLimit}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_energyUsageStartDateTime'>energyUsageStartDateTime: </label><div class='col-sm-8'><input id='{{id}}_energyUsageStartDateTime' class='form-control' type='text'{{#energyUsageStartDateTime}} value='{{energyUsageStartDateTime}}'{{/energyUsageStartDateTime}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_energyUsageWarning'>energyUsageWarning: </label><div class='col-sm-8'><input id='{{id}}_energyUsageWarning' class='form-control' type='text'{{#energyUsageWarning}} value='{{energyUsageWarning}}'{{/energyUsageWarning}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isArmConnect'>isArmConnect: </label><div class='col-sm-8'><input id='{{id}}_isArmConnect' class='form-check-input' type='checkbox'{{#isArmConnect}} checked{{/isArmConnect}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isArmDisconnect'>isArmDisconnect: </label><div class='col-sm-8'><input id='{{id}}_isArmDisconnect' class='form-check-input' type='checkbox'{{#isArmDisconnect}} checked{{/isArmDisconnect}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isEnergyLimiting'>isEnergyLimiting: </label><div class='col-sm-8'><input id='{{id}}_isEnergyLimiting' class='form-check-input' type='checkbox'{{#isEnergyLimiting}} checked{{/isEnergyLimiting}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_needsPowerLimitCheck'>needsPowerLimitCheck: </label><div class='col-sm-8'><input id='{{id}}_needsPowerLimitCheck' class='form-check-input' type='checkbox'{{#needsPowerLimitCheck}} checked{{/needsPowerLimitCheck}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_needsVoltageLimitCheck'>needsVoltageLimitCheck: </label><div class='col-sm-8'><input id='{{id}}_needsVoltageLimitCheck' class='form-check-input' type='checkbox'{{#needsVoltageLimitCheck}} checked{{/needsVoltageLimitCheck}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_powerLimit'>powerLimit: </label><div class='col-sm-8'><input id='{{id}}_powerLimit' class='form-control' type='text'{{#powerLimit}} value='{{powerLimit}}'{{/powerLimit}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_usePushbutton'>usePushbutton: </label><div class='col-sm-8'><input id='{{id}}_usePushbutton' class='form-check-input' type='checkbox'{{#usePushbutton}} checked{{/usePushbutton}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "RemoteConnectDisconnectInfo" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_armedTimeout").value; if ("" != temp) obj.armedTimeout = temp;
+                temp = document.getElementById (id + "_customerVoltageLimit").value; if ("" != temp) obj.customerVoltageLimit = temp;
+                temp = document.getElementById (id + "_energyLimit").value; if ("" != temp) obj.energyLimit = temp;
+                temp = document.getElementById (id + "_energyUsageStartDateTime").value; if ("" != temp) obj.energyUsageStartDateTime = temp;
+                temp = document.getElementById (id + "_energyUsageWarning").value; if ("" != temp) obj.energyUsageWarning = temp;
+                temp = document.getElementById (id + "_isArmConnect").checked; if (temp) obj.isArmConnect = true;
+                temp = document.getElementById (id + "_isArmDisconnect").checked; if (temp) obj.isArmDisconnect = true;
+                temp = document.getElementById (id + "_isEnergyLimiting").checked; if (temp) obj.isEnergyLimiting = true;
+                temp = document.getElementById (id + "_needsPowerLimitCheck").checked; if (temp) obj.needsPowerLimitCheck = true;
+                temp = document.getElementById (id + "_needsVoltageLimitCheck").checked; if (temp) obj.needsVoltageLimitCheck = true;
+                temp = document.getElementById (id + "_powerLimit").value; if ("" != temp) obj.powerLimit = temp;
+                temp = document.getElementById (id + "_usePushbutton").checked; if (temp) obj.usePushbutton = true;
+
+                return (obj);
+            }
+        }
 
         /**
          * A function that will disconnect and reconnect the customer's load under defined conditions.
@@ -117,17 +178,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.ConnectDisconnectFunction;
                 if (null == bucket)
                    cim_data.ConnectDisconnectFunction = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.ConnectDisconnectFunction[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.ConnectDisconnectFunction[obj.id];
             }
 
             parse (context, sub)
@@ -144,7 +204,7 @@ define
                 base.parse_element (/<cim:ConnectDisconnectFunction.isRemoteAutoDisconOp>([\s\S]*?)<\/cim:ConnectDisconnectFunction.isRemoteAutoDisconOp>/g, obj, "isRemoteAutoDisconOp", base.to_boolean, sub, context);
                 base.parse_element (/<cim:ConnectDisconnectFunction.isRemoteAutoReconOp>([\s\S]*?)<\/cim:ConnectDisconnectFunction.isRemoteAutoReconOp>/g, obj, "isRemoteAutoReconOp", base.to_boolean, sub, context);
                 base.parse_element (/<cim:ConnectDisconnectFunction.rcdInfo>([\s\S]*?)<\/cim:ConnectDisconnectFunction.rcdInfo>/g, obj, "rcdInfo", base.to_string, sub, context);
-
+                base.parse_attributes (/<cim:ConnectDisconnectFunction.Switches\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Switches", sub, context);
                 var bucket = context.parsed.ConnectDisconnectFunction;
                 if (null == bucket)
                    context.parsed.ConnectDisconnectFunction = bucket = {};
@@ -157,42 +217,114 @@ define
             {
                 var fields = Metering.EndDeviceFunction.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "ConnectDisconnectFunction", "eventCount", base.from_string, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isConnected", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isDelayedDiscon", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isLocalAutoDisconOp", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isLocalAutoReconOp", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isRemoteAutoDisconOp", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "isRemoteAutoReconOp", base.from_boolean, fields);
-                base.export_element (obj, "ConnectDisconnectFunction", "rcdInfo", base.from_string, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "eventCount", "eventCount",  base.from_string, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isConnected", "isConnected",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isDelayedDiscon", "isDelayedDiscon",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isLocalAutoDisconOp", "isLocalAutoDisconOp",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isLocalAutoReconOp", "isLocalAutoReconOp",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isRemoteAutoDisconOp", "isRemoteAutoDisconOp",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "isRemoteAutoReconOp", "isRemoteAutoReconOp",  base.from_boolean, fields);
+                base.export_element (obj, "ConnectDisconnectFunction", "rcdInfo", "rcdInfo",  base.from_string, fields);
+                base.export_attributes (obj, "ConnectDisconnectFunction", "Switches", "Switches", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ConnectDisconnectFunction_collapse" aria-expanded="true" aria-controls="ConnectDisconnectFunction_collapse">ConnectDisconnectFunction</a>
-<div id="ConnectDisconnectFunction_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Metering.EndDeviceFunction.prototype.template.call (this) +
-`
-{{#eventCount}}<div><b>eventCount</b>: {{eventCount}}</div>{{/eventCount}}
-{{#isConnected}}<div><b>isConnected</b>: {{isConnected}}</div>{{/isConnected}}
-{{#isDelayedDiscon}}<div><b>isDelayedDiscon</b>: {{isDelayedDiscon}}</div>{{/isDelayedDiscon}}
-{{#isLocalAutoDisconOp}}<div><b>isLocalAutoDisconOp</b>: {{isLocalAutoDisconOp}}</div>{{/isLocalAutoDisconOp}}
-{{#isLocalAutoReconOp}}<div><b>isLocalAutoReconOp</b>: {{isLocalAutoReconOp}}</div>{{/isLocalAutoReconOp}}
-{{#isRemoteAutoDisconOp}}<div><b>isRemoteAutoDisconOp</b>: {{isRemoteAutoDisconOp}}</div>{{/isRemoteAutoDisconOp}}
-{{#isRemoteAutoReconOp}}<div><b>isRemoteAutoReconOp</b>: {{isRemoteAutoReconOp}}</div>{{/isRemoteAutoReconOp}}
-{{#rcdInfo}}<div><b>rcdInfo</b>: {{rcdInfo}}</div>{{/rcdInfo}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#ConnectDisconnectFunction_collapse" aria-expanded="true" aria-controls="ConnectDisconnectFunction_collapse" style="margin-left: 10px;">ConnectDisconnectFunction</a></legend>
+                    <div id="ConnectDisconnectFunction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Metering.EndDeviceFunction.prototype.template.call (this) +
+                    `
+                    {{#eventCount}}<div><b>eventCount</b>: {{eventCount}}</div>{{/eventCount}}
+                    {{#isConnected}}<div><b>isConnected</b>: {{isConnected}}</div>{{/isConnected}}
+                    {{#isDelayedDiscon}}<div><b>isDelayedDiscon</b>: {{isDelayedDiscon}}</div>{{/isDelayedDiscon}}
+                    {{#isLocalAutoDisconOp}}<div><b>isLocalAutoDisconOp</b>: {{isLocalAutoDisconOp}}</div>{{/isLocalAutoDisconOp}}
+                    {{#isLocalAutoReconOp}}<div><b>isLocalAutoReconOp</b>: {{isLocalAutoReconOp}}</div>{{/isLocalAutoReconOp}}
+                    {{#isRemoteAutoDisconOp}}<div><b>isRemoteAutoDisconOp</b>: {{isRemoteAutoDisconOp}}</div>{{/isRemoteAutoDisconOp}}
+                    {{#isRemoteAutoReconOp}}<div><b>isRemoteAutoReconOp</b>: {{isRemoteAutoReconOp}}</div>{{/isRemoteAutoReconOp}}
+                    {{#rcdInfo}}<div><b>rcdInfo</b>: {{rcdInfo}}</div>{{/rcdInfo}}
+                    {{#Switches}}<div><b>Switches</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Switches}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.Switches) obj.Switches_string = obj.Switches.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.Switches_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_ConnectDisconnectFunction_collapse" aria-expanded="true" aria-controls="{{id}}_ConnectDisconnectFunction_collapse" style="margin-left: 10px;">ConnectDisconnectFunction</a></legend>
+                    <div id="{{id}}_ConnectDisconnectFunction_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Metering.EndDeviceFunction.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_eventCount'>eventCount: </label><div class='col-sm-8'><input id='{{id}}_eventCount' class='form-control' type='text'{{#eventCount}} value='{{eventCount}}'{{/eventCount}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isConnected'>isConnected: </label><div class='col-sm-8'><input id='{{id}}_isConnected' class='form-check-input' type='checkbox'{{#isConnected}} checked{{/isConnected}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isDelayedDiscon'>isDelayedDiscon: </label><div class='col-sm-8'><input id='{{id}}_isDelayedDiscon' class='form-check-input' type='checkbox'{{#isDelayedDiscon}} checked{{/isDelayedDiscon}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isLocalAutoDisconOp'>isLocalAutoDisconOp: </label><div class='col-sm-8'><input id='{{id}}_isLocalAutoDisconOp' class='form-check-input' type='checkbox'{{#isLocalAutoDisconOp}} checked{{/isLocalAutoDisconOp}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isLocalAutoReconOp'>isLocalAutoReconOp: </label><div class='col-sm-8'><input id='{{id}}_isLocalAutoReconOp' class='form-check-input' type='checkbox'{{#isLocalAutoReconOp}} checked{{/isLocalAutoReconOp}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isRemoteAutoDisconOp'>isRemoteAutoDisconOp: </label><div class='col-sm-8'><input id='{{id}}_isRemoteAutoDisconOp' class='form-check-input' type='checkbox'{{#isRemoteAutoDisconOp}} checked{{/isRemoteAutoDisconOp}}></div></div>
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_isRemoteAutoReconOp'>isRemoteAutoReconOp: </label><div class='col-sm-8'><input id='{{id}}_isRemoteAutoReconOp' class='form-check-input' type='checkbox'{{#isRemoteAutoReconOp}} checked{{/isRemoteAutoReconOp}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rcdInfo'>rcdInfo: </label><div class='col-sm-8'><input id='{{id}}_rcdInfo' class='form-control' type='text'{{#rcdInfo}} value='{{rcdInfo}}'{{/rcdInfo}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Switches'>Switches: </label><div class='col-sm-8'><input id='{{id}}_Switches' class='form-control' type='text'{{#Switches}} value='{{Switches}}_string'{{/Switches}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "ConnectDisconnectFunction" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_eventCount").value; if ("" != temp) obj.eventCount = temp;
+                temp = document.getElementById (id + "_isConnected").checked; if (temp) obj.isConnected = true;
+                temp = document.getElementById (id + "_isDelayedDiscon").checked; if (temp) obj.isDelayedDiscon = true;
+                temp = document.getElementById (id + "_isLocalAutoDisconOp").checked; if (temp) obj.isLocalAutoDisconOp = true;
+                temp = document.getElementById (id + "_isLocalAutoReconOp").checked; if (temp) obj.isLocalAutoReconOp = true;
+                temp = document.getElementById (id + "_isRemoteAutoDisconOp").checked; if (temp) obj.isRemoteAutoDisconOp = true;
+                temp = document.getElementById (id + "_isRemoteAutoReconOp").checked; if (temp) obj.isRemoteAutoReconOp = true;
+                temp = document.getElementById (id + "_rcdInfo").value; if ("" != temp) obj.rcdInfo = temp;
+                temp = document.getElementById (id + "_Switches").value; if ("" != temp) obj.Switches = temp.split (",");
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["Switches", "0..*", "0..*", "Switch", "ConnectDisconnectFunctions"]
+                        ]
+                    )
+                );
+            }
+        }
 
         return (
             {

@@ -19,17 +19,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.PFVArControllerType1Dynamics;
                 if (null == bucket)
                    cim_data.PFVArControllerType1Dynamics = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.PFVArControllerType1Dynamics[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.PFVArControllerType1Dynamics[obj.id];
             }
 
             parse (context, sub)
@@ -41,7 +40,6 @@ define
                 base.parse_attribute (/<cim:PFVArControllerType1Dynamics.VoltageAdjusterDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "VoltageAdjusterDynamics", sub, context);
                 base.parse_attribute (/<cim:PFVArControllerType1Dynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
                 base.parse_attribute (/<cim:PFVArControllerType1Dynamics.RemoteInputSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RemoteInputSignal", sub, context);
-
                 var bucket = context.parsed.PFVArControllerType1Dynamics;
                 if (null == bucket)
                    context.parsed.PFVArControllerType1Dynamics = bucket = {};
@@ -54,32 +52,90 @@ define
             {
                 var fields = StandardModels.DynamicsFunctionBlock.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "PFVArControllerType1Dynamics", "VoltageAdjusterDynamics", fields);
-                base.export_attribute (obj, "PFVArControllerType1Dynamics", "ExcitationSystemDynamics", fields);
-                base.export_attribute (obj, "PFVArControllerType1Dynamics", "RemoteInputSignal", fields);
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "VoltageAdjusterDynamics", "VoltageAdjusterDynamics", fields);
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "ExcitationSystemDynamics", "ExcitationSystemDynamics", fields);
+                base.export_attribute (obj, "PFVArControllerType1Dynamics", "RemoteInputSignal", "RemoteInputSignal", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#PFVArControllerType1Dynamics_collapse" aria-expanded="true" aria-controls="PFVArControllerType1Dynamics_collapse">PFVArControllerType1Dynamics</a>
-<div id="PFVArControllerType1Dynamics_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
-`
-{{#VoltageAdjusterDynamics}}<div><b>VoltageAdjusterDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{VoltageAdjusterDynamics}}&quot;);})'>{{VoltageAdjusterDynamics}}</a></div>{{/VoltageAdjusterDynamics}}
-{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
-{{#RemoteInputSignal}}<div><b>RemoteInputSignal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{RemoteInputSignal}}&quot;);})'>{{RemoteInputSignal}}</a></div>{{/RemoteInputSignal}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#PFVArControllerType1Dynamics_collapse" aria-expanded="true" aria-controls="PFVArControllerType1Dynamics_collapse" style="margin-left: 10px;">PFVArControllerType1Dynamics</a></legend>
+                    <div id="PFVArControllerType1Dynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.DynamicsFunctionBlock.prototype.template.call (this) +
+                    `
+                    {{#VoltageAdjusterDynamics}}<div><b>VoltageAdjusterDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{VoltageAdjusterDynamics}}&quot;);})'>{{VoltageAdjusterDynamics}}</a></div>{{/VoltageAdjusterDynamics}}
+                    {{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+                    {{#RemoteInputSignal}}<div><b>RemoteInputSignal</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{RemoteInputSignal}}&quot;);})'>{{RemoteInputSignal}}</a></div>{{/RemoteInputSignal}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_PFVArControllerType1Dynamics_collapse" aria-expanded="true" aria-controls="{{id}}_PFVArControllerType1Dynamics_collapse" style="margin-left: 10px;">PFVArControllerType1Dynamics</a></legend>
+                    <div id="{{id}}_PFVArControllerType1Dynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.DynamicsFunctionBlock.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_VoltageAdjusterDynamics'>VoltageAdjusterDynamics: </label><div class='col-sm-8'><input id='{{id}}_VoltageAdjusterDynamics' class='form-control' type='text'{{#VoltageAdjusterDynamics}} value='{{VoltageAdjusterDynamics}}'{{/VoltageAdjusterDynamics}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ExcitationSystemDynamics'>ExcitationSystemDynamics: </label><div class='col-sm-8'><input id='{{id}}_ExcitationSystemDynamics' class='form-control' type='text'{{#ExcitationSystemDynamics}} value='{{ExcitationSystemDynamics}}'{{/ExcitationSystemDynamics}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_RemoteInputSignal'>RemoteInputSignal: </label><div class='col-sm-8'><input id='{{id}}_RemoteInputSignal' class='form-control' type='text'{{#RemoteInputSignal}} value='{{RemoteInputSignal}}'{{/RemoteInputSignal}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "PFVArControllerType1Dynamics" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_VoltageAdjusterDynamics").value; if ("" != temp) obj.VoltageAdjusterDynamics = temp;
+                temp = document.getElementById (id + "_ExcitationSystemDynamics").value; if ("" != temp) obj.ExcitationSystemDynamics = temp;
+                temp = document.getElementById (id + "_RemoteInputSignal").value; if ("" != temp) obj.RemoteInputSignal = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["VoltageAdjusterDynamics", "0..1", "1", "VoltageAdjusterDynamics", "PFVArControllerType1Dynamics"],
+                            ["ExcitationSystemDynamics", "1", "0..1", "ExcitationSystemDynamics", "PFVArControllerType1Dynamics"],
+                            ["RemoteInputSignal", "0..1", "0..1", "RemoteInputSignal", "PFVArControllerType1Dynamics"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * The class represents IEEE VAR Controller Type 1 which operates by moving the voltage reference directly.
@@ -92,17 +148,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.PFVArType1IEEEVArController;
                 if (null == bucket)
                    cim_data.PFVArType1IEEEVArController = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.PFVArType1IEEEVArController[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.PFVArType1IEEEVArController[obj.id];
             }
 
             parse (context, sub)
@@ -117,7 +172,6 @@ define
                 base.parse_element (/<cim:PFVArType1IEEEVArController.vvarref>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvarref>/g, obj, "vvarref", base.to_string, sub, context);
                 base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
                 base.parse_element (/<cim:PFVArType1IEEEVArController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEVArController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
-
                 var bucket = context.parsed.PFVArType1IEEEVArController;
                 if (null == bucket)
                    context.parsed.PFVArType1IEEEVArController = bucket = {};
@@ -130,38 +184,89 @@ define
             {
                 var fields = PFVArControllerType1Dynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "PFVArType1IEEEVArController", "tvarc", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEVArController", "vvar", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEVArController", "vvarcbw", base.from_float, fields);
-                base.export_element (obj, "PFVArType1IEEEVArController", "vvarref", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmax", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmin", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "tvarc", "tvarc",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvar", "vvar",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvarcbw", "vvarcbw",  base.from_float, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvarref", "vvarref",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmax", "vvtmax",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEVArController", "vvtmin", "vvtmin",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#PFVArType1IEEEVArController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEVArController_collapse">PFVArType1IEEEVArController</a>
-<div id="PFVArType1IEEEVArController_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + PFVArControllerType1Dynamics.prototype.template.call (this) +
-`
-{{#tvarc}}<div><b>tvarc</b>: {{tvarc}}</div>{{/tvarc}}
-{{#vvar}}<div><b>vvar</b>: {{vvar}}</div>{{/vvar}}
-{{#vvarcbw}}<div><b>vvarcbw</b>: {{vvarcbw}}</div>{{/vvarcbw}}
-{{#vvarref}}<div><b>vvarref</b>: {{vvarref}}</div>{{/vvarref}}
-{{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
-{{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#PFVArType1IEEEVArController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEVArController_collapse" style="margin-left: 10px;">PFVArType1IEEEVArController</a></legend>
+                    <div id="PFVArType1IEEEVArController_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + PFVArControllerType1Dynamics.prototype.template.call (this) +
+                    `
+                    {{#tvarc}}<div><b>tvarc</b>: {{tvarc}}</div>{{/tvarc}}
+                    {{#vvar}}<div><b>vvar</b>: {{vvar}}</div>{{/vvar}}
+                    {{#vvarcbw}}<div><b>vvarcbw</b>: {{vvarcbw}}</div>{{/vvarcbw}}
+                    {{#vvarref}}<div><b>vvarref</b>: {{vvarref}}</div>{{/vvarref}}
+                    {{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
+                    {{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_PFVArType1IEEEVArController_collapse" aria-expanded="true" aria-controls="{{id}}_PFVArType1IEEEVArController_collapse" style="margin-left: 10px;">PFVArType1IEEEVArController</a></legend>
+                    <div id="{{id}}_PFVArType1IEEEVArController_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + PFVArControllerType1Dynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tvarc'>tvarc: </label><div class='col-sm-8'><input id='{{id}}_tvarc' class='form-control' type='text'{{#tvarc}} value='{{tvarc}}'{{/tvarc}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvar'>vvar: </label><div class='col-sm-8'><input id='{{id}}_vvar' class='form-control' type='text'{{#vvar}} value='{{vvar}}'{{/vvar}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvarcbw'>vvarcbw: </label><div class='col-sm-8'><input id='{{id}}_vvarcbw' class='form-control' type='text'{{#vvarcbw}} value='{{vvarcbw}}'{{/vvarcbw}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvarref'>vvarref: </label><div class='col-sm-8'><input id='{{id}}_vvarref' class='form-control' type='text'{{#vvarref}} value='{{vvarref}}'{{/vvarref}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvtmax'>vvtmax: </label><div class='col-sm-8'><input id='{{id}}_vvtmax' class='form-control' type='text'{{#vvtmax}} value='{{vvtmax}}'{{/vvtmax}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvtmin'>vvtmin: </label><div class='col-sm-8'><input id='{{id}}_vvtmin' class='form-control' type='text'{{#vvtmin}} value='{{vvtmin}}'{{/vvtmin}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "PFVArType1IEEEVArController" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_tvarc").value; if ("" != temp) obj.tvarc = temp;
+                temp = document.getElementById (id + "_vvar").value; if ("" != temp) obj.vvar = temp;
+                temp = document.getElementById (id + "_vvarcbw").value; if ("" != temp) obj.vvarcbw = temp;
+                temp = document.getElementById (id + "_vvarref").value; if ("" != temp) obj.vvarref = temp;
+                temp = document.getElementById (id + "_vvtmax").value; if ("" != temp) obj.vvtmax = temp;
+                temp = document.getElementById (id + "_vvtmin").value; if ("" != temp) obj.vvtmin = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * The class represents IEEE PF Controller Type 1 which operates by moving the voltage reference directly.
@@ -174,17 +279,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.PFVArType1IEEEPFController;
                 if (null == bucket)
                    cim_data.PFVArType1IEEEPFController = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.PFVArType1IEEEPFController[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.PFVArType1IEEEPFController[obj.id];
             }
 
             parse (context, sub)
@@ -201,7 +305,6 @@ define
                 base.parse_element (/<cim:PFVArType1IEEEPFController.vpfref>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vpfref>/g, obj, "vpfref", base.to_string, sub, context);
                 base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmax>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmax>/g, obj, "vvtmax", base.to_string, sub, context);
                 base.parse_element (/<cim:PFVArType1IEEEPFController.vvtmin>([\s\S]*?)<\/cim:PFVArType1IEEEPFController.vvtmin>/g, obj, "vvtmin", base.to_string, sub, context);
-
                 var bucket = context.parsed.PFVArType1IEEEPFController;
                 if (null == bucket)
                    context.parsed.PFVArType1IEEEPFController = bucket = {};
@@ -214,42 +317,97 @@ define
             {
                 var fields = PFVArControllerType1Dynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "PFVArType1IEEEPFController", "ovex", base.from_boolean, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "tpfc", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vitmin", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vpf", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vpfcbw", base.from_float, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vpfref", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmax", base.from_string, fields);
-                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmin", base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "ovex", "ovex",  base.from_boolean, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "tpfc", "tpfc",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vitmin", "vitmin",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpf", "vpf",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpfcbw", "vpfcbw",  base.from_float, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vpfref", "vpfref",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmax", "vvtmax",  base.from_string, fields);
+                base.export_element (obj, "PFVArType1IEEEPFController", "vvtmin", "vvtmin",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#PFVArType1IEEEPFController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEPFController_collapse">PFVArType1IEEEPFController</a>
-<div id="PFVArType1IEEEPFController_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + PFVArControllerType1Dynamics.prototype.template.call (this) +
-`
-{{#ovex}}<div><b>ovex</b>: {{ovex}}</div>{{/ovex}}
-{{#tpfc}}<div><b>tpfc</b>: {{tpfc}}</div>{{/tpfc}}
-{{#vitmin}}<div><b>vitmin</b>: {{vitmin}}</div>{{/vitmin}}
-{{#vpf}}<div><b>vpf</b>: {{vpf}}</div>{{/vpf}}
-{{#vpfcbw}}<div><b>vpfcbw</b>: {{vpfcbw}}</div>{{/vpfcbw}}
-{{#vpfref}}<div><b>vpfref</b>: {{vpfref}}</div>{{/vpfref}}
-{{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
-{{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#PFVArType1IEEEPFController_collapse" aria-expanded="true" aria-controls="PFVArType1IEEEPFController_collapse" style="margin-left: 10px;">PFVArType1IEEEPFController</a></legend>
+                    <div id="PFVArType1IEEEPFController_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + PFVArControllerType1Dynamics.prototype.template.call (this) +
+                    `
+                    {{#ovex}}<div><b>ovex</b>: {{ovex}}</div>{{/ovex}}
+                    {{#tpfc}}<div><b>tpfc</b>: {{tpfc}}</div>{{/tpfc}}
+                    {{#vitmin}}<div><b>vitmin</b>: {{vitmin}}</div>{{/vitmin}}
+                    {{#vpf}}<div><b>vpf</b>: {{vpf}}</div>{{/vpf}}
+                    {{#vpfcbw}}<div><b>vpfcbw</b>: {{vpfcbw}}</div>{{/vpfcbw}}
+                    {{#vpfref}}<div><b>vpfref</b>: {{vpfref}}</div>{{/vpfref}}
+                    {{#vvtmax}}<div><b>vvtmax</b>: {{vvtmax}}</div>{{/vvtmax}}
+                    {{#vvtmin}}<div><b>vvtmin</b>: {{vvtmin}}</div>{{/vvtmin}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_PFVArType1IEEEPFController_collapse" aria-expanded="true" aria-controls="{{id}}_PFVArType1IEEEPFController_collapse" style="margin-left: 10px;">PFVArType1IEEEPFController</a></legend>
+                    <div id="{{id}}_PFVArType1IEEEPFController_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + PFVArControllerType1Dynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_ovex'>ovex: </label><div class='col-sm-8'><input id='{{id}}_ovex' class='form-check-input' type='checkbox'{{#ovex}} checked{{/ovex}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tpfc'>tpfc: </label><div class='col-sm-8'><input id='{{id}}_tpfc' class='form-control' type='text'{{#tpfc}} value='{{tpfc}}'{{/tpfc}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vitmin'>vitmin: </label><div class='col-sm-8'><input id='{{id}}_vitmin' class='form-control' type='text'{{#vitmin}} value='{{vitmin}}'{{/vitmin}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vpf'>vpf: </label><div class='col-sm-8'><input id='{{id}}_vpf' class='form-control' type='text'{{#vpf}} value='{{vpf}}'{{/vpf}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vpfcbw'>vpfcbw: </label><div class='col-sm-8'><input id='{{id}}_vpfcbw' class='form-control' type='text'{{#vpfcbw}} value='{{vpfcbw}}'{{/vpfcbw}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vpfref'>vpfref: </label><div class='col-sm-8'><input id='{{id}}_vpfref' class='form-control' type='text'{{#vpfref}} value='{{vpfref}}'{{/vpfref}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvtmax'>vvtmax: </label><div class='col-sm-8'><input id='{{id}}_vvtmax' class='form-control' type='text'{{#vvtmax}} value='{{vvtmax}}'{{/vvtmax}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_vvtmin'>vvtmin: </label><div class='col-sm-8'><input id='{{id}}_vvtmin' class='form-control' type='text'{{#vvtmin}} value='{{vvtmin}}'{{/vvtmin}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "PFVArType1IEEEPFController" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_ovex").checked; if (temp) obj.ovex = true;
+                temp = document.getElementById (id + "_tpfc").value; if ("" != temp) obj.tpfc = temp;
+                temp = document.getElementById (id + "_vitmin").value; if ("" != temp) obj.vitmin = temp;
+                temp = document.getElementById (id + "_vpf").value; if ("" != temp) obj.vpf = temp;
+                temp = document.getElementById (id + "_vpfcbw").value; if ("" != temp) obj.vpfcbw = temp;
+                temp = document.getElementById (id + "_vpfref").value; if ("" != temp) obj.vpfref = temp;
+                temp = document.getElementById (id + "_vvtmax").value; if ("" != temp) obj.vvtmax = temp;
+                temp = document.getElementById (id + "_vvtmin").value; if ("" != temp) obj.vvtmin = temp;
+
+                return (obj);
+            }
+        }
 
         return (
             {

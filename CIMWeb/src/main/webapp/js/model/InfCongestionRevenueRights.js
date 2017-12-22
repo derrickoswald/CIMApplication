@@ -13,17 +13,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.ViolationLimit;
                 if (null == bucket)
                    cim_data.ViolationLimit = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.ViolationLimit[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.ViolationLimit[obj.id];
             }
 
             parse (context, sub)
@@ -34,8 +33,8 @@ define
                 obj.cls = "ViolationLimit";
                 base.parse_element (/<cim:ViolationLimit.enforced>([\s\S]*?)<\/cim:ViolationLimit.enforced>/g, obj, "enforced", base.to_boolean, sub, context);
                 base.parse_attribute (/<cim:ViolationLimit.MktMeasurement\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MktMeasurement", sub, context);
+                base.parse_attributes (/<cim:ViolationLimit.MktOrganisation\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MktOrganisation", sub, context);
                 base.parse_attribute (/<cim:ViolationLimit.Flowgate\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Flowgate", sub, context);
-
                 var bucket = context.parsed.ViolationLimit;
                 if (null == bucket)
                    context.parsed.ViolationLimit = bucket = {};
@@ -48,32 +47,96 @@ define
             {
                 var fields = Meas.Limit.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "ViolationLimit", "enforced", base.from_boolean, fields);
-                base.export_attribute (obj, "ViolationLimit", "MktMeasurement", fields);
-                base.export_attribute (obj, "ViolationLimit", "Flowgate", fields);
+                base.export_element (obj, "ViolationLimit", "enforced", "enforced",  base.from_boolean, fields);
+                base.export_attribute (obj, "ViolationLimit", "MktMeasurement", "MktMeasurement", fields);
+                base.export_attributes (obj, "ViolationLimit", "MktOrganisation", "MktOrganisation", fields);
+                base.export_attribute (obj, "ViolationLimit", "Flowgate", "Flowgate", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#ViolationLimit_collapse" aria-expanded="true" aria-controls="ViolationLimit_collapse">ViolationLimit</a>
-<div id="ViolationLimit_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Meas.Limit.prototype.template.call (this) +
-`
-{{#enforced}}<div><b>enforced</b>: {{enforced}}</div>{{/enforced}}
-{{#MktMeasurement}}<div><b>MktMeasurement</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MktMeasurement}}&quot;);})'>{{MktMeasurement}}</a></div>{{/MktMeasurement}}
-{{#Flowgate}}<div><b>Flowgate</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Flowgate}}&quot;);})'>{{Flowgate}}</a></div>{{/Flowgate}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#ViolationLimit_collapse" aria-expanded="true" aria-controls="ViolationLimit_collapse" style="margin-left: 10px;">ViolationLimit</a></legend>
+                    <div id="ViolationLimit_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Meas.Limit.prototype.template.call (this) +
+                    `
+                    {{#enforced}}<div><b>enforced</b>: {{enforced}}</div>{{/enforced}}
+                    {{#MktMeasurement}}<div><b>MktMeasurement</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MktMeasurement}}&quot;);})'>{{MktMeasurement}}</a></div>{{/MktMeasurement}}
+                    {{#MktOrganisation}}<div><b>MktOrganisation</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/MktOrganisation}}
+                    {{#Flowgate}}<div><b>Flowgate</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Flowgate}}&quot;);})'>{{Flowgate}}</a></div>{{/Flowgate}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.MktOrganisation) obj.MktOrganisation_string = obj.MktOrganisation.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.MktOrganisation_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_ViolationLimit_collapse" aria-expanded="true" aria-controls="{{id}}_ViolationLimit_collapse" style="margin-left: 10px;">ViolationLimit</a></legend>
+                    <div id="{{id}}_ViolationLimit_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Meas.Limit.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-check row'><label class='form-check-label col-sm-4 col-form-label' for='{{id}}_enforced'>enforced: </label><div class='col-sm-8'><input id='{{id}}_enforced' class='form-check-input' type='checkbox'{{#enforced}} checked{{/enforced}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MktMeasurement'>MktMeasurement: </label><div class='col-sm-8'><input id='{{id}}_MktMeasurement' class='form-control' type='text'{{#MktMeasurement}} value='{{MktMeasurement}}'{{/MktMeasurement}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MktOrganisation'>MktOrganisation: </label><div class='col-sm-8'><input id='{{id}}_MktOrganisation' class='form-control' type='text'{{#MktOrganisation}} value='{{MktOrganisation}}_string'{{/MktOrganisation}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Flowgate'>Flowgate: </label><div class='col-sm-8'><input id='{{id}}_Flowgate' class='form-control' type='text'{{#Flowgate}} value='{{Flowgate}}'{{/Flowgate}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "ViolationLimit" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_enforced").checked; if (temp) obj.enforced = true;
+                temp = document.getElementById (id + "_MktMeasurement").value; if ("" != temp) obj.MktMeasurement = temp;
+                temp = document.getElementById (id + "_MktOrganisation").value; if ("" != temp) obj.MktOrganisation = temp.split (",");
+                temp = document.getElementById (id + "_Flowgate").value; if ("" != temp) obj.Flowgate = temp;
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["MktMeasurement", "0..1", "0..*", "MktMeasurement", "ViolationLimit"],
+                            ["MktOrganisation", "0..*", "0..*", "MktOrganisation", "ViolationLimit"],
+                            ["Flowgate", "0..1", "0..*", "Flowgate", "ViolationLimits"]
+                        ]
+                    )
+                );
+            }
+        }
 
         /**
          * Financial Transmission Rights (FTR) regarding transmission capacity at a flowgate.
@@ -84,17 +147,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.FTR;
                 if (null == bucket)
                    cim_data.FTR = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.FTR[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.FTR[obj.id];
             }
 
             parse (context, sub)
@@ -110,7 +172,7 @@ define
                 base.parse_element (/<cim:FTR.class>([\s\S]*?)<\/cim:FTR.class>/g, obj, "class", base.to_string, sub, context);
                 base.parse_attribute (/<cim:FTR.EnergyPriceCurve\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EnergyPriceCurve", sub, context);
                 base.parse_attribute (/<cim:FTR.Flowgate\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Flowgate", sub, context);
-
+                base.parse_attributes (/<cim:FTR.Pnodes\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Pnodes", sub, context);
                 var bucket = context.parsed.FTR;
                 if (null == bucket)
                    context.parsed.FTR = bucket = {};
@@ -123,40 +185,112 @@ define
             {
                 var fields = Common.Agreement.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "FTR", "optimized", base.from_string, fields);
-                base.export_element (obj, "FTR", "action", base.from_string, fields);
-                base.export_element (obj, "FTR", "baseEnergy", base.from_string, fields);
-                base.export_element (obj, "FTR", "ftrType", base.from_string, fields);
-                base.export_element (obj, "FTR", "class", base.from_string, fields);
-                base.export_attribute (obj, "FTR", "EnergyPriceCurve", fields);
-                base.export_attribute (obj, "FTR", "Flowgate", fields);
+                base.export_element (obj, "FTR", "optimized", "optimized",  base.from_string, fields);
+                base.export_element (obj, "FTR", "action", "action",  base.from_string, fields);
+                base.export_element (obj, "FTR", "baseEnergy", "baseEnergy",  base.from_string, fields);
+                base.export_element (obj, "FTR", "ftrType", "ftrType",  base.from_string, fields);
+                base.export_element (obj, "FTR", "class", "class",  base.from_string, fields);
+                base.export_attribute (obj, "FTR", "EnergyPriceCurve", "EnergyPriceCurve", fields);
+                base.export_attribute (obj, "FTR", "Flowgate", "Flowgate", fields);
+                base.export_attributes (obj, "FTR", "Pnodes", "Pnodes", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#FTR_collapse" aria-expanded="true" aria-controls="FTR_collapse">FTR</a>
-<div id="FTR_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + Common.Agreement.prototype.template.call (this) +
-`
-{{#optimized}}<div><b>optimized</b>: {{optimized}}</div>{{/optimized}}
-{{#action}}<div><b>action</b>: {{action}}</div>{{/action}}
-{{#baseEnergy}}<div><b>baseEnergy</b>: {{baseEnergy}}</div>{{/baseEnergy}}
-{{#ftrType}}<div><b>ftrType</b>: {{ftrType}}</div>{{/ftrType}}
-{{#class}}<div><b>class</b>: {{class}}</div>{{/class}}
-{{#EnergyPriceCurve}}<div><b>EnergyPriceCurve</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EnergyPriceCurve}}&quot;);})'>{{EnergyPriceCurve}}</a></div>{{/EnergyPriceCurve}}
-{{#Flowgate}}<div><b>Flowgate</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Flowgate}}&quot;);})'>{{Flowgate}}</a></div>{{/Flowgate}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#FTR_collapse" aria-expanded="true" aria-controls="FTR_collapse" style="margin-left: 10px;">FTR</a></legend>
+                    <div id="FTR_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Agreement.prototype.template.call (this) +
+                    `
+                    {{#optimized}}<div><b>optimized</b>: {{optimized}}</div>{{/optimized}}
+                    {{#action}}<div><b>action</b>: {{action}}</div>{{/action}}
+                    {{#baseEnergy}}<div><b>baseEnergy</b>: {{baseEnergy}}</div>{{/baseEnergy}}
+                    {{#ftrType}}<div><b>ftrType</b>: {{ftrType}}</div>{{/ftrType}}
+                    {{#class}}<div><b>class</b>: {{class}}</div>{{/class}}
+                    {{#EnergyPriceCurve}}<div><b>EnergyPriceCurve</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EnergyPriceCurve}}&quot;);})'>{{EnergyPriceCurve}}</a></div>{{/EnergyPriceCurve}}
+                    {{#Flowgate}}<div><b>Flowgate</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Flowgate}}&quot;);})'>{{Flowgate}}</a></div>{{/Flowgate}}
+                    {{#Pnodes}}<div><b>Pnodes</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/Pnodes}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                if (obj.Pnodes) obj.Pnodes_string = obj.Pnodes.join ();
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.Pnodes_string;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_FTR_collapse" aria-expanded="true" aria-controls="{{id}}_FTR_collapse" style="margin-left: 10px;">FTR</a></legend>
+                    <div id="{{id}}_FTR_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + Common.Agreement.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_optimized'>optimized: </label><div class='col-sm-8'><input id='{{id}}_optimized' class='form-control' type='text'{{#optimized}} value='{{optimized}}'{{/optimized}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_action'>action: </label><div class='col-sm-8'><input id='{{id}}_action' class='form-control' type='text'{{#action}} value='{{action}}'{{/action}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_baseEnergy'>baseEnergy: </label><div class='col-sm-8'><input id='{{id}}_baseEnergy' class='form-control' type='text'{{#baseEnergy}} value='{{baseEnergy}}'{{/baseEnergy}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ftrType'>ftrType: </label><div class='col-sm-8'><input id='{{id}}_ftrType' class='form-control' type='text'{{#ftrType}} value='{{ftrType}}'{{/ftrType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_class'>class: </label><div class='col-sm-8'><input id='{{id}}_class' class='form-control' type='text'{{#class}} value='{{class}}'{{/class}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EnergyPriceCurve'>EnergyPriceCurve: </label><div class='col-sm-8'><input id='{{id}}_EnergyPriceCurve' class='form-control' type='text'{{#EnergyPriceCurve}} value='{{EnergyPriceCurve}}'{{/EnergyPriceCurve}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Flowgate'>Flowgate: </label><div class='col-sm-8'><input id='{{id}}_Flowgate' class='form-control' type='text'{{#Flowgate}} value='{{Flowgate}}'{{/Flowgate}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Pnodes'>Pnodes: </label><div class='col-sm-8'><input id='{{id}}_Pnodes' class='form-control' type='text'{{#Pnodes}} value='{{Pnodes}}_string'{{/Pnodes}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "FTR" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_optimized").value; if ("" != temp) obj.optimized = temp;
+                temp = document.getElementById (id + "_action").value; if ("" != temp) obj.action = temp;
+                temp = document.getElementById (id + "_baseEnergy").value; if ("" != temp) obj.baseEnergy = temp;
+                temp = document.getElementById (id + "_ftrType").value; if ("" != temp) obj.ftrType = temp;
+                temp = document.getElementById (id + "_class").value; if ("" != temp) obj.class = temp;
+                temp = document.getElementById (id + "_EnergyPriceCurve").value; if ("" != temp) obj.EnergyPriceCurve = temp;
+                temp = document.getElementById (id + "_Flowgate").value; if ("" != temp) obj.Flowgate = temp;
+                temp = document.getElementById (id + "_Pnodes").value; if ("" != temp) obj.Pnodes = temp.split (",");
+
+                return (obj);
+            }
+
+            relations ()
+            {
+                return (
+                    super.relations ().concat (
+                        [
+                            ["EnergyPriceCurve", "0..1", "0..*", "EnergyPriceCurve", "FTRs"],
+                            ["Flowgate", "0..1", "0..*", "Flowgate", "FTRs"],
+                            ["Pnodes", "0..*", "0..*", "Pnode", "FTRs"]
+                        ]
+                    )
+                );
+            }
+        }
 
         return (
             {

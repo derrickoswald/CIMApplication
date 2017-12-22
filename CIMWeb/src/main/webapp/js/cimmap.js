@@ -140,6 +140,17 @@ define
         }
 
         /**
+         * Get the editor object for access to editing.
+         * @return {Object} The object handling editing.
+         * @function get_editor
+         * @memberOf module:cimmap
+         */
+        function get_editor ()
+        {
+            return (TheEditor);
+        }
+
+        /**
          * Get the user's choice for showing internal features.
          * @returns {boolean} <code>true</code> if internal features should be shown, <code>false</code> otherwise
          * @function show_internal_features
@@ -197,8 +208,7 @@ define
                     TheMap.removeControl (TheThemer.getTheme ().getLegend ());
             TheThemer.theme (TheMap, CIM_Data,
                 {
-                    show_internal_features: show_internal_features (),
-                    editing: false
+                    show_internal_features: show_internal_features ()
                 });
             TheExtents = TheThemer.getExtents ();
 
@@ -321,7 +331,6 @@ define
             var cls = cim.class_map (feature);
             var template = cls.prototype.template ();
             var text = mustache.render (template, feature);
-
             var conducting = CIM_Data.ConductingEquipment[CURRENT_FEATURE];
             if ("undefined" != typeof (conducting))
             {
@@ -367,7 +376,7 @@ define
 
             if (null != CURRENT_SELECTION)
             {
-                if (1 < CURRENT_SELECTION.length)
+                if (CURRENT_SELECTION.some (function (element) { return (element != CURRENT_FEATURE); }))
                 {
                     text = text + "<div>Also selected:</div>\n";
                     for (var i = 0; i < CURRENT_SELECTION.length; i++)
@@ -396,8 +405,17 @@ define
             if ((null != CIM_Data) && (null != CURRENT_FEATURE))
                 if (null != (feature = CIM_Data.Element[CURRENT_FEATURE]))
                 {
-                    var text = detail_text (feature);
-                    showDetails (text);
+                    if (TheEditor.visible ())
+                    {
+                        document.getElementById ("feature_detail_contents").innerHTML = "";
+                        hide_details ();
+                        TheEditor.edit (feature, true);
+                    }
+                    else
+                    {
+                        var text = detail_text (feature);
+                        showDetails (text);
+                    }
                     glow (["in", "mRID", CURRENT_FEATURE]);
                 }
         }
@@ -835,7 +853,7 @@ define
         {
             var text;
             if (null != CIM_Data)
-                if ("" != (text = document.getElementById ("search_text").value))
+                if ("" != (text = document.getElementById ("search_text").value.trim ()))
                 {
                     var match = [];
                     for (var id in CIM_Data.Element)
@@ -957,8 +975,8 @@ define
                     for (var i = 0; i < features.length; i++)
                     {
                         var mrid = features[i].properties.mRID;
-                        if (null != mrid)
-                            selection[selection.length] = mrid;
+                        if (null != mrid && !selection.includes (mrid))
+                            selection.push (mrid);
                     }
                     if (selection.length > 0)
                     {
@@ -1082,16 +1100,19 @@ define
                      set_extents: set_extents,
                      get_extents: get_extents,
                      get_themer: get_themer,
-                     zoom_extents: zoom_extents,
-                     redraw: redraw,
+                     get_editor: get_editor,
                      show_internal_features: show_internal_features,
                      show_3d_buildings: show_3d_buildings,
+                     show_scale_bar: show_scale_bar,
+                     zoom_extents: zoom_extents,
+                     select: select,
                      buildings_3d: buildings_3d,
                      scale_bar: scale_bar,
-                     trace: trace,
+                     highlight: highlight,
                      unhighlight: unhighlight,
-                     select: select,
+                     trace: trace,
                      search: search,
+                     redraw: redraw,
                      add_listeners: add_listeners,
                      remove_listeners: remove_listeners,
                      initialize: initialize,

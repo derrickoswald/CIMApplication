@@ -11,6 +11,43 @@ define
     {
 
         /**
+         * Type of rotor on physical machine.
+         *
+         */
+        var RotorKind =
+        {
+            roundRotor: "roundRotor",
+            salientPole: "salientPole"
+        };
+        Object.freeze (RotorKind);
+
+        /**
+         * Type of synchronous machine model used in Dynamic simulation applications.
+         *
+         */
+        var SynchronousMachineModelKind =
+        {
+            subtransient: "subtransient",
+            subtransientTypeF: "subtransientTypeF",
+            subtransientTypeJ: "subtransientTypeJ",
+            subtransientSimplified: "subtransientSimplified",
+            subtransientSimplifiedDirectAxis: "subtransientSimplifiedDirectAxis"
+        };
+        Object.freeze (SynchronousMachineModelKind);
+
+        /**
+         * Excitation base system mode.
+         *
+         */
+        var IfdBaseKind =
+        {
+            ifag: "ifag",
+            ifnl: "ifnl",
+            iffl: "iffl"
+        };
+        Object.freeze (IfdBaseKind);
+
+        /**
          * Synchronous machine whose behaviour is described by reference to a standard model expressed in one of the following forms:
          * <ul>
          * <li>simplified (or classical), where a group of generators or motors is not modelled in detail</li>
@@ -31,17 +68,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SynchronousMachineDynamics;
                 if (null == bucket)
                    cim_data.SynchronousMachineDynamics = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineDynamics[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SynchronousMachineDynamics[obj.id];
             }
 
             parse (context, sub)
@@ -53,7 +89,8 @@ define
                 base.parse_attribute (/<cim:SynchronousMachineDynamics.MechanicalLoadDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MechanicalLoadDynamics", sub, context);
                 base.parse_attribute (/<cim:SynchronousMachineDynamics.ExcitationSystemDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ExcitationSystemDynamics", sub, context);
                 base.parse_attribute (/<cim:SynchronousMachineDynamics.SynchronousMachine\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "SynchronousMachine", sub, context);
-
+                base.parse_attributes (/<cim:SynchronousMachineDynamics.GenICompensationForGenJ\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "GenICompensationForGenJ", sub, context);
+                base.parse_attributes (/<cim:SynchronousMachineDynamics.TurbineGovernorDynamics\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TurbineGovernorDynamics", sub, context);
                 var bucket = context.parsed.SynchronousMachineDynamics;
                 if (null == bucket)
                    context.parsed.SynchronousMachineDynamics = bucket = {};
@@ -66,248 +103,102 @@ define
             {
                 var fields = StandardModels.RotatingMachineDynamics.prototype.export.call (this, obj, false);
 
-                base.export_attribute (obj, "SynchronousMachineDynamics", "MechanicalLoadDynamics", fields);
-                base.export_attribute (obj, "SynchronousMachineDynamics", "ExcitationSystemDynamics", fields);
-                base.export_attribute (obj, "SynchronousMachineDynamics", "SynchronousMachine", fields);
+                base.export_attribute (obj, "SynchronousMachineDynamics", "MechanicalLoadDynamics", "MechanicalLoadDynamics", fields);
+                base.export_attribute (obj, "SynchronousMachineDynamics", "ExcitationSystemDynamics", "ExcitationSystemDynamics", fields);
+                base.export_attribute (obj, "SynchronousMachineDynamics", "SynchronousMachine", "SynchronousMachine", fields);
+                base.export_attributes (obj, "SynchronousMachineDynamics", "GenICompensationForGenJ", "GenICompensationForGenJ", fields);
+                base.export_attributes (obj, "SynchronousMachineDynamics", "TurbineGovernorDynamics", "TurbineGovernorDynamics", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineDynamics_collapse" aria-expanded="true" aria-controls="SynchronousMachineDynamics_collapse">SynchronousMachineDynamics</a>
-<div id="SynchronousMachineDynamics_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + StandardModels.RotatingMachineDynamics.prototype.template.call (this) +
-`
-{{#MechanicalLoadDynamics}}<div><b>MechanicalLoadDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MechanicalLoadDynamics}}&quot;);})'>{{MechanicalLoadDynamics}}</a></div>{{/MechanicalLoadDynamics}}
-{{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
-{{#SynchronousMachine}}<div><b>SynchronousMachine</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SynchronousMachine}}&quot;);})'>{{SynchronousMachine}}</a></div>{{/SynchronousMachine}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SynchronousMachineDynamics_collapse" aria-expanded="true" aria-controls="SynchronousMachineDynamics_collapse" style="margin-left: 10px;">SynchronousMachineDynamics</a></legend>
+                    <div id="SynchronousMachineDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.RotatingMachineDynamics.prototype.template.call (this) +
+                    `
+                    {{#MechanicalLoadDynamics}}<div><b>MechanicalLoadDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MechanicalLoadDynamics}}&quot;);})'>{{MechanicalLoadDynamics}}</a></div>{{/MechanicalLoadDynamics}}
+                    {{#ExcitationSystemDynamics}}<div><b>ExcitationSystemDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ExcitationSystemDynamics}}&quot;);})'>{{ExcitationSystemDynamics}}</a></div>{{/ExcitationSystemDynamics}}
+                    {{#SynchronousMachine}}<div><b>SynchronousMachine</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{SynchronousMachine}}&quot;);})'>{{SynchronousMachine}}</a></div>{{/SynchronousMachine}}
+                    {{#GenICompensationForGenJ}}<div><b>GenICompensationForGenJ</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/GenICompensationForGenJ}}
+                    {{#TurbineGovernorDynamics}}<div><b>TurbineGovernorDynamics</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);})'>{{.}}</a></div>{{/TurbineGovernorDynamics}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
-
-        /**
-         * Type of rotor on physical machine.
-         *
-         */
-        class RotorKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.RotorKind;
-                if (null == bucket)
-                   cim_data.RotorKind = bucket = {};
-                bucket[this._id] = template;
             }
 
-            remove (cim_data)
+            condition (obj)
             {
-               super.remove (cim_data);
-               delete cim_data.RotorKind[this._id];
+                super.condition (obj);
+                if (obj.GenICompensationForGenJ) obj.GenICompensationForGenJ_string = obj.GenICompensationForGenJ.join ();
+                if (obj.TurbineGovernorDynamics) obj.TurbineGovernorDynamics_string = obj.TurbineGovernorDynamics.join ();
             }
 
-            parse (context, sub)
+            uncondition (obj)
             {
-                var obj;
+                super.uncondition (obj);
+                delete obj.GenICompensationForGenJ_string;
+                delete obj.TurbineGovernorDynamics_string;
+            }
 
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "RotorKind";
-                base.parse_element (/<cim:RotorKind.roundRotor>([\s\S]*?)<\/cim:RotorKind.roundRotor>/g, obj, "roundRotor", base.to_string, sub, context);
-                base.parse_element (/<cim:RotorKind.salientPole>([\s\S]*?)<\/cim:RotorKind.salientPole>/g, obj, "salientPole", base.to_string, sub, context);
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SynchronousMachineDynamics_collapse" aria-expanded="true" aria-controls="{{id}}_SynchronousMachineDynamics_collapse" style="margin-left: 10px;">SynchronousMachineDynamics</a></legend>
+                    <div id="{{id}}_SynchronousMachineDynamics_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + StandardModels.RotatingMachineDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MechanicalLoadDynamics'>MechanicalLoadDynamics: </label><div class='col-sm-8'><input id='{{id}}_MechanicalLoadDynamics' class='form-control' type='text'{{#MechanicalLoadDynamics}} value='{{MechanicalLoadDynamics}}'{{/MechanicalLoadDynamics}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ExcitationSystemDynamics'>ExcitationSystemDynamics: </label><div class='col-sm-8'><input id='{{id}}_ExcitationSystemDynamics' class='form-control' type='text'{{#ExcitationSystemDynamics}} value='{{ExcitationSystemDynamics}}'{{/ExcitationSystemDynamics}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_SynchronousMachine'>SynchronousMachine: </label><div class='col-sm-8'><input id='{{id}}_SynchronousMachine' class='form-control' type='text'{{#SynchronousMachine}} value='{{SynchronousMachine}}'{{/SynchronousMachine}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TurbineGovernorDynamics'>TurbineGovernorDynamics: </label><div class='col-sm-8'><input id='{{id}}_TurbineGovernorDynamics' class='form-control' type='text'{{#TurbineGovernorDynamics}} value='{{TurbineGovernorDynamics}}_string'{{/TurbineGovernorDynamics}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
 
-                var bucket = context.parsed.RotorKind;
-                if (null == bucket)
-                   context.parsed.RotorKind = bucket = {};
-                bucket[obj.id] = obj;
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SynchronousMachineDynamics" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_MechanicalLoadDynamics").value; if ("" != temp) obj.MechanicalLoadDynamics = temp;
+                temp = document.getElementById (id + "_ExcitationSystemDynamics").value; if ("" != temp) obj.ExcitationSystemDynamics = temp;
+                temp = document.getElementById (id + "_SynchronousMachine").value; if ("" != temp) obj.SynchronousMachine = temp;
+                temp = document.getElementById (id + "_TurbineGovernorDynamics").value; if ("" != temp) obj.TurbineGovernorDynamics = temp.split (",");
 
                 return (obj);
             }
 
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "RotorKind", "roundRotor", base.from_string, fields);
-                base.export_element (obj, "RotorKind", "salientPole", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
+            relations ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#RotorKind_collapse" aria-expanded="true" aria-controls="RotorKind_collapse">RotorKind</a>
-<div id="RotorKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#roundRotor}}<div><b>roundRotor</b>: {{roundRotor}}</div>{{/roundRotor}}
-{{#salientPole}}<div><b>salientPole</b>: {{salientPole}}</div>{{/salientPole}}
-</div>
-`
+                    super.relations ().concat (
+                        [
+                            ["MechanicalLoadDynamics", "0..1", "0..1", "MechanicalLoadDynamics", "SynchronousMachineDynamics"],
+                            ["ExcitationSystemDynamics", "0..1", "1", "ExcitationSystemDynamics", "SynchronousMachineDynamics"],
+                            ["SynchronousMachine", "1", "0..1", "SynchronousMachine", "SynchronousMachineDynamics"],
+                            ["GenICompensationForGenJ", "0..*", "1", "GenICompensationForGenJ", "SynchronousMachineDynamics"],
+                            ["TurbineGovernorDynamics", "0..*", "0..*", "TurbineGovernorDynamics", "SynchronousMachineDynamics"]
+                        ]
+                    )
                 );
-           }        }
-
-        /**
-         * Type of synchronous machine model used in Dynamic simulation applications.
-         *
-         */
-        class SynchronousMachineModelKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.SynchronousMachineModelKind;
-                if (null == bucket)
-                   cim_data.SynchronousMachineModelKind = bucket = {};
-                bucket[this._id] = template;
             }
-
-            remove (cim_data)
-            {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineModelKind[this._id];
-            }
-
-            parse (context, sub)
-            {
-                var obj;
-
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "SynchronousMachineModelKind";
-                base.parse_element (/<cim:SynchronousMachineModelKind.subtransient>([\s\S]*?)<\/cim:SynchronousMachineModelKind.subtransient>/g, obj, "subtransient", base.to_string, sub, context);
-                base.parse_element (/<cim:SynchronousMachineModelKind.subtransientTypeF>([\s\S]*?)<\/cim:SynchronousMachineModelKind.subtransientTypeF>/g, obj, "subtransientTypeF", base.to_string, sub, context);
-                base.parse_element (/<cim:SynchronousMachineModelKind.subtransientTypeJ>([\s\S]*?)<\/cim:SynchronousMachineModelKind.subtransientTypeJ>/g, obj, "subtransientTypeJ", base.to_string, sub, context);
-                base.parse_element (/<cim:SynchronousMachineModelKind.subtransientSimplified>([\s\S]*?)<\/cim:SynchronousMachineModelKind.subtransientSimplified>/g, obj, "subtransientSimplified", base.to_string, sub, context);
-                base.parse_element (/<cim:SynchronousMachineModelKind.subtransientSimplifiedDirectAxis>([\s\S]*?)<\/cim:SynchronousMachineModelKind.subtransientSimplifiedDirectAxis>/g, obj, "subtransientSimplifiedDirectAxis", base.to_string, sub, context);
-
-                var bucket = context.parsed.SynchronousMachineModelKind;
-                if (null == bucket)
-                   context.parsed.SynchronousMachineModelKind = bucket = {};
-                bucket[obj.id] = obj;
-
-                return (obj);
-            }
-
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "SynchronousMachineModelKind", "subtransient", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineModelKind", "subtransientTypeF", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineModelKind", "subtransientTypeJ", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineModelKind", "subtransientSimplified", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineModelKind", "subtransientSimplifiedDirectAxis", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
-            {
-                return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineModelKind_collapse" aria-expanded="true" aria-controls="SynchronousMachineModelKind_collapse">SynchronousMachineModelKind</a>
-<div id="SynchronousMachineModelKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#subtransient}}<div><b>subtransient</b>: {{subtransient}}</div>{{/subtransient}}
-{{#subtransientTypeF}}<div><b>subtransientTypeF</b>: {{subtransientTypeF}}</div>{{/subtransientTypeF}}
-{{#subtransientTypeJ}}<div><b>subtransientTypeJ</b>: {{subtransientTypeJ}}</div>{{/subtransientTypeJ}}
-{{#subtransientSimplified}}<div><b>subtransientSimplified</b>: {{subtransientSimplified}}</div>{{/subtransientSimplified}}
-{{#subtransientSimplifiedDirectAxis}}<div><b>subtransientSimplifiedDirectAxis</b>: {{subtransientSimplifiedDirectAxis}}</div>{{/subtransientSimplifiedDirectAxis}}
-</div>
-`
-                );
-           }        }
-
-        /**
-         * Excitation base system mode.
-         *
-         */
-        class IfdBaseKind extends base.Element
-        {
-            constructor (template, cim_data)
-            {
-                super (template, cim_data);
-                this._id = template.id;
-                var bucket = cim_data.IfdBaseKind;
-                if (null == bucket)
-                   cim_data.IfdBaseKind = bucket = {};
-                bucket[this._id] = template;
-            }
-
-            remove (cim_data)
-            {
-               super.remove (cim_data);
-               delete cim_data.IfdBaseKind[this._id];
-            }
-
-            parse (context, sub)
-            {
-                var obj;
-
-                obj = base.Element.prototype.parse.call (this, context, sub);
-                obj.cls = "IfdBaseKind";
-                base.parse_element (/<cim:IfdBaseKind.ifag>([\s\S]*?)<\/cim:IfdBaseKind.ifag>/g, obj, "ifag", base.to_string, sub, context);
-                base.parse_element (/<cim:IfdBaseKind.ifnl>([\s\S]*?)<\/cim:IfdBaseKind.ifnl>/g, obj, "ifnl", base.to_string, sub, context);
-                base.parse_element (/<cim:IfdBaseKind.iffl>([\s\S]*?)<\/cim:IfdBaseKind.iffl>/g, obj, "iffl", base.to_string, sub, context);
-
-                var bucket = context.parsed.IfdBaseKind;
-                if (null == bucket)
-                   context.parsed.IfdBaseKind = bucket = {};
-                bucket[obj.id] = obj;
-
-                return (obj);
-            }
-
-            export (obj, full)
-            {
-                var fields = [];
-
-                base.export_element (obj, "IfdBaseKind", "ifag", base.from_string, fields);
-                base.export_element (obj, "IfdBaseKind", "ifnl", base.from_string, fields);
-                base.export_element (obj, "IfdBaseKind", "iffl", base.from_string, fields);
-                if (full)
-                    base.Element.prototype.export.call (this, obj, fields)
-
-                return (fields);
-            }
-
-
-            template ()
-            {
-                return (
-`
-<a data-toggle="collapse" href="#IfdBaseKind_collapse" aria-expanded="true" aria-controls="IfdBaseKind_collapse">IfdBaseKind</a>
-<div id="IfdBaseKind_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + base.Element.prototype.template.call (this) +
-`
-{{#ifag}}<div><b>ifag</b>: {{ifag}}</div>{{/ifag}}
-{{#ifnl}}<div><b>ifnl</b>: {{ifnl}}</div>{{/ifnl}}
-{{#iffl}}<div><b>iffl</b>: {{iffl}}</div>{{/iffl}}
-</div>
-`
-                );
-           }        }
+        }
 
         /**
          * All synchronous machine detailed types use a subset of the same data parameters and input/output variables.
@@ -320,17 +211,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SynchronousMachineDetailed;
                 if (null == bucket)
                    cim_data.SynchronousMachineDetailed = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineDetailed[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SynchronousMachineDetailed[obj.id];
             }
 
             parse (context, sub)
@@ -340,10 +230,9 @@ define
                 obj = SynchronousMachineDynamics.prototype.parse.call (this, context, sub);
                 obj.cls = "SynchronousMachineDetailed";
                 base.parse_element (/<cim:SynchronousMachineDetailed.efdBaseRatio>([\s\S]*?)<\/cim:SynchronousMachineDetailed.efdBaseRatio>/g, obj, "efdBaseRatio", base.to_float, sub, context);
-                base.parse_element (/<cim:SynchronousMachineDetailed.ifdBaseType>([\s\S]*?)<\/cim:SynchronousMachineDetailed.ifdBaseType>/g, obj, "ifdBaseType", base.to_string, sub, context);
+                base.parse_attribute (/<cim:SynchronousMachineDetailed.ifdBaseType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ifdBaseType", sub, context);
                 base.parse_element (/<cim:SynchronousMachineDetailed.saturationFactor120QAxis>([\s\S]*?)<\/cim:SynchronousMachineDetailed.saturationFactor120QAxis>/g, obj, "saturationFactor120QAxis", base.to_float, sub, context);
                 base.parse_element (/<cim:SynchronousMachineDetailed.saturationFactorQAxis>([\s\S]*?)<\/cim:SynchronousMachineDetailed.saturationFactorQAxis>/g, obj, "saturationFactorQAxis", base.to_float, sub, context);
-
                 var bucket = context.parsed.SynchronousMachineDetailed;
                 if (null == bucket)
                    context.parsed.SynchronousMachineDetailed = bucket = {};
@@ -356,34 +245,83 @@ define
             {
                 var fields = SynchronousMachineDynamics.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SynchronousMachineDetailed", "efdBaseRatio", base.from_float, fields);
-                base.export_element (obj, "SynchronousMachineDetailed", "ifdBaseType", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineDetailed", "saturationFactor120QAxis", base.from_float, fields);
-                base.export_element (obj, "SynchronousMachineDetailed", "saturationFactorQAxis", base.from_float, fields);
+                base.export_element (obj, "SynchronousMachineDetailed", "efdBaseRatio", "efdBaseRatio",  base.from_float, fields);
+                base.export_attribute (obj, "SynchronousMachineDetailed", "ifdBaseType", "ifdBaseType", fields);
+                base.export_element (obj, "SynchronousMachineDetailed", "saturationFactor120QAxis", "saturationFactor120QAxis",  base.from_float, fields);
+                base.export_element (obj, "SynchronousMachineDetailed", "saturationFactorQAxis", "saturationFactorQAxis",  base.from_float, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineDetailed_collapse" aria-expanded="true" aria-controls="SynchronousMachineDetailed_collapse">SynchronousMachineDetailed</a>
-<div id="SynchronousMachineDetailed_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SynchronousMachineDynamics.prototype.template.call (this) +
-`
-{{#efdBaseRatio}}<div><b>efdBaseRatio</b>: {{efdBaseRatio}}</div>{{/efdBaseRatio}}
-{{#ifdBaseType}}<div><b>ifdBaseType</b>: {{ifdBaseType}}</div>{{/ifdBaseType}}
-{{#saturationFactor120QAxis}}<div><b>saturationFactor120QAxis</b>: {{saturationFactor120QAxis}}</div>{{/saturationFactor120QAxis}}
-{{#saturationFactorQAxis}}<div><b>saturationFactorQAxis</b>: {{saturationFactorQAxis}}</div>{{/saturationFactorQAxis}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SynchronousMachineDetailed_collapse" aria-expanded="true" aria-controls="SynchronousMachineDetailed_collapse" style="margin-left: 10px;">SynchronousMachineDetailed</a></legend>
+                    <div id="SynchronousMachineDetailed_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDynamics.prototype.template.call (this) +
+                    `
+                    {{#efdBaseRatio}}<div><b>efdBaseRatio</b>: {{efdBaseRatio}}</div>{{/efdBaseRatio}}
+                    {{#ifdBaseType}}<div><b>ifdBaseType</b>: {{ifdBaseType}}</div>{{/ifdBaseType}}
+                    {{#saturationFactor120QAxis}}<div><b>saturationFactor120QAxis</b>: {{saturationFactor120QAxis}}</div>{{/saturationFactor120QAxis}}
+                    {{#saturationFactorQAxis}}<div><b>saturationFactorQAxis</b>: {{saturationFactorQAxis}}</div>{{/saturationFactorQAxis}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.IfdBaseKind = []; if (!obj.ifdBaseType) obj.IfdBaseKind.push ({ id: '', selected: true}); for (var property in IfdBaseKind) obj.IfdBaseKind.push ({ id: property, selected: obj.ifdBaseType && obj.ifdBaseType.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.IfdBaseKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SynchronousMachineDetailed_collapse" aria-expanded="true" aria-controls="{{id}}_SynchronousMachineDetailed_collapse" style="margin-left: 10px;">SynchronousMachineDetailed</a></legend>
+                    <div id="{{id}}_SynchronousMachineDetailed_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDynamics.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_efdBaseRatio'>efdBaseRatio: </label><div class='col-sm-8'><input id='{{id}}_efdBaseRatio' class='form-control' type='text'{{#efdBaseRatio}} value='{{efdBaseRatio}}'{{/efdBaseRatio}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ifdBaseType'>ifdBaseType: </label><div class='col-sm-8'><select id='{{id}}_ifdBaseType' class='form-control'>{{#IfdBaseKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/IfdBaseKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_saturationFactor120QAxis'>saturationFactor120QAxis: </label><div class='col-sm-8'><input id='{{id}}_saturationFactor120QAxis' class='form-control' type='text'{{#saturationFactor120QAxis}} value='{{saturationFactor120QAxis}}'{{/saturationFactor120QAxis}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_saturationFactorQAxis'>saturationFactorQAxis: </label><div class='col-sm-8'><input id='{{id}}_saturationFactorQAxis' class='form-control' type='text'{{#saturationFactorQAxis}} value='{{saturationFactorQAxis}}'{{/saturationFactorQAxis}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SynchronousMachineDetailed" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_efdBaseRatio").value; if ("" != temp) obj.efdBaseRatio = temp;
+                temp = document.getElementById (id + "_ifdBaseType").value; if ("" != temp) { temp = IfdBaseKind[temp]; if ("undefined" != typeof (temp)) obj.ifdBaseType = "http://iec.ch/TC57/2013/CIM-schema-cim16#IfdBaseKind." + temp; }
+                temp = document.getElementById (id + "_saturationFactor120QAxis").value; if ("" != temp) obj.saturationFactor120QAxis = temp;
+                temp = document.getElementById (id + "_saturationFactorQAxis").value; if ("" != temp) obj.saturationFactorQAxis = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * The electrical equations for all variations of the synchronous models are based on the SynchronousEquivalentCircuit diagram for the direct and quadrature axes.
@@ -420,17 +358,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SynchronousMachineEquivalentCircuit;
                 if (null == bucket)
                    cim_data.SynchronousMachineEquivalentCircuit = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineEquivalentCircuit[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SynchronousMachineEquivalentCircuit[obj.id];
             }
 
             parse (context, sub)
@@ -450,7 +387,6 @@ define
                 base.parse_element (/<cim:SynchronousMachineEquivalentCircuit.xaq>([\s\S]*?)<\/cim:SynchronousMachineEquivalentCircuit.xaq>/g, obj, "xaq", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineEquivalentCircuit.xf1d>([\s\S]*?)<\/cim:SynchronousMachineEquivalentCircuit.xf1d>/g, obj, "xf1d", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineEquivalentCircuit.xfd>([\s\S]*?)<\/cim:SynchronousMachineEquivalentCircuit.xfd>/g, obj, "xfd", base.to_string, sub, context);
-
                 var bucket = context.parsed.SynchronousMachineEquivalentCircuit;
                 if (null == bucket)
                    context.parsed.SynchronousMachineEquivalentCircuit = bucket = {};
@@ -463,48 +399,109 @@ define
             {
                 var fields = SynchronousMachineDetailed.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r1d", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r1q", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r2q", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "rfd", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x1d", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x1q", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x2q", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xad", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xaq", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xf1d", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xfd", base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r1d", "r1d",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r1q", "r1q",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "r2q", "r2q",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "rfd", "rfd",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x1d", "x1d",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x1q", "x1q",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "x2q", "x2q",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xad", "xad",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xaq", "xaq",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xf1d", "xf1d",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineEquivalentCircuit", "xfd", "xfd",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineEquivalentCircuit_collapse" aria-expanded="true" aria-controls="SynchronousMachineEquivalentCircuit_collapse">SynchronousMachineEquivalentCircuit</a>
-<div id="SynchronousMachineEquivalentCircuit_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SynchronousMachineDetailed.prototype.template.call (this) +
-`
-{{#r1d}}<div><b>r1d</b>: {{r1d}}</div>{{/r1d}}
-{{#r1q}}<div><b>r1q</b>: {{r1q}}</div>{{/r1q}}
-{{#r2q}}<div><b>r2q</b>: {{r2q}}</div>{{/r2q}}
-{{#rfd}}<div><b>rfd</b>: {{rfd}}</div>{{/rfd}}
-{{#x1d}}<div><b>x1d</b>: {{x1d}}</div>{{/x1d}}
-{{#x1q}}<div><b>x1q</b>: {{x1q}}</div>{{/x1q}}
-{{#x2q}}<div><b>x2q</b>: {{x2q}}</div>{{/x2q}}
-{{#xad}}<div><b>xad</b>: {{xad}}</div>{{/xad}}
-{{#xaq}}<div><b>xaq</b>: {{xaq}}</div>{{/xaq}}
-{{#xf1d}}<div><b>xf1d</b>: {{xf1d}}</div>{{/xf1d}}
-{{#xfd}}<div><b>xfd</b>: {{xfd}}</div>{{/xfd}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SynchronousMachineEquivalentCircuit_collapse" aria-expanded="true" aria-controls="SynchronousMachineEquivalentCircuit_collapse" style="margin-left: 10px;">SynchronousMachineEquivalentCircuit</a></legend>
+                    <div id="SynchronousMachineEquivalentCircuit_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDetailed.prototype.template.call (this) +
+                    `
+                    {{#r1d}}<div><b>r1d</b>: {{r1d}}</div>{{/r1d}}
+                    {{#r1q}}<div><b>r1q</b>: {{r1q}}</div>{{/r1q}}
+                    {{#r2q}}<div><b>r2q</b>: {{r2q}}</div>{{/r2q}}
+                    {{#rfd}}<div><b>rfd</b>: {{rfd}}</div>{{/rfd}}
+                    {{#x1d}}<div><b>x1d</b>: {{x1d}}</div>{{/x1d}}
+                    {{#x1q}}<div><b>x1q</b>: {{x1q}}</div>{{/x1q}}
+                    {{#x2q}}<div><b>x2q</b>: {{x2q}}</div>{{/x2q}}
+                    {{#xad}}<div><b>xad</b>: {{xad}}</div>{{/xad}}
+                    {{#xaq}}<div><b>xaq</b>: {{xaq}}</div>{{/xaq}}
+                    {{#xf1d}}<div><b>xf1d</b>: {{xf1d}}</div>{{/xf1d}}
+                    {{#xfd}}<div><b>xfd</b>: {{xfd}}</div>{{/xfd}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SynchronousMachineEquivalentCircuit_collapse" aria-expanded="true" aria-controls="{{id}}_SynchronousMachineEquivalentCircuit_collapse" style="margin-left: 10px;">SynchronousMachineEquivalentCircuit</a></legend>
+                    <div id="{{id}}_SynchronousMachineEquivalentCircuit_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDetailed.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_r1d'>r1d: </label><div class='col-sm-8'><input id='{{id}}_r1d' class='form-control' type='text'{{#r1d}} value='{{r1d}}'{{/r1d}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_r1q'>r1q: </label><div class='col-sm-8'><input id='{{id}}_r1q' class='form-control' type='text'{{#r1q}} value='{{r1q}}'{{/r1q}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_r2q'>r2q: </label><div class='col-sm-8'><input id='{{id}}_r2q' class='form-control' type='text'{{#r2q}} value='{{r2q}}'{{/r2q}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rfd'>rfd: </label><div class='col-sm-8'><input id='{{id}}_rfd' class='form-control' type='text'{{#rfd}} value='{{rfd}}'{{/rfd}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_x1d'>x1d: </label><div class='col-sm-8'><input id='{{id}}_x1d' class='form-control' type='text'{{#x1d}} value='{{x1d}}'{{/x1d}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_x1q'>x1q: </label><div class='col-sm-8'><input id='{{id}}_x1q' class='form-control' type='text'{{#x1q}} value='{{x1q}}'{{/x1q}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_x2q'>x2q: </label><div class='col-sm-8'><input id='{{id}}_x2q' class='form-control' type='text'{{#x2q}} value='{{x2q}}'{{/x2q}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xad'>xad: </label><div class='col-sm-8'><input id='{{id}}_xad' class='form-control' type='text'{{#xad}} value='{{xad}}'{{/xad}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xaq'>xaq: </label><div class='col-sm-8'><input id='{{id}}_xaq' class='form-control' type='text'{{#xaq}} value='{{xaq}}'{{/xaq}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xf1d'>xf1d: </label><div class='col-sm-8'><input id='{{id}}_xf1d' class='form-control' type='text'{{#xf1d}} value='{{xf1d}}'{{/xf1d}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xfd'>xfd: </label><div class='col-sm-8'><input id='{{id}}_xfd' class='form-control' type='text'{{#xfd}} value='{{xfd}}'{{/xfd}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SynchronousMachineEquivalentCircuit" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_r1d").value; if ("" != temp) obj.r1d = temp;
+                temp = document.getElementById (id + "_r1q").value; if ("" != temp) obj.r1q = temp;
+                temp = document.getElementById (id + "_r2q").value; if ("" != temp) obj.r2q = temp;
+                temp = document.getElementById (id + "_rfd").value; if ("" != temp) obj.rfd = temp;
+                temp = document.getElementById (id + "_x1d").value; if ("" != temp) obj.x1d = temp;
+                temp = document.getElementById (id + "_x1q").value; if ("" != temp) obj.x1q = temp;
+                temp = document.getElementById (id + "_x2q").value; if ("" != temp) obj.x2q = temp;
+                temp = document.getElementById (id + "_xad").value; if ("" != temp) obj.xad = temp;
+                temp = document.getElementById (id + "_xaq").value; if ("" != temp) obj.xaq = temp;
+                temp = document.getElementById (id + "_xf1d").value; if ("" != temp) obj.xf1d = temp;
+                temp = document.getElementById (id + "_xfd").value; if ("" != temp) obj.xfd = temp;
+
+                return (obj);
+            }
+        }
 
         /**
          * The simplified model represents a synchronous generator as a constant internal voltage behind an impedance (<b>Rs</b> + <b>jXp</b>) as shown in the Simplified diagram.
@@ -517,17 +514,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SynchronousMachineSimplified;
                 if (null == bucket)
                    cim_data.SynchronousMachineSimplified = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineSimplified[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SynchronousMachineSimplified[obj.id];
             }
 
             parse (context, sub)
@@ -536,7 +532,6 @@ define
 
                 obj = SynchronousMachineDynamics.prototype.parse.call (this, context, sub);
                 obj.cls = "SynchronousMachineSimplified";
-
                 var bucket = context.parsed.SynchronousMachineSimplified;
                 if (null == bucket)
                    context.parsed.SynchronousMachineSimplified = bucket = {};
@@ -555,20 +550,57 @@ define
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineSimplified_collapse" aria-expanded="true" aria-controls="SynchronousMachineSimplified_collapse">SynchronousMachineSimplified</a>
-<div id="SynchronousMachineSimplified_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SynchronousMachineDynamics.prototype.template.call (this) +
-`
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SynchronousMachineSimplified_collapse" aria-expanded="true" aria-controls="SynchronousMachineSimplified_collapse" style="margin-left: 10px;">SynchronousMachineSimplified</a></legend>
+                    <div id="SynchronousMachineSimplified_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDynamics.prototype.template.call (this) +
+                    `
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SynchronousMachineSimplified_collapse" aria-expanded="true" aria-controls="{{id}}_SynchronousMachineSimplified_collapse" style="margin-left: 10px;">SynchronousMachineSimplified</a></legend>
+                    <div id="{{id}}_SynchronousMachineSimplified_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDynamics.prototype.edit_template.call (this) +
+                    `
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var obj = obj || { id: id, cls: "SynchronousMachineSimplified" };
+                super.submit (id, obj);
+
+                return (obj);
+            }
+        }
 
         /**
          * Synchronous machine detailed modelling types are defined by the combination of the attributes SynchronousMachineTimeConstantReactance.modelType and SynchronousMachineTimeConstantReactance.rotorType.
@@ -613,17 +645,16 @@ define
             constructor (template, cim_data)
             {
                 super (template, cim_data);
-                this._id = template.id;
                 var bucket = cim_data.SynchronousMachineTimeConstantReactance;
                 if (null == bucket)
                    cim_data.SynchronousMachineTimeConstantReactance = bucket = {};
-                bucket[this._id] = template;
+                bucket[template.id] = template;
             }
 
-            remove (cim_data)
+            remove (obj, cim_data)
             {
-               super.remove (cim_data);
-               delete cim_data.SynchronousMachineTimeConstantReactance[this._id];
+               super.remove (obj, cim_data);
+               delete cim_data.SynchronousMachineTimeConstantReactance[obj.id];
             }
 
             parse (context, sub)
@@ -633,8 +664,8 @@ define
                 obj = SynchronousMachineDetailed.prototype.parse.call (this, context, sub);
                 obj.cls = "SynchronousMachineTimeConstantReactance";
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.ks>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.ks>/g, obj, "ks", base.to_float, sub, context);
-                base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.modelType>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.modelType>/g, obj, "modelType", base.to_string, sub, context);
-                base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.rotorType>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.rotorType>/g, obj, "rotorType", base.to_string, sub, context);
+                base.parse_attribute (/<cim:SynchronousMachineTimeConstantReactance.modelType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "modelType", sub, context);
+                base.parse_attribute (/<cim:SynchronousMachineTimeConstantReactance.rotorType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "rotorType", sub, context);
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.tc>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.tc>/g, obj, "tc", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.tpdo>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.tpdo>/g, obj, "tpdo", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.tppdo>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.tppdo>/g, obj, "tppdo", base.to_string, sub, context);
@@ -646,7 +677,6 @@ define
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.xQuadSubtrans>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.xQuadSubtrans>/g, obj, "xQuadSubtrans", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.xQuadSync>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.xQuadSync>/g, obj, "xQuadSync", base.to_string, sub, context);
                 base.parse_element (/<cim:SynchronousMachineTimeConstantReactance.xQuadTrans>([\s\S]*?)<\/cim:SynchronousMachineTimeConstantReactance.xQuadTrans>/g, obj, "xQuadTrans", base.to_string, sub, context);
-
                 var bucket = context.parsed.SynchronousMachineTimeConstantReactance;
                 if (null == bucket)
                    context.parsed.SynchronousMachineTimeConstantReactance = bucket = {};
@@ -659,62 +689,130 @@ define
             {
                 var fields = SynchronousMachineDetailed.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "ks", base.from_float, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "modelType", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "rotorType", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tc", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tpdo", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tppdo", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tppqo", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tpqo", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectSubtrans", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectSync", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectTrans", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadSubtrans", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadSync", base.from_string, fields);
-                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadTrans", base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "ks", "ks",  base.from_float, fields);
+                base.export_attribute (obj, "SynchronousMachineTimeConstantReactance", "modelType", "modelType", fields);
+                base.export_attribute (obj, "SynchronousMachineTimeConstantReactance", "rotorType", "rotorType", fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tc", "tc",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tpdo", "tpdo",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tppdo", "tppdo",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tppqo", "tppqo",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "tpqo", "tpqo",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectSubtrans", "xDirectSubtrans",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectSync", "xDirectSync",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xDirectTrans", "xDirectTrans",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadSubtrans", "xQuadSubtrans",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadSync", "xQuadSync",  base.from_string, fields);
+                base.export_element (obj, "SynchronousMachineTimeConstantReactance", "xQuadTrans", "xQuadTrans",  base.from_string, fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
                 return (fields);
             }
 
-
             template ()
             {
                 return (
-`
-<a data-toggle="collapse" href="#SynchronousMachineTimeConstantReactance_collapse" aria-expanded="true" aria-controls="SynchronousMachineTimeConstantReactance_collapse">SynchronousMachineTimeConstantReactance</a>
-<div id="SynchronousMachineTimeConstantReactance_collapse" class="collapse in" style="margin-left: 10px;">
-`
-      + SynchronousMachineDetailed.prototype.template.call (this) +
-`
-{{#ks}}<div><b>ks</b>: {{ks}}</div>{{/ks}}
-{{#modelType}}<div><b>modelType</b>: {{modelType}}</div>{{/modelType}}
-{{#rotorType}}<div><b>rotorType</b>: {{rotorType}}</div>{{/rotorType}}
-{{#tc}}<div><b>tc</b>: {{tc}}</div>{{/tc}}
-{{#tpdo}}<div><b>tpdo</b>: {{tpdo}}</div>{{/tpdo}}
-{{#tppdo}}<div><b>tppdo</b>: {{tppdo}}</div>{{/tppdo}}
-{{#tppqo}}<div><b>tppqo</b>: {{tppqo}}</div>{{/tppqo}}
-{{#tpqo}}<div><b>tpqo</b>: {{tpqo}}</div>{{/tpqo}}
-{{#xDirectSubtrans}}<div><b>xDirectSubtrans</b>: {{xDirectSubtrans}}</div>{{/xDirectSubtrans}}
-{{#xDirectSync}}<div><b>xDirectSync</b>: {{xDirectSync}}</div>{{/xDirectSync}}
-{{#xDirectTrans}}<div><b>xDirectTrans</b>: {{xDirectTrans}}</div>{{/xDirectTrans}}
-{{#xQuadSubtrans}}<div><b>xQuadSubtrans</b>: {{xQuadSubtrans}}</div>{{/xQuadSubtrans}}
-{{#xQuadSync}}<div><b>xQuadSync</b>: {{xQuadSync}}</div>{{/xQuadSync}}
-{{#xQuadTrans}}<div><b>xQuadTrans</b>: {{xQuadTrans}}</div>{{/xQuadTrans}}
-</div>
-`
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#SynchronousMachineTimeConstantReactance_collapse" aria-expanded="true" aria-controls="SynchronousMachineTimeConstantReactance_collapse" style="margin-left: 10px;">SynchronousMachineTimeConstantReactance</a></legend>
+                    <div id="SynchronousMachineTimeConstantReactance_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDetailed.prototype.template.call (this) +
+                    `
+                    {{#ks}}<div><b>ks</b>: {{ks}}</div>{{/ks}}
+                    {{#modelType}}<div><b>modelType</b>: {{modelType}}</div>{{/modelType}}
+                    {{#rotorType}}<div><b>rotorType</b>: {{rotorType}}</div>{{/rotorType}}
+                    {{#tc}}<div><b>tc</b>: {{tc}}</div>{{/tc}}
+                    {{#tpdo}}<div><b>tpdo</b>: {{tpdo}}</div>{{/tpdo}}
+                    {{#tppdo}}<div><b>tppdo</b>: {{tppdo}}</div>{{/tppdo}}
+                    {{#tppqo}}<div><b>tppqo</b>: {{tppqo}}</div>{{/tppqo}}
+                    {{#tpqo}}<div><b>tpqo</b>: {{tpqo}}</div>{{/tpqo}}
+                    {{#xDirectSubtrans}}<div><b>xDirectSubtrans</b>: {{xDirectSubtrans}}</div>{{/xDirectSubtrans}}
+                    {{#xDirectSync}}<div><b>xDirectSync</b>: {{xDirectSync}}</div>{{/xDirectSync}}
+                    {{#xDirectTrans}}<div><b>xDirectTrans</b>: {{xDirectTrans}}</div>{{/xDirectTrans}}
+                    {{#xQuadSubtrans}}<div><b>xQuadSubtrans</b>: {{xQuadSubtrans}}</div>{{/xQuadSubtrans}}
+                    {{#xQuadSync}}<div><b>xQuadSync</b>: {{xQuadSync}}</div>{{/xQuadSync}}
+                    {{#xQuadTrans}}<div><b>xQuadTrans</b>: {{xQuadTrans}}</div>{{/xQuadTrans}}
+                    </div>
+                    <fieldset>
+
+                    `
                 );
-           }        }
+            }
+
+            condition (obj)
+            {
+                super.condition (obj);
+                obj.SynchronousMachineModelKind = []; if (!obj.modelType) obj.SynchronousMachineModelKind.push ({ id: '', selected: true}); for (var property in SynchronousMachineModelKind) obj.SynchronousMachineModelKind.push ({ id: property, selected: obj.modelType && obj.modelType.endsWith ('.' + property)});
+                obj.RotorKind = []; if (!obj.rotorType) obj.RotorKind.push ({ id: '', selected: true}); for (var property in RotorKind) obj.RotorKind.push ({ id: property, selected: obj.rotorType && obj.rotorType.endsWith ('.' + property)});
+            }
+
+            uncondition (obj)
+            {
+                super.uncondition (obj);
+                delete obj.SynchronousMachineModelKind;
+                delete obj.RotorKind;
+            }
+
+            edit_template ()
+            {
+                return (
+                    `
+                    <fieldset>
+                    <legend class='col-form-legend'><a data-toggle="collapse" href="#{{id}}_SynchronousMachineTimeConstantReactance_collapse" aria-expanded="true" aria-controls="{{id}}_SynchronousMachineTimeConstantReactance_collapse" style="margin-left: 10px;">SynchronousMachineTimeConstantReactance</a></legend>
+                    <div id="{{id}}_SynchronousMachineTimeConstantReactance_collapse" class="collapse in" style="margin-left: 10px;">
+                    `
+                    + SynchronousMachineDetailed.prototype.edit_template.call (this) +
+                    `
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ks'>ks: </label><div class='col-sm-8'><input id='{{id}}_ks' class='form-control' type='text'{{#ks}} value='{{ks}}'{{/ks}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_modelType'>modelType: </label><div class='col-sm-8'><select id='{{id}}_modelType' class='form-control'>{{#SynchronousMachineModelKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/SynchronousMachineModelKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rotorType'>rotorType: </label><div class='col-sm-8'><select id='{{id}}_rotorType' class='form-control'>{{#RotorKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/RotorKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tc'>tc: </label><div class='col-sm-8'><input id='{{id}}_tc' class='form-control' type='text'{{#tc}} value='{{tc}}'{{/tc}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tpdo'>tpdo: </label><div class='col-sm-8'><input id='{{id}}_tpdo' class='form-control' type='text'{{#tpdo}} value='{{tpdo}}'{{/tpdo}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tppdo'>tppdo: </label><div class='col-sm-8'><input id='{{id}}_tppdo' class='form-control' type='text'{{#tppdo}} value='{{tppdo}}'{{/tppdo}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tppqo'>tppqo: </label><div class='col-sm-8'><input id='{{id}}_tppqo' class='form-control' type='text'{{#tppqo}} value='{{tppqo}}'{{/tppqo}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tpqo'>tpqo: </label><div class='col-sm-8'><input id='{{id}}_tpqo' class='form-control' type='text'{{#tpqo}} value='{{tpqo}}'{{/tpqo}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xDirectSubtrans'>xDirectSubtrans: </label><div class='col-sm-8'><input id='{{id}}_xDirectSubtrans' class='form-control' type='text'{{#xDirectSubtrans}} value='{{xDirectSubtrans}}'{{/xDirectSubtrans}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xDirectSync'>xDirectSync: </label><div class='col-sm-8'><input id='{{id}}_xDirectSync' class='form-control' type='text'{{#xDirectSync}} value='{{xDirectSync}}'{{/xDirectSync}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xDirectTrans'>xDirectTrans: </label><div class='col-sm-8'><input id='{{id}}_xDirectTrans' class='form-control' type='text'{{#xDirectTrans}} value='{{xDirectTrans}}'{{/xDirectTrans}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xQuadSubtrans'>xQuadSubtrans: </label><div class='col-sm-8'><input id='{{id}}_xQuadSubtrans' class='form-control' type='text'{{#xQuadSubtrans}} value='{{xQuadSubtrans}}'{{/xQuadSubtrans}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xQuadSync'>xQuadSync: </label><div class='col-sm-8'><input id='{{id}}_xQuadSync' class='form-control' type='text'{{#xQuadSync}} value='{{xQuadSync}}'{{/xQuadSync}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_xQuadTrans'>xQuadTrans: </label><div class='col-sm-8'><input id='{{id}}_xQuadTrans' class='form-control' type='text'{{#xQuadTrans}} value='{{xQuadTrans}}'{{/xQuadTrans}}></div></div>
+                    </div>
+                    <fieldset>
+                    `
+                );
+            }
+
+            submit (id, obj)
+            {
+                var temp;
+
+                var obj = obj || { id: id, cls: "SynchronousMachineTimeConstantReactance" };
+                super.submit (id, obj);
+                temp = document.getElementById (id + "_ks").value; if ("" != temp) obj.ks = temp;
+                temp = document.getElementById (id + "_modelType").value; if ("" != temp) { temp = SynchronousMachineModelKind[temp]; if ("undefined" != typeof (temp)) obj.modelType = "http://iec.ch/TC57/2013/CIM-schema-cim16#SynchronousMachineModelKind." + temp; }
+                temp = document.getElementById (id + "_rotorType").value; if ("" != temp) { temp = RotorKind[temp]; if ("undefined" != typeof (temp)) obj.rotorType = "http://iec.ch/TC57/2013/CIM-schema-cim16#RotorKind." + temp; }
+                temp = document.getElementById (id + "_tc").value; if ("" != temp) obj.tc = temp;
+                temp = document.getElementById (id + "_tpdo").value; if ("" != temp) obj.tpdo = temp;
+                temp = document.getElementById (id + "_tppdo").value; if ("" != temp) obj.tppdo = temp;
+                temp = document.getElementById (id + "_tppqo").value; if ("" != temp) obj.tppqo = temp;
+                temp = document.getElementById (id + "_tpqo").value; if ("" != temp) obj.tpqo = temp;
+                temp = document.getElementById (id + "_xDirectSubtrans").value; if ("" != temp) obj.xDirectSubtrans = temp;
+                temp = document.getElementById (id + "_xDirectSync").value; if ("" != temp) obj.xDirectSync = temp;
+                temp = document.getElementById (id + "_xDirectTrans").value; if ("" != temp) obj.xDirectTrans = temp;
+                temp = document.getElementById (id + "_xQuadSubtrans").value; if ("" != temp) obj.xQuadSubtrans = temp;
+                temp = document.getElementById (id + "_xQuadSync").value; if ("" != temp) obj.xQuadSync = temp;
+                temp = document.getElementById (id + "_xQuadTrans").value; if ("" != temp) obj.xQuadTrans = temp;
+
+                return (obj);
+            }
+        }
 
         return (
             {
-                SynchronousMachineModelKind: SynchronousMachineModelKind,
                 SynchronousMachineDynamics: SynchronousMachineDynamics,
                 SynchronousMachineSimplified: SynchronousMachineSimplified,
-                RotorKind: RotorKind,
-                IfdBaseKind: IfdBaseKind,
                 SynchronousMachineDetailed: SynchronousMachineDetailed,
                 SynchronousMachineTimeConstantReactance: SynchronousMachineTimeConstantReactance,
                 SynchronousMachineEquivalentCircuit: SynchronousMachineEquivalentCircuit

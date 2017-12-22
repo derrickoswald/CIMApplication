@@ -10,7 +10,8 @@ trait Graphable
 {
     /**
      * Compute the vertex id.
-     * @param string The CIM MRID.
+     * @param string The CIM mRID.
+     * @return the node id (similar to the hash code of the mRID)
      */
     def vertex_id (string: String): VertexId =
     {
