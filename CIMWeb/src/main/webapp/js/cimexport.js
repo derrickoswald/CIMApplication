@@ -143,10 +143,38 @@ define
                 "            <input id='md_description' class='form-control' type='text' name='md_description' placeholder='md:description contents'>\n" +
                 "          </div>\n" +
                 "        </div>\n" +
+
                 "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='difference_model'>Difference model</label>\n" +
+                "          <div class='col-sm-2 col-form-label'>Full</div>\n" +
                 "          <div class='col-sm-10'>\n" +
-                "            <input id='difference_model' class='form-check-input' type='checkbox' name='difference_model' style='margin-right: 20px;'>\n" +
+                "            <div class='form-check'>\n" +
+                "              <label class='form-check-label'>\n" +
+                "                <input id='full_model' class='form-check-input' type='radio' name='save_mode' checked style='margin-right: 20px;'>\n" +
+                "                Full model\n" +
+                "              </label>\n" +
+                "            </div>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <div class='col-sm-2 col-form-label'>Difference</div>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <div class='form-check'>\n" +
+                "              <label class='form-check-label'>\n" +
+                "                <input id='difference_model' class='form-check-input' type='radio' name='save_mode' style='margin-right: 20px;'>\n" +
+                "                Difference model\n" +
+                "              </label>\n" +
+                "            </div>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <div class='col-sm-2 col-form-label'>New</div>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <div class='form-check'>\n" +
+                "              <label class='form-check-label'>\n" +
+                "                <input id='only_new' class='form-check-input' type='radio' name='save_mode' style='margin-right: 20px;'>\n" +
+                "                Only new elements as a full model\n" +
+                "              </label>\n" +
+                "            </div>\n" +
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group row'>\n" +
@@ -175,7 +203,9 @@ define
             document.getElementById ("save_name").onchange = save_name_change;
             document.getElementById ("rdf_about").onchange = about_change;
             document.getElementById ("md_description").onchange = description_change;
-            document.getElementById ("difference_model").onchange = difference_model_change;
+            document.getElementById ("full_model").onchange = mode_change;
+            document.getElementById ("difference_model").onchange = mode_change;
+            document.getElementById ("only_new").onchange = mode_change;
         }
 
         function stripJson (file)
@@ -304,12 +334,12 @@ define
 
         /**
          * @summary Event handler for changing to or from a difference model.
-         * @description Attached to the difference_model checkbox.
+         * @description Attached to the mode radio buttone.
          * @param {object} event - the change event - <em>not used</em>
-         * @function difference_model_change
+         * @function mode_change
          * @memberOf module:cimexport
          */
-        function difference_model_change (event)
+        function mode_change (event)
         {
             if (null == Pending)
                 generate_rdf ();
@@ -329,6 +359,15 @@ define
             var name = TheCurrentName || "save";
             var about = TheCurrentAbout || "";
             var description = TheCurrentDescription || "";
+            var full_model = document.getElementById ("full_model").checked;
+            var difference_model = document.getElementById ("difference_model").checked;
+            var only_new = document.getElementById ("only_new").checked;
+            var suffix = "";
+            if (difference_model)
+                suffix = "_diff";
+            else if (only_new)
+                suffix = "_new";
+            document.getElementById ("save_name").value = name + suffix;
             if (null == cimmap.get_data ())
                 Pending = Promise.resolve ("no data");
             else
@@ -338,15 +377,13 @@ define
                         {
                             // disable the link until it's ready
                             var a = document.getElementById ("do_rdf_export");
-                            var difference_model = document.getElementById ("difference_model").checked;
                             a.setAttribute ("disabled", "disabled");
-                            var file = name + (difference_model ? "_diff" : "") + ".zip"
+                            var file = name + suffix + ".zip"
                             a.setAttribute ("download", file);
-                            document.getElementById ("save_name").value = file;
                             a.onclick = function (event) { event.preventDefault (); event.stopPropagation (); alert ("sorry... not ready yet"); }
                             var begin = new Date ().getTime ();
                             console.log ("starting xml creation");
-                            var text = cim.write_xml (cimmap.get_data ().Element, difference_model, about, description);
+                            var text = cim.write_xml (cimmap.get_data ().Element, difference_model, only_new, about, description);
                             var start = new Date ().getTime ();
                             console.log ("finished xml creation (" + (Math.round (start - begin) / 1000) + " seconds)");
                             console.log ("starting zip");
@@ -359,7 +396,7 @@ define
                                     zip.createWriter (new zip.BlobWriter (),
                                         function (writer)
                                         {
-                                            writer.add (name + ".rdf", new zip.TextReader (text),
+                                            writer.add (name + suffix + ".rdf", new zip.TextReader (text),
                                                 function ()
                                                 {
                                                     writer.close (
