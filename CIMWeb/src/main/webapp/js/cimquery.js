@@ -6,14 +6,14 @@
  */
 define
 (
-    ["util", "mustache"],
+    ["util", "mustache", "cim", "cimmap"],
     /**
      * @summary Functions to query CIM data in memory.
      * @name cimquery
      * @exports cimquery
      * @version 1.0
      */
-    function (util, mustache)
+    function (util, mustache, cim, cimmap)
     {
         /**
          * The current query.
@@ -74,6 +74,17 @@ define
             xmlhttp.send ();
         }
 
+        function create_from (proto)
+        {
+            proto.EditDisposition = "new";
+            var dummy_data = {};
+            var cls = cim.class_map (proto);
+            var obj = new cls (proto, dummy_data);
+            if (dummy_data.IdentifiedObject)
+                proto.mRID = proto.id;
+            obj = new cls (proto, cimmap.get_data ());
+        }
+
         /**
          * @summary Query loaded file.
          * @description Perform an SQL query on loaded CIM data.
@@ -90,7 +101,23 @@ define
                 TheTable = document.getElementById ("table_name").value;
                 TheCassandraTable = document.getElementById ("cassandra_table_name").value;
                 QueryCassandra = document.getElementById ("query_cassandra").checked;
-                query (TheQuery, QueryCassandra, TheTable, TheCassandraTable, function (data) { document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>"; });
+                var class_name = document.getElementById ("create_class_name").value;
+                function fn (data)
+                {
+                    document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>";
+                    if (class_name != "")
+                    {
+                        for (var i = 0; i < data.length; i++)
+                        {
+                            var proto = data[i];
+                            proto.cls = class_name;
+                            if (!proto.id)
+                                proto.id = class_name + (~~(1e6 * Math.random ())).toString ();
+                            create_from (proto);
+                        }
+                    }
+                }
+                query (TheQuery, QueryCassandra, TheTable, TheCassandraTable, fn);
             }
         }
 
@@ -135,6 +162,15 @@ define
                 "          <small id='cassandraHelp' class='form-text text-muted'>Enter the name of the Cassandra table to store the results of the query.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
+                "          <label for='create_elements'>Create CIM elements in browser memory</label>\n" +
+                "          <select id='create_class_name' class='form-control' aria-describedby='createElementsHelp'>\n" +
+                "{{#classes}}\n" +
+                "              <option value='{{.}}'>{{.}}</option>\n" +
+                "{{/classes}}\n" +
+                "          </select>\n" +
+                "          <small id='createElementsHelp' class='form-text text-muted'>Select the CIM class for an object to be created (in browser memory) for each row of query results.</small>\n" +
+                "        </div>\n" +
+                "        <div class='form-group'>\n" +
                 "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
                 "        </div>\n" +
                 "      </form>\n" +
@@ -144,6 +180,13 @@ define
                 "  </div>\n" +
                 "</div>\n";
 
+            var cls_map = cim.classes ();
+            var classes = [];
+            for (var property in cls_map)
+                if (cls_map.hasOwnProperty (property))
+                    classes.push (property);
+            classes.sort ();
+            classes.unshift ("");
             var text = mustache.render
             (
                 query_template,
@@ -151,7 +194,8 @@ define
                     sql: function () { return ((null != TheQuery) ? TheQuery : ""); },
                     table: function () { return ((null != TheTable) ? TheTable : ""); },
                     ctable: function () { return ((null != TheCassandraTable) ? TheCassandraTable : ""); },
-                    cassandra: function () { return ((QueryCassandra) ? " checked" : ""); }
+                    cassandra: function () { return ((QueryCassandra) ? " checked" : ""); },
+                    classes: classes
                 }
             );
             document.getElementById ("query").innerHTML = text;
