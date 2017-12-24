@@ -668,9 +668,11 @@ define
          */
         function do_load (path)
         {
+            var csv;
             var url;
             var xmlhttp;
 
+            csv = path.toLowerCase ().endsWith (".csv");
             path = path.startsWith ("/") ? path : "/" + path;
             if (do_about ())
                 path += ";do_about=true";
@@ -734,7 +736,8 @@ define
                         if (resp.status == "OK")
                         {
                             console.log (JSON.stringify (resp, null, 4));
-                            do_show ();
+                            if (!csv)
+                                do_show ();
                         }
                         else
                             alert (resp.message);
