@@ -1,5 +1,6 @@
 package ch.ninecode.sc
 
+import ch.ninecode.model.EquivalentInjection
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Substation
@@ -10,7 +11,7 @@ import ch.ninecode.model.Terminal
  *
  * @param transformer The PowerTransformer object.
  * @param station The Substation object where the transformer is located.
- * @param shortcircuit The ShortCircuit object with the available short circuit power and phase at the primary.
+ * @param shortcircuit The EquivalentInjection object with the available short circuit power and impedance at the primary.
  * @param voltage0 The voltage for the transformer high voltage end (kV).
  * @param end0 The high voltage PowerTransformerEnd.
  * @param terminal0 The high voltage Terminal.
@@ -23,7 +24,7 @@ import ch.ninecode.model.Terminal
 case class TData (
     transformer: PowerTransformer,
     station: Substation,
-    shortcircuit: ShortCircuitData,
+    shortcircuit: EquivalentInjection,
     end0: PowerTransformerEnd,
     voltage0: Double,
     terminal0: Terminal,

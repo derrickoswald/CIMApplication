@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 
@@ -212,10 +213,19 @@ object Main {
                     configuration.registerKryoClasses (CIMClasses.list)
                     // register ShortCircuit analysis classes
                     configuration.registerKryoClasses (Array (
+                        classOf[ch.ninecode.sc.Complex],
+                        classOf[ch.ninecode.sc.Graphable],
+                        classOf[ch.ninecode.sc.HouseConnection],
+                        classOf[ch.ninecode.sc.Impedanzen],
+                        classOf[ch.ninecode.sc.ScEdge],
                         classOf[ch.ninecode.sc.ScNode],
-                        classOf[ch.ninecode.sc.ShortCircuitData],
+                        classOf[ch.ninecode.sc.ShortCircuit],
+                        classOf[ch.ninecode.sc.ShortCircuitInfo],
+                        classOf[ch.ninecode.sc.ShortCircuitOptions],
+                        classOf[ch.ninecode.sc.StartingTrafos],
                         classOf[ch.ninecode.sc.TData],
-                        classOf[ch.ninecode.sc.ScEdge]))
+                        classOf[ch.ninecode.sc.Transformers],
+                        classOf[ch.ninecode.sc.TransformerSet]))
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
@@ -234,9 +244,18 @@ object Main {
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
                     trafos = arguments.trafos,
-                    csv_file = arguments.csv_file,
                     workdir = workdir
                 )
+
+                // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
+                if ("" != arguments.csv_file)
+                {
+                    val infos = ShortCircuitInfo (session, StorageLevel.MEMORY_AND_DISK_SER)
+                    val equivalents = infos.getShortCircuitInfo (arguments.csv_file)
+                    val export = new CIMExport (session)
+                    export.export (equivalents, arguments.csv_file.replace (".csv", ".rdf"), "generated from " + arguments.csv_file)
+                    infos.merge (equivalents)
+                }
 
                 val shortcircuit = ShortCircuit (session, storage, options)
                 val house_connection = shortcircuit.run ()

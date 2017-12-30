@@ -1,21 +1,23 @@
 package ch.ninecode.sc
 
 import scala.collection.Map
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.Bay
+import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.ConnectivityNodeContainer
 import ch.ninecode.model.Element
+import ch.ninecode.model.Equipment
 import ch.ninecode.model.EquipmentContainer
+import ch.ninecode.model.EquivalentEquipment
+import ch.ninecode.model.EquivalentInjection
 import ch.ninecode.model.IdentifiedObject
 import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
@@ -123,18 +125,52 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         ret
     }
 
-    def addSC (default_supply_network_short_circuit_power: Double = 200.0, default_supply_network_short_circuit_angle: Double = -70.0) (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[ShortCircuitData])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), ShortCircuitData) =
+    def addSC (voltages: Map[String, Double]) (default_supply_network_short_circuit_power: Double = 200.0, default_supply_network_short_circuit_angle: Double = -70.0) (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
     {
         arg._2 match
         {
             case Some (sc) => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, sc)
-            case None => (arg._1._1, arg._1._2, arg._1._3, arg._1._4, ShortCircuitData (arg._1._2.id, default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle, valid = false))
+            case None =>
+                // ToDo: fix this 1kV multiplier on the voltages
+                val v1 = arg._1._3._2 * 1000.0
+                val sk = default_supply_network_short_circuit_power * 1e6
+                val wik = default_supply_network_short_circuit_angle
+                val c = 1.0
+                //val ratioZ0Z1 = 4
+                //val ratioX0R0 = 10
+                val zqt = (c * v1 * v1) / sk
+                //val zqt0 = zqt * ratioZ0Z1
+                val wik_radians = Math.PI / 180.0 * wik
+                val netz_r1 = zqt * Math.cos (wik_radians)
+                val netz_x1 = zqt * Math.sin (wik_radians)
+                val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
+                val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
+
+                val voltage = voltages.find (_._2 == arg._1._3._2) match { case Some (v) ⇒ v._1 case None ⇒ "BaseVoltage_Unknown_%s".format (arg._1._3._2) }
+                val mRID = "EquivalentInjection_" + arg._1._1.id
+                val description = "default equivalent generation injection"
+                val element = BasicElement (null, mRID)
+                element.bitfields = Array (Integer.parseInt ("1", 2))
+                val obj = IdentifiedObject (element, null, description, mRID, null, null, null)
+                obj.bitfields = Array (Integer.parseInt ("110", 2))
+                val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
+                psr.bitfields = Array (0)
+                val equipment = Equipment (psr, false, true, List(), List(), arg._1._2.id, List(), List(), List(), List(), List(), List(), List(), List(), List())
+                equipment.bitfields = Array (Integer.parseInt ("10010", 2))
+                val conducting = ConductingEquipment (equipment, voltage, null, null, List(), List(), null, List())
+                conducting.bitfields = Array (Integer.parseInt ("1", 2))
+                val equivalent = EquivalentEquipment (conducting, null)
+                equivalent.bitfields = Array (0)
+                val injection = EquivalentInjection (equivalent, sk, 0.0, 0.0, 0.0, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, false, 0.0, netz_x1, netz_x0, netz_x1, null)
+                // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
+                // note: use RegulationStatus to indicate this is a default value, and not a real value
+                injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+                (arg._1._1, arg._1._2, arg._1._3, arg._1._4, injection)
         }
     }
 
     def getTransformerData (
         topological_nodes: Boolean = true,
-        shortcircuitdata: String = null,
         default_supply_network_short_circuit_power: Double = 200.0,
         default_supply_network_short_circuit_angle: Double = -70.0): RDD[TData] =
     {
@@ -204,18 +240,15 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         // attach Terminal elements
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).flatMap (addTerminals)
 
-        // optionally read in the short circuit data
-        val short_circuit =
-            if ((null != shortcircuitdata) && ("" != shortcircuitdata))
-            {
-                val sc = new ShortCircuitInfo (session, storage_level)
-                sc.read_csv (shortcircuitdata)
-            }
-            else
-                session.sparkContext.parallelize (List[ShortCircuitData] ())
+        // get equivalent injection values, if any
+        val injections = if (null != get[EquivalentInjection])
+            get[EquivalentInjection]
+        else
+            session.sparkContext.parallelize (List[EquivalentInjection] ())
+        val injections_by_node = injections.keyBy (_.id).join (terms).values.map (x ⇒ (x._2.head.ConnectivityNode, x._1)) // ToDo: could be TopologicalNode?
 
         val transformers_stations_plus_ends_plus_terminals_plus_sc =
-            transformers_stations_plus_ends_plus_terminals.keyBy (_._2.id).leftOuterJoin (short_circuit.keyBy (_.mRID)).values.map (addSC (default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle))
+            transformers_stations_plus_ends_plus_terminals.keyBy (_._3._3.ConnectivityNode).leftOuterJoin (injections_by_node).values.map (addSC (voltages) (default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle))
 
         // convert to TData
         val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (

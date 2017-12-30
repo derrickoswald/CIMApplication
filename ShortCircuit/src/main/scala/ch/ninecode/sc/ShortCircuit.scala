@@ -303,7 +303,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def run (): RDD[HouseConnection] =
     {
         val _transformers = new Transformers (spark, storage_level)
-        val tdata = _transformers.getTransformerData (true, options.csv_file, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_angle)
+        val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_angle)
 
         val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray

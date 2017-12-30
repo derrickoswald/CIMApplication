@@ -23,14 +23,10 @@ extends
         val v1 = transformer.v0
         val v2 = transformer.v1
         val sk = transformer.network_short_circuit_power
-        val wik = transformer.network_short_circuit_angle
-
-        val zqt = (c * v1 * v1) / sk
+        val zqt = transformer.network_short_circuit_impedance
         //val zqt0 = zqt * ratioZ0Z1
-
-        val wik_radians = Math.PI / 180.0 * wik
-        val netz_r1 = zqt * Math.cos (wik_radians)
-        val netz_x1 = zqt * Math.sin (wik_radians)
+        val netz_r1 = zqt.re
+        val netz_x1 = zqt.im
         val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
         val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
         Impedanzen (Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0))

@@ -97,7 +97,7 @@ case class TransformerSet (transformers: Array[TData])
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
     lazy val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
 
-    //
+    // per unit impedance of the transformer
     lazy val impedances: Array[Complex] = transformers.map (
         (edge) =>
         {
@@ -130,18 +130,17 @@ case class TransformerSet (transformers: Array[TData])
 
     lazy val network_short_circuit_power: Double =
     {
-        val p = transformers.head.shortcircuit.Sk
-        if (!transformers.forall (_.shortcircuit.Sk == p))
-            log.error ("transformer set " + transformer_name + " has differing network short circuit powers " + transformers.map (_.shortcircuit.Sk).mkString (" "))
-        // ToDo: why is it in MegaVoltAmps and not just VoltAmps
-        1000000.0 * p
+        val power = transformers.head.shortcircuit.maxP
+        if (!transformers.forall (_.shortcircuit.maxP == power))
+            log.error ("transformer set " + transformer_name + " has differing network short circuit powers " + transformers.map (_.shortcircuit.maxP).mkString (" "))
+        power
     }
 
-    lazy val network_short_circuit_angle: Double =
+    lazy val network_short_circuit_impedance: Complex =
     {
-        val a = transformers.head.shortcircuit.Ikw
-        if (!transformers.forall (_.shortcircuit.Ikw == a))
-            log.error ("transformer set " + transformer_name + " has differing network short circuit angles " + transformers.map (_.shortcircuit.Ikw).mkString (" "))
-        a
+        val impedance = Complex (transformers.head.shortcircuit.r, transformers.head.shortcircuit.x)
+        if (!transformers.forall (x ⇒ Complex (x.shortcircuit.r, x.shortcircuit.x) == impedance))
+            log.error ("transformer set " + transformer_name + " has differing network short circuit impedance " + transformers.map (x ⇒ Complex (x.shortcircuit.r, x.shortcircuit.x)).mkString (" "))
+        impedance
     }
 }

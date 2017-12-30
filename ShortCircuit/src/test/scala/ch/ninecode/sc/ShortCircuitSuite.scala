@@ -21,6 +21,7 @@ import org.apache.spark.storage.StorageLevel
 import org.scalatest.BeforeAndAfter
 import org.scalatest.fixture.FunSuite
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import org.apache.spark.rdd.RDD
 
@@ -33,7 +34,8 @@ class ShortCircuitSuite
     val FILE_DEPOT = "data/"
     val PRIVATE_FILE_DEPOT = "private_data/"
 
-    val FILENAME = "Beispiel zur Ermittlung der Kurzschlussleistung.rdf"
+    val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung.rdf"
+    val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.rdf"
 
     type FixtureParam = SparkSession
 
@@ -170,9 +172,11 @@ class ShortCircuitSuite
 
     before
     {
-        // unpack the zip file
-        if (!new File (FILENAME).exists)
+        // unpack the zip files
+        if (!new File (FILENAME1).exists)
             new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.zip", FILE_DEPOT)
+        if (!new File (FILENAME2).exists)
+            new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.zip", FILE_DEPOT)
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -191,10 +195,21 @@ class ShortCircuitSuite
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
-        // register short circuit classes
-        configuration.registerKryoClasses (Array (classOf[ShortCircuitData], classOf[TData], classOf[ScNode]))
-        // register short circuit inner classes
-        configuration.registerKryoClasses (Array (classOf[ScEdge], classOf[HouseConnection]))
+        // register ShortCircuit analysis classes
+        configuration.registerKryoClasses (Array (
+            classOf[ch.ninecode.sc.Complex],
+            classOf[ch.ninecode.sc.Graphable],
+            classOf[ch.ninecode.sc.HouseConnection],
+            classOf[ch.ninecode.sc.Impedanzen],
+            classOf[ch.ninecode.sc.ScEdge],
+            classOf[ch.ninecode.sc.ScNode],
+            classOf[ch.ninecode.sc.ShortCircuit],
+            classOf[ch.ninecode.sc.ShortCircuitInfo],
+            classOf[ch.ninecode.sc.ShortCircuitOptions],
+            classOf[ch.ninecode.sc.StartingTrafos],
+            classOf[ch.ninecode.sc.TData],
+            classOf[ch.ninecode.sc.Transformers],
+            classOf[ch.ninecode.sc.TransformerSet]))
 
         // create the fixture
         val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
@@ -235,8 +250,15 @@ class ShortCircuitSuite
         val topo = System.nanoTime ()
         println ("topology: " + (topo - read) / 1e9 + " seconds")
 
+        // add EquivalentInjection elements based on the csv file
+        val infos = ShortCircuitInfo (session, StorageLevel.MEMORY_AND_DISK_SER)
+        val equivalents = infos.getShortCircuitInfo (PRIVATE_FILE_DEPOT + "KS_Leistungen.csv")
+        val export = new CIMExport (session)
+        export.export (equivalents, PRIVATE_FILE_DEPOT + "KS_Leistungen.rdf", "generated from " + "KS_Leistungen.csv")
+        infos.merge (equivalents)
+
         // short circuit calculations
-        val sc_options = ShortCircuitOptions (csv_file = PRIVATE_FILE_DEPOT + "KS_Leistungen.csv", trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
+        val sc_options = ShortCircuitOptions (trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
         val house_connection = shortcircuit.run ()
 
@@ -265,7 +287,7 @@ class ShortCircuitSuite
     {
         session: SparkSession ⇒
 
-            val filename = FILE_DEPOT + FILENAME
+            val filename = FILE_DEPOT + FILENAME1
 
             val start = System.nanoTime
             val files = filename.split (",")
@@ -290,6 +312,68 @@ class ShortCircuitSuite
             val sc_options = ShortCircuitOptions (
                 default_supply_network_short_circuit_power = 600.0,
                 default_supply_network_short_circuit_angle = 90.0,
+                trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+            house_connection.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "/result"
+            val string = house_connection.sortBy (_.transformer.transformer_name).map (h => {
+                h.node + ";" + h.transformer.transformer_name + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
+            })
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (s"""has;tra;ik;ik3pol;ip;r;x;r0;x0;sk""")
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            val consumer = house_connection.filter (_.mRID == "L2_node_2_topo")
+            assert (0 < consumer.count (), "L2_node_2 not found")
+            val data = consumer.first ()
+            assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
+
+            val busbar = house_connection.filter (_.mRID == "L2_node_1_topo")
+            assert (0 < busbar.count (), "L2_node_1 not found")
+            val sc = busbar.first ()
+            assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
+    }
+
+    test ("DACHCZ with EquivalentInjection")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME2
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            val ele = ntp.process (false)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val house_connection = shortcircuit.run ()
