@@ -35,7 +35,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null.asInstanceOf[StartingTrafos], null.asInstanceOf[Impedanzen])
+    val default_node = ScNode ("", 0.0, null, null.asInstanceOf[Impedanzen])
 
     def has (string: String): String =
     {
@@ -205,10 +205,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // persist edges and nodes to avoid recompute
         val xedges = real_edges.map (make_graph_edges)
         val xnodes = nodes.map (make_graph_vertices)
-        val e = xedges.count
         xedges.name = "xedges"
         xedges.persist (storage_level)
-        val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist (storage_level)
         spark.sparkContext.getCheckpointDir match
@@ -243,14 +241,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScNode)] =
         {
-            if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
+            if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
                 if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
-                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, triplet.attr.impedanceTo (triplet.dstAttr.id_seq, triplet.srcAttr.impedance))))
+                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source, triplet.attr.impedanceTo (triplet.dstAttr.id_seq, triplet.srcAttr.impedance))))
                 else
                     Iterator.empty
-            else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
+            else if (triplet.srcAttr.impedance == null && triplet.dstAttr.impedance != null)
                 if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
-                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, triplet.attr.impedanceTo (triplet.srcAttr.id_seq, triplet.dstAttr.impedance))))
+                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source, triplet.attr.impedanceTo (triplet.srcAttr.id_seq, triplet.dstAttr.impedance))))
                 else
                     Iterator.empty
             else
@@ -265,23 +263,23 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         initial.pregel (default_node, 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
-    // compute the house connection short-circuit values
-    def calculate_short_circuit (house: ScNode): HouseConnection =
+    // compute the short-circuit values
+    def calculate_short_circuit (node: ScNode): HouseConnection =
     {
         val c = 1.0
         val cmin = 0.90
-        val v2 = house.voltage
+        val v2 = node.voltage
         val root3 = Math.sqrt (3.0)
 
         // Einpoligen Kurzschlussstrom berechnen
         val ik_z = root3 * cmin * v2
-        val ik_n_sqrt1 = !house.impedance.impedanz
-        val ik_n_sqrt2 = !house.impedance.null_impedanz
+        val ik_n_sqrt1 = !node.impedance.impedanz
+        val ik_n_sqrt2 = !node.impedance.null_impedanz
         val ik_n = 2 * ik_n_sqrt1 + ik_n_sqrt2
         val ik = ik_z / ik_n
 
         // Dreipoligen Kurzschlussstrom berechnen
-        val ik3pol_n = root3 * !house.impedance.impedanz
+        val ik3pol_n = root3 * !node.impedance.impedanz
         val ik3pol = c * v2 / ik3pol_n
 
         // Stosskurzschlussstrom berechnen
@@ -290,14 +288,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // maximum aperiodic short-circuit current according to IEC 60909-0, see for example:
         // http://www.dii.unipd.it/-renato.gobbo/didattica/corsi/Componenti_tecnologie_elettrici/ABB_swithgear_manual_E11/ABB_11_E_03_druck.pdf pp71-80
         // http://studiecd.dk/cahiers_techniques/Calculation_of_short_circuit_currents.pdf pp7-10
-        val r_over_x = house.impedance.impedanz.re / house.impedance.impedanz.im
+        val r_over_x = node.impedance.impedanz.re / node.impedance.impedanz.im
         val kappa = 1.02 + 0.98 * Math.exp (-3.0 * r_over_x)
         val ip = kappa * Math.sqrt (2) * ik3pol
 
         // short-circuit power at the point of common coupling
-        val sk = (v2 * v2) / !house.impedance.impedanz
+        val sk = (v2 * v2) / !node.impedance.impedanz
 
-        HouseConnection (house.id_seq, has (house.id_seq), house.source_obj.transformer, house.impedance.impedanz.re, house.impedance.impedanz.im, house.impedance.null_impedanz.re, house.impedance.null_impedanz.im, ik, ik3pol, ip, sk)
+        HouseConnection (node.id_seq, has (node.id_seq), node.source, node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im, ik, ik3pol, ip, sk)
     }
 
     def run (): RDD[HouseConnection] =
@@ -305,7 +303,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val _transformers = new Transformers (spark, storage_level)
         val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_angle)
 
-        val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
+        val transformers: Array[Array[TData]] = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
             val selected = tdata.filter (t ⇒ { trafos.contains (t.transformer.id) })
             selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray).collect
@@ -314,7 +312,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter ((td) ⇒ td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
 
         val starting_nodes = transformers.map ((txs) ⇒ trafo_mapping (TransformerSet (txs)))
@@ -324,19 +322,19 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             starting_nodes.find (trafo ⇒ trafo.nsPin == id || trafo.osPin == id) match
             {
-                case Some (transformer) ⇒
-                    // assign source and impedances to starting trafo primary and secondary
-                    if (transformer.osPin == id)
-                        ScNode (v.id_seq, v.voltage, transformer, transformer.primary_impedance)
+                case Some (node) ⇒
+                    // assign source and impedances to starting transformer primary and secondary
+                    if (node.osPin == id)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance)
                     else
-                        ScNode (v.id_seq, v.voltage, transformer, transformer.secondary_impedance)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance)
                 case None ⇒
-                    ScNode (v.id_seq, v.voltage, null, null)
+                    v
             }
         }
 
         val initial = get_inital_graph ()
-        val initial_with_starting_nodes = initial.mapVertices (starting_map (starting_nodes))
+        val initial_with_starting_nodes = initial.mapVertices (starting_map (starting_nodes)).persist (storage_level)
         val graph = trace (initial_with_starting_nodes)
 
         // get the leaf nodes with their data

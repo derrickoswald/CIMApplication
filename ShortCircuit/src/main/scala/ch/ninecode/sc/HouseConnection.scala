@@ -5,7 +5,7 @@ package ch.ninecode.sc
  *
  * @param mRID conducting equipment mRID
  * @param node TopologicalNode mRID
- * @param transformer the feeding transformer
+ * @param tx the feeding transformer
  * @param r aggregate positive sequence resistance from the source (primary of feeding transformer) to this node (Ω)
  * @param x aggregate positive sequence reactance from the source (primary of feeding transformer) to this node (Ω)
  * @param r0 aggregate zero sequence resistance from the source (primary of feeding transformer) to this node (Ω)
@@ -18,7 +18,7 @@ package ch.ninecode.sc
 case class HouseConnection (
     mRID: String,
     node: String,
-    transformer: TransformerSet,
+    tx: String,
     r: Double,
     x: Double,
     r0: Double,

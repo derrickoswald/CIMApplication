@@ -1,12 +1,14 @@
 package ch.ninecode.sc
 
 import scala.collection.Map
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.BasicElement

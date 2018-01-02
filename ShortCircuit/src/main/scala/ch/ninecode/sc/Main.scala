@@ -9,6 +9,8 @@ import scala.tools.nsc.io.Jar
 import scala.util.Random
 
 import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
@@ -18,10 +20,12 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.model.Element
 
-object Main {
+object Main
+{
     val APPLICATION_NAME = "Short Circuit Current"
-    val APPLICATION_VERSION = "2.2.5"
+    val APPLICATION_VERSION = "2.3.7"
 
     object LogLevels extends Enumeration {
         type LogLevels = Value
@@ -107,49 +111,50 @@ object Main {
     }
 
     def jarForObject (obj: Object): String =
-        {
-            // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-            var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-            try {
-                ret = URLDecoder.decode (ret, "UTF-8")
-            }
-            catch {
-                case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
-            }
-            if (!ret.toLowerCase ().endsWith (".jar")) {
-                // as an aid to debugging, make jar in tmp and pass that name
-                val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
-                val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-                writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-                writer.close ()
-                ret = name
-            }
-
-            ret
+    {
+        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
+        try {
+            ret = URLDecoder.decode (ret, "UTF-8")
         }
+        catch {
+            case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
+        }
+        if (!ret.toLowerCase ().endsWith (".jar")) {
+            // as an aid to debugging, make jar in tmp and pass that name
+            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
+            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
+            writer.close ()
+            ret = name
+        }
+
+        ret
+    }
 
     /**
      * Generate a working directory matching the files.
      */
     def derive_work_dir (files: Seq[String]): String =
-        {
-            val file = files.head.split (",")(0).replace (" ", "%20")
-            val uri = new URI (file)
-            if (null == uri.getScheme)
-                "/simulation/"
-            else
-                uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
-        }
+    {
+        val file = files.head.split (",")(0).replace (" ", "%20")
+        val uri = new URI (file)
+        if (null == uri.getScheme)
+            "/simulation/"
+        else
+            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
+    }
 
     /**
      * Build jar with dependencies (target/GridLAB-D-2.2.2-jar-with-dependencies.jar):
      *     mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g --class ch.ninecode.sc.Main /opt/code/ShortCircuit-2.2.5-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" "hdfs://sandbox:8020/data/bkw_cim_export_wohlen_bei_bern.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.3.7-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
-    def read_cim (session: SparkSession, arguments: Arguments) {
+    def read_cim (session: SparkSession, arguments: Arguments, storage_level: StorageLevel): RDD[Element] =
+    {
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
         val reader_options = new HashMap[String, String] ()
@@ -160,7 +165,7 @@ object Main {
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*)
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage_level)
 
         if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
             elements.explain
@@ -172,14 +177,16 @@ object Main {
 
         // identify topological nodes
         val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString (arguments.storage))
-        val ele = ntp.process (false)
-        log.info (ele.count () + " elements")
-
+        val ele: RDD[Element] = ntp.process (false)
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+        ele.name = "Elements"
+        ele.persist (storage_level)
+        ele
     }
 
-    def main (args: Array[String]) {
+    def main (args: Array[String])
+    {
         // parser.parse returns Option[C]
         parser.parse (args, Arguments ()) match {
             case Some (arguments) ⇒
@@ -226,6 +233,7 @@ object Main {
                         classOf[ch.ninecode.sc.TData],
                         classOf[ch.ninecode.sc.Transformers],
                         classOf[ch.ninecode.sc.TransformerSet]))
+                    GraphXUtils.registerKryoClasses (configuration)
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
@@ -238,7 +246,7 @@ object Main {
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                read_cim (session, arguments)
+                read_cim (session, arguments, storage)
 
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
@@ -260,14 +268,14 @@ object Main {
                 val shortcircuit = ShortCircuit (session, storage, options)
                 val house_connection = shortcircuit.run ()
 
-                val string = house_connection.sortBy (_.transformer.transformer_name).map (h ⇒ {
-                    h.node + ";" + h.transformer.transformer_name + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0
+                val string = house_connection.sortBy (_.tx).map (h ⇒ {
+                    h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0
                 })
-                println ("output_path: " + workdir)
+                log.info ("output_path: " + workdir)
                 string.saveAsTextFile (workdir)
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + house_connection.count + " house connections caclulated")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + house_connection.count + " house connections calculated")
 
                 sys.exit (0)
             case None ⇒

@@ -1,10 +1,8 @@
 package ch.ninecode.sc
 
-import ch.ninecode.cim.CHIM
-import ch.ninecode.cim.CIMSubsetter
-import ch.ninecode.cim.ClassInfo
-
 import scala.collection.Map
+import scala.language.existentials
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -13,6 +11,12 @@ import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CIMSubsetter
+import ch.ninecode.cim.ClassInfo
 import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
@@ -25,7 +29,6 @@ import ch.ninecode.model.Location
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.Terminal
-import org.apache.spark.sql.SQLContext
 
 /**
  * Generate the RDD of available short circuit power and angle at each station.
@@ -37,6 +40,7 @@ import org.apache.spark.sql.SQLContext
 case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
 {
     import session.sqlContext.implicits._
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // get a map of voltages
     val voltage_map: Map[Double, String] =
@@ -114,40 +118,33 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
             injection
         }
         val sc = df.map (toEquivalentInjection (voltage_map)).rdd
-        EquivalentInjection.subsetter.save (session.sqlContext, sc.asInstanceOf[EquivalentInjection.subsetter.rddtype], storage_level)
 
         sc
     }
 
     def table_exists (name: String): Boolean = session.catalog.tableExists (name)
 
-    def toTerminalsAndLocations (pair: (EquivalentInjection, Row)): List[Element] =
+    def toTerminalsAndLocations (pair: (EquivalentInjection, TransformerDetails)): List[Element] =
     {
         val eq_inj = pair._1
-        val row = pair._2
+        val details = pair._2
 
-        val transformer = row.getString (0)
-        val station = row.getString (1)
-        val connectivity_node = row.getString (2)
-        val topological_node = row.getString (3)
-        val x = row.getDouble (4)
-        val y = row.getDouble (5)
-
-        val mRID = eq_inj.id
+        val mRID = details.transformer + "_equivalent_injection"
 
         // create the location object
         val loc_element = BasicElement (null, mRID + "_location")
         loc_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val loc_id_obj = IdentifiedObject (loc_element, null, null, mRID, null, null, null)
+        val loc_id_obj = IdentifiedObject (loc_element, null, null, mRID + "_location", null, null, null)
         loc_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
         val location = Location (loc_id_obj, null, null, null, null, null, null, null, null, "geographic", List (), List (), "wgs84", List (), List (), List (), List (), List (), List (), List ())
         location.bitfields = Array (Integer.parseInt ("100100000000", 2))
 
-        // insert the location into the EquivalentInjection
-        val obj = eq_inj.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
+        // change the mRID and insert the location into the EquivalentInjection
+        val old_obj = eq_inj.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
+        val obj = IdentifiedObject (old_obj.sup, eq_inj.id, old_obj.description, mRID, old_obj.name, old_obj.DiagramObjects, old_obj.Names)
         val psr = PowerSystemResource (obj, null, null, null, null, location.id, null, null, null, null, null, null)
         psr.bitfields = Array (Integer.parseInt ("10000", 2))
-        val equipment = Equipment (psr, false, true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+        val equipment = Equipment (psr, false, true, List (), List (), details.station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
         equipment.bitfields = Array (Integer.parseInt ("10010", 2))
         val conducting = ConductingEquipment (equipment, eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage, null, null, List (), List (), null, List ())
         conducting.bitfields = Array (Integer.parseInt ("1", 2))
@@ -155,22 +152,22 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
         equivalent.bitfields = Array (0)
         val injection = EquivalentInjection (equivalent, eq_inj.maxP, 0.0, 0.0, 0.0, 0.0, 0.0, eq_inj.r, eq_inj.r0, eq_inj.r2, false, eq_inj.regulationStatus, 0.0, eq_inj.x, eq_inj.x0, eq_inj.x2, null)
         // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
-        injection.bitfields = Array (Integer.parseInt ("0001000001000001", 2))
+        injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
 
         // create the PositionPoint (offset slightly from the transformer)
         val pp_element = BasicElement (null, mRID + "_location_p")
         pp_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val position = PositionPoint (pp_element, 1, (x - 0.0001).toString, (y + 0.0001).toString, null, location.id)
+        val position = PositionPoint (pp_element, 1, (details.x - 0.0001).toString, (details.y + 0.0001).toString, null, location.id)
         position.bitfields = Array (Integer.parseInt ("10111", 2))
 
         // create the terminal to join the transformer primary nodes to EquivalentInjection
         val term_element = BasicElement (null, mRID + "_terminal_1")
         term_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val term_id_obj = IdentifiedObject (term_element, null, null, mRID, null, null, null)
+        val term_id_obj = IdentifiedObject (term_element, null, null, mRID + "_terminal_1", null, null, null)
         term_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
-        val acdc = ACDCTerminal (null, false, 1, null, List(), List())
-        acdc.bitfields = Array (Integer.parseInt ("10", 2))
-        val terminal = Terminal (acdc, "http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC", List(), List(), null, mRID, connectivity_node, List(), List(), List(), List(), List(), List(), List(), null, List(), topological_node, List())
+        val acdc = ACDCTerminal (term_id_obj, true, 1, null, List(), List())
+        acdc.bitfields = Array (Integer.parseInt ("11", 2))
+        val terminal = Terminal (acdc, details.phases, List(), List(), null, mRID, details.connectivity_node, List(), List(), List(), List(), List(), List(), List(), null, List(), details.topological_node, List())
         terminal.bitfields = Array (Integer.parseInt ("01000000000110001", 2))
 
         List (injection, terminal, location, position)
@@ -224,6 +221,7 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
                 seq.transformer,
                 seq.station,
                 seq.location,
+                t.phases phases,
                 t.ConnectivityNode connectivity_node,
                 t.TopologicalNode topological_node
             from
@@ -246,6 +244,7 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
             select
                 tslc.transformer,
                 tslc.station,
+                tslc.phases,
                 tslc.connectivity_node,
                 tslc.topological_node,
                 cast (p.xPosition as double) x,
@@ -254,12 +253,27 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
             where
                 p.Location = tslc.location
             """.format (tslc)
-        val transformerdetails = session.sql (query).rdd
+        val n = session.sparkContext.getExecutorMemoryStatus.size // get how many executors
+        val transformerdetails = session.sql (query).rdd.map (
+            row ⇒
+                TransformerDetails (
+                    row.getString (0),
+                    row.getString (1),
+                    row.getString (2),
+                    row.getString (3),
+                    row.getString (4),
+                    row.getDouble (5),
+                    row.getDouble (6))).coalesce (n, true).cache
+
         // read the csv
         val equivalents = read_csv (csv)
+
+        // join transformers by station and add Terminal, Location and PositionPoint
+        // ToDo: eliminate Messen_Steuern
         val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.EquipmentContainer)
-        val transformers: RDD[(String, Row)] = transformerdetails.keyBy (_.getString (1))
+        val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.station)
         val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)
+        all.persist (storage_level)
         all
     }
 
@@ -267,40 +281,54 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
     {
         val chim = new CHIM ("")
         val classes: List[ClassInfo] = chim.classes
-        val subsetters = classes.map (info ⇒ (info.name, info.subsetter))
+        val subsetters: List[String] = classes.map (info ⇒ info.name)
+        val old_elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
 
         // get the list of classes that need to be merged
-        def supers (element: Element): List[(String, CIMSubsetter[_])] =
+        def supers (element: Element): List[String] =
         {
             if (null != element)
             {
                 val cls = element.getClass
                 val classname = cls.getName
                 val name = classname.substring (classname.lastIndexOf (".") + 1)
-                subsetters.find (_._1 == name) match { case Some (subsetter) ⇒ List (subsetter) ::: supers (element.sup) case None ⇒ List() }
+                subsetters.find (_ == name) match { case Some (subsetter) ⇒ List (subsetter) ::: supers (element.sup) case None ⇒ List() }
             }
             else
                 List ()
         }
-        val to_be_merged = elements.flatMap (supers).distinct.collect
+        val uniq_to_be_merged: RDD[String] = elements.flatMap (supers).distinct.cache
+        val array_to_be_merged: Array[String] = uniq_to_be_merged.collect
+        val list = classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
         // merge each class
-        def add (subsetter: (String, CIMSubsetter[_])): Unit =
+        def add (subsetter: CIMSubsetter[_]): Unit =
         {
-            val existing = session.sparkContext.getPersistentRDDs.filter (_._2.name == subsetter._1)
+            val subrdd: RDD[Element] = elements.collect (subsetter.pf).asInstanceOf[RDD[Element]]
+            val existing = session.sparkContext.getPersistentRDDs.filter (_._2.name == subsetter.cls)
             val rdd = if (existing.nonEmpty)
             {
                 val old_rdd = existing.head._2.asInstanceOf[RDD[Element]]
-                old_rdd.name = "pre_equivalent_injection_" + subsetter._1
-                elements.union (old_rdd)
+                old_rdd.name = "pre_shortcircuit_info_" + subsetter.cls
+                subrdd.union (old_rdd)
             }
             else
-                elements
-            subsetter._2.make (session.sqlContext, rdd, storage_level)
+                subrdd
+            subsetter.make (session.sqlContext, rdd, storage_level)
         }
-        for (subsetter <- to_be_merged)
+        for (info <- list)
+            add (info.subsetter)
+
+        // replace elements in Elements
+        val new_elements: RDD[Element] = old_elements.union (elements)
+
+        // swap the old Elements RDD for the new one
+        old_elements.name = "pre_shortcircuit_info_Elements"
+        new_elements.name = "Elements"
+        new_elements.persist (storage_level)
+        session.sparkContext.getCheckpointDir match
         {
-            add (subsetter)
-            session.sparkContext.getPersistentRDDs.filter (_._2.name == subsetter._1).head._2.count
+            case Some (_) => new_elements.checkpoint ()
+            case None =>
         }
     }
 }
