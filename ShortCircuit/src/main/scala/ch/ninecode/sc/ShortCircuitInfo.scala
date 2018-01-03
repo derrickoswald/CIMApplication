@@ -101,7 +101,7 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
             val description = "equivalent generation injection at %s from %s".format (ort, feeder)
             val element = BasicElement (null, mRID)
             element.bitfields = Array (Integer.parseInt ("1", 2))
-            val obj = IdentifiedObject (element, sap, description, mRID, name, null, null)
+            val obj = IdentifiedObject (element, sap, description, mRID, name + " equivalent injection", null, null)
             obj.bitfields = Array (Integer.parseInt ("1111", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
             psr.bitfields = Array (0)
@@ -129,48 +129,54 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
         val eq_inj = pair._1
         val details = pair._2
 
-        val mRID = details.transformer + "_equivalent_injection"
+        // only keep transformers with matching primary voltage
+        if (eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage == details.voltage)
+        {
+            val mRID = details.transformer + "_equivalent_injection"
 
-        // create the location object
-        val loc_element = BasicElement (null, mRID + "_location")
-        loc_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val loc_id_obj = IdentifiedObject (loc_element, null, null, mRID + "_location", null, null, null)
-        loc_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
-        val location = Location (loc_id_obj, null, null, null, null, null, null, null, null, "geographic", List (), List (), "wgs84", List (), List (), List (), List (), List (), List (), List ())
-        location.bitfields = Array (Integer.parseInt ("100100000000", 2))
+            // create the location object
+            val loc_element = BasicElement (null, mRID + "_location")
+            loc_element.bitfields = Array (Integer.parseInt ("1", 2))
+            val loc_id_obj = IdentifiedObject (loc_element, null, null, mRID + "_location", null, null, null)
+            loc_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
+            val location = Location (loc_id_obj, null, null, null, null, null, null, null, null, "geographic", List (), List (), "wgs84", List (), List (), List (), List (), List (), List (), List ())
+            location.bitfields = Array (Integer.parseInt ("100100000000", 2))
 
-        // change the mRID and insert the location into the EquivalentInjection
-        val old_obj = eq_inj.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
-        val obj = IdentifiedObject (old_obj.sup, eq_inj.id, old_obj.description, mRID, old_obj.name, old_obj.DiagramObjects, old_obj.Names)
-        val psr = PowerSystemResource (obj, null, null, null, null, location.id, null, null, null, null, null, null)
-        psr.bitfields = Array (Integer.parseInt ("10000", 2))
-        val equipment = Equipment (psr, false, true, List (), List (), details.station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
-        equipment.bitfields = Array (Integer.parseInt ("10010", 2))
-        val conducting = ConductingEquipment (equipment, eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage, null, null, List (), List (), null, List ())
-        conducting.bitfields = Array (Integer.parseInt ("1", 2))
-        val equivalent = EquivalentEquipment (conducting, null)
-        equivalent.bitfields = Array (0)
-        val injection = EquivalentInjection (equivalent, eq_inj.maxP, 0.0, 0.0, 0.0, 0.0, 0.0, eq_inj.r, eq_inj.r0, eq_inj.r2, false, eq_inj.regulationStatus, 0.0, eq_inj.x, eq_inj.x0, eq_inj.x2, null)
-        // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
-        injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+            // change the mRID and insert the location into the EquivalentInjection
+            val old_obj = eq_inj.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
+            val obj = IdentifiedObject (BasicElement (null, mRID), eq_inj.id, old_obj.description, mRID, old_obj.name, old_obj.DiagramObjects, old_obj.Names)
+            val psr = PowerSystemResource (obj, null, null, null, null, location.id, null, null, null, null, null, null)
+            psr.bitfields = Array (Integer.parseInt ("10000", 2))
+            val equipment = Equipment (psr, false, true, List (), List (), details.station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+            equipment.bitfields = Array (Integer.parseInt ("10010", 2))
+            val conducting = ConductingEquipment (equipment, eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage, null, null, List (), List (), null, List ())
+            conducting.bitfields = Array (Integer.parseInt ("1", 2))
+            val equivalent = EquivalentEquipment (conducting, null)
+            equivalent.bitfields = Array (0)
+            val injection = EquivalentInjection (equivalent, eq_inj.maxP, 0.0, 0.0, 0.0, 0.0, 0.0, eq_inj.r, eq_inj.r0, eq_inj.r2, false, eq_inj.regulationStatus, 0.0, eq_inj.x, eq_inj.x0, eq_inj.x2, null)
+            // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
+            injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
 
-        // create the PositionPoint (offset slightly from the transformer)
-        val pp_element = BasicElement (null, mRID + "_location_p")
-        pp_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val position = PositionPoint (pp_element, 1, (details.x - 0.0001).toString, (details.y + 0.0001).toString, null, location.id)
-        position.bitfields = Array (Integer.parseInt ("10111", 2))
+            // create the PositionPoint (offset slightly from the transformer)
+            val pp_element = BasicElement (null, mRID + "_location_p")
+            pp_element.bitfields = Array (Integer.parseInt ("1", 2))
+            val position = PositionPoint (pp_element, 1, (details.x - 0.00002).toString, (details.y + 0.00002).toString, null, location.id)
+            position.bitfields = Array (Integer.parseInt ("10111", 2))
 
-        // create the terminal to join the transformer primary nodes to EquivalentInjection
-        val term_element = BasicElement (null, mRID + "_terminal_1")
-        term_element.bitfields = Array (Integer.parseInt ("1", 2))
-        val term_id_obj = IdentifiedObject (term_element, null, null, mRID + "_terminal_1", null, null, null)
-        term_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
-        val acdc = ACDCTerminal (term_id_obj, true, 1, null, List(), List())
-        acdc.bitfields = Array (Integer.parseInt ("11", 2))
-        val terminal = Terminal (acdc, details.phases, List(), List(), null, mRID, details.connectivity_node, List(), List(), List(), List(), List(), List(), List(), null, List(), details.topological_node, List())
-        terminal.bitfields = Array (Integer.parseInt ("01000000000110001", 2))
+            // create the terminal to join the transformer primary nodes to EquivalentInjection
+            val term_element = BasicElement (null, mRID + "_terminal_1")
+            term_element.bitfields = Array (Integer.parseInt ("1", 2))
+            val term_id_obj = IdentifiedObject (term_element, null, null, mRID + "_terminal_1", null, null, null)
+            term_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
+            val acdc = ACDCTerminal (term_id_obj, true, 1, null, List(), List())
+            acdc.bitfields = Array (Integer.parseInt ("11", 2))
+            val terminal = Terminal (acdc, details.phases, List(), List(), null, mRID, details.connectivity_node, List(), List(), List(), List(), List(), List(), List(), null, List(), details.topological_node, List())
+            terminal.bitfields = Array (Integer.parseInt ("01000000000110001", 2))
 
-        List (injection, terminal, location, position)
+            List (injection, terminal, location, position)
+        }
+        else
+            List ()
     }
 
     def getShortCircuitInfo (csv: String): RDD[Element] =
@@ -223,7 +229,8 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
                 seq.location,
                 t.phases phases,
                 t.ConnectivityNode connectivity_node,
-                t.TopologicalNode topological_node
+                t.TopologicalNode topological_node,
+                end.TransformerEnd.BaseVoltage voltage
             from
                 Terminal t,
                 (
@@ -235,15 +242,17 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
                     from Terminal t, (%s) tsl
                     where
                         t.ConductingEquipment = tsl.transformer group by tsl.transformer, tsl.station, tsl.location
-                ) seq
+                ) seq,
+                PowerTransformerEnd end
             where
-                t.ACDCTerminal.sequenceNumber = seq.n and t.ConductingEquipment = seq.transformer
+                t.ACDCTerminal.sequenceNumber = seq.n and t.ConductingEquipment = seq.transformer and t.ACDCTerminal.IdentifiedObject.mRID = end.TransformerEnd.Terminal
             """.format (tsl)
 
         val query = """
             select
                 tslc.transformer,
                 tslc.station,
+                tslc.voltage,
                 tslc.phases,
                 tslc.connectivity_node,
                 tslc.topological_node,
@@ -262,14 +271,14 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
                     row.getString (2),
                     row.getString (3),
                     row.getString (4),
-                    row.getDouble (5),
-                    row.getDouble (6))).coalesce (n, true).cache
+                    row.getString (5),
+                    row.getDouble (6),
+                    row.getDouble (7))).coalesce (n, true).cache
 
         // read the csv
         val equivalents = read_csv (csv)
 
         // join transformers by station and add Terminal, Location and PositionPoint
-        // ToDo: eliminate Messen_Steuern
         val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.EquipmentContainer)
         val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.station)
         val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)

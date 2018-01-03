@@ -14,6 +14,7 @@ package ch.ninecode.sc
 case class TransformerDetails (
     transformer: String,
     station: String,
+    voltage: String,
     phases: String,
     connectivity_node: String,
     topological_node: String,
