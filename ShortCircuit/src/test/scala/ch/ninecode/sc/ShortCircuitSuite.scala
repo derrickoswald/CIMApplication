@@ -40,6 +40,7 @@ class ShortCircuitSuite
 
     val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung.rdf"
     val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.rdf"
+    val FILENAME3 = "sak_sample.rdf"
 
     type FixtureParam = SparkSession
 
@@ -182,6 +183,8 @@ class ShortCircuitSuite
             new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.zip", FILE_DEPOT)
         if (!new File (FILENAME2).exists)
             new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.zip", FILE_DEPOT)
+        if (!new File (FILENAME3).exists)
+            new Unzip ().unzip (FILE_DEPOT + "sak_sample.zip", FILE_DEPOT)
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -474,5 +477,68 @@ class ShortCircuitSuite
                 val h = results (i)
                 println (h)
             }
+    }
+
+    test ("SAK Spreadsheet")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME3
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+            house_connection.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "/result"
+            val string = house_connection.sortBy (_.tx).map (h => {
+                h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
+            })
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (s"""has;tra;ik;ik3pol;ip;r;x;r0;x0;sk""")
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            val consumer = house_connection.filter (_.mRID == "Line2_node_2_topo")
+            assert (0 < consumer.count (), "Line2_node_2 not found")
+            val data = consumer.first ()
+            val cmin_ratio_sak_bkw = 0.95 / 0.90
+            val c_ratio_sak_bkw = 0.95 / 1.0
+            assert (Math.abs (data.r - 0.19521016) < 0.0005, "expected r=195mΩ")
+            assert (Math.abs (data.x - 0.05195) < 0.0005, "expected x=52mΩ")
+            assert (Math.abs (data.ik * cmin_ratio_sak_bkw - 595) < 0.5, "expected ik1polig=595A")
+            assert (Math.abs (data.ik3pol * c_ratio_sak_bkw - 1086) < 0.5, "expected ik3polig=1086A")
+            assert (Math.abs (data.sk * c_ratio_sak_bkw - 0.752e6) < 5e3, "expected 0.752MVA")
     }
 }

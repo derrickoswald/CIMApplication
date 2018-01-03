@@ -266,8 +266,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     // compute the short-circuit values
     def calculate_short_circuit (node: ScNode): HouseConnection =
     {
+        // ToDo: expose these constants
         val c = 1.0
         val cmin = 0.90
+
         val v2 = node.voltage
         val root3 = Math.sqrt (3.0)
 

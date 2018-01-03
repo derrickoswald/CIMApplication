@@ -123,7 +123,7 @@ case class TransformerSet (transformers: Array[TData])
     {
         val zero = Complex (0.0)
         if (impedances.foldLeft (zero)(_.+(_)) == zero)
-            (Complex (2.397460317, 16.07618325), true)
+            (Complex (2.397460317, 16.07618325), true) // ToDo: expose this default transformer impedance
         else
             (impedances.map (_.reciprocal).foldLeft (zero)(_.+(_)).reciprocal, false)
     }
