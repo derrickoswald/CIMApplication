@@ -506,7 +506,7 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
+                trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val house_connection = shortcircuit.run ()
             house_connection.cache ()
