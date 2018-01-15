@@ -35,7 +35,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null.asInstanceOf[Impedanzen])
+    val default_node = ScNode ("", 0.0, null, null, List ())
 
     def has (string: String): String =
     {
@@ -62,7 +62,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val term = arg._1._2
         val edge = arg._2
         val vertex = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, vertex, null, null)
+        ScNode (node.id, vertex, null, null, List ())
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
@@ -241,18 +241,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScNode)] =
         {
+            val x =
             if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
                 if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
-                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source, triplet.attr.impedanceTo (triplet.dstAttr.id_seq, triplet.srcAttr.impedance))))
+                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source, triplet.attr.impedanceTo (triplet.dstAttr.id_seq, triplet.srcAttr.impedance), triplet.attr.fusesTo (triplet.srcAttr.fuses))))
                 else
                     Iterator.empty
             else if (triplet.srcAttr.impedance == null && triplet.dstAttr.impedance != null)
                 if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
-                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source, triplet.attr.impedanceTo (triplet.srcAttr.id_seq, triplet.dstAttr.impedance))))
+                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source, triplet.attr.impedanceTo (triplet.srcAttr.id_seq, triplet.dstAttr.impedance), triplet.attr.fusesTo (triplet.dstAttr.fuses))))
                 else
                     Iterator.empty
             else
                 Iterator.empty
+            x
         }
 
         def mergeMessage (a: ScNode, b: ScNode): ScNode =
@@ -297,7 +299,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // short-circuit power at the point of common coupling
         val sk = (v2 * v2) / !node.impedance.impedanz
 
-        HouseConnection (node.id_seq, has (node.id_seq), node.source, node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im, ik, ik3pol, ip, sk)
+        HouseConnection (node.id_seq, has (node.id_seq), node.source, node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im, node.fuses, ik, ik3pol, ip, sk)
     }
 
     def run (): RDD[HouseConnection] =
@@ -327,9 +329,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List ())
                     else
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, List ())
                 case None ⇒
                     v
             }

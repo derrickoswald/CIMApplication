@@ -45,7 +45,10 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
 
     def parallel_impedanz (c: Complex): Complex =
     {
-        (this * c) / (this + c)
+        if ((this == Complex (0)) || (c == Complex (0)))
+            0.0
+        else
+            (this * c) / (this + c)
     }
 
     // string representation

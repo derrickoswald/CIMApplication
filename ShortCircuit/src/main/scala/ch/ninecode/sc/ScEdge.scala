@@ -3,6 +3,7 @@ package ch.ninecode.sc
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Conductor
 import ch.ninecode.model.Cut
 import ch.ninecode.model.Disconnector
 import ch.ninecode.model.Element
@@ -42,6 +43,28 @@ case class ScEdge (
     element: Element,
     impedance: Impedanzen) extends Graphable with Serializable
 {
+    import ScEdge._
+
+    /**
+     * Method to determine if a switch is closed (both terminals are the same topological node).
+     *
+     * If the switch has the <code>open</code> attribute set, use that.
+     * Otherwise if it has the <code>normalOpen</code> attribute set, use that.
+     * Otherwise assume it is closed.
+     *
+     * @param switch The switch object to test.
+     * @return <code>true</code> if the switch is closed, <code>false</code> otherwise.
+     */
+    def switchClosed (switch: Switch): Boolean =
+    {
+        if (0 != (switch.bitfields(openMask / 32) | (1 << (openMask % 32))))
+            !switch.open // open valid
+        else if (0 != (switch.bitfields(normalOpenMask / 32) | (1 << (normalOpenMask % 32))))
+            !switch.normalOpen
+        else
+            true
+    }
+
     /**
      * Predicate that determines if the trace should continue to the given node.
      *
@@ -50,33 +73,20 @@ case class ScEdge (
      */
     def shouldContinueTo (id_cn: String): Boolean =
     {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        element match
         {
-            case "Switch" ⇒
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" ⇒
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" ⇒
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" ⇒
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" ⇒
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" ⇒
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "ProtectedSwitch" ⇒
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" ⇒
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "Breaker" ⇒
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" ⇒
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" ⇒
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "PowerTransformer" ⇒
+            case switch: Switch ⇒ switchClosed (switch)
+            case cut: Cut ⇒ switchClosed (cut.Switch)
+            case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch)
+            case fuse: Fuse ⇒ switchClosed (fuse.Switch)
+            case gd: GroundDisconnector ⇒ switchClosed (gd.Switch)
+            case jumper: Jumper ⇒ switchClosed (jumper.Switch)
+            case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch)
+            case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch)
+            case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
+            case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
+            case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
+            case _: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
                     v1 < v2
                 else if (id_cn == id_cn_2)
@@ -123,4 +133,36 @@ case class ScEdge (
                 ref
         }
     }
+
+    /**
+     * Compute the list of fuse values to the given node as accumulated from the reference
+     *
+     * @param ref fuse value list of the node at the end of the edge (List[Double] (A))
+     * @return list of fuses to the given node
+     */
+    def fusesTo (ref: List[Double]): List[Double] =
+    {
+        element match
+        {
+            case fuse: Fuse ⇒
+                ref :+ fuse.Switch.ratedCurrent
+            case breaker: Breaker ⇒
+                ref :+ breaker.ProtectedSwitch.Switch.ratedCurrent
+            case _ ⇒
+                ref
+        }
+    }
+}
+
+object ScEdge
+{
+    /**
+     * Index of normalOpen field in Switch bitmask.
+     */
+    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+
+    /**
+     * Index of open field in Switch bitmask.
+     */
+    val openMask: Int = Switch.fields.indexOf ("open")
 }
