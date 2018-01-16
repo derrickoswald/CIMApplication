@@ -19,27 +19,27 @@ object Database
     def makeSchema (connection: Connection)
     {
         val statement = connection.createStatement ()
-        val resultset1 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
+        val resultset1 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit_run'")
         val exists1 = resultset1.next ()
         resultset1.close ()
         if (!exists1)
         {
-            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, description text, time text)")
-            statement.executeUpdate ("create index if not exists epoc on shortcircuit (time)")
+            statement.executeUpdate ("create table shortcircuit_run (id integer primary key autoincrement, description text, time text, default_supply_network_short_circuit_power double, default_supply_network_short_circuit_angle double, cmax double, cmin double)")
+            statement.executeUpdate ("create index if not exists epoc on shortcircuit_run (time)")
         }
-        val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuitresults'")
+        val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
         val exists2 = resultset2.next ()
         resultset2.close ()
         if (!exists2)
         {
-            statement.executeUpdate ("create table shortcircuitresults (id integer primary key autoincrement, shortcircuit integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fuseok boolean, ik double, ik3pol double, ip double, sk double)")
-            statement.executeUpdate ("create index if not exists equipment_index on shortcircuitresults (equipment)")
-            statement.executeUpdate ("create index if not exists shortcircuit_index on shortcircuitresults (shortcircuit)")
+            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fuseok boolean, ik double, ik3pol double, ip double, sk double)")
+            statement.executeUpdate ("create index if not exists equipment_index on shortcircuit (equipment)")
+            statement.executeUpdate ("create index if not exists run_index on shortcircuit (run)")
         }
         statement.close ()
     }
 
-    def store (description: String) (records: Array[HouseConnection]): Int = synchronized
+    def store (description: String, options: ShortCircuitOptions) (records: Array[HouseConnection]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -62,10 +62,14 @@ object Database
             {
                 // insert the simulation
                 val now = Calendar.getInstance ()
-                val insert = connection.prepareStatement ("insert into shortcircuit (id, description, time) values (?, ?, ?)")
+                val insert = connection.prepareStatement ("insert into shortcircuit_run (id, description, time, default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle, cmax, cmin) values (?, ?, ?, ?, ?, ?, ?)")
                 insert.setNull (1, Types.INTEGER)
                 insert.setString (2, description)
                 insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
+                insert.setDouble (4, options.default_supply_network_short_circuit_power)
+                insert.setDouble (5, options.default_supply_network_short_circuit_angle)
+                insert.setDouble (6, options.cmax)
+                insert.setDouble (7, options.cmin)
                 insert.executeUpdate ()
                 val statement = connection.createStatement ()
                 val resultset = statement.executeQuery ("select last_insert_rowid() id")
@@ -75,7 +79,7 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert = connection.prepareStatement ("insert into shortcircuitresults (id, shortcircuit, node, equipment, trafo, r, x, r0, x0, fuses, fuseok, ik, ik3pol, ip, sk) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, trafo, r, x, r0, x0, fuses, fuseok, ik, ik3pol, ip, sk) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert.setNull (1, Types.INTEGER)

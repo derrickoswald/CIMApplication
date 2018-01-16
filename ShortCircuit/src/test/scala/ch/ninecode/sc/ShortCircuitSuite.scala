@@ -291,7 +291,7 @@ class ShortCircuitSuite
             }
 
             // output SQLite database
-            Database.store ("test") (house_connection.collect)
+            Database.store ("test", sc_options) (house_connection.collect)
     }
 
     test ("DACHCZ")
@@ -321,7 +321,7 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                default_supply_network_short_circuit_power = 600.0,
+                default_supply_network_short_circuit_power = 600.0e6,
                 default_supply_network_short_circuit_angle = 90.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -482,7 +482,7 @@ class ShortCircuitSuite
             }
 
             // output SQLite database
-            Database.store ("test") (house_connection.collect)
+            Database.store ("test", sc_options) (house_connection.collect)
     }
 
     test ("SAK Spreadsheet")
@@ -512,7 +512,9 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample.transformers")
+                trafos = FILE_DEPOT + "sak_sample.transformers",
+                cmax = 0.95,
+                cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val house_connection = shortcircuit.run ()
             house_connection.cache ()
@@ -539,12 +541,11 @@ class ShortCircuitSuite
             val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
-            val cmin_ratio_sak_bkw = 0.95 / 0.90
-            val c_ratio_sak_bkw = 0.95 / 1.0
             assert (Math.abs (data.r - 0.19521016) < 0.0005, "expected r=195mΩ")
             assert (Math.abs (data.x - 0.05195) < 0.0005, "expected x=52mΩ")
-            assert (Math.abs (data.ik * cmin_ratio_sak_bkw - 595) < 0.5, "expected ik1polig=595A")
-            assert (Math.abs (data.ik3pol * c_ratio_sak_bkw - 1086) < 0.5, "expected ik3polig=1086A")
-            assert (Math.abs (data.sk * c_ratio_sak_bkw - 0.752e6) < 5e3, "expected 0.752MVA")
+            assert (Math.abs (data.ik - 595) < 0.5, "expected ik1polig=595A")
+            assert (Math.abs (data.ik3pol - 1086) < 0.5, "expected ik3polig=1086A")
+            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
+            assert (Math.abs (data.sk * sc_options.cmax - 0.752e6) < 5e3, "expected 0.752MVA")
     }
 }

@@ -268,15 +268,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     // compute the short-circuit values
     def calculate_short_circuit (node: ScNode): HouseConnection =
     {
-        // ToDo: expose these constants
-        val c = 1.0
-        val cmin = 0.90
-
         val v2 = node.voltage
         val root3 = Math.sqrt (3.0)
 
         // Einpoligen Kurzschlussstrom berechnen
-        val ik_z = root3 * cmin * v2
+        val ik_z = root3 * options.cmin * v2
         val ik_n_sqrt1 = !node.impedance.impedanz
         val ik_n_sqrt2 = !node.impedance.null_impedanz
         val ik_n = 2 * ik_n_sqrt1 + ik_n_sqrt2
@@ -284,7 +280,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         // Dreipoligen Kurzschlussstrom berechnen
         val ik3pol_n = root3 * !node.impedance.impedanz
-        val ik3pol = c * v2 / ik3pol_n
+        val ik3pol = options.cmax * v2 / ik3pol_n
 
         // Stosskurzschlussstrom berechnen
         // was       val ip = (1.02 + 0.98 * Math.exp (-3.0 * (trafo_r1 + netz_r1) / (trafo_x1 + Math.abs (netz_x1)))) * Math.sqrt (2) * ik3pol

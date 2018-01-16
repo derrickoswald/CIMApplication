@@ -275,7 +275,7 @@ object Main
                 string.saveAsTextFile (workdir)
 
                 // output SQLite database
-                Database.store ("test") (house_connection.collect)
+                Database.store ("test", options) (house_connection.collect)
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + house_connection.count + " house connections calculated")

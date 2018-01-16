@@ -127,7 +127,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         ret
     }
 
-    def addSC (voltages: Map[String, Double]) (default_supply_network_short_circuit_power: Double = 200.0, default_supply_network_short_circuit_angle: Double = -70.0) (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
+    def addSC (voltages: Map[String, Double]) (default_supply_network_short_circuit_power: Double = 200.0e6, default_supply_network_short_circuit_angle: Double = -70.0) (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
     {
         arg._2 match
         {
@@ -135,7 +135,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
             case None =>
                 // ToDo: fix this 1kV multiplier on the voltages
                 val v1 = arg._1._3._2 * 1000.0
-                val sk = default_supply_network_short_circuit_power * 1e6
+                val sk = default_supply_network_short_circuit_power
                 val wik = default_supply_network_short_circuit_angle
                 val c = 1.0
                 //val ratioZ0Z1 = 4
@@ -173,7 +173,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
     def getTransformerData (
         topological_nodes: Boolean = true,
-        default_supply_network_short_circuit_power: Double = 200.0,
+        default_supply_network_short_circuit_power: Double = 200.0e6,
         default_supply_network_short_circuit_angle: Double = -70.0): RDD[TData] =
     {
         /**
