@@ -15,6 +15,7 @@ package ch.ninecode.sc
  * @param ik3pol three phase bolted short circuit current (A)
  * @param ip maximum aperiodic short-circuit current according to IEC 60909-0 (A)
  * @param sk short-circuit power at the point of common coupling (VA)
+ * @param motor_max maximum (continuous) motor power for pf=cos(30), inrush=5x, repetition_rate<0.01/min (W)
  */
 case class HouseConnection (
     node: String,
@@ -28,5 +29,5 @@ case class HouseConnection (
     ik: Double = 0.0,
     ik3pol: Double = 0.0,
     ip: Double = 0.0,
-    sk: Double = 0.0)
-
+    sk: Double = 0.0,
+    motor_max: Double = 0.0)

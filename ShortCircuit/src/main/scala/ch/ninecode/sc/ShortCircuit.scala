@@ -295,7 +295,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // short-circuit power at the point of common coupling
         val sk = (v2 * v2) / !node.impedance.impedanz
 
-        HouseConnection (node.id_seq, has (node.id_seq), node.source, node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im, node.fuses, ik, ik3pol, ip, sk)
+        // maximum motor power (W) with default settings for pf=cos(30), inrush=5x, repetition_rate<0.01/min
+        val mmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, node.impedance.impedanz)
+
+        HouseConnection (node.id_seq, has (node.id_seq), node.source,
+            node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
+            node.fuses, ik, ik3pol, ip, sk, mmax)
     }
 
     def run (): RDD[HouseConnection] =
