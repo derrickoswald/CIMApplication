@@ -274,7 +274,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-               h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses))
+               h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses))
             })
 
             val path = new File (output)
@@ -289,6 +289,9 @@ class ShortCircuitSuite
                 val h = results (i)
                 println (h)
             }
+
+            // output SQLite database
+            Database.store ("test") (house_connection.collect)
     }
 
     test ("DACHCZ")
@@ -328,7 +331,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
             })
 
             val path = new File (output)
@@ -344,12 +347,12 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.mRID == "L2_node_2_topo")
+            val consumer = house_connection.filter (_.node == "L2_node_2_topo")
             assert (0 < consumer.count (), "L2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = house_connection.filter (_.mRID == "L2_node_1_topo")
+            val busbar = house_connection.filter (_.node == "L2_node_1_topo")
             assert (0 < busbar.count (), "L2_node_1 not found")
             val sc = busbar.first ()
             assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
@@ -390,7 +393,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
             })
 
             val path = new File (output)
@@ -406,12 +409,12 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.mRID == "L2_node_2_topo")
+            val consumer = house_connection.filter (_.node == "L2_node_2_topo")
             assert (0 < consumer.count (), "L2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = house_connection.filter (_.mRID == "L2_node_1_topo")
+            val busbar = house_connection.filter (_.node == "L2_node_1_topo")
             assert (0 < busbar.count (), "L2_node_1 not found")
             val sc = busbar.first ()
             assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
@@ -462,7 +465,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses))
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses))
             })
 
             val path = new File (output)
@@ -477,6 +480,9 @@ class ShortCircuitSuite
                 val h = results (i)
                 println (h)
             }
+
+            // output SQLite database
+            Database.store ("test") (house_connection.collect)
     }
 
     test ("SAK Spreadsheet")
@@ -514,7 +520,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk
             })
 
             val path = new File (output)
@@ -530,7 +536,7 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.mRID == "Line2_node_2_topo")
+            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             val cmin_ratio_sak_bkw = 0.95 / 0.90

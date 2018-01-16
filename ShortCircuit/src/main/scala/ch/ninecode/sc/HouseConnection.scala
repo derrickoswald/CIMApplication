@@ -3,8 +3,8 @@ package ch.ninecode.sc
 /**
  * Short circuit results.
  *
- * @param mRID conducting equipment mRID
  * @param node TopologicalNode mRID
+ * @param equipment conducting equipment mRID
  * @param tx the feeding transformer
  * @param r aggregate positive sequence resistance from the source (primary of feeding transformer) to this node (Ω)
  * @param x aggregate positive sequence reactance from the source (primary of feeding transformer) to this node (Ω)
@@ -17,8 +17,8 @@ package ch.ninecode.sc
  * @param sk short-circuit power at the point of common coupling (VA)
  */
 case class HouseConnection (
-    mRID: String,
     node: String,
+    equipment: String,
     tx: String,
     r: Double,
     x: Double,
