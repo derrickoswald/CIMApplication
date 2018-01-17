@@ -274,7 +274,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-               h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_max
+               h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_3ph_max + ";" + h.motor_1ph_max + ";" + h.motor_l_l_max
             })
 
             val path = new File (output)
@@ -283,7 +283,7 @@ class ShortCircuitSuite
 
             val results = string.collect
             println ("results: " + results.length)
-            println (s"""has;tra;ik;ik3pol;ip;r;r0;x;x0;sk;fuses;fuseOK;motormax""")
+            println ("has;tra;ik;ik3pol;ip;r;r0;x;x0;sk;fuses;fuseOK;motor3phmax;motor1phmax;motorllmax")
             for (i <- results.indices)
             {
                 val h = results (i)
@@ -331,7 +331,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_max
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_3ph_max + ";" + h.motor_1ph_max + ";" + h.motor_l_l_max
             })
 
             val path = new File (output)
@@ -340,7 +340,7 @@ class ShortCircuitSuite
 
             val results = string.collect
             println ("results: " + results.length)
-            println (s"""has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motormax""")
+            println ("has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motor_3ph_max;motor_1ph_max;motor_l_l_max")
             for (i <- results.indices)
             {
                 val h = results (i)
@@ -393,7 +393,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_max
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_3ph_max + ";" + h.motor_1ph_max + ";" + h.motor_l_l_max
             })
 
             val path = new File (output)
@@ -402,7 +402,7 @@ class ShortCircuitSuite
 
             val results = string.collect
             println ("results: " + results.length)
-            println ("has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motormax")
+            println ("has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motor_3ph_max;motor_1ph_max;motor_l_l_max")
             for (i <- results.indices)
             {
                 val h = results (i)
@@ -465,7 +465,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_max
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_3ph_max + ";" + h.motor_1ph_max + ";" + h.motor_l_l_max
             })
 
             val path = new File (output)
@@ -474,7 +474,7 @@ class ShortCircuitSuite
 
             val results = string.collect
             println ("results: " + results.length)
-            println (s"""has;tra;ik;ik3pol;ip;r;r0;x;x0;sk;fuses;fuseOK;motormax""")
+            println ("has;tra;ik;ik3pol;ip;r;r0;x;x0;sk;fuses;fuseOK;motor_3ph_max;motor_1ph_max;motor_l_l_max")
             for (i <- results.indices)
             {
                 val h = results (i)
@@ -522,7 +522,7 @@ class ShortCircuitSuite
             // write output to file and console
             val output = FILE_DEPOT + "/result"
             val string = house_connection.sortBy (_.tx).map (h => {
-                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_max
+                h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.x + ";" + h.r0 + ";" + h.x0 + ";" + h.sk + ";" + h.motor_3ph_max + ";" + h.motor_1ph_max + ";" + h.motor_l_l_max
             })
 
             val path = new File (output)
@@ -531,7 +531,7 @@ class ShortCircuitSuite
 
             val results = string.collect
             println ("results: " + results.length)
-            println (s"""has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motormax""")
+            println ("has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;motor_3ph_max;motor_1ph_max;motor_l_l_max")
             for (i <- results.indices)
             {
                 val h = results (i)

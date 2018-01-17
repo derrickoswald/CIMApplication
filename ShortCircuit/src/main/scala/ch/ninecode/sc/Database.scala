@@ -32,7 +32,7 @@ object Database
         resultset2.close ()
         if (!exists2)
         {
-            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fuseok boolean, ik double, ik3pol double, ip double, sk double, motor_max double)")
+            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fuseok boolean, ik double, ik3pol double, ip double, sk double, motor_3ph_max double, motor_1ph_max double, motor_l_l_max double)")
             statement.executeUpdate ("create index if not exists equipment_index on shortcircuit (equipment)")
             statement.executeUpdate ("create index if not exists run_index on shortcircuit (run)")
         }
@@ -79,7 +79,7 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, trafo, r, x, r0, x0, fuses, fuseok, ik, ik3pol, ip, sk, motor_max) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, trafo, r, x, r0, x0, fuses, fuseok, ik, ik3pol, ip, sk, motor_3ph_max, motor_1ph_max, motor_l_l_max) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert.setNull (1, Types.INTEGER)
@@ -100,7 +100,9 @@ object Database
                     datainsert.setDouble (13, records(i).ik3pol)
                     datainsert.setDouble (14, records(i).ip)
                     datainsert.setDouble (15, records(i).sk)
-                    datainsert.setDouble (16, records(i).motor_max)
+                    datainsert.setDouble (16, records(i).motor_3ph_max)
+                    datainsert.setDouble (17, records(i).motor_1ph_max)
+                    datainsert.setDouble (18, records(i).motor_l_l_max)
                     datainsert.executeUpdate ()
                 }
                 datainsert.close ()
