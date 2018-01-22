@@ -146,7 +146,7 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/GridLAB-D-2.2.2-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/ShortCircuit-2.11-2.2.0-2.3.7-jar-with-dependencies.jar):
      *     mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
@@ -176,7 +176,7 @@ object Main
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString (arguments.storage))
+        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString (arguments.storage), true, true)
         val ele: RDD[Element] = ntp.process (false)
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
@@ -269,7 +269,7 @@ object Main
                 val house_connection = shortcircuit.run ()
 
                 val string = house_connection.sortBy (_.tx).map (h ⇒ {
-                    h.node + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0
+                    h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) "" else FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
                 })
                 log.info ("output_path: " + workdir)
                 string.saveAsTextFile (workdir)

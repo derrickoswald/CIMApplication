@@ -19,8 +19,9 @@ class MaximumStartingCurrentSuite extends FunSuite
     {
         number: Int ⇒
             val z = Complex.fromPolar (400.0 * 400.0 / 2.13e6, 29.5, true)
-            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (2.13e6, z, 0.5, 8.0, 0.013) // example has dmax=1.3%
-            val imax = pmax / (400.0 * sqrt (3))
+            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (2.13e6, z, 0.5, 8.0)
+            val ratio = 0.013 / MaximumStartingCurrent.dmax_low_rep // example has dmax=1.3%
+            val imax = pmax._1 * ratio / (400.0 * sqrt (3))
             assert (Math.abs (imax - 5.8) < 5e-3, "expected 5.8 A")
     }
 }
