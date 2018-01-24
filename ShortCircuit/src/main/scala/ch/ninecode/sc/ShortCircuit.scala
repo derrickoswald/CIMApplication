@@ -286,7 +286,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // was       val ip = (1.02 + 0.98 * Math.exp (-3.0 * (trafo_r1 + netz_r1) / (trafo_x1 + Math.abs (netz_x1)))) * Math.sqrt (2) * ik3pol
 
         // maximum aperiodic short-circuit current according to IEC 60909-0, see for example:
-        // http://www.dii.unipd.it/-renato.gobbo/didattica/corsi/Componenti_tecnologie_elettrici/ABB_swithgear_manual_E11/ABB_11_E_03_druck.pdf pp71-80
+        // http://at.dii.unipd.it/renato.gobbo/didattica/corsi/Componenti_tecnologie_elettrici/ABB_swithgear_manual_E11/ABB_11_E_03_druck.pdf pp71-80
         // http://studiecd.dk/cahiers_techniques/Calculation_of_short_circuit_currents.pdf pp7-10
         val r_over_x = node.impedance.impedanz.re / node.impedance.impedanz.im
         val kappa = 1.02 + 0.98 * Math.exp (-3.0 * r_over_x)
