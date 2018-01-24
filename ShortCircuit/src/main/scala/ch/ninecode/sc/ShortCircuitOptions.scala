@@ -17,5 +17,7 @@ case class ShortCircuitOptions (
     default_supply_network_short_circuit_angle: Double = -70.0,
     cmax: Double = 1.0,
     cmin: Double = 0.90,
+    cosphi: Double = 1.0,
+    starting_ratio: Double = 1.0,
     trafos: String = "",
     workdir: String = "")

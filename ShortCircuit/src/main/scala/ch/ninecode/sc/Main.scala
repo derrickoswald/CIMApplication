@@ -56,6 +56,10 @@ object Main
         checkpoint_dir: String = "",
         csv_file: String = "",
         trafos: String = "",
+        cmax: Double = 1.0,
+        cmin: Double = 0.90,
+        cosphi: Double = 1.0,
+        starting_ratio: Double = 1.0,
         workdir: String = "",
         files: Seq[String] = Seq ())
 
@@ -97,6 +101,22 @@ object Main
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
+
+        opt[Double]('a', "cmax").
+            action ((x, c) => c.copy (cmax = x)).
+            text ("voltage factor for maximum fault level, used for rating equipment")
+
+        opt[Double]('i', "cmin").
+            action ((x, c) => c.copy (cmin = x)).
+            text ("voltage factor for minimum fault level, used for protections settings")
+
+        opt[Double]('p', "cosphi").
+            action ((x, c) => c.copy (cosphi = x)).
+            text ("load power factor, used for maximum inrush current")
+
+        opt[Double]('r', "starting_ratio").
+            action ((x, c) => c.copy (starting_ratio = x)).
+            text ("load current starting ratio, used for maximum inrush current")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -252,6 +272,10 @@ object Main
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
                     trafos = arguments.trafos,
+                    cmax = arguments.cmax,
+                    cmin = arguments.cmin,
+                    cosphi = arguments.cosphi,
+                    starting_ratio = arguments.starting_ratio,
                     workdir = workdir
                 )
 

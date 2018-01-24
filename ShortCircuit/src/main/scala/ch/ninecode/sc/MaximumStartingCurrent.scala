@@ -30,8 +30,8 @@ object MaximumStartingCurrent
     def max_power_3_phase_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = cos (60),
-        motor_starting_current_ratio: Double = 5.0
+        motor_power_factor: Double = 1.0, // e.g. cos (60)
+        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
         ): (Double, Double) =
     {
         val phin = network_impedance.angle
@@ -57,8 +57,8 @@ object MaximumStartingCurrent
     def max_power_1_phase_line_to_neutral_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = cos (60),
-        motor_starting_current_ratio: Double = 5.0
+        motor_power_factor: Double = 1.0, // e.g. cos (60)
+        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
         ): (Double, Double) =
     {
         val dd = max_power_3_phase_motor (network_short_circuit_power, network_impedance, motor_power_factor, motor_starting_current_ratio)
@@ -82,8 +82,8 @@ object MaximumStartingCurrent
     def max_power_1_phase_line_to_line_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = cos (60),
-        motor_starting_current_ratio: Double = 5.0
+        motor_power_factor: Double = 1.0, // e.g. cos (60)
+        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
         ): (Double, Double) =
     {
         val root3 = sqrt (3.0)

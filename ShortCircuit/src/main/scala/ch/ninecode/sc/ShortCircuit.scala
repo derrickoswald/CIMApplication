@@ -295,10 +295,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // short-circuit power at the point of common coupling
         val sk = (v2 * v2) / !node.impedance.impedanz
 
-        // maximum motor power (W) with default settings for pf=cos(30), inrush=5x, repetition_rate<0.01/min
-        val m3phmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, node.impedance.impedanz)
-        val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, node.impedance.impedanz)
-        val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, node.impedance.impedanz)
+        // maximum (motor) power (W) for repetition_rate<0.01/min and 0.01≤r<0.1 /min, override default settings for pf=1.0=cos(90), inrush=1x
+        val m3phmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
+        val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
+        val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
 
         HouseConnection (node.id_seq, has (node.id_seq), node.source,
             node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
