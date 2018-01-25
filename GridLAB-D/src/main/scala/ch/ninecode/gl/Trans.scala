@@ -23,7 +23,7 @@ class Trans (one_phase: Boolean) extends Serializable
         "        object transformer_configuration\n" +
         "        {\n" +
         "            name \"" + config + "\";\n" +
-        "            connect_type WYE_WYE;\n" + // ToDo: pick up Dyn5 values from CIM when they are exported correctly
+        "            connect_type WYE_WYE;\n" + // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
         "            install_type PADMOUNT;\n" +
         "            power_rating " + (power_rating / 1000.0) + ";\n" +
         "            primary_voltage " + v0 + ";\n" +
