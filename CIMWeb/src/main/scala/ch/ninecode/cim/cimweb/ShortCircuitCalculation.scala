@@ -51,7 +51,7 @@ class ShortCircuitCalculation extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 // ToDo: get the default from parameters
-                val options = ShortCircuitOptions (false, 200.0, -70.0, transformer, null)
+                val options = ShortCircuitOptions (false, 200.0, -70.0, 1.0, 0.90, 1.0, 1.0, transformer, null)
                 val query = ShortCircuitFunction (options, spreadsheet)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction

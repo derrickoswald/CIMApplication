@@ -237,7 +237,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
-        val i = if (options.three) power / (400.0 * math.sqrt (3)) else math.sqrt (3) * power / 400.0
+        val i = if (options.three) power / (400.0 * math.sqrt (3)) else power / 400.0
         val overI = elements.filter (if (options.three) interesting3ph (i) else interesting1ph (i))
         overI.flatMap (assign (experiments))
     }
