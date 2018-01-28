@@ -113,7 +113,7 @@ define
                                 "<input type='text' class='form-control' " + this.data_source + "='{{index}}' placeholder='" + this.prompt + "' aria-label='" + this.input_label + "' value='{{value}}'{{#last}} aria-describedby='" + this.list_name + "_help'{{/last}}>" +
                             "{{/values}}" +
                             "<span class='input-group-addon btn btn-default' " + this.data_source + "='{{index}}'>" +
-                                "<i class='glyphicon {{glyph}}'></i>" +
+                                "<i class='fa {{glyph}}'></i>" +
                             "</span>" +
                         "</div>" +
                         "{{#last}}" +
@@ -137,7 +137,7 @@ define
                 },
                 glyph: function ()
                 {
-                    return ((temp.items.length - 1 === temp.items.indexOf (this)) ? "glyphicon-plus" : "glyphicon-minus");
+                    return ((temp.items.length - 1 === temp.items.indexOf (this)) ? "fa-plus" : "fa-minus");
                 },
                 index: function ()
                 {

@@ -28,278 +28,226 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-light">
-        <div class="container">
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="#">CIM Application</a>
-            </div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">CIM Application</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#CIMNav" aria-controls="CIMNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-            <div id="bs-example-navbar-collapse-1" class="collapse navbar-collapse">
-                <ul id="functions" class="nav navbar-nav">
-                    <li class="active"><a id="files_link" href="#files">Files</a></li>
-                    <li><a id="map_link" href="#map">Map</a></li>
-                    <li><a id="query_link" href="#query">Query</a></li>
-                    <li><a id="simulate_link" href="#simulate">Simulate</a></li>
-                    <li><a id="export_link" href="#export">Export</a></li>
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Load <span class="caret"></span></a>
-                        <ul class="dropdown-menu" role="menu">
-                            <li class="dropdown-header">CIM</li>
-                            <li>
-                                <div class="select">
-                                    <label for="storage_level">
-                                        <select id='storage_level' class='form-control' name='storage_level'>
-                                            <option value="NONE">NONE</option>
-                                            <option value="DISK_ONLY">DISK_ONLY</option>
-                                            <option value="DISK_ONLY_2">DISK_ONLY_2</option>
-                                            <option value="MEMORY_ONLY">MEMORY_ONLY</option>
-                                            <option value="MEMORY_ONLY_2">MEMORY_ONLY_2</option>
-                                            <option value="MEMORY_ONLY_SER">MEMORY_ONLY_SER</option>
-                                            <option value="MEMORY_ONLY_SER_2">MEMORY_ONLY_SER_2</option>
-                                            <option value="MEMORY_AND_DISK">MEMORY_AND_DISK</option>
-                                            <option value="MEMORY_AND_DISK_2">MEMORY_AND_DISK_2</option>
-                                            <option value="MEMORY_AND_DISK_SER" selected>MEMORY_AND_DISK_SER</option>
-                                            <option value="MEMORY_AND_DISK_SER_2">MEMORY_AND_DISK_SER_2</option>
-                                            <option value="OFF_HEAP">OFF_HEAP</option>
-                                        </select>
-                                        StorageLevel
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_about">
-                                        <input id="do_about" type="checkbox"/>
-                                        Merge rdf:about
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_normalize">
-                                        <input id="do_normalize" type="checkbox"/>
-                                        Normalize data
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_deduplication">
-                                        <input id="do_deduplication" type="checkbox"/>
-                                        Deduplicate
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="make_edges">
-                                        <input id="make_edges" type="checkbox"/>
-                                        Make edges
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_join">
-                                        <input id="do_join" type="checkbox"/>
-                                        Join NIS-ISU
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_topo_islands">
-                                        <input id="do_topo_islands" type="checkbox"/>
-                                        Make islands
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="do_topo">
-                                        <input id="do_topo" type="checkbox"/>
-                                        Make topology
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="input">
-                                    <label for="split_maxsize">
-                                        <input id="split_maxsize" type="text" class="form-control" placeholder="split size (bytes)" style="margin-left: 15px; width: 120px;" value="67108864">
-                                    </label>
-                                    Split size
-                                </div>
-                            </li>
-                            <li role="separator" class="divider"></li>
-                            <li class="dropdown-header">CSV</li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="header">
-                                        <input id="header" type="checkbox"/>
-                                        Header
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="ignoreLeadingWhiteSpace">
-                                        <input id="ignoreLeadingWhiteSpace" type="checkbox"/>
-                                        Trim leading
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="ignoreTrailingWhiteSpace">
-                                        <input id="ignoreTrailingWhiteSpace" type="checkbox"/>
-                                        Trim trailing
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <input id="sep" type="text" class="form-control" placeholder="separator" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="quote" type="text" class="form-control" placeholder="quote" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="escape" type="text" class="form-control" placeholder="escape" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="encoding" type="text" class="form-control" placeholder="encoding" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="comment" type="text" class="form-control" placeholder="comment" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="nullValue" type="text" class="form-control" placeholder="nullValue" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="nanValue" type="text" class="form-control" placeholder="nanValue" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="positiveInf" type="text" class="form-control" placeholder="positiveInf" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="negativeInf" type="text" class="form-control" placeholder="negativeInf" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="dateFormat" type="text" class="form-control" placeholder="date format" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <input id="timestampFormat" type="text" class="form-control" placeholder="timestamp format" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label">
-                                        <input id="permissive" type="radio" name="mode" value="PERMISSIVE">Permissive</label>
-                                    <label class="form-check-label">
-                                        <input id="dropmalformed" type="radio" name="mode" value="DROPMALFORMED">Discard bad</label>
-                                    <label class="form-check-label">
-                                        <input id="failfast" type="radio" name="mode" value="FAILFAST">Fail fast</label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="checkbox">
-                                    <label for="inferSchema">
-                                        <input id="inferSchema" type="checkbox"/>
-                                        Infer schema
-                                    </label>
-                                </div>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Trace <span class="caret"></span></a>
-                        <ul class="dropdown-menu" role="menu">
-                            <li><a id="trace" href="#">Trace</a></li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label" for="trace_through_open_switches">
-                                        <input id="trace_through_open_switches" class="form-check-input" type="checkbox" value="">
-                                        Trace through open switches
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label" for="trace_though_voltage_level_changes">
-                                        <input id="trace_though_voltage_level_changes" class="form-check-input" type="checkbox" value="">
-                                        Trace through voltage levels
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <input id="number_of_elements" type="text" class="form-control" placeholder="# elements" style="margin-left: 15px; width: 120px;">
-                            </li>
-                            <li><a id="unhighlight" href="#">Un-Highlight</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">View <span class="caret"></span></a>
-                        <ul class="dropdown-menu" role="menu">
-                            <li class="dropdown-header">Map Options</li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label" for="internal_features">
-                                        <input id="internal_features" class="form-check-input" type="checkbox" value="">
-                                        Internals
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label" for="buildings_3d">
-                                        <input id="buildings_3d" class="form-check-input" type="checkbox" value="">
-                                        3D buildings
-                                    </label>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="form-check">
-                                    <label class="form-check-label" for="scale_bar">
-                                        <input id="scale_bar" class="form-check-input" type="checkbox" value="">
-                                        Scale bar
-                                    </label>
-                                </div>
-                            </li>
-                            <li role="separator" class="divider"></li>
-                            <li class="dropdown-header">Links</li>
-                            <li>
-                                <a id="spark_master" href="http://localhost:8080" target="_blank">Spark master</a>
-                            </li>
-                            <li>
-                                <a id="spark_job" href="http://localhost:4040" target="_blank">Spark job</a>
-                            </li>
-                            <li>
-                                <a id="hadoop_hdfs" href="http://localhost:50070" target="_blank">Hadoop HDFS</a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-                <ul class="nav navbar-nav">
-                    <li><a id="coordinates"></a></li>
-                </ul>
-                <form id="search" class="navbar-form navbar-right waves-effect waves-light" role="search">
-                    <div class="form-group">
-                        <div class="input-group">
-                            <input id="search_text" type="text" class="form-control" placeholder="Search for...">
-                            <span class="input-group-btn">
-                                <button id="search_button" class="btn btn-secondary" type="submit"><i class="fa fa-search"></i></button>
-                            </span>
+        <div id="CIMNav" class="collapse navbar-collapse">
+            <div id="functions" class="navbar-nav mr-auto">
+                <li class="active">
+                    <a id="files_link" class="nav-link" href="#files">Files</a>
+                </li>
+                <li>
+                    <a id="map_link" class="nav-link" href="#map">Map</a>
+                </li>
+                <li>
+                    <a id="query_link" class="nav-link" href="#query">Query</a>
+                </li>
+                <li>
+                    <a id="simulate_link" class="nav-link" href="#simulate">Simulate</a>
+                </li>
+                <li>
+                    <a id="export_link" class="nav-link" href="#export">Export</a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a id="load_menu" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Load
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="load_menu" style="width: 20em;">
+                        <div class="dropdown-header">CIM</div>
+                        <div class="select dropdown-item">
+                            <select id='storage_level' class='form-control' name='storage_level' style="display: inline-block;width: 10em;">
+                                <option value="NONE">NONE</option>
+                                <option value="DISK_ONLY">DISK_ONLY</option>
+                                <option value="DISK_ONLY_2">DISK_ONLY_2</option>
+                                <option value="MEMORY_ONLY">MEMORY_ONLY</option>
+                                <option value="MEMORY_ONLY_2">MEMORY_ONLY_2</option>
+                                <option value="MEMORY_ONLY_SER">MEMORY_ONLY_SER</option>
+                                <option value="MEMORY_ONLY_SER_2">MEMORY_ONLY_SER_2</option>
+                                <option value="MEMORY_AND_DISK">MEMORY_AND_DISK</option>
+                                <option value="MEMORY_AND_DISK_2">MEMORY_AND_DISK_2</option>
+                                <option value="MEMORY_AND_DISK_SER" selected>MEMORY_AND_DISK_SER</option>
+                                <option value="MEMORY_AND_DISK_SER_2">MEMORY_AND_DISK_SER_2</option>
+                                <option value="OFF_HEAP">OFF_HEAP</option>
+                            </select>
+                            <label for="storage_level">StorageLevel</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_about" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_about">Merge rdf:about</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_normalize" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_normalize">Normalize data</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_deduplication" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_deduplication">Deduplicate</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="make_edges" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="make_edges">Make edges</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_join" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_join">Join NIS-ISU</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_topo_islands" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_topo_islands">Make islands</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="do_topo" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="do_topo">Make topology</label>
+                        </div>
+                        <div class="dropdown-item">
+                            <input id="split_maxsize" type="text" class="form-control" placeholder="split size (bytes)" style="display: inline-block;width: 10em;" value="67108864">
+                            <label class="form-check-label" for="split_maxsize">Split size</label>
+                        </div>
+                        <div role="separator" class="divider"></div>
+                        <div class="dropdown-header">CSV</div>
+                        <div class="form-check dropdown-item">
+                            <input id="header" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="header">Header</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <label class="form-check-label" for="ignoreLeadingWhiteSpace">
+                                <input id="ignoreLeadingWhiteSpace" class="form-check-input" type="checkbox"/>
+                                Trim leading
+                            </label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="ignoreTrailingWhiteSpace" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="ignoreTrailingWhiteSpace">Trim trailing</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="sep" type="text" class="form-control" placeholder="separator" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="quote" type="text" class="form-control" placeholder="quote" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="escape" type="text" class="form-control" placeholder="escape" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="encoding" type="text" class="form-control" placeholder="encoding" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="comment" type="text" class="form-control" placeholder="comment" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="nullValue" type="text" class="form-control" placeholder="nullValue" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="nanValue" type="text" class="form-control" placeholder="nanValue" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="positiveInf" type="text" class="form-control" placeholder="positiveInf" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="negativeInf" type="text" class="form-control" placeholder="negativeInf" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="dateFormat" type="text" class="form-control" placeholder="date format" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="timestampFormat" type="text" class="form-control" placeholder="timestamp format" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="permissive" type="radio" name="mode" value="PERMISSIVE">
+                            <label class="form-check-label" for="permissive">Permissive</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="dropmalformed" type="radio" name="mode" value="DROPMALFORMED">
+                            <label class="form-check-label" for="dropmalformed">Discard bad</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="failfast" type="radio" name="mode" value="FAILFAST">
+                            <label class="form-check-label" for="failfast">Fail fast</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="inferSchema" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="inferSchema">Infer schema</label>
                         </div>
                     </div>
-                </form>
+                </li>
+                <li class="nav-item dropdown">
+                    <a id="trace_menu" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Trace
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="trace_menu">
+                        <div class="form-check dropdown-item">
+                            <a id="trace" class="btn btn-primary" href="#">Trace</a>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="trace_through_open_switches" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="trace_through_open_switches">Trace through open switches</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="trace_though_voltage_level_changes" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="trace_though_voltage_level_changes">Trace through voltage levels</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="number_of_elements" class="form-control dropdown-item" type="text" placeholder="# elements" style="margin-left: 15px; width: 120px;">
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <a id="unhighlight" class="btn btn-primary" href="#">Un-Highlight</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a id="options_menu" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Options
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="options_menu">
+                        <div class="form-check dropdown-item">
+                            <input id="internal_features" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="internal_features">Internals</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="buildings_3d" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="buildings_3d">3D buildings</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="scale_bar" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="scale_bar">Scale bar</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="coordinate" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="coordinate">Coordinates</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="streetview" class="form-check-input" type="checkbox" value="">
+                            <label class="form-check-label" for="streetview">Streetview</label>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a id="links_menu" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Links
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="links_menu">
+                        <div class="form-check dropdown-item">
+                            <a id="spark_master" href="http://localhost:8080" target="_blank">Spark master</a>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <a id="spark_job" href="http://localhost:4040" target="_blank">Spark job</a>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <a id="hadoop_hdfs" href="http://localhost:50070" target="_blank">Hadoop HDFS</a>
+                        </div>
+                    </div>
+                </li>
             </div>
+            <form id="search" class="form-inline my-2 my-lg-0">
+                <input id="search_text" class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                <button id="search_button" class="btn btn-outline-success my-2 my-sm-0" type="button"><i class="fa fa-search"></i></button>
+            </form>
         </div>
     </nav>
-
 
     <!-- Content -->
     <section id="files" class="intro" style="display: none;"></section>
@@ -307,12 +255,6 @@
     <section id="query" class="intro" style="display: none;"></section>
     <section id="simulate" class="intro" style="display: none;"></section>
     <section id="export" class="intro" style="display: none;"></section>
-
-    <!-- Details Dialog Non-modal -->
-    <div id="feature_details" class="modal" role="dialog" style="padding: 0px; display: block; width: 25%; height: 75%; top: 10%; pointer-events: none;">
-        <div id="feature_detail_contents" class="modal-body" style="pointer-events: auto">
-        </div>
-    </div>
 
     <!-- SCRIPTS -->
 

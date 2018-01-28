@@ -814,7 +814,7 @@ define
             var simulate_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-8'>\n" +
+                "    <div class='col-12'>\n" +
                 "      <h1>Simulate using GridLAB-D</h1>\n" +
                 "      <h2 id='title'>{{name}}</h2>\n" +
                 "      <form>\n" +

@@ -35,7 +35,7 @@ define
             var export_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-8'>\n" +
+                "    <div class='col-12'>\n" +
                 "      <h1>Export GridLAB-D .glm</h1>\n" +
                 "      <form>\n" +
                 "        <div class='form-group row'>\n" +
@@ -122,7 +122,7 @@ define
                 "    </div>\n" +
                 "  </div>\n" +
                 "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-8'>\n" +
+                "    <div class='col-12'>\n" +
                 "      <h1>Export CIM .rdf</h1>\n" +
                 "      <form>\n" +
                 "        <div class='form-group row'>\n" +

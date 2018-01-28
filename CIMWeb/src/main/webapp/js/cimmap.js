@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["cimnav", "cimedit", "cim", "streetview", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
+    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function (cimnav, CIMEdit, cim, streetview, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
+    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
     {
         /**
          * The map object.
@@ -32,6 +32,11 @@ define
         var TheThemer = null;
 
         /**
+         * The detail view control object.
+         */
+        var TheDetails = null;
+
+        /**
          * The editor control object.
          */
         var TheEditor = null;
@@ -40,6 +45,11 @@ define
          * The scale bar control.
          */
         var TheScaleBar = null;
+
+        /**
+         * The coordinate display control.
+         */
+        var TheCoordinates = null;
 
         /**
          * The user specific token to access mapbox tiles.
@@ -107,6 +117,17 @@ define
         }
 
         /**
+         * Get the currently selected feature list.
+         * @return the array of mRID of the currently selected features or null if none.
+         * @function get_selected_features
+         * @memberOf module:cimmap
+         */
+        function get_selected_features ()
+        {
+            return (CURRENT_SELECTION);
+        }
+
+        /**
          * Set the extents of the CIM data for the map to draw.
          * @param {Object} new extents value { xmin: , ymin: , xmax: , ymax: }
          * @function set_extents
@@ -137,6 +158,17 @@ define
         function get_themer ()
         {
             return (TheThemer);
+        }
+
+        /**
+         * Get the detail view object for access to viewing.
+         * @return {Object} The object handling details view.
+         * @function get_details
+         * @memberOf module:cimmap
+         */
+        function get_details ()
+        {
+            return (TheDetails);
         }
 
         /**
@@ -173,14 +205,35 @@ define
         }
 
         /**
-         * Get the user's choice for whether a scle bar is displayed or not.
-         * @returns {boolean} <code>true</code> if a sclae bar should be shown, <code>false</code> otherwise
+         * Get the user's choice for whether a scale bar is displayed or not.
+         * @returns {boolean} <code>true</code> if a scale bar should be shown, <code>false</code> otherwise
          * @function show_scale_bar
          * @memberOf module:cimmap
          */
         function show_scale_bar ()
         {
             return (document.getElementById ("scale_bar").checked);
+        }
+
+        /**
+         * Get the user's choice for whether coordinates are displayed or not.
+         * @returns {boolean} <code>true</code> if coordinates should be shown, <code>false</code> otherwise
+         * @function show_coordinates
+         */
+        function show_coordinates ()
+        {
+            return (document.getElementById ("coordinate").checked);
+        }
+
+        /**
+         * Get the user's choice for whether StreetView links are displayed or not.
+         * @returns {boolean} <code>true</code> if a streetview link for the selected feature should be shown, <code>false</code> otherwise
+         * @function show_streetview
+         * @memberOf module:cimmap
+         */
+        function show_streetview ()
+        {
+            return (document.getElementById ("streetview").checked);
         }
 
         /**
@@ -246,13 +299,16 @@ define
 
         function edit ()
         {
-            if (TheEditor.visible ())
-                TheMap.removeControl (TheEditor);
+            if (get_editor ().visible ())
+                TheMap.removeControl (get_editor ());
             else
             {
                 if (TheThemer.getTheme ().getLegend ().visible ())
                     TheMap.removeControl (TheThemer.getTheme ().getLegend ());
-                TheMap.addControl (TheEditor);
+                hide_details ();
+                TheMap.addControl (get_editor ());
+                if ((null != CIM_Data) && (null != get_selected_feature ()))
+                    get_editor ().edit (CIM_Data.Element[get_selected_feature ()], true);
             }
         }
 
@@ -264,9 +320,8 @@ define
          */
         function show_details ()
         {
-            var details = document.getElementById ("feature_details");
-            var style = details.getAttribute ("style");
-            details.setAttribute ("style", style.replace (/display:[^;]*;/g, "display: block;"));
+            if (!get_details ().visible ())
+                TheMap.addControl (get_details ());
         }
 
         /**
@@ -277,63 +332,8 @@ define
          */
         function hide_details ()
         {
-            var details = document.getElementById ("feature_details");
-            var style = details.getAttribute ("style");
-            details.setAttribute ("style", style.replace (/display:[^;]*;/g, "display: none;"));
-        }
-
-        /**
-         * Show the content in a window.
-         * @description Raise a popup window and populate it with the preformatted text provided.
-         * @param {string} content - the detail content to display
-         * @function showDetails
-         * @memberOf module:cimmap
-         */
-        function showDetails (content)
-        {
-            var text =
-                 "<div class='well'>\n" +
-                 content +
-                 "<div id='streetview'></div>\n" +
-                "</div>\n";
-            document.getElementById ("feature_detail_contents").innerHTML = text;
-            show_details ();
-        }
-
-        function maybe_streetview (feature)
-        {
-            if (feature.Location)
-            {
-                var location = get_data ().Location[feature.Location];
-                if (location.CoordinateSystem == "wgs84")
-                {
-                    var id = location.id;
-                    var coordinates = [];
-                    var points = get_data ().PositionPoint;
-                    for (var property in points)
-                        if (points.hasOwnProperty (property))
-                        {
-                            var point = points[property];
-                            if (point.Location == id)
-                                coordinates[Number (point.sequenceNumber)] = [point.xPosition, point.yPosition];
-                        }
-                    if (0 != coordinates.length)
-                    {
-                        if ("undefined" == typeof (coordinates[0]))
-                            coordinates = coordinates.slice (1);
-                        streetview.urlFor (coordinates[0][0], coordinates[0][1],
-                            function (url)
-                            {
-                                if (-1 != url.indexOf ("pano"))
-                                {
-                                    var link = "<a href='" + url + "' target='_blank'>StreetView</a>";
-                                    document.getElementById ("streetview").innerHTML = link;
-                                }
-                            }
-                        );
-                    }
-                }
-            }
+            if (get_details ().visible ())
+                TheMap.removeControl (get_details ());
         }
 
         /**
@@ -363,70 +363,6 @@ define
             }
         }
 
-        function detail_text (feature)
-        {
-            var cls = cim.class_map (feature);
-            var template = cls.prototype.template ();
-            var text = mustache.render (template, feature);
-            var conducting = CIM_Data.ConductingEquipment[CURRENT_FEATURE];
-            if ("undefined" != typeof (conducting))
-            {
-                var terminals = CIM_Data.Terminal;
-                var terms = [];
-                for (var property in terminals)
-                    if (terminals.hasOwnProperty (property))
-                    {
-                        var terminal = terminals[property];
-                        if (CURRENT_FEATURE == terminal.ConductingEquipment)
-                            terms.push (terminal);
-                    }
-                if (0 != terms.length)
-                {
-                    var connected = terms.map (
-                        function (terminal)
-                        {
-                            var node = terminal.ConnectivityNode;
-                            var equipment = [];
-                            for (var property in terminals)
-                                if (terminals.hasOwnProperty (property))
-                                {
-                                    var term = terminals[property];
-                                    if (node == term.ConnectivityNode)
-                                        if (CURRENT_FEATURE != term.ConductingEquipment)
-                                            equipment.push (term.ConductingEquipment);
-                                }
-                            return ({ terminal: terminal, equipment: equipment });
-                        }
-                    );
-                    text = text + "<div>Connected:</div>\n";
-                    for (var i = 0; i < connected.length; i++)
-                    {
-                        var terminal = connected[i].terminal.mRID;
-                        var equipment = connected[i].equipment;
-                        var links = "";
-                        for (var j = 0; j < equipment.length; j++)
-                            links = links + " <a href='#' onclick='require([\"cimmap\"], function(cimmap) { cimmap.select (\"" + equipment[j] + "\"); return false;})'>" + equipment[j] + "</a>";
-                        text = text + "<div>" + terminal + ": " + links + "</div>\n";
-                    }
-                }
-            }
-
-            if (null != CURRENT_SELECTION)
-            {
-                if (CURRENT_SELECTION.some (function (element) { return (element != CURRENT_FEATURE); }))
-                {
-                    text = text + "<div>Also selected:</div>\n";
-                    for (var i = 0; i < CURRENT_SELECTION.length; i++)
-                    {
-                        if (CURRENT_SELECTION[i] != CURRENT_FEATURE)
-                            text = text + "<div><a href='#' onclick='require([\"cimmap\"], function(cimmap) { cimmap.select (\"" + CURRENT_SELECTION[i] + "\"); return false;})'>" + CURRENT_SELECTION[i] + "</a></div>\n";
-                    }
-                }
-            }
-
-            return (text);
-        }
-
         /**
          * @summary Display the current feature properties and highlight it on the map.
          * @description Shows a properties sheet in the details window,
@@ -439,22 +375,17 @@ define
         function highlight ()
         {
             var feature;
-            if ((null != CIM_Data) && (null != CURRENT_FEATURE))
-                if (null != (feature = CIM_Data.Element[CURRENT_FEATURE]))
+            if ((null != CIM_Data) && (null != get_selected_feature ()))
+                if (null != (feature = CIM_Data.Element[get_selected_feature ()]))
                 {
-                    if (TheEditor.visible ())
-                    {
-                        document.getElementById ("feature_detail_contents").innerHTML = "";
-                        hide_details ();
-                        TheEditor.edit (feature, true);
-                    }
+                    if (get_editor ().visible ())
+                        get_editor ().edit (feature, true);
                     else
                     {
-                        var text = detail_text (feature);
-                        showDetails (text);
-                        maybe_streetview (feature);
+                        show_details ();
+                        get_details ().render ();
                     }
-                    glow (["in", "mRID", CURRENT_FEATURE]);
+                    glow (["in", "mRID", get_selected_feature ()]);
                 }
         }
 
@@ -469,7 +400,6 @@ define
             glow (["==", "mRID", ""]);
             CURRENT_FEATURE = null;
             CURRENT_SELECTION = null;
-            document.getElementById ("feature_detail_contents").innerHTML = "";
             hide_details ();
         }
 
@@ -483,7 +413,7 @@ define
         {
             if (null != mrid)
             {
-                if (mrid != CURRENT_SELECTION)
+                if (mrid != get_selected_feature ())
                 {
                     CURRENT_FEATURE = mrid;
                     if (!CURRENT_SELECTION.includes (mrid))
@@ -573,6 +503,33 @@ define
                 {
                     TheMap.removeControl (TheScaleBar);
                     TheScaleBar = null;
+                }
+            }
+        }
+
+        /**
+         * Turn on or off the coordinates
+         * @description Add or remove the coordinates control.
+         * @ param {object} event - optional event trigger <em>not used</em>
+         * @function coordinates
+         * @memberOf module:cimmap
+         */
+        function coordinates (event)
+        {
+            if (show_coordinates ())
+            {
+                if (null == TheCoordinates)
+                {
+                    TheCoordinates = new CIMCoordinates ();
+                    TheMap.addControl (TheCoordinates);
+                }
+            }
+            else
+            {
+                if (null != TheCoordinates)
+                {
+                    TheMap.removeControl (TheCoordinates);
+                    TheCoordinates = null;
                 }
             }
         }
@@ -676,7 +633,7 @@ define
 
             if (null == CIM_Data)
                 alert ("no CIM data loaded");
-            else if (null == CURRENT_FEATURE)
+            else if (null == get_selected_feature ())
                 alert ("no feature selected");
             else
             {
@@ -740,18 +697,18 @@ define
                 }
 
                 // get the source equipment
-                source = CIM_Data.ConductingEquipment[CURRENT_FEATURE];
+                source = CIM_Data.ConductingEquipment[get_selected_feature ()];
                 if (null == source)
                 {
                     // try for a terminal
-                    var term = CIM_Data.Terminal[CURRENT_FEATURE];
+                    var term = CIM_Data.Terminal[get_selected_feature ()];
                     source = term ? CIM_Data.ConductingEquipment[term.ConductingEquipment] : null;
                     preload (source, term);
                 }
                 if (null == source)
                 {
                     // try for a node
-                    var terms = terminals_by_node[CURRENT_FEATURE];
+                    var terms = terminals_by_node[get_selected_feature ()];
                     if (terms)
                         for (var i = 0; (i < terms.length) && (null == source); i++)
                         {
@@ -816,16 +773,12 @@ define
                     }
                     // sort the list to make it easy to find an element
                     equipment.sort ();
-                    // create the text to show in the details window
-                    var text = detail_text (CIM_Data.Element[CURRENT_FEATURE]) +
-                        "\n" +
-                        equipment.join (', ');
-                    // post the text
-                    showDetails (text);
-                    maybe_streetview (CIM_Data.Element[CURRENT_FEATURE]);
                     // highlight the elements on screen
                     equipment.unshift ("in", "mRID");
                     glow (equipment);
+                    // set the current selection set and re-render the details
+                    CURRENT_SELECTION = equipment.slice (2);
+                    get_details ().render ();
                 }
             }
         }
@@ -906,6 +859,7 @@ define
                             match.push (id);
                     if (match.length > 0)
                     {
+                        match.sort ();
                         CURRENT_SELECTION = match;
                         CURRENT_FEATURE = match[0];
                         var current = null;
@@ -990,80 +944,73 @@ define
 
         function default_mousedown_listener (event)
         {
-            var buttons = event.originalEvent.buttons;
-            //    0  : No button or un-initialized
-            //    1  : Primary button (usually left)
-            //    2  : Secondary button (usually right)
-            var leftbutton = 0 != (buttons & 1);
-            var rightbutton = 0 != (buttons & 2);
-            if (leftbutton)
+            // only do something if no key is pressed
+            var key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
+            if (!key)
             {
-                var width = 4;
-                var height = 4;
-                var features = TheMap.queryRenderedFeatures
-                (
-                    [
-                      [event.point.x - width / 2, event.point.y - height / 2],
-                      [event.point.x + width / 2, event.point.y + height / 2]
-                    ],
-                    {}
-                );
-                if ((null != features) && (0 != features.length))
+                var buttons = event.originalEvent.buttons;
+                //    0  : No button or un-initialized
+                //    1  : Primary button (usually left)
+                //    2  : Secondary button (usually right)
+                var leftbutton = 0 != (buttons & 1);
+                var rightbutton = 0 != (buttons & 2);
+                if (leftbutton)
                 {
-                    var selection = [];
-                    for (var i = 0; i < features.length; i++)
+                    var width = 4;
+                    var height = 4;
+                    var features = TheMap.queryRenderedFeatures
+                    (
+                        [
+                          [event.point.x - width / 2, event.point.y - height / 2],
+                          [event.point.x + width / 2, event.point.y + height / 2]
+                        ],
+                        {}
+                    );
+                    if ((null != features) && (0 != features.length))
                     {
-                        var mrid = features[i].properties.mRID;
-                        if (null != mrid && !selection.includes (mrid))
-                            selection.push (mrid);
-                    }
-                    if (selection.length > 0)
-                    {
-                        if (selection[0] != CURRENT_FEATURE)
+                        var selection = [];
+                        for (var i = 0; i < features.length; i++)
                         {
-                            CURRENT_FEATURE = selection[0];
-                            CURRENT_SELECTION = selection;
-                            highlight ();
+                            var mrid = features[i].properties.mRID;
+                            if (null != mrid && !selection.includes (mrid))
+                                selection.push (mrid);
                         }
+                        if (selection.length > 0)
+                        {
+                            if (selection[0] != get_selected_feature ())
+                            {
+                                CURRENT_FEATURE = selection[0];
+                                CURRENT_SELECTION = selection;
+                                highlight ();
+                            }
+                        }
+                        else
+                            unhighlight ();
                     }
                     else
                         unhighlight ();
                 }
-                else
-                    unhighlight ();
+                else if (rightbutton)
+                {
+                    //<i id="" class="fa fa-map-marker"></i>
+                    var element = document.createElement ("i");
+                    element.className = "fa fa-map-marker fa-2x";
+                    var marker = new mapboxgl.Marker (element)
+                      .setLngLat (event.lngLat)
+                      .addTo (event.target);
+                }
             }
-            else if (rightbutton)
-            {
-                //<i id="" class="fa fa-map-marker"></i>
-                var element = document.createElement ("i");
-                element.className = "fa fa-map-marker fa-2x";
-                var marker = new mapboxgl.Marker (element)
-                  .setLngLat (event.lngLat)
-                  .addTo (event.target);
-            }
-        }
-
-        function default_mousemove_listener (event)
-        {
-            var lng = event.lngLat.lng;
-            var lat = event.lngLat.lat;
-            lng = Math.round (lng * 100000) / 100000;
-            lat = Math.round (lat * 100000) / 100000;
-            document.getElementById ("coordinates").innerHTML = "" + lng + "," + lat;
         }
 
         function add_listeners ()
         {
             // handle mouse click
             TheMap.on ("mousedown", default_mousedown_listener);
-            // handle mouse movement
-            TheMap.on ("mousemove", default_mousemove_listener);
         }
 
         function remove_listeners ()
         {
             TheMap.off ("mousedown", default_mousedown_listener);
-            TheMap.off ("mousemove", default_mousemove_listener);
         }
 
         /**
@@ -1105,6 +1052,8 @@ define
             TheThemer.addTheme (new IslandTheme ());
             TheThemer.addTheme (new InServiceTheme ());
             TheThemer.theme_change_listener (redraw);
+            // set up viewing
+            TheDetails = new CIMDetails (getInterface ());
             // set up editing
             TheEditor = new CIMEdit (getInterface ());
             // display any existing data
@@ -1136,6 +1085,7 @@ define
                      set_data: set_data,
                      get_data: get_data,
                      get_selected_feature: get_selected_feature,
+                     get_selected_features: get_selected_features,
                      set_extents: set_extents,
                      get_extents: get_extents,
                      get_themer: get_themer,
@@ -1143,10 +1093,13 @@ define
                      show_internal_features: show_internal_features,
                      show_3d_buildings: show_3d_buildings,
                      show_scale_bar: show_scale_bar,
+                     show_coordinates: show_coordinates,
+                     show_streetview: show_streetview,
                      zoom_extents: zoom_extents,
                      select: select,
                      buildings_3d: buildings_3d,
                      scale_bar: scale_bar,
+                     coordinates: coordinates,
                      highlight: highlight,
                      unhighlight: unhighlight,
                      trace: trace,

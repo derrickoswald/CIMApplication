@@ -55,14 +55,14 @@ define
                 var file_table_template =
                     "<div class='container'>\n" +
                     "  <div class='row justify-content-center'>\n" +
-                    "    <div class='col-8'>\n" +
+                    "    <div class='col-12'>\n" +
                     "      <h1>{{response.result.filesystem}}</h1>\n" +
                     "      <h2>{{dir}}</h2>\n" +
-                    "      <form id='upload' class='form-inline navbar-right waves-effect waves-light' role='form'>\n" +
+                    "      <form id='upload' class='form-inline float-left' role='form'>\n" +
                     "          <input id='file' class='form-control' type='file' name='file'/>\n" +
                     "          <button id='do_put' type='button' class='btn btn-primary'>Upload</button>\n" +
                     "      </form>\n" +
-                    "      <form id='sideload' class='form-inline navbar-right waves-effect waves-light' role='form' style='margin-right:10em'>\n" +
+                    "      <form id='sideload' class='form-inline float-right' role='form'>\n" +
                     "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
                     "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
                     "      </form>\n" +
@@ -122,7 +122,7 @@ define
                             if (this.is_directory)
                                 text = ""
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml") || this.path.endsWith (".csv"))
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-open'></span></a>";
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");}); return false;'><i class='fa fa-play'></i></a>";
                             else
                                 text = ""
                             return (text);
@@ -133,11 +133,11 @@ define
                             if (this.is_directory)
                                 text = ""
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml"))
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-eye-open'></span></a>";
+                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");}); return false;'><i class='fa fa-eye'></i></a>";
                             else
                             {
                                 var url = util.home () + "cim/file" + root + this.path;
-                                text = "<a href='" + url + "'><span class='glyphicon glyphicon-download'></span></a>";
+                                text = "<a href='" + url + "'><i class='fa fa-cloud-download-alt'></i></span></a>";
                             }
                             return (text);
                         },
@@ -156,7 +156,7 @@ define
                         },
                         remove: function ()
                         {
-                            return ("<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_remove (\"" + root + this.path + "\");}); return false;'><span class='glyphicon glyphicon-remove'></span></a>");
+                            return ("<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_remove (\"" + root + this.path + "\");}); return false;'><i class='fa fa-trash'></a>");
                         }
                     }
                 );

@@ -133,8 +133,8 @@ define
             var query_template =
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-8' style='margin-top: 40px;'>\n" +
-                "      <form id='query_form' class='waves-effect waves-light' role='form' style='width: 100%'>\n" +
+                "    <div class='col-12' style='margin-top: 40px;'>\n" +
+                "      <form id='query_form' role='form' style='width: 100%'>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='sql'>SQL query</label>\n" +
                 "          <textarea id='sql' class='form-control' aria-describedby='sqlHelp' name='sql' rows='8' placeholder='select * from ACLineSegment' style='width: 80%'>{{sql}}</textarea>\n" +

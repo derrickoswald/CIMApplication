@@ -21,17 +21,22 @@ define
             {
                 this._cimmap = cimmap;
                 this._template =
-                "<div class='well'>\n" +
-                "  <h3>Edit</h3>\n" +
-                "    <div class='form-group'>\n" +
-                "      <label for='class_name'>Class</label>\n" +
-                "      <select id='class_name' class='form-control'>\n" +
+                "<div class='card'>\n" +
+                "  <div class='card-body'>\n" +
+                "    <h5 class='card-title'>Edit</h5>\n" +
+                "    <div class='form-group row'>\n" +
+                "      <label class='col-sm-4 col-form-label' for='class_name'>Class</label>\n" +
+                "      <div class='col-sm-8'>\n" +
+                "        <select id='class_name' class='form-control'>\n" +
                 "{{#classes}}\n" +
                 "              <option value='{{.}}'>{{.}}</option>\n" +
                 "{{/classes}}\n" +
-                "      </select>\n" +
+                "        </select>\n" +
+                "      </div>\n" +
                 "    </div>\n" +
-                "  <button id='create' type='button' class='btn btn-primary'>Create</button>\n" +
+                "    <div class='card-footer'>\n" +
+                "      <button id='create' type='button' class='btn btn-primary'>Create</button>\n" +
+                "  </div>\n" +
                 "</div>\n";
             }
 
@@ -116,6 +121,7 @@ define
                 popup.setLngLat (lnglat)
                 popup.setHTML (html)
                 popup.addTo (this._map);
+                return (popup);
             }
 
             distance (a, b)
@@ -182,16 +188,40 @@ define
                 return (ret);
             }
 
-            digitize_point_mousedown_listener (points, callback, event)
+            digitize_point_mousedown_listener (points, callback_success, callback_failure, event)
             {
-                var lnglat = this.snap (event);
-                var feature = points.features[points.features.length - 1];
-                feature.geometry.coordinates = [lnglat.lng, lnglat.lat];
-                this._map.getSource ("edit points").setData (points);
-                callback (feature);
+                var buttons = event.originalEvent.buttons;
+                var leftbutton = 0 != (buttons & 1);
+                if (leftbutton)
+                {
+                    var lnglat = this.snap (event);
+                    var feature = points.features[points.features.length - 1];
+                    feature.geometry.coordinates = [lnglat.lng, lnglat.lat];
+                    this._map.getSource ("edit points").setData (points);
+                    callback_success (feature);
+                }
+                else
+                    callback_failure ();
             }
 
-            digitize_point (obj, callback)
+            set_point_listeners (mousedown)
+            {
+                // set up our listeners
+                this._map.dragPan.disable ();
+                this._map.dragRotate.disable ();
+                this._cimmap.remove_listeners ();
+                this._map.on ("mousedown", mousedown);
+            }
+
+            reset_point_listeners (mousedown)
+            {
+                this._map.dragPan.enable ();
+                this._map.dragRotate.enable ();
+                this._map.off ("mousedown", mousedown);
+                this._cimmap.add_listeners ();
+            }
+
+            digitize_point (obj, callback_success, callback_failure)
             {
                 // get the current GeoJSON
                 var options =
@@ -203,33 +233,47 @@ define
                 points.features.push
                 (
                     {
-                        type : "Feature",
-                        geometry :
+                        type: "Feature",
+                        geometry:
                         {
-                            type : "Point",
-                            coordinates : []
+                            type: "Point",
+                            coordinates: []
                         },
-                        properties : obj
+                        properties: obj
                     }
                 );
-
-                var mousedown = this.digitize_point_mousedown_listener.bind (this, points, cb.bind (this));
-                function cb (feature)
+                var cancel = cb_failure.bind (this);
+                var mousedown = this.digitize_point_mousedown_listener.bind (this, points, cb_success.bind (this), cancel);
+                function cb_success (feature)
                 {
-                    this._map.off ("mousedown", mousedown);
-                    this._cimmap.add_listeners ();
-                    callback (feature);
+                    if (this._popup)
+                    {
+                        this._popup.remove ();
+                        delete this._popup;
+                    }
+                    this.reset_point_listeners (mousedown);
+                    callback_success (feature);
+                }
+                function cb_failure ()
+                {
+                    if (this._popup)
+                    {
+                        this._popup.remove ();
+                        delete this._popup;
+                    }
+                    this.reset_point_listeners (mousedown);
+                    callback_failure ();
                 }
 
-                // set up our listeners
-                this._cimmap.remove_listeners ();
-                this._map.on ("mousedown", mousedown);
+                this.set_point_listeners (mousedown);
 
                 // pop up a prompt and wait
-                this.popup ("<h1>Digitize point geometry</h1>");
+                this._popup = this.popup ("<h1>Digitize point geometry</h1>");
+
+                return (cancel);
             }
 
-            digitize_line_mousedown_listener (lines, callback, event)
+            digitize_line_mousedown_listener (lines, callback_success, callback_failure, event)
             {
                 var feature = lines.features[lines.features.length - 1];
                 var coordinates = feature.geometry.coordinates;
@@ -240,6 +284,7 @@ define
 
                 if (leftbutton)
                 {
+                    // ToDo: snap to point or end of line
                     coordinates.push ([lnglat.lng, lnglat.lat]);
                     if (coordinates.length > 2)
                         this._map.getSource ("edit lines").setData (lines);
@@ -247,23 +292,62 @@ define
                 else if (rightbutton)
                 {
                     lines.features.length = lines.features.length - 1;
-                    callback (feature);
+                    if (coordinates.length > 1)
+                        callback_success (feature);
+                    else
+                        callback_failure ()
                 }
             }
 
             digitize_line_mousemove_listener (lines, event)
             {
-                var feature = lines.features[lines.features.length - 1];
-                var coordinates = feature.geometry.coordinates;
                 var lnglat = event.lngLat;
+                var feature = lines.features[lines.features.length - 1];
                 // ToDo: snap to point or end of line
-                coordinates.push ([lnglat.lng, lnglat.lat]);
-                if (coordinates.length >= 2)
-                    this._map.getSource ("edit lines").setData (lines);
-                coordinates.length = coordinates.length - 1;
+                feature.transient = [lnglat.lng, lnglat.lat];
             }
 
-            digitize_line (obj, callback)
+            animate_line (lines, timestamp)
+            {
+                var feature = lines.features[lines.features.length - 1];
+                if (null != feature.transient)
+                {
+                    var coordinates = feature.geometry.coordinates;
+                    coordinates.push (feature.transient);
+                    if (coordinates.length >= 2)
+                        this._map.getSource ("edit lines").setData (lines);
+                    coordinates.length = coordinates.length - 1;
+                    feature.transient = null;
+                }
+                // trigger next animation
+                this._animation = requestAnimationFrame (this._animate);
+            }
+
+            set_line_listeners (mousemove, mousedown, animate)
+            {
+                // set up our listeners
+                this._cimmap.remove_listeners ();
+                this._map.dragPan.disable ();
+                this._map.dragRotate.disable ();
+                this._map.on ("mousedown", mousedown);
+                // handle mouse movement
+                this._map.on ("mousemove", mousemove);
+                // start animation
+                this._animation = requestAnimationFrame (animate);
+            }
+
+            reset_line_listeners (mousemove, mousedown)
+            {
+                cancelAnimationFrame (this._animation);
+                delete this._animation;
+                this._map.dragPan.enable ();
+                this._map.dragRotate.enable ();
+                this._map.off ("mousedown", mousedown);
+                this._map.off ("mousemove", mousemove);
+                this._cimmap.add_listeners ();
+            }
+
+            digitize_line (obj, callback_success, callback_failure)
             {
                 // get the current GeoJSON
                 var options =
@@ -277,34 +361,45 @@ define
                 lines.features.push
                 (
                     {
-                        type : "Feature",
-                        geometry :
+                        type: "Feature",
+                        geometry:
                         {
-                            type : "LineString",
-                            coordinates : []
+                            type: "LineString",
+                            coordinates: []
                         },
-                        properties: obj
+                        properties: obj,
+                        transient: null
                     }
                 );
-
-                var mousedown = this.digitize_line_mousedown_listener.bind (this, lines, cb.bind (this));
+                var cancel = cb_failure.bind (this);
+                var mousedown = this.digitize_line_mousedown_listener.bind (this, lines, cb_success.bind (this), cancel);
                 var mousemove = this.digitize_line_mousemove_listener.bind (this, lines);
-                function cb (feature)
+                this._animate = this.animate_line.bind (this, lines);
+                function cb_success (feature)
                 {
-                    this._map.off ("mousedown", mousedown);
-                    this._map.off ("mousemove", mousemove);
-                    this._cimmap.add_listeners ();
-                    callback (feature);
+                    if (this._popup)
+                    {
+                        this._popup.remove ();
+                        delete this._popup;
+                    }
+                    this.reset_line_listeners (mousemove, mousedown);
+                    callback_success (feature);
+                }
+                function cb_failure ()
+                {
+                    if (this._popup)
+                    {
+                        this._popup.remove ();
+                        delete this._popup;
+                    }
+                    this.reset_line_listeners (mousemove, mousedown);
+                    callback_failure ();
                 }
 
-                // set up our listeners
-                this._cimmap.remove_listeners ();
-                this._map.on ("mousedown", mousedown);
-                // handle mouse movement
-                this._map.on ("mousemove", mousemove);
-
-                // pop up a prompt and wait
-                this.popup ("<h1>Digitize linear geometry<br>Right-click to finsh</h1>");
+                this.set_line_listeners (mousemove, mousedown, this._animate);
+                // pop up a prompt
+                this._popup = this.popup ("<h1>Digitize linear geometry<br>Right-click to finsh</h1>");
+                return (cancel);
             }
 
             get_connectivity_for_equipment (equipment, point)
@@ -523,6 +618,9 @@ define
 
             make_psr (feature)
             {
+                if (this._canceler)
+                    delete this._canceler;
+
                 var psr = this.primary_element ();
                 var id = psr.id;
 
@@ -573,6 +671,9 @@ define
 
             make_equipment (feature)
             {
+                if (this._canceler)
+                    delete this._canceler;
+
                 var equipment = this.primary_element ();
                 var id = equipment.id;
 
@@ -610,6 +711,9 @@ define
 
             make_transformer (feature)
             {
+                if (this._canceler)
+                    delete this._canceler;
+
                 var trafo = this.primary_element ();
                 var id = trafo.id;
 
@@ -696,6 +800,9 @@ define
 
             make_cable (feature)
             {
+                if (this._canceler)
+                    delete this._canceler;
+
                 var line = this.primary_element ();
                 var id = line.id;
 
@@ -820,13 +927,13 @@ define
 
                 // here's some rules
                 if (this._features.Conductor)
-                    this.digitize_line (obj, this.make_cable.bind (this));
+                    this._canceler = this.digitize_line (obj, this.make_cable.bind (this), this.cancel.bind (this));
                 else if (this._features.PowerTransformer)
-                    this.digitize_point (obj, this.make_transformer.bind (this));
+                    this._canceler = this.digitize_point (obj, this.make_transformer.bind (this), this.cancel.bind (this));
                 else if (this._features.ConductingEquipment)
-                    this.digitize_point (obj, this.make_equipment.bind (this));
+                    this._canceler = this.digitize_point (obj, this.make_equipment.bind (this), this.cancel.bind (this));
                 else if (this._features.PowerSystemResource)
-                    this.digitize_point (obj, this.make_psr.bind (this));
+                    this._canceler = this.digitize_point (obj, this.make_psr.bind (this), this.cancel.bind (this));
             }
 
             create ()
@@ -923,14 +1030,16 @@ define
                 if (top_level)
                 {
                     var frame =
-                        "<div id='edit_frame' class='well'>\n" +
-                        "  <h3>Edit</h3>\n" +
-                        "  <div id='edit_contents'></div>\n" +
-                        "  <div>\n" +
-                        "    <button id='submit' type='button' class='btn btn-primary' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().save ();})'>Save</button>\n" +
-                        "    <button id='delete' type='button' class='btn btn-danger' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().del ();})'>Delete</button>\n" +
-                        "    <button id='cancel' type='button' class='btn btn-success' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().cancel ();})'>Cancel</button>\n" +
-                        "    <button id='create_new' type='button' class='btn btn-info' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().create_new ();})'>Create new</button>\n" +
+                        "<div id='edit_frame' class='card'>\n" +
+                        "  <div class='card-body'>\n" +
+                        "    <h5 id='view_title' class='card-title'>Edit</h5>\n" +
+                        "    <div id='edit_contents' class='card-text'></div>\n" +
+                        "    <div class='card-footer'>\n" +
+                        "      <button id='submit' type='button' class='btn btn-primary' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().save ();})'>Save</button>\n" +
+                        "      <button id='delete' type='button' class='btn btn-danger' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().del ();})'>Delete</button>\n" +
+                        "      <button id='cancel' type='button' class='btn btn-success' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().cancel ();})'>Cancel</button>\n" +
+                        "      <button id='create_new' type='button' class='btn btn-info' onclick='require([\"cimmap\"], function(cimmap) { cimmap.get_editor ().create_new ();})'>Create new</button>\n" +
+                        "    </div>\n" +
                         "  </div>\n" +
                         "</div>\n";
                     this._container.innerHTML = frame;
@@ -1090,20 +1199,29 @@ define
 
             del ()
             {
+                if (this._canceler)
+                {
+                    var canceller = this._canceler; // ensure recursion doesn't happen
+                    delete this._canceler;
+                    canceller ();
+                }
                 if (!this._features)
                 {
-                    // delete existing features
-                    for (var i = 0; i < this._elements.length; i++)
+                    if (this._elements)
                     {
-                        var old_obj = this._elements[i];
-                        var cls = cim.class_map (old_obj);
-                        cls.prototype.remove (old_obj, this._cimmap.get_data ());
-                        old_obj.EditDisposition = "delete";
-                        old_obj.id = this.next_version (old_obj);
-                        old_obj.mRID = old_obj.id;
-                        this._elements[i] = new cls (old_obj, this._cimmap.get_data ());
+                        // delete existing features
+                        for (var i = 0; i < this._elements.length; i++)
+                        {
+                            var old_obj = this._elements[i];
+                            var cls = cim.class_map (old_obj);
+                            cls.prototype.remove (old_obj, this._cimmap.get_data ());
+                            old_obj.EditDisposition = "delete";
+                            old_obj.id = this.next_version (old_obj);
+                            old_obj.mRID = old_obj.id;
+                            this._elements[i] = new cls (old_obj, this._cimmap.get_data ());
+                        }
+                        delete this._elements;
                     }
-                    delete this._elements;
                 }
                 else
                 {
@@ -1117,6 +1235,12 @@ define
 
             cancel ()
             {
+                if (this._canceler)
+                {
+                    var canceller = this._canceler; // ensure recursion doesn't happen
+                    delete this._canceler;
+                    canceller ();
+                }
                 delete this._elements;
                 delete this._features;
                 this._map.getSource ("edit points").setData ({ "type" : "FeatureCollection", "features" : [] });

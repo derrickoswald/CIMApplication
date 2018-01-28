@@ -4,8 +4,7 @@ body {
 }
 
 .intro {
-    height: calc(100% - 60px);
-    margin-top: -20px;
+    height: calc(100% - 56px);
     padding: 0;
     -webkit-background-size: cover;
     -moz-background-size: cover;
@@ -44,6 +43,16 @@ body {
 }
 
 #edit_contents {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    margin-bottom: 20px;
+}
+
+#view_frame {
+    height: 100%;
+}
+
+#view_contents {
     overflow-x: hidden;
     overflow-y: scroll;
     margin-bottom: 20px;
