@@ -7,7 +7,7 @@
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
         <relativePath>../pom.xml</relativePath>
-        <version>2.11-2.1.1-2.3.8</version>
+        <version>2.11-2.2.0-2.3.8</version>
     </parent>
     <artifactId>CIMConnector</artifactId>
     <packaging>rar</packaging>
