@@ -608,11 +608,11 @@ class ShortCircuitSuite
             val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
-            assert (Math.abs (data.r - 0.19243516) < 0.0005, "expected r=192mΩ") // 185
-            assert (Math.abs (data.x - 0.0437) < 0.0005, "expected x=44mΩ") // 55
-            assert (Math.abs (data.ik - 604) < 0.5, "expected ik1polig=604A") // 601
-            assert (Math.abs (data.ik3pol - 1112) < 0.5, "expected ik3polig=1112A") // 1103
+            assert (Math.abs (data.r - 193.36016e-3) < 0.0005, "expected r=193mΩ")
+            assert (Math.abs (data.x - 46.45e-3) < 0.0005, "expected x=46mΩ")
+            assert (Math.abs (data.ik - 601) < 0.5, "expected ik1polig=601A")
+            assert (Math.abs (data.ik3pol - 1103) < 0.5, "expected ik3polig=1103A")
             // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 0.770e6) < 5e3, "expected 0.770MVA") // 0.764
+            assert (Math.abs (data.sk * sc_options.cmax - 0.764e6) < 5e3, "expected 0.764MVA")
     }
 }

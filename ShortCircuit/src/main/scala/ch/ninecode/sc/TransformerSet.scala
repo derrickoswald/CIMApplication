@@ -29,6 +29,7 @@ case class TransformerSet (transformers: Array[TData])
         // ToDo: fix this 1kV multiplier on the voltages
         1000.0 * v
     }
+
     lazy val v1: Double =
     {
         val v = transformers.head.voltage1
@@ -97,12 +98,19 @@ case class TransformerSet (transformers: Array[TData])
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
     lazy val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
 
+    // base power (for per unit calculations)
+    lazy val base_va: Double =
+    {
+        val va = transformers.head.end1.ratedS
+        if (!transformers.forall (_.end1.ratedS == va))
+            log.error ("transformer set " + transformer_name + " has units with different base VA " + transformers.map (_.end1.ratedS).mkString (" "))
+        va
+    }
     // per unit impedance of the transformer
     lazy val impedances: Array[Complex] = transformers.map (
         (edge) =>
         {
             val sqrt3 = Math.sqrt (3)
-            val base_va = edge.end1.ratedS
             // equivalent per unit values
             val base_amps = base_va / v1 / sqrt3
             val base_ohms = v1 / base_amps / sqrt3
