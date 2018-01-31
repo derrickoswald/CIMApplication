@@ -14,6 +14,11 @@ case class ScNode (
     voltage: Double,
     source: String,
     impedance: Impedanzen,
-    fuses: List[Double])
+    fuses: List[Double],
+    var errors: List[ScError])
 extends
     Graphable
+{
+    def noFatalErrors: Boolean = (null == errors) || errors.forall (!_.fatal)
+    def reinforcement: Boolean = (null != errors) && errors.exists (_.message.startsWith ("reinforcement"))
+}

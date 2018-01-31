@@ -11,6 +11,7 @@ package ch.ninecode.sc
  * @param r0 aggregate zero sequence resistance from the source (primary of feeding transformer) to this node (Ω)
  * @param x0 aggregate zero sequence reactance from the source (primary of feeding transformer) to this node (Ω)
  * @param fuses list of fuse values from the source (primary of feeding transformer) to this node
+ * @param errors errors encountered in processing
  * @param ik one phase short bolted circuit current (A)
  * @param ik3pol three phase bolted short circuit current (A)
  * @param ip maximum aperiodic short-circuit current according to IEC 60909-0 (A)
@@ -31,6 +32,7 @@ case class HouseConnection (
     r0: Double,
     x0: Double,
     fuses: List[Double],
+    errors: List[ScError],
     ik: Double = 0.0,
     ik3pol: Double = 0.0,
     ip: Double = 0.0,
@@ -41,3 +43,15 @@ case class HouseConnection (
     motor_3ph_max_med: Double = 0.0,
     motor_1ph_max_med: Double = 0.0,
     motor_l_l_max_med: Double = 0.0)
+{
+    def csv: String =
+        equipment + ";" + tx + ";" + ik + ";" + ik3pol + ";" + ip + ";" + r + ";" + r0 + ";" + x + ";" + x0 + ";" + sk + ";" +
+        fuses.mkString (",") + ";" + (if (fuses.isEmpty) ";" else FData.fuse (ik) + ";" + FData.fuseOK (ik, fuses)) + ";" +
+        (if (null != errors) errors.mkString (",") else "") + ";" +
+        motor_3ph_max_low + ";" + motor_1ph_max_low + ";" + motor_l_l_max_low + ";" + motor_3ph_max_med + ";" + motor_1ph_max_med + ";" + motor_l_l_max_med
+}
+
+object HouseConnection
+{
+    val csv_header: String = "has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;fuses;fusemax;fuseOK;errors;motor3phmax_low;motor1phmax_low;motorllmax_low;motor3phmax_med;motor1phmax_med;motorllmax_med"
+}

@@ -32,7 +32,7 @@ object Database
         resultset2.close ()
         if (!exists2)
         {
-            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fusemax double, fuseok boolean, ik double, ik3pol double, ip double, sk double, motor_3ph_max_low double, motor_1ph_max_low double, motor_l_l_max_low double, motor_3ph_max_med double, motor_1ph_max_med double, motor_l_l_max_med double)")
+            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, trafo text, r double, x double, r0 double, x0 double, fuses text, fusemax double, fuseok boolean, errors text, ik double, ik3pol double, ip double, sk double, motor_3ph_max_low double, motor_1ph_max_low double, motor_l_l_max_low double, motor_3ph_max_med double, motor_1ph_max_med double, motor_l_l_max_med double)")
             statement.executeUpdate ("create index if not exists equipment_index on shortcircuit (equipment)")
             statement.executeUpdate ("create index if not exists run_index on shortcircuit (run)")
         }
@@ -81,7 +81,7 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, trafo, r, x, r0, x0, fuses, fusemax, fuseok, ik, ik3pol, ip, sk, motor_3ph_max_low, motor_1ph_max_low, motor_l_l_max_low, motor_3ph_max_med, motor_1ph_max_med, motor_l_l_max_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, trafo, r, x, r0, x0, fuses, fusemax, fuseok, errors, ik, ik3pol, ip, sk, motor_3ph_max_low, motor_1ph_max_low, motor_l_l_max_low, motor_3ph_max_med, motor_1ph_max_med, motor_l_l_max_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert.setNull (1, Types.INTEGER)
@@ -104,16 +104,20 @@ object Database
                         datainsert.setDouble (11, FData.fuse (records(i).ik))
                         datainsert.setBoolean (12, FData.fuseOK (records(i).ik, records(i).fuses))
                     }
-                    datainsert.setDouble (13, records(i).ik)
-                    datainsert.setDouble (14, records(i).ik3pol)
-                    datainsert.setDouble (15, records(i).ip)
-                    datainsert.setDouble (16, records(i).sk)
-                    datainsert.setDouble (17, records(i).motor_3ph_max_low)
-                    datainsert.setDouble (18, records(i).motor_1ph_max_low)
-                    datainsert.setDouble (19, records(i).motor_l_l_max_low)
-                    datainsert.setDouble (20, records(i).motor_3ph_max_med)
-                    datainsert.setDouble (21, records(i).motor_1ph_max_med)
-                    datainsert.setDouble (22, records(i).motor_l_l_max_med)
+                    if (null == records(i).errors)
+                        datainsert.setNull (13, Types.VARCHAR)
+                    else
+                        datainsert.setString (13, records(i).errors.mkString (","))
+                    datainsert.setDouble (14, records(i).ik)
+                    datainsert.setDouble (15, records(i).ik3pol)
+                    datainsert.setDouble (16, records(i).ip)
+                    datainsert.setDouble (17, records(i).sk)
+                    datainsert.setDouble (18, records(i).motor_3ph_max_low)
+                    datainsert.setDouble (19, records(i).motor_1ph_max_low)
+                    datainsert.setDouble (20, records(i).motor_l_l_max_low)
+                    datainsert.setDouble (21, records(i).motor_3ph_max_med)
+                    datainsert.setDouble (22, records(i).motor_1ph_max_med)
+                    datainsert.setDouble (23, records(i).motor_l_l_max_med)
                     datainsert.executeUpdate ()
                 }
                 datainsert.close ()

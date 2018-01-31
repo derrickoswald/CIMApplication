@@ -8,10 +8,12 @@ package ch.ninecode.sc
  * @param edge the edge impedance
  * @param fuses the list of fuses encountered on the path from the source to this node
  * @param previous_node the previous node mRID
+ * @param error any error encountered
  */
 case class ScMessage (
     source: String,
     ref: Impedanzen,
     edge: Impedanzen,
     fuses: List[Double],
-    previous_node: String)
+    previous_node: String,
+    error: ScError)

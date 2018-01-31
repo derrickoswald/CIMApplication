@@ -7,3 +7,6 @@ package ch.ninecode.sc
  * @param null_impedanz zero sequence impedance (Ω)
  */
 case class Impedanzen (impedanz: Complex, null_impedanz: Complex)
+{
+    def - (other: Impedanzen): Impedanzen = Impedanzen (this.impedanz + -other.impedanz, this.null_impedanz + -other.null_impedanz)
+}

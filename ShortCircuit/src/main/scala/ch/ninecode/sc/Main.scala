@@ -7,7 +7,6 @@ import java.net.URLDecoder
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.rdd.RDD
@@ -15,12 +14,14 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.model.Element
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 
 object Main
 {
@@ -296,6 +297,13 @@ object Main
                     h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) ";" else FData.fuse (h.ik) + ";" + FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
                 })
                 log.info ("output_path: " + workdir)
+                val hdfs_configuration = new Configuration()
+                hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+                hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+                val hdfs = FileSystem.get (URI.create (workdir), hdfs_configuration)
+
+                val directory = new Path (workdir)
+                hdfs.delete (directory, true)
                 string.saveAsTextFile (workdir)
 
                 // output SQLite database

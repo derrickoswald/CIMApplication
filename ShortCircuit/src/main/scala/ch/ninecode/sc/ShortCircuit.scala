@@ -35,7 +35,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, List ())
+    val default_node = ScNode ("", 0.0, null, null, List (), null)
 
     def has (string: String): String =
     {
@@ -62,7 +62,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, List ())
+        ScNode (node.id, voltage, null, null, List (), null)
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
@@ -227,36 +227,79 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             if (null == message.source) // handle the initial message by keeping the same vertex node
                 v
-            else
+            else if (null != message.error && message.error.fatal) // handle just setting the fatal message
+                v.copy (errors = if (null == v.errors) List (message.error) else v.errors :+ message.error)
+            else // non-fatal or no error
             {
-                var z = Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz)
-                v.copy (source = message.source, impedance = z, fuses = message.fuses)
+                val errors = if (null != message.error) if (null == v.errors) List (message.error) else v.errors :+ message.error else v.errors
+                var z = if ((null != message.ref) && (null != message.edge)) Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz) else v.impedance
+                v.copy (source = message.source, impedance = z, fuses = message.fuses, errors = errors)
             }
+        }
+
+        def handleMesh (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
+        {
+            // don't propagate indefinitely
+            if (triplet.srcAttr.noFatalErrors && triplet.dstAttr.noFatalErrors)
+                if (!triplet.srcAttr.reinforcement && !triplet.dstAttr.reinforcement)
+                {
+                    // check if the non-null impedance difference matches what we expect for this cable
+                    triplet.attr.element match
+                    {
+                        case line: ACLineSegment ⇒
+                            val diff = triplet.srcAttr.impedance - triplet.dstAttr.impedance
+                            val expected = triplet.attr.impedanceTo ("not used")
+                            val isequal = Math.abs (!diff.impedanz - !expected.impedanz) < 1e-6 && Math.abs (!diff.null_impedanz - !expected.null_impedanz) < 1e-6
+                            if (isequal)
+                                Iterator.empty
+                            else
+                            {
+                                val error = ScError (true, "non-radial network detected through %s".format (triplet.attr.id_equ))
+                                log.error (error.message)
+                                Iterator (
+                                    (triplet.dstId, ScMessage (triplet.srcAttr.source, null, null, null, null, error)),
+                                    (triplet.srcId, ScMessage (triplet.dstAttr.source, null, null, null, null, error))
+                                )
+                            }
+                        case _ ⇒
+                            Iterator.empty
+                    }
+                }
+                else
+                    Iterator.empty
+            else
+                Iterator.empty
         }
 
         def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
         {
             val x =
-            if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
-                if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
-                {
-                    val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
-                    val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
-                    val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
-                    Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq)))
-                }
+            if (triplet.srcAttr.impedance != null)
+                if (triplet.dstAttr.impedance == null)
+                    if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
+                    {
+                        val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
+                        val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
+                        val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
+                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, null)))
+                    }
+                    else
+                        Iterator.empty
                 else
-                    Iterator.empty
-            else if (triplet.srcAttr.impedance == null && triplet.dstAttr.impedance != null)
-                if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
-                {
-                    val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
-                    val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
-                    val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
-                    Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq)))
-                }
+                    handleMesh (triplet)
+            else if (triplet.dstAttr.impedance != null)
+                if (triplet.srcAttr.impedance == null)
+                    if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
+                    {
+                        val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
+                        val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
+                        val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
+                        Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, null)))
+                    }
+                    else
+                        Iterator.empty
                 else
-                    Iterator.empty
+                    handleMesh (triplet)
             else
                 Iterator.empty
             x
@@ -264,12 +307,25 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def mergeMessage (a: ScMessage, b: ScMessage): ScMessage =
         {
-            if (a.previous_node != b.previous_node)
-                log.warn ("non-simple parallel path detected")
-            a.copy (edge = Impedanzen (a.edge.impedanz.parallel_impedanz (b.edge.impedanz), a.edge.null_impedanz.parallel_impedanz (b.edge.null_impedanz)))
+            if (null != a.error)
+                a
+            else if (null != b.error)
+                b
+            else if (a.previous_node != b.previous_node)
+            {
+                val error = ScError (true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
+                log.error (error.message)
+                a.copy (error = error)
+            }
+            else
+            {
+                val parallel = Impedanzen (a.edge.impedanz.parallel_impedanz (b.edge.impedanz), a.edge.null_impedanz.parallel_impedanz (b.edge.null_impedanz))
+                val warning = ScError (false, "reinforcement detected from %s".format (a.previous_node))
+                a.copy (edge = parallel, error = warning)
+            }
         }
 
-        initial.pregel (ScMessage (null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
+        initial.pregel (ScMessage (null, null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
     // compute the short-circuit values
@@ -309,7 +365,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         HouseConnection (node.id_seq, has (node.id_seq), node.source,
             node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
-            node.fuses, ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
+            node.fuses, node.errors, ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
     }
 
     def run (): RDD[HouseConnection] =
@@ -338,10 +394,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
+                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value")) else null
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List ())
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List (), errors)
                     else
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, List ())
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, List (), errors)
                 case None ⇒
                     v
             }
