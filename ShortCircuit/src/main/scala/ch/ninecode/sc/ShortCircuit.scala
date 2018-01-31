@@ -61,8 +61,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val node = arg._1._1
         val term = arg._1._2
         val edge = arg._2
-        val vertex = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, vertex, null, null, List ())
+        val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
+        ScNode (node.id, voltage, null, null, List ())
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
@@ -223,33 +223,38 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def trace (initial: Graph[ScNode, ScEdge]): Graph[ScNode, ScEdge] =
     {
         // do the Pregel algorithm
-        def vprog (id: VertexId, v: ScNode, message: ScNode): ScNode =
+        def vprog (id: VertexId, v: ScNode, message: ScMessage): ScNode =
         {
-            if (null == message)
+            if (null == message.source) // handle the initial message by keeping the same vertex node
                 v
-            else if (null == v)
-                message
-            else if (null == message.impedance)
-                v
-            else if (null == v.impedance)
-                message
-            else if (message.impedance.impedanz < v.impedance.impedanz)
-                message
             else
-                v
+            {
+                var z = Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz)
+                v.copy (source = message.source, impedance = z, fuses = message.fuses)
+            }
         }
 
-        def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScNode)] =
+        def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
         {
             val x =
             if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
                 if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
-                    Iterator ((triplet.dstId, ScNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source, triplet.attr.impedanceTo (triplet.dstAttr.id_seq, triplet.srcAttr.impedance), triplet.attr.fusesTo (triplet.srcAttr.fuses))))
+                {
+                    val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
+                    val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
+                    val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
+                    Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq)))
+                }
                 else
                     Iterator.empty
             else if (triplet.srcAttr.impedance == null && triplet.dstAttr.impedance != null)
                 if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
-                    Iterator ((triplet.srcId, ScNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source, triplet.attr.impedanceTo (triplet.srcAttr.id_seq, triplet.dstAttr.impedance), triplet.attr.fusesTo (triplet.dstAttr.fuses))))
+                {
+                    val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
+                    val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
+                    val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
+                    Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq)))
+                }
                 else
                     Iterator.empty
             else
@@ -257,12 +262,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             x
         }
 
-        def mergeMessage (a: ScNode, b: ScNode): ScNode =
+        def mergeMessage (a: ScMessage, b: ScMessage): ScMessage =
         {
-            a.copy (impedance = Impedanzen (a.impedance.impedanz.parallel_impedanz (b.impedance.impedanz), a.impedance.null_impedanz.parallel_impedanz (b.impedance.null_impedanz)))
+            if (a.previous_node != b.previous_node)
+                log.warn ("non-simple parallel path detected")
+            a.copy (edge = Impedanzen (a.edge.impedanz.parallel_impedanz (b.edge.impedanz), a.edge.null_impedanz.parallel_impedanz (b.edge.null_impedanz)))
         }
 
-        initial.pregel (default_node, 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
+        initial.pregel (ScMessage (null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
     // compute the short-circuit values

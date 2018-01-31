@@ -99,38 +99,66 @@ case class ScEdge (
     }
 
     /**
-     * Compute impedance to the given node as accumulated from the reference impedance
+     * Compute reference impedance as seen at the given node.
      *
      * @param id_cn TopologicalNode to compute
      * @param ref impedance of the other end of the edge (Ω)
      * @return impedance of the given node
      */
-    def impedanceTo (id_cn: String, ref: Impedanzen): Impedanzen =
+    def impedanceFrom (id_cn: String, ref: Impedanzen): Impedanzen =
     {
         element match
         {
-            case line: ACLineSegment ⇒
-                val dist_km = line.Conductor.len / 1000.0
-                Impedanzen (Complex (line.r * dist_km, line.x * dist_km) + ref.impedanz, Complex (line.r0 * dist_km, line.x0 * dist_km) + ref.null_impedanz)
             case transformer: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
                 {
                     val ratio = v1 / v2
                     val ratio2 = ratio * ratio
+                    Impedanzen (ref.impedanz * ratio2, ref.null_impedanz * ratio2)
+                }
+                else if (id_cn == id_cn_2)
+                {
+                    val ratio = v2 / v1
+                    val ratio2 = ratio * ratio
+                    Impedanzen (ref.impedanz * ratio2, ref.null_impedanz * ratio2)
+                }
+                else
+                    ref
+            case _ ⇒
+                ref
+        }
+    }
+
+    /**
+     * Compute impedance through the edge.
+     *
+     * @param id_cn TopologicalNode to compute
+     * @return impedance of the given node
+     */
+    def impedanceTo (id_cn: String): Impedanzen =
+    {
+        element match
+        {
+            case line: ACLineSegment ⇒
+                val dist_km = line.Conductor.len / 1000.0
+                Impedanzen (Complex (line.r * dist_km, line.x * dist_km), Complex (line.r0 * dist_km, line.x0 * dist_km))
+            case transformer: PowerTransformer ⇒
+                if (id_cn == id_cn_1)
+                {
                     val tx_impedance = this.impedance.impedanz
-                    Impedanzen (ref.impedanz * ratio2 + tx_impedance, ref.null_impedanz * ratio2 + tx_impedance)
+                    Impedanzen (tx_impedance, tx_impedance)
                 }
                 else if (id_cn == id_cn_2)
                 {
                     val ratio = v2 / v1
                     val ratio2 = ratio * ratio
                     val tx_impedance = this.impedance.impedanz
-                    Impedanzen ((ref.impedanz + tx_impedance) * ratio2, (ref.null_impedanz + tx_impedance) * ratio2)
+                    Impedanzen (tx_impedance * ratio2, tx_impedance * ratio2)
                 }
                 else
-                    ref
+                    Impedanzen (Complex (0.0), Complex (0.0))
             case _ ⇒
-                ref
+                Impedanzen (Complex (0.0), Complex (0.0))
         }
     }
 
