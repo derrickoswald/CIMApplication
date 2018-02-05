@@ -44,6 +44,7 @@ class ShortCircuitSuite
     val FILENAME4 = "sak_sample_ganged.rdf"
     val FILENAME5 = "sak_sample_parallel.rdf"
     val FILENAME6 = "sak_sample_complex_parallel.rdf"
+    val FILENAME7 = "ibw_cim_export.rdf"
 
     type FixtureParam = SparkSession
 
@@ -194,6 +195,8 @@ class ShortCircuitSuite
             new Unzip ().unzip (FILE_DEPOT + "sak_sample_parallel.zip", FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME6).exists)
             new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex_parallel.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME7).exists)
+            new Unzip ().unzip (FILE_DEPOT + "ibw_cim_export.zip", FILE_DEPOT)
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -728,5 +731,63 @@ class ShortCircuitSuite
             val data = consumer.first ()
             assert (null != data.errors)
             assert (data.errors.contains (ScError (true, "non-radial network detected through Line2")))
+    }
+
+    test ("IBW")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME7
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                cmax = 1.0,
+                cmin = 1.0)
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+            house_connection.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "/result"
+            val string = house_connection.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (HouseConnection.csv_header)
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            val consumer1 = house_connection.filter (_.node == "HAS9754_topo")
+            assert (0 < consumer1.count (), "HAS9754_topo not found")
+            val data = consumer1.first ()
+            assert (Math.abs (data.ik - 755) < 0.6, "expected ik1polig=755A")
+            assert (Math.abs (data.ik3pol - 1455) < 0.5, "expected ik3polig=1455A")
+            assert (Math.abs (data.sk - 1.008e6) < 5e3, "expected 1.008MVA")
     }
 }
