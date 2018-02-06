@@ -39,7 +39,7 @@ define
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
                 this._container.innerHTML = mustache.render (this._template);
-                // https://github.com/seiyria/bootstrap-slider
+                // https://github.com/seiyria/bootstrap-slider v10.0.0
                 this._slider = new Slider (
                     this._container.getElementsByTagName ("input")[0],
                     {
