@@ -34,9 +34,10 @@ object MaximumStartingCurrent
         motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
         ): (Double, Double) =
     {
+        val root3 = sqrt (3.0)
         val phin = network_impedance.angle
         val phim = acos (motor_power_factor)
-        val pmax = Math.abs (network_short_circuit_power / cos (phin - phim)) / motor_starting_current_ratio
+        val pmax = Math.abs (network_short_circuit_power / (root3 * cos (phin - phim))) / motor_starting_current_ratio
         (dmax_low_rep * pmax, dmax_medium_rep * pmax)
     }
 
@@ -61,8 +62,10 @@ object MaximumStartingCurrent
         motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
         ): (Double, Double) =
     {
-        val dd = max_power_3_phase_motor (network_short_circuit_power, network_impedance, motor_power_factor, motor_starting_current_ratio)
-        (dd._1 / 6.0, dd._2 / 6.0)
+        val phin = network_impedance.angle
+        val phim = acos (motor_power_factor)
+        val pmax = Math.abs (network_short_circuit_power / (6.0 * cos (phin - phim))) / motor_starting_current_ratio
+        (dmax_low_rep * pmax, dmax_medium_rep * pmax)
     }
 
     /**
@@ -94,13 +97,13 @@ object MaximumStartingCurrent
 
         val temp_low = dmax_low_rep / root3 * network_short_circuit_power
         val pmax_line_neutral_low = min (
-            abs (temp_low / cos (phin - (phim - thirty))),
-            abs (temp_low / cos (phin - (phim + thirty))))
+            abs (temp_low / cos (phin - (phim - thirty))), // dL1−N
+            abs (temp_low / cos (phin - (phim + thirty)))) // dL2−N
         val pmax_line_line_low = min (
-            dmax_low_rep / 2.0 * network_short_circuit_power / cos (phin - phim),
+            dmax_low_rep / 2.0 * network_short_circuit_power / cos (phin - phim), // dL1−L2
             min (
-                dmax_low_rep * network_short_circuit_power / cos (phin - (phim + sixty)),
-                dmax_low_rep * network_short_circuit_power / cos (phin - (phim - sixty)))
+                dmax_low_rep * network_short_circuit_power / cos (phin - (phim + sixty)), // dL2−L3
+                dmax_low_rep * network_short_circuit_power / cos (phin - (phim - sixty))) // dL3−L1
         )
         val pmax_low = abs (min (pmax_line_neutral_low, pmax_line_line_low))
 

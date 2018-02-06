@@ -8,6 +8,8 @@ package ch.ninecode.sc
  * @param default_supply_network_short_circuit_angle short circuit power angle to be used if no corresponding substation is found (degrees)
  * @param cmax voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless)
  * @param cmin voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)
+ * @param cosphi power factor of (motor) load
+ * @param starting_ratio surge current ratio of (motor) starting load
  * @param trafos file name of transformer names to process
  * @param workdir shared directory (HDFS or NFS share) for intermediate results
  */
@@ -17,7 +19,7 @@ case class ShortCircuitOptions (
     default_supply_network_short_circuit_angle: Double = -70.0,
     cmax: Double = 1.0,
     cmin: Double = 0.90,
-    cosphi: Double = 1.0,
+    cosphi: Double = 0.5,
     starting_ratio: Double = 1.0,
     trafos: String = "",
     workdir: String = "")

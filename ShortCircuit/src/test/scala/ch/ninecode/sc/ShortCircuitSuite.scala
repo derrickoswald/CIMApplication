@@ -761,7 +761,9 @@ class ShortCircuitSuite
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
                 cmax = 1.0,
-                cmin = 1.0)
+                cmin = 1.0,
+                cosphi = 1.0,
+                starting_ratio = 1.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val house_connection = shortcircuit.run ()
             house_connection.cache ()
@@ -785,9 +787,15 @@ class ShortCircuitSuite
 
             val consumer1 = house_connection.filter (_.node == "HAS9754_topo")
             assert (0 < consumer1.count (), "HAS9754_topo not found")
-            val data = consumer1.first ()
-            assert (Math.abs (data.ik - 755) < 0.6, "expected ik1polig=755A")
-            assert (Math.abs (data.ik3pol - 1455) < 0.5, "expected ik3polig=1455A")
-            assert (Math.abs (data.sk - 1.008e6) < 5e3, "expected 1.008MVA")
+            val data1 = consumer1.first ()
+            assert (Math.abs (data1.ik - 755) < 0.6, "expected ik1polig=755A")
+            assert (Math.abs (data1.ik3pol - 1455) < 0.5, "expected ik3polig=1455A")
+            assert (Math.abs (data1.sk - 1.008e6) < 5e3, "expected sk=1.008MVA")
+            assert (Math.abs (data1.motor_3ph_max_med / 400.0 - 48.86) < 0.5, "expected maxanlaufstrom=49A")
+
+            val consumer2 = house_connection.filter (_.node == "HAS9753_topo")
+            assert (0 < consumer2.count (), "HAS9753_topo not found")
+            val data2 = consumer2.first ()
+            assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 272.8) < 0.5, "expected maxanlaufstrom=273A")
     }
 }
