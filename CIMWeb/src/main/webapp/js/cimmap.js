@@ -81,6 +81,22 @@ define
             return (TheMap);
         }
 
+        /*
+         * Predicate for an empty object.
+         * @parm the object to check for emptiness
+         * @return <code>true</code> if the object has no properties.
+         */
+        function empty (obj)
+        {
+            var ret = true;
+            for (var property in CIM_Data)
+            {
+                ret = false;
+                break;
+            }
+            return (ret);
+        }
+
         /**
          * Set the CIM data for the map to draw.
          * @param {JSON} Data parsed from the cim module.
@@ -90,7 +106,7 @@ define
         function set_data (data)
         {
             CIM_Data = data;
-            if (null != CIM_Data)
+            if (null != CIM_Data && !empty (CIM_Data))
                 make_map (function () { zoom_extents (); });
         }
 
@@ -677,6 +693,11 @@ define
                     return (ret);
                 }
 
+                function deleted (equipment)
+                {
+                    return (equipment.EditDisposition && ("delete" == equipment.EditDisposition));
+                }
+
                 function preload (source, terminal)
                 {
                     if (null != source)
@@ -729,6 +750,11 @@ define
                     var count = number_of_elements ();
                     while ("undefined" != typeof (source = todo.pop ())) // if you call pop() on an empty array, it returns undefined
                     {
+                        // don't trace deleted elements
+                        var element = CIM_Data.Element[source];
+                        if (null == element || deleted (element))
+                            continue;
+
                         equipment.push (source);
                         var ce = CIM_Data.ConductingEquipment[source];
                         if (null == ce || stop (ce))
@@ -738,14 +764,14 @@ define
                             for (var i = 0; i < terms.length; i++)
                             {
                                 var terminal = CIM_Data.Terminal[terms[i]];
-                                if (null != terminal)
+                                if (null != terminal && !deleted (terminal))
                                 {
                                     var equp = terminal.ConductingEquipment;
-                                    if (null != equp)
+                                    if (null != equp && !deleted (equp))
                                         if (!equipment.includes (equp) && !todo.includes (equp))
                                             todo.push (equp); // this should never happen
                                     var node = terminal.ConnectivityNode;
-                                    if (null != node)
+                                    if (null != node && !deleted (node))
                                     {
                                         var next = terminals_by_node[node];
                                         if (null != next)
@@ -754,10 +780,10 @@ define
                                                 if (next[j] != terms[i]) // don't trace back the way we came
                                                 {
                                                     var t = CIM_Data.Terminal[next[j]];
-                                                    if (null != t)
+                                                    if (null != t && !deleted (t))
                                                     {
                                                         var e = t.ConductingEquipment;
-                                                        if (null != e)
+                                                        if (null != e && !deleted (e))
                                                             if (!equipment.includes (e) && !todo.includes (e))
                                                                 todo.push (e);
                                                     }
@@ -901,7 +927,7 @@ define
 
         /**
          * @summary Redraw the map.
-         * @description Given some CIM datra has been loaded, redraws the map.
+         * @description Given some CIM data has been loaded, redraws the map.
          * @param {object} event - optional, the vector tile checkbox change event
          * @function redraw
          * @memberOf module:cimmap
@@ -942,6 +968,43 @@ define
             return ({ url: _url });
         }
 
+        function poink (x, y)
+        {
+            var width = 4;
+            var height = 4;
+            var features = TheMap.queryRenderedFeatures
+            (
+                [
+                  [x - width / 2, y - height / 2],
+                  [x + width / 2, y + height / 2]
+                ],
+                {}
+            );
+            if ((null != features) && (0 != features.length))
+            {
+                var selection = [];
+                for (var i = 0; i < features.length; i++)
+                {
+                    var mrid = features[i].properties.mRID;
+                    if (null != mrid && !selection.includes (mrid))
+                        selection.push (mrid);
+                }
+                if (selection.length > 0)
+                {
+                    if (selection[0] != get_selected_feature ())
+                    {
+                        CURRENT_FEATURE = selection[0];
+                        CURRENT_SELECTION = selection;
+                        highlight ();
+                    }
+                }
+                else
+                    unhighlight ();
+            }
+            else
+                unhighlight ();
+        }
+
         function default_mousedown_listener (event)
         {
             // only do something if no key is pressed
@@ -955,41 +1018,7 @@ define
                 var leftbutton = 0 != (buttons & 1);
                 var rightbutton = 0 != (buttons & 2);
                 if (leftbutton)
-                {
-                    var width = 4;
-                    var height = 4;
-                    var features = TheMap.queryRenderedFeatures
-                    (
-                        [
-                          [event.point.x - width / 2, event.point.y - height / 2],
-                          [event.point.x + width / 2, event.point.y + height / 2]
-                        ],
-                        {}
-                    );
-                    if ((null != features) && (0 != features.length))
-                    {
-                        var selection = [];
-                        for (var i = 0; i < features.length; i++)
-                        {
-                            var mrid = features[i].properties.mRID;
-                            if (null != mrid && !selection.includes (mrid))
-                                selection.push (mrid);
-                        }
-                        if (selection.length > 0)
-                        {
-                            if (selection[0] != get_selected_feature ())
-                            {
-                                CURRENT_FEATURE = selection[0];
-                                CURRENT_SELECTION = selection;
-                                highlight ();
-                            }
-                        }
-                        else
-                            unhighlight ();
-                    }
-                    else
-                        unhighlight ();
-                }
+                    poink (event.point.x, event.point.y);
                 else if (rightbutton)
                 {
                     //<i id="" class="fa fa-map-marker"></i>
@@ -1002,15 +1031,25 @@ define
             }
         }
 
+        function default_touchstart_listener (event)
+        {
+            // only do something if no key is pressed
+            var key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
+            if (!key)
+                poink (event.point.x, event.point.y);
+        }
+
         function add_listeners ()
         {
             // handle mouse click
             TheMap.on ("mousedown", default_mousedown_listener);
+            TheMap.on ("touchstart", default_touchstart_listener);
         }
 
         function remove_listeners ()
         {
             TheMap.off ("mousedown", default_mousedown_listener);
+            TheMap.off ("touchstart", default_touchstart_listener);
         }
 
         /**
@@ -1033,7 +1072,7 @@ define
                     container: "map",
                     center: [7.48634000000001, 46.93003],
                     zoom: 8,
-                    maxZoom: 25,
+                    maxZoom: 20,
                     // Note: this local copy is the same as mapbox (as of 3.10.2017) except for the reference
                     // to the sprite URL which is changed to     sprite: "/styles/streets-v9-sprites"
                     // style: "mapbox://styles/mapbox/streets-v9",
@@ -1095,6 +1134,7 @@ define
                      show_scale_bar: show_scale_bar,
                      show_coordinates: show_coordinates,
                      show_streetview: show_streetview,
+                     make_map, make_map,
                      zoom_extents: zoom_extents,
                      select: select,
                      buildings_3d: buildings_3d,
