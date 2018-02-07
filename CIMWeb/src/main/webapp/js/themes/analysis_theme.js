@@ -99,8 +99,8 @@ define
                 var nr = Number (r);
                 var nx = Number (x);
                 if (!isNaN (nr) && !isNaN (nx))
-                    if ((nr < 0.1) && (nx < 0.1))
-                        ret = (nr / 1000).toPrecision (3) + " + " + (nx / 1000).toPrecision (3) + "jm&#x2126;";
+                    if ((nr < 1.0) && (nx < 1.0))
+                        ret = (nr * 1000).toPrecision (3) + " + " + (nx * 1000).toPrecision (3) + "jm&#x2126;";
                     else
                         ret = nr.toPrecision (3) + " + " + nx.toPrecision (3) + "j&#x2126;";
                 else
@@ -122,7 +122,7 @@ define
                     ret =
                     "<strong>" + analysis.equipment + " (" + analysis.tx + ")</strong>" +
                     "<p>" +
-                    "<div>S<sub>k</sub> = " + this.dvalue (analysis.sk) + "VA</div>" +
+                    "<div>S<sub>k</sub> = " + this.mvalue (analysis.sk) + "VA</div>" +
                     "<div>Z<sub>11</sub> = " + this.impedance (analysis.r, analysis.x) + " Z<sub>00</sub> = " + this.impedance (analysis.r0, analysis.x0) + "</div>" +
                     "<div>I<sub>p</sub> = " + this.dvalue (analysis.ip) + "A</div>" +
                     "<table class='analysis-table'>" +
