@@ -6,15 +6,123 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap"],
+    ["util", "mustache", "cim", "cimmap", "themes/analysis_theme"],
     /**
      * @summary Functions to perform short circuit calculations.
      * @name cimanalysis
      * @exports cimanalysis
      * @version 1.0
      */
-    function (util, mustache, cim, cimmap)
+    function (util, mustache, cim, cimmap, AnalysisTheme)
     {
+        // The analysis details.
+        // provisional schema:
+        // [
+        //     {
+        //         "node": "HAS9753_fuse_topo",
+        //         "equipment": "HAS9753_fuse",
+        //         "tx": "TRA927",
+        //         "r": 0.0254,
+        //         "x": 0.022199999999999998,
+        //         "r0": 0.08360000000000001,
+        //         "x0": 0.0468,
+        //         "fuses": "WrappedArray(-1.0)",
+        //         "ik": 3818.9066230186995,
+        //         "ik3pol": 6845.8634601014855,
+        //         "ip": 10181.680167258599,
+        //         "sk": 4742953.3338300185,
+        //         "motor_3ph_max_low": 173607.8294153827,
+        //         "motor_1ph_max_low": 50116.26352319892,
+        //         "motor_l_l_max_low": 150348.79056959678,
+        //         "motor_3ph_max_med": 86803.91470769135,
+        //         "motor_1ph_max_med": 25058.13176159946,
+        //         "motor_l_l_max_med": 75174.39528479839
+        //     },
+        //     ...
+        // ]
+        var TheAnalysis;
+
+        /**
+         * @summary Execute short circuit calculation.
+         * @description Perform a short circuit calculation on loaded CIM data.
+         * @return a Promise to resolve or reject the analysis
+         * @function analyze
+         * @memberOf module:cimanalysis
+         */
+        function analyze ()
+        {
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        var url;
+                        var xmlhttp;
+
+                        // ToDo: validation
+                        var network_power = Number (document.getElementById ("network_power").value);
+                        var network_angle = Number (document.getElementById ("network_angle").value);
+                        var cmax = Number (document.getElementById ("cmax").value);
+                        var cmin = Number (document.getElementById ("cmin").value);
+                        var motor_power_factor = Number (document.getElementById ("motor_power_factor").value);
+                        var starting_ratio = Number (document.getElementById ("starting_ratio").value);
+                        url = util.home () + "cim/short_circuit" +
+                            ";network_short_circuit_power=" + network_power +
+                            ";network_short_circuit_angle=" + network_angle +
+                            ";cmax=" + cmax +
+                            ";cmin=" + cmin +
+                            ";cosphi=" + motor_power_factor +
+                            ";starting_ratio=" + starting_ratio;
+                        xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            if (4 == xmlhttp.readyState)
+                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                                {
+                                    try
+                                    {
+                                        var resp = JSON.parse (xmlhttp.responseText);
+                                        if (resp.status == "OK")
+                                            resolve (resp.result);
+                                        else
+                                            reject (resp.message);
+                                    }
+                                    catch (exception)
+                                    {
+                                        reject (exception.toString ());
+                                    }
+                                }
+                                else
+                                    reject ("xmlhttp.status = " + xmlhttp.status);
+                        };
+                        xmlhttp.send ()
+                    }
+                )
+            );
+        }
+
+        /**
+         * @summary Execute short circuit calculation.
+         * @description Perform a short circuit calculation on loaded CIM data and insert the results in the analysis_results div.
+         * @param {object} event - optional, the click event
+         * @function do_analysis
+         * @memberOf module:cimanalysis
+         */
+        function do_analysis (event)
+        {
+            function successCallback (data)
+            {
+                document.getElementById ("analysis_results").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>";
+            }
+
+            function failureCallback (message)
+            {
+                alert ("analysis failed: " + message);
+            }
+
+            analyze ().then (successCallback, failureCallback);
+        }
+
+
         /**
          * @summary Execute short circuit calculation.
          * @description Perform a short circuit calculation on loaded CIM data.
@@ -22,39 +130,23 @@ define
          * @function do_analysis
          * @memberOf module:cimanalysis
          */
-        function do_analysis (event)
+        function to_map (event)
         {
-            var url;
-            var xmlhttp;
-
-            // ToDo: validation
-            var network_power = Number (document.getElementById ("network_power").value);
-            var network_angle = Number (document.getElementById ("network_angle").value);
-            var cmax = Number (document.getElementById ("cmax").value);
-            var cmin = Number (document.getElementById ("cmin").value);
-            var motor_power_factor = Number (document.getElementById ("motor_power_factor").value);
-            var starting_ratio = Number (document.getElementById ("starting_ratio").value);
-            url = util.home () + "cim/short_circuit" +
-                ";network_short_circuit_power=" + network_power +
-                ";network_short_circuit_angle=" + network_angle +
-                ";cmax=" + cmax +
-                ";cmin=" + cmin +
-                ";cosphi=" + motor_power_factor +
-                ";starting_ratio=" + starting_ratio;
-            xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
+            function successCallback (data)
             {
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                    {
-                        var resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
-                            document.getElementById ("analysis_results").innerHTML = "<pre>\n" + JSON.stringify (resp.result, null, 4) + "</pre>";
-                        else
-                            alert (resp.message);
-                    }
-            };
-            xmlhttp.send ()
+                TheAnalysis = data
+                var theme = new AnalysisTheme (TheAnalysis);
+                cimmap.get_themer ().removeTheme (theme);
+                cimmap.get_themer ().addTheme (theme);
+                alert ("successfully sent results to the map");
+            }
+
+            function failureCallback (message)
+            {
+                alert ("failed to send results to the map: " + message);
+            }
+
+            analyze ().then (successCallback, failureCallback);
         }
 
         /**
@@ -100,7 +192,7 @@ define
                 "            <small id='cminHelp' class='form-text text-muted'>Voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless).</small>\n" +
                 "          </div>\n" +
                 "        </div>\n" +
-                "        <h4>Maximum Inrush Current</h4>\n" +
+                "        <h4>Maximum Starting Current</h4>\n" +
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='motor_power_factor'>Motor power factor</label>\n" +
                 "          <div class='col-sm-10'>\n" +
@@ -117,6 +209,7 @@ define
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <button id='do_analysis' type='button' class='btn btn-primary'>Execute</button>\n" +
+                "          <button id='analysis_to_map' name='analysis_to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
                 "        </div>\n" +
                 "      </form>\n" +
                 "      <div id='analysis_results'>\n" +
@@ -128,6 +221,8 @@ define
             var text = mustache.render (analysis_template);
             document.getElementById ("analysis").innerHTML = text;
             document.getElementById ("do_analysis").onclick = do_analysis;
+            document.getElementById ("analysis_to_map").onclick = to_map;
+
         }
 
         return (

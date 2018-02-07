@@ -66,7 +66,7 @@ public class CIMResultSet implements Record, ResultSet
         if (-1 == _Index) throw new SQLException (BEFOREFIRST);
         if (_Rows.size () <= _Index) throw new SQLException (AFTERLAST);
         Row row = _Rows.get (_Index);
-        _LastNull =row.isNullAt (columnIndex - 1);
+        _LastNull = row.isNullAt (columnIndex - 1);
         return (row);
     }
 

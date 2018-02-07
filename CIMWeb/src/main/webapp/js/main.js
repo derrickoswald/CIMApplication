@@ -110,6 +110,7 @@ requirejs
         document.getElementById ("trace").onclick = cimmap.trace;
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;
+        document.getElementById ("search_button").onclick = cimmap.search;
 
         // set URLs in the external links
         cimapp.initialize ();

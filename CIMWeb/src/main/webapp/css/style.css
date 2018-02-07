@@ -112,6 +112,11 @@ body {
     font-size: large;
 }
 
+.analysis-table tr th, .analysis-table tr td {
+    padding: 5px;
+    text-align: center;
+}
+
 /* allow div in dropdown menus, not just a */
 .dropdown-menu > li > div
 {

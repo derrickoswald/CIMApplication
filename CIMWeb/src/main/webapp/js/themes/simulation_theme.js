@@ -9,8 +9,8 @@ define
     /**
      * @summary Theme on simulation output.
      * @description Theme class for colorizing by (eventually percent maximum) cable current and (eventually) deviation from nominal voltage.
-     * @name voltage
-     * @exports voltage
+     * @name simulation_theme
+     * @exports simulation_theme
      * @version 1.0
      */
     function (mustache, DefaultTheme, SimulationLegend)

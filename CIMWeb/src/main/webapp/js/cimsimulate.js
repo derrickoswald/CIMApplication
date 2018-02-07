@@ -6,7 +6,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme"],
     /**
      * @summary Functions to simulate using CIM data in memory.
      * @name cimsimulate
@@ -844,7 +844,7 @@ define
                 "        <button id='do_refresh' name='do_refresh' type='button' class='btn btn-primary'>Refresh</button>\n" +
                 "        <button id='do_save' name='do_save' type='button' class='btn btn-primary'>Save</button>\n" +
                 "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
-                "        <button id='to_map' name='to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
+                "        <button id='simulation_to_map' name='simulation_to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
                 "      </form>\n" +
                 "      <div id='cim'>\n" +
                 "      </div>\n" +
@@ -867,7 +867,7 @@ define
             document.getElementById ("do_refresh").onclick = do_refresh;
             document.getElementById ("do_save").onclick = do_save;
             document.getElementById ("do_simulate").onclick = do_simulate;
-            document.getElementById ("to_map").onclick = to_map;
+            document.getElementById ("simulation_to_map").onclick = to_map;
             if (null == PlayerChooser)
             {
                 var help =

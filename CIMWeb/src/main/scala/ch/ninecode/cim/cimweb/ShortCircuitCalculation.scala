@@ -106,29 +106,40 @@ class ShortCircuitCalculation extends RESTful
                         ret.add (name, value)
                 case Types.STRUCT ⇒
                     val value = resultset.getObject (column)
-val stuff = try
-{
-                    val s: java.sql.Struct = value.asInstanceOf[java.sql.Struct]
-                    try
-                    {
-                        val attributes = s.getAttributes
-                        val attr1 = attributes(0)
-                        "attr class: " + attr1.getClass.getName
-                    }
-                    catch { case _: Throwable => "type: " + s.getSQLTypeName }
-}
-catch { case _: Throwable => "class: " + value.getClass.getName }
-                    // ToDo:
                     if (!resultset.wasNull ())
-                        ret.add (name, stuff)
+                        ret.add (name, value.getClass.getName)
                 case Types.TIMESTAMP ⇒
                     val value = resultset.getTimestamp (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value.getTime)
                 case Types.OTHER ⇒
-                    val value = resultset.getString (column)
+                    val value = resultset.getObject (column)
                     if (!resultset.wasNull ())
-                        ret.add (name, value)
+                        try
+                        {
+                            val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[Double]]
+                            val doubles: Array[Double] = array.toArray[Double]
+                            val json = Json.createArrayBuilder
+                            doubles.map (json.add)
+                            ret.add (name, json)
+                        }
+                        catch
+                        {
+                            case _: Throwable =>
+                                try
+                                {
+                                    val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[String]]
+                                    val strings: Array[String] = array.toArray[String]
+                                    val json = Json.createArrayBuilder
+                                    strings.map (json.add)
+                                    ret.add (name, json)
+                                }
+                                catch
+                                {
+                                    case _: Throwable =>
+                                        ret.add (name, "class: " + value.getClass.getName)
+                                }
+                        }
                 case _ ⇒
             }
         }
@@ -180,10 +191,7 @@ catch { case _: Throwable => "class: " + value.getClass.getName }
                                 val houses = Json.createArrayBuilder
                                 val meta = resultset.getMetaData
                                 while (resultset.next)
-                                {
-                                    val house = packRow (resultset, meta)
-                                    houses.add (house)
-                                }
+                                    houses.add (packRow (resultset, meta))
                                 resultset.close ()
                                 ret.setResult (houses.build)
                             }
