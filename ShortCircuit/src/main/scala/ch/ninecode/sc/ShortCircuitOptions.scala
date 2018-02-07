@@ -4,7 +4,7 @@ package ch.ninecode.sc
  * Short circuit calculation options.
  *
  * @param verbose flag to output progress and interesting values
- * @param default_supply_network_short_circuit_power available short circuit power to be used if no corresponding substation is found (VA)
+ * @param default_supply_network_short_circuit_power available short circuit power to be used if no equivalent injection is found (VA)
  * @param default_supply_network_short_circuit_angle short circuit power angle to be used if no corresponding substation is found (degrees)
  * @param cmax voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless)
  * @param cmin voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)

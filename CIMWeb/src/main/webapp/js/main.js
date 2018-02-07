@@ -4,8 +4,8 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimquery", "cimexport", "cimsimulate"],
-    function (cimapp, cimfiles, cimmap, cimquery, cimexport, cimsimulate)
+    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimexport", "cimsimulate"],
+    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimexport, cimsimulate)
     {
         /**
          * Get the hash portion of the url.
@@ -94,9 +94,10 @@ requirejs
                     {
                         case "files": cimfiles.initialize (event); break;
                         case "map": cimmap.initialize (event); break;
+                        case "analysis": cimanalysis.initialize (event); break;
                         case "simulate": cimsimulate.initialize (event); break;
-                        case "query": cimquery.initialize (event); break;
                         case "export": cimexport.initialize (event); break;
+                        case "query": cimquery.initialize (event); break;
                     }
                     initialized[next] = true;
                 }
@@ -105,6 +106,7 @@ requirejs
         document.getElementById ("internal_features").onchange = cimmap.redraw;
         document.getElementById ("buildings_3d").onchange = cimmap.buildings_3d;
         document.getElementById ("scale_bar").onchange = cimmap.scale_bar;
+        document.getElementById ("coordinate").onchange = cimmap.coordinates;
         document.getElementById ("trace").onclick = cimmap.trace;
         document.getElementById ("unhighlight").onclick = cimmap.unhighlight;
         document.getElementById ("search").onsubmit = cimmap.search;

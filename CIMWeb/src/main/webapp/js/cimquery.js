@@ -122,10 +122,10 @@ define
         }
 
         /**
-         * @summary Render the file page.
-         * @description Uses mustache to create HTML DOM elements that display the HDFS contents.
+         * @summary Render the query page.
+         * @description Uses mustache to create HTML DOM elements that comprise the query form.
          * @function initialize
-         * @memberOf module:cimfiles
+         * @memberOf module:cimquery
          */
         function initialize ()
         {
@@ -153,12 +153,12 @@ define
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='table_name'>Save as table</label>\n" +
-                "          <input  id='table_name' type='text' class='form-control' aria-describedby='nameHelp' placeholder='table name' value='{{table}}'>\n" +
+                "          <input id='table_name' type='text' class='form-control' aria-describedby='nameHelp' placeholder='table name' value='{{table}}'>\n" +
                 "          <small id='nameHelp' class='form-text text-muted'>Enter a name for a temporary view to hold the results of the query.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='cassandra_table_name'>Save in Cassandra</label>\n" +
-                "          <input  id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value='{{ctable}}'>\n" +
+                "          <input id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value='{{ctable}}'>\n" +
                 "          <small id='cassandraHelp' class='form-text text-muted'>Enter the name of the Cassandra table to store the results of the query.</small>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +

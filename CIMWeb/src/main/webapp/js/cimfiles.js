@@ -350,7 +350,7 @@ define
          * @description Read in a CIM file.
          * @param {Blob} blob - the blob of CIM data
          * @function read_cim
-         * @memberOf module:cimspace
+         * @memberOf module:cimfiles
          */
         function read_cim (blob)
         {

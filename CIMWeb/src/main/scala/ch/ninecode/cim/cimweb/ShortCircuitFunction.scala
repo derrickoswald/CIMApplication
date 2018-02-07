@@ -10,7 +10,7 @@ import ch.ninecode.sc.ShortCircuit
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.sc.ShortCircuitInfo
 
-case class ShortCircuitFunction (options: ShortCircuitOptions, spreadsheet: String = "") extends CIMWebFunction
+case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
 {
     jars = Array (jarForObject (this), jarForObject (options))
 
@@ -18,14 +18,7 @@ case class ShortCircuitFunction (options: ShortCircuitOptions, spreadsheet: Stri
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
-        if ("" != spreadsheet)
-        {
-            // add EquivalentInjection elements based on the csv file
-            val infos = ShortCircuitInfo (spark, StorageLevel.MEMORY_AND_DISK_SER)
-            val equivalents = infos.getShortCircuitInfo (uri + "/" + spreadsheet)
-            infos.merge (equivalents)
-        }
-        val sc = new ShortCircuit (spark, StorageLevel.MEMORY_AND_DISK_SER, options)
+        val sc = ShortCircuit (spark, StorageLevel.MEMORY_AND_DISK_SER, options)
         spark.sqlContext.createDataFrame (sc.run ())
     }
 

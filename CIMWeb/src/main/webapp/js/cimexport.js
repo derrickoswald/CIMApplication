@@ -36,7 +36,7 @@ define
                 "<div class='container'>\n" +
                 "  <div class='row justify-content-center'>\n" +
                 "    <div class='col-12'>\n" +
-                "      <h1>Export GridLAB-D .glm</h1>\n" +
+                "      <h4>Export GridLAB-D .glm</h4>\n" +
                 "      <form>\n" +
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='station_directory'>Station</label>\n" +
@@ -123,7 +123,7 @@ define
                 "  </div>\n" +
                 "  <div class='row justify-content-center'>\n" +
                 "    <div class='col-12'>\n" +
-                "      <h1>Export CIM .rdf</h1>\n" +
+                "      <h4>Export CIM .rdf</h4>\n" +
                 "      <form>\n" +
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='save_name'>File name</label>\n" +

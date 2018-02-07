@@ -1,8 +1,9 @@
 package ch.ninecode.sc
 
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+
 import scala.collection.Map
 import scala.io.Source
-
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -13,7 +14,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 
@@ -351,8 +351,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // maximum aperiodic short-circuit current according to IEC 60909-0, see for example:
         // http://at.dii.unipd.it/renato.gobbo/didattica/corsi/Componenti_tecnologie_elettrici/ABB_swithgear_manual_E11/ABB_11_E_03_druck.pdf pp71-80
         // http://studiecd.dk/cahiers_techniques/Calculation_of_short_circuit_currents.pdf pp7-10
-        val r_over_x = node.impedance.impedanz.re / node.impedance.impedanz.im
-        val kappa = 1.02 + 0.98 * Math.exp (-3.0 * r_over_x)
+        val kappa =
+            if ((0.0 == node.impedance.impedanz.im) && (0.0 == node.impedance.impedanz.re))
+                1.02 + 0.98 * Math.exp (-3.0)
+            else if (0.0 == node.impedance.impedanz.im)
+                0.0
+            else
+                1.02 + 0.98 * Math.exp (-3.0 * node.impedance.impedanz.re / node.impedance.impedanz.im)
         val ip = kappa * Math.sqrt (2) * ik3pol
 
         // short-circuit power at the point of common coupling
@@ -370,6 +375,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     def run (): RDD[HouseConnection] =
     {
+        // check if topology exists, and if not then generate it
+        if (null == get[TopologicalNode])
+        {
+            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, true, false) // force retain fuses
+            val elements = ntp.process (false)
+            log.info ("%d elements after topology generated".format (elements.count ()))
+        }
+
         val _transformers = new Transformers (spark, storage_level)
         val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_angle)
 
