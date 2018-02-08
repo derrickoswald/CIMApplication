@@ -27,6 +27,23 @@ define
                         closeOnClick: false
                     }
                 );
+                this._recommended =
+                    [
+                        [65, 25],
+                        [105, 40],
+                        [140, 50],
+                        [180, 63],
+                        [240, 80],
+                        [320, 100],
+                        [380, 125],
+                        [500, 160],
+                        [650, 200],
+                        [800, 250],
+                        [1050, 315],
+                        [1300, 400],
+                        [1750, 500],
+                        [2400, 630]
+                    ];
             }
 
             getName ()
@@ -109,7 +126,38 @@ define
                 return (ret);
             }
 
-            contents (cimobject)
+            fuse (ik)
+            {
+                return (this._recommended.filter (amp => amp[0] <= ik).slice(-1)[0][1]);
+            }
+
+            fuseOK (ik, fuses)
+            {
+                var ret = false;
+                var some = fuses.reverse ().filter (x => x > 0.0);
+                if (some.length > 0)
+                    ret = this.fuse (Number (ik)) >= some[0];
+                return (ret);
+            }
+
+            glyph (bool)
+            {
+                return (bool ? "<span style='color: green'>&#x2713;</span>" : "<span style='color: red'>&#x2717;</span>");
+            }
+
+            fuses (analysis)
+            {
+                var ret = "";
+                if (analysis.fuses && !isNaN (Number (analysis.ik)))
+                {
+                    var f = analysis.fuses.filter (x => x > 0.0);
+                    if (f.length > 0)
+                        ret = "<div>Fuse" + (f.length > 1 ? "s" : "") + " = " + f.map (a => a.toString ().split("\\.")[0] + "A").join (", ") + " recommended: " + this.fuse (analysis.ik) + "A " + this.glyph (this.fuseOK (analysis.ik, f)) + "</div>"
+                }
+                return (ret);
+            }
+
+            toHTML (cimobject)
             {
                 var ret = "";
 
@@ -117,8 +165,9 @@ define
                 var analysis = cimobject.analysis;
                 if (analysis)
                 {
-                    // not sure why, but the object is serialized as JSON
-                    analysis = JSON.parse (analysis)
+                    // not sure why, but the object is serialized as JSON when it comes from MapBox
+                    if ("string" == typeof (analysis))
+                        analysis = JSON.parse (analysis)
                     ret =
                     "<strong>" + analysis.equipment + " (" + analysis.tx + ")</strong>" +
                     "<p>" +
@@ -139,6 +188,7 @@ define
                     "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.motor_3ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_med) + "</td>" +
                     "  </tr>" +
                     "</table>" +
+                    this.fuses (analysis) +
                     "</p>";
                 }
 
@@ -149,7 +199,7 @@ define
             {
                 // change the cursor style as a UI indicator
                 this._map.getCanvas ().style.cursor = "pointer";
-                var html = this.contents (event.features[0].properties)
+                var html = this.toHTML (event.features[0].properties)
                 if ("" != html)
                 {
                     // set the popup coordinates
