@@ -100,24 +100,24 @@ object MaximumStartingCurrent
             abs (temp_low / cos (phin - (phim - thirty))), // dL1−N
             abs (temp_low / cos (phin - (phim + thirty)))) // dL2−N
         val pmax_line_line_low = min (
-            dmax_low_rep / 2.0 * network_short_circuit_power / cos (phin - phim), // dL1−L2
+            abs (dmax_low_rep / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
             min (
-                dmax_low_rep * network_short_circuit_power / cos (phin - (phim + sixty)), // dL2−L3
-                dmax_low_rep * network_short_circuit_power / cos (phin - (phim - sixty))) // dL3−L1
+                abs (dmax_low_rep * network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
+                abs (dmax_low_rep * network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
         )
-        val pmax_low = abs (min (pmax_line_neutral_low, pmax_line_line_low))
+        val pmax_low = min (pmax_line_neutral_low, pmax_line_line_low)
 
         val temp_med = dmax_medium_rep / root3 * network_short_circuit_power
         val pmax_line_neutral_med = min (
             abs (temp_med / cos (phin - (phim - thirty))),
             abs (temp_med / cos (phin - (phim + thirty))))
         val pmax_line_line_med = min (
-            dmax_medium_rep / 2.0 * network_short_circuit_power / cos (phin - phim),
+            abs (dmax_medium_rep / 2.0 * network_short_circuit_power / cos (phin - phim)),
             min (
-                dmax_medium_rep * network_short_circuit_power / cos (phin - (phim + sixty)),
-                dmax_medium_rep * network_short_circuit_power / cos (phin - (phim - sixty)))
+                abs (dmax_medium_rep * network_short_circuit_power / cos (phin - (phim + sixty))),
+                abs (dmax_medium_rep * network_short_circuit_power / cos (phin - (phim - sixty))))
         )
-        val pmax_med = abs (min (pmax_line_neutral_med, pmax_line_line_med))
+        val pmax_med = min (pmax_line_neutral_med, pmax_line_line_med)
         (pmax_low / motor_starting_current_ratio, pmax_med / motor_starting_current_ratio)
     }
 }
