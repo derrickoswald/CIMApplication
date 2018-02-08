@@ -102,7 +102,7 @@ define
                     if (nr > 1e6)
                         ret = (nr / 1e6).toPrecision (5) + "M";
                     else
-                        nr.toPrecision (5);
+                        ret = nr.toPrecision (5);
                 else
                     ret = r;
 
@@ -142,7 +142,7 @@ define
 
             glyph (bool)
             {
-                return (bool ? "<span style='color: green'>&#x2713;</span>" : "<span style='color: red'>&#x2717;</span>");
+                return (bool ? "<span style='color: #00ff00'>&#x2713;</span>" : "<span style='color: #ff0000'>&#x2717;</span>");
             }
 
             fuses (analysis)
@@ -182,10 +182,10 @@ define
                     "    <th>I<sub>sc</sub></th><td>" + this.dvalue (analysis.ik3pol) + "</td><td>" + this.dvalue (analysis.ik) + "</td><td></td>" +
                     "  </tr>" +
                     "  <tr>" +
-                    "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (analysis.motor_3ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_low) + "</td>" +
+                    "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (analysis.motor_3ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_low / 400.0) + "</td>" +
                     "  </tr>" +
                     "  <tr>" +
-                    "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.motor_3ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_med) + "</td>" +
+                    "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.motor_3ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_med / 400.0) + "</td>" +
                     "  </tr>" +
                     "</table>" +
                     this.fuses (analysis) +
