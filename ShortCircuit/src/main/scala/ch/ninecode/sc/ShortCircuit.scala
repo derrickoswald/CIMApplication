@@ -227,13 +227,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             if (null == message.source) // handle the initial message by keeping the same vertex node
                 v
-            else if (null != message.error && message.error.fatal) // handle just setting the fatal message
-                v.copy (errors = if (null == v.errors) List (message.error) else v.errors :+ message.error)
-            else // non-fatal or no error
+            else
             {
                 val errors = if (null != message.error) if (null == v.errors) List (message.error) else v.errors :+ message.error else v.errors
                 var z = if ((null != message.ref) && (null != message.edge)) Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz) else v.impedance
-                v.copy (source = message.source, impedance = z, fuses = message.fuses, errors = errors)
+                var fuses = if (null != message.fuses) message.fuses else v.fuses
+                v.copy (source = message.source, impedance = z, fuses = fuses, errors = errors)
             }
         }
 
@@ -257,8 +256,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 val error = ScError (true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                                 log.error (error.message)
                                 Iterator (
-                                    (triplet.dstId, ScMessage (triplet.srcAttr.source, null, null, null, null, error)),
-                                    (triplet.srcId, ScMessage (triplet.dstAttr.source, null, null, null, null, error))
+                                    (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, error)),
+                                    (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, error))
                                 )
                             }
                         case _ ⇒
@@ -307,11 +306,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def mergeMessage (a: ScMessage, b: ScMessage): ScMessage =
         {
-            if (null != a.error)
-                a
-            else if (null != b.error)
-                b
-            else if (a.previous_node != b.previous_node)
+            if (a.previous_node != b.previous_node)
             {
                 val error = ScError (true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
                 log.error (error.message)

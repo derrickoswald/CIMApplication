@@ -44,7 +44,8 @@ class ShortCircuitSuite
     val FILENAME4 = "sak_sample_ganged.rdf"
     val FILENAME5 = "sak_sample_parallel.rdf"
     val FILENAME6 = "sak_sample_complex_parallel.rdf"
-    val FILENAME7 = "ibw_cim_export.rdf"
+    val FILENAME7 = "sak_sample_complex2_parallel.rdf"
+    val FILENAME8 = "ibw_cim_export.rdf"
 
     type FixtureParam = SparkSession
 
@@ -196,6 +197,8 @@ class ShortCircuitSuite
         if (!new File (FILE_DEPOT + FILENAME6).exists)
             new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex_parallel.zip", FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME7).exists)
+            new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex2_parallel.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME8).exists)
             new Unzip ().unzip (FILE_DEPOT + "ibw_cim_export.zip", FILE_DEPOT)
     }
 
@@ -733,11 +736,69 @@ class ShortCircuitSuite
             assert (data.errors.contains (ScError (true, "non-radial network detected through Line2")))
     }
 
-    test ("IBW")
+    test ("Complex 2 Parallel")
     {
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME7
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                trafos = FILE_DEPOT + "sak_sample.transformers",
+                cmax = 0.95,
+                cmin = 0.95)
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+            house_connection.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "/result"
+            val string = house_connection.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (HouseConnection.csv_header)
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            assert (0 < consumer.count (), "Line2_node_2 not found")
+            val data = consumer.first ()
+            assert (null != data.errors)
+            assert (data.errors.contains (ScError (true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo")))
+    }
+
+    test ("IBW")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME8
 
             val start = System.nanoTime
             val files = filename.split (",")
