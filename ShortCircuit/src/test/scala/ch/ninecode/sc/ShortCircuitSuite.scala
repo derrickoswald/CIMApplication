@@ -849,14 +849,71 @@ class ShortCircuitSuite
             val consumer1 = house_connection.filter (_.node == "HAS9754_topo")
             assert (0 < consumer1.count (), "HAS9754_topo not found")
             val data1 = consumer1.first ()
-            assert (Math.abs (data1.ik - 755) < 0.6, "expected ik1polig=755A")
-            assert (Math.abs (data1.ik3pol - 1455) < 0.5, "expected ik3polig=1455A")
-            assert (Math.abs (data1.sk - 1.008e6) < 5e3, "expected sk=1.008MVA")
-            assert (Math.abs (data1.motor_3ph_max_med / 400.0 - 48.86) < 0.5, "expected maxanlaufstrom=49A")
+            assert (Math.abs (data1.ik - 740) < 0.5, "expected ik1polig=740A")
+            assert (Math.abs (data1.ik3pol - 1400) < 0.5, "expected ik3polig=1400A")
+            assert (Math.abs (data1.sk - 0.970e6) < 5e3, "expected sk=0.970MVA")
+            assert (Math.abs (data1.motor_3ph_max_med / 400.0 - 48.39) < 0.5, "expected maxanlaufstrom=48A")
 
             val consumer2 = house_connection.filter (_.node == "HAS9753_topo")
             assert (0 < consumer2.count (), "HAS9753_topo not found")
             val data2 = consumer2.first ()
-            assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 272.8) < 0.5, "expected maxanlaufstrom=273A")
+            assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 258.5) < 0.5, "expected maxanlaufstrom=259A")
     }
+
+/*
+    test ("CKW")
+    {
+        session: SparkSession ⇒
+
+            val filename = PRIVATE_FILE_DEPOT + "CIM_Export_CKW_Stripe1.rdf"
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            options.put ("ch.ninecode.cim.make_edges", "false")
+            options.put ("ch.ninecode.cim.do_join", "false")
+            options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+            options.put ("ch.ninecode.cim.do_topo_islands", "false")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ele = ntp.process (false)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions ()
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+
+            // write output to file and console
+            val output = PRIVATE_FILE_DEPOT + "/result"
+            val string = house_connection.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (HouseConnection.csv_header)
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            // output SQLite database
+            Database.store ("test", sc_options) (house_connection.collect)
+    }
+*/
 }
