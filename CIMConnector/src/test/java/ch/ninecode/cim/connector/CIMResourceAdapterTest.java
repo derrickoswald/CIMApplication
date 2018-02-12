@@ -28,7 +28,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -44,7 +43,7 @@ public class CIMResourceAdapterTest
         if (USE_LOCAL)
             try
             {
-                Enumeration entries;
+                Enumeration<? extends ZipEntry> entries;
                 ZipFile zipFile;
 
                 zipFile = new ZipFile ("src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.zip");
@@ -80,7 +79,6 @@ public class CIMResourceAdapterTest
             }
     }
 
-    @SuppressWarnings ("unused")
     @Deployment
     public static ResourceAdapterArchive createDeployment ()
     {

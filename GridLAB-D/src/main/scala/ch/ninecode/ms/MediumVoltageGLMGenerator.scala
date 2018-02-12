@@ -23,7 +23,7 @@ case class MediumVoltageGLMGenerator (
 
     override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
 
-    lazy val lv: Array[String] = ust.hv_transformers.map (_.node1)
+    val lv: Array[String] = ust.hv_transformers.map (_.node1)
     override def nodes: Iterable[USTNode] = ust.nodes.filter (x ⇒ !lv.contains (x.id))
 
     override def extra: Iterable[String] = List ("")

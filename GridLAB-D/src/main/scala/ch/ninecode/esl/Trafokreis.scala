@@ -52,7 +52,7 @@ extends
     }
 
     // generate experiments
-    lazy val experiments: Array[Experiment] = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
+    val experiments: Array[Experiment] = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
 
     def name: String = trafo
 

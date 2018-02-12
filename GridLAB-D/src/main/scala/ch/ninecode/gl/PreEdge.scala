@@ -61,7 +61,7 @@ with
     /**
      * Flag indicating if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
      */
-    lazy val connected: Boolean =
+    val connected: Boolean =
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring(clazz.lastIndexOf(".") + 1)
