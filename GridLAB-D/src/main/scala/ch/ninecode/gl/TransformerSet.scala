@@ -20,6 +20,16 @@ case class TransformerSet (transformers: Array[TData])
         case _ ⇒
     }
 
+    // get the transformer name (of the parallel transformers)
+    val transformer_name: String =
+    {
+        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
+        if (n.getBytes.length > 63)
+            "_" + Math.abs (n.hashCode()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
+        else
+            n
+    }
+
     // primary and secondary voltage should be the same on all edges - use the first
     val v0: Double =
     {
@@ -80,16 +90,6 @@ case class TransformerSet (transformers: Array[TData])
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
             "_" + Math.abs (n.hashCode()) + "_" + n.substring (0, n.indexOf ("||", 32)) + "_etc"
-        else
-            n
-    }
-
-    // get the transformer name (of the parallel transformers)
-    val transformer_name: String =
-    {
-        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
-        if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
         else
             n
     }
