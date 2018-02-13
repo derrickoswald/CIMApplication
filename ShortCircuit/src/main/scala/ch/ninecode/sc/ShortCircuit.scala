@@ -393,7 +393,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
 
-        val starting_nodes = transformers.map ((txs) ⇒ trafo_mapping (TransformerSet (txs)))
+        val starting_nodes = transformers.map ((txs) ⇒ trafo_mapping (TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance)))
 
         // create the initial Graph with ScNode vertices
         def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =
@@ -402,7 +402,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
-                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value")) else null
+                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
                     if (node.osPin == id)
                         ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List (), errors)
                     else

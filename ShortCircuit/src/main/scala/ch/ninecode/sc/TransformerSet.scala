@@ -6,9 +6,30 @@ import org.slf4j.LoggerFactory
 /**
  * Groups ganged transformers (usually identical transformers in parallel).
  *
- * @param transformers The set of transformers in this gang.
+ * Allows for an optional default power rating for any transformer without ratedS.
+ * If none is supplied uses 630000.0 (630kVA).
+ *
+ * Allows for an optional default impedance for any transformer without values, r + jxΩ.
+ * If none is supplied, uses 0.0059 + 0.04jΩ,
+ * which corresponds to a typical primary impedance of a 630KVA transformer 16KV:400V of 2.4 + j16Ω
+ * or a secondary impedance of 0.0015 +j0.01:
+ * <ul>
+ * <li>base_ohms = v<sup>2</sup> ÷ base_va = 16000<sup>2</sup> ÷ 630000 = 406.34</li>
+ * <li>r ÷ base_ohms = 2.4 / 406.34 = 0.0059</li>
+ * <li>x ÷ base_ohms = 16 / 406.34 = 0.04</li>
+ * </ul>
+ * or
+ * <ul>
+ * <li>base_ohms = v<sup>2</sup> ÷ base_va = 400<sup>2</sup> ÷ 630000 = 0.25397</li>
+ * <li>r ÷ base_ohms = 0.0015 / 0.25397 = 0.0059</li>
+ * <li>x ÷ base_ohms = 0.01 / 0.25397 = 0.04</li>
+ * </ul>
+ *
+ * @param transformers the set of transformers in this gang
+ * @param default_power_rating the default power rating, VA
+ * @param default_impedance the default characteristic impedance, Ω
  */
-case class TransformerSet (transformers: Array[TData])
+case class TransformerSet (transformers: Array[TData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -18,6 +39,16 @@ case class TransformerSet (transformers: Array[TData])
         case 0 ⇒
             throw new IllegalStateException ("no transformers in TData array")
         case _ ⇒
+    }
+
+    // get the transformer name (of the parallel transformers)
+    val transformer_name: String =
+    {
+        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
+        if (n.getBytes.length > 63)
+            "_" + Math.abs (n.hashCode ()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
+        else
+            n
     }
 
     // primary and secondary voltage should be the same on all edges - use the first
@@ -85,55 +116,46 @@ case class TransformerSet (transformers: Array[TData])
             n
     }
 
-    // get the transformer name (of the parallel transformers)
-    val transformer_name: String =
-    {
-        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
-        if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
-        else
-            n
-    }
-
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-    val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
+    val power_rating: Double = transformers.map (edge ⇒ if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
 
     // base power (for per unit calculations)
     val base_va: Double =
     {
-        val va = transformers.head.end1.ratedS
+        val va = transformers.map (_.end1.ratedS).max
         if (!transformers.forall (_.end1.ratedS == va))
             log.error ("transformer set " + transformer_name + " has units with different base VA " + transformers.map (_.end1.ratedS).mkString (" "))
-        va
+        if (0.0 == va)
+            default_power_rating
+        else
+            va
     }
-    // per unit impedance of the transformer
-    val impedances: Array[Complex] = transformers.map (
+
+    // the characteristic transformer impedances at the secondary
+    // with a flag indicating if it is the default value (the impedance was zero)
+    val impedances: Array[(Complex, Boolean)] = transformers.map (
         (edge) =>
         {
-            val sqrt3 = Math.sqrt (3)
-            // equivalent per unit values
-            val base_amps = base_va / v1 / sqrt3
-            val base_ohms = v1 / base_amps / sqrt3
-            // this end's impedance
-            val r = edge.end1.r / base_ohms
-            val x = edge.end1.x / base_ohms
-            Complex (r, x)
+            if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
+            {
+                val base_ohms = v1 * v1 / base_va
+                (default_impedance / base_ohms, true)
+            }
+            else
+                (Complex (edge.end1.r, edge.end1.x), false)
         }
     )
 
     /**
-     *  Return the total impedance and a flag indicating if it is the default value (no impedances were non-zero).
+     *  Return the total impedance at the secondary and a flag indicating if it is the default value (some impedance was zero).
      *  i.e. (total_impedance, default)
      *
      *  Calculate the impedance as 1 / sum (1/Zi)
      */
     val total_impedance: (Complex, Boolean) =
     {
-        val zero = Complex (0.0)
-        if (impedances.foldLeft (zero)(_.+(_)) == zero)
-            (Complex (2.397460317, 16.07618325), true) // ToDo: expose this default transformer impedance
-        else
-            (impedances.map (_.reciprocal).foldLeft (zero)(_.+(_)).reciprocal, false)
+        val zinv = impedances.foldLeft ((Complex (0.0), false))((c1, c2) ⇒ (c1._1 + c2._1.reciprocal, c1._2 || c2._2))
+        (zinv._1.reciprocal, zinv._2)
     }
 
     val network_short_circuit_power: Double =

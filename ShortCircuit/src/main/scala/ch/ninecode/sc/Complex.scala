@@ -1,13 +1,17 @@
 package ch.ninecode.sc
 
+import java.util.regex.Pattern
+
 import scala.math._
 import scala.language.implicitConversions
 
 // from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
 case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
 {
-    val modulus = sqrt (pow (re, 2) + pow (im, 2))
-    val angle = atan2 (im, re)
+    def this (complex: Complex) = this (complex.re, complex.im)
+
+    val modulus: Double = sqrt (pow (re, 2) + pow (im, 2))
+    val angle: Double = atan2 (im, re)
 
     // Constructors
     //def this (re: Double) = this (re, 0.0)
@@ -84,6 +88,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
         }
     private def asString (digits: Int) =
         numberformat (re, digits) + numberformat (im, digits, true) + "j"
+    def asPair: (Double, Double) = (re, im)
 }
 
 object Complex {
@@ -112,5 +117,19 @@ object Complex {
     implicit def fromLong (l: Long): Complex = new Complex (l)
     implicit def fromInt (i: Int): Complex = new Complex (i)
     implicit def fromShort (s: Short): Complex = new Complex (s)
+    def parseString (string: String): Complex =
+    {
+        var regex = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
+        val matcher = regex.matcher (string)
+        if (matcher.find)
+        {
+            val re = matcher.group (1)
+            val sign = matcher.group (2)
+            val im = matcher.group (3)
+            Complex (re.toDouble, im.toDouble * (if (sign == "-") -1.0 else 1.0))
+        }
+        else
+            Complex (0.0) // ToDo: warning
+    }
+    implicit def fromString (string: String): Complex = parseString (string)
 }
-

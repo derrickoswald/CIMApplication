@@ -3,6 +3,7 @@ package ch.ninecode.sc
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
+import java.util.Properties
 
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
@@ -25,8 +26,17 @@ import org.apache.hadoop.fs.Path
 
 object Main
 {
-    val APPLICATION_NAME = "Short Circuit Current"
-    val APPLICATION_VERSION = "2.3.7"
+    val properties: Properties =
+    {
+        val in = this.getClass.getResourceAsStream ("/application.properties")
+        val p = new Properties ()
+        p.load (in)
+        in.close ()
+        p
+    }
+    val APPLICATION_NAME: String = "ShortCircuit"
+    val APPLICATION_VERSION: String = properties.getProperty ("version")
+    val SPARK: String = properties.getProperty ("spark")
 
     object LogLevels extends Enumeration {
         type LogLevels = Value
@@ -47,6 +57,10 @@ object Main
             }
     )
 
+    implicit val complexRead: scopt.Read[Complex] = scopt.Read.reads (
+        (s) ⇒ Complex.fromString (s)
+    )
+
     case class Arguments (
         quiet: Boolean = false,
         master: String = "",
@@ -57,6 +71,8 @@ object Main
         checkpoint_dir: String = "",
         csv_file: String = "",
         trafos: String = "",
+        default_transformer_power: Double = 630000.0,
+        default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
         cmax: Double = 1.0,
         cmin: Double = 0.90,
         cosphi: Double = 1.0,
@@ -102,6 +118,14 @@ object Main
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
+
+        opt[Double]('x', "trafop").valueName ("<ratedS>").
+            action ((x, c) => c.copy (default_transformer_power = x)).
+            text ("transformer power if not in CIM, VA")
+
+        opt[Complex]('z', "trafoz").valueName ("<r + xj>").
+            action ((x, c) => c.copy (default_transformer_impedance = x)).
+            text ("transformer impedance if not in CIM, Ω")
 
         opt[Double]('a', "cmax").
             action ((x, c) => c.copy (cmax = x)).
@@ -171,7 +195,7 @@ object Main
      *     mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
     def read_cim (session: SparkSession, arguments: Arguments, storage_level: StorageLevel): RDD[Element] =
@@ -263,6 +287,10 @@ object Main
                 session.sparkContext.setLogLevel (arguments.log_level.toString)
                 if ("" != arguments.checkpoint_dir)
                     session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
+                val version = session.version
+                log.info (s"Spark $version session established")
+                if (version.take (SPARK.length) != SPARK.take (version.length))
+                    log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
 
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
@@ -273,6 +301,8 @@ object Main
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
                     trafos = arguments.trafos,
+                    default_transformer_power_rating = arguments.default_transformer_power,
+                    default_transformer_impedance = arguments.default_transformer_impedance,
                     cmax = arguments.cmax,
                     cmin = arguments.cmin,
                     cosphi = arguments.cosphi,

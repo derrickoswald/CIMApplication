@@ -24,7 +24,7 @@
 
         <!-- Spark versions -->
         <version.dependency.hadoop>2.7.3</version.dependency.hadoop>
-        <version.dependency.spark>2.1.2</version.dependency.spark>
+        <version.dependency.spark>2.2.0</version.dependency.spark>
         <version.dependency.cimreader>2.11-2.2.0-2.7.0</version.dependency.cimreader>
 
         <!-- test versions -->

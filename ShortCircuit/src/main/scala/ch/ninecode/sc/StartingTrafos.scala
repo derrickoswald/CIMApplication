@@ -34,16 +34,11 @@ extends
 
     val secondary_impedance: Impedanzen =
     {
-        val zt = transformer.total_impedance
-//        if (zt._2)
-//            log.warn ("transformer %s impedance not available, using approximation".format (transformer.transformer_name))
-        // convert from per unit to secondary
-        val zt2 = zt._1 * ((transformer.v1 * transformer.v1) / transformer.base_va)
-
-        val trafo_r1 = zt2.re
-        val trafo_r0 = zt2.re // use r0=r1 & x0=x1 for trafos
-        val trafo_x1 = zt2.im
-        val trafo_x0 = zt2.im // use r0=r1 & x0=x1 for trafos
+        val zt = transformer.total_impedance._1
+        val trafo_r1 = zt.re
+        val trafo_r0 = zt.re // use r0=r1 & x0=x1 for trafos
+        val trafo_x1 = zt.im
+        val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
         val v1 = transformer.v0
         val v2 = transformer.v1
         val ratio = v2 / v1
