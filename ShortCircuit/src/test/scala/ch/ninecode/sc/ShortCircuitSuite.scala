@@ -46,6 +46,8 @@ class ShortCircuitSuite
     val FILENAME6 = "sak_sample_complex_parallel.rdf"
     val FILENAME7 = "sak_sample_complex2_parallel.rdf"
     val FILENAME8 = "ibw_cim_export.rdf"
+    val FILENAME9 = "fuse_no_sample.rdf"
+    val FILENAME10 = "fuse_nc_sample.rdf"
 
     type FixtureParam = SparkSession
 
@@ -200,6 +202,10 @@ class ShortCircuitSuite
             new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex2_parallel.zip", FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME8).exists)
             new Unzip ().unzip (FILE_DEPOT + "ibw_cim_export.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME9).exists)
+            new Unzip ().unzip (FILE_DEPOT + "fuse_no_sample.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME10).exists)
+            new Unzip ().unzip (FILE_DEPOT + "fuse_nc_sample.zip", FILE_DEPOT)
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -287,7 +293,7 @@ class ShortCircuitSuite
             val house_connection = shortcircuit.run ()
 
             // write output to file and console
-            val output = PRIVATE_FILE_DEPOT + "/result"
+            val output = PRIVATE_FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -342,7 +348,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -402,7 +408,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -472,7 +478,7 @@ class ShortCircuitSuite
             val house_connection = shortcircuit.run ()
 
             // write output to file and console
-            val output = PRIVATE_FILE_DEPOT + "/result"
+            val output = PRIVATE_FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -527,7 +533,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -589,7 +595,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -651,7 +657,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -713,7 +719,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -771,7 +777,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -830,7 +836,7 @@ class ShortCircuitSuite
             house_connection.cache ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -860,43 +866,41 @@ class ShortCircuitSuite
             assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 258.5) < 0.5, "expected maxanlaufstrom=259A")
     }
 
-/*
-    test ("CKW")
+    test ("normalOpen=true Fuse")
     {
         session: SparkSession ⇒
 
-            val filename = PRIVATE_FILE_DEPOT + "CIM_Export_CKW_Stripe1.rdf"
+            val filename = FILE_DEPOT + FILENAME9
 
             val start = System.nanoTime
             val files = filename.split (",")
             val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.make_edges", "false")
-            options.put ("ch.ninecode.cim.do_join", "false")
-            options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
-            options.put ("ch.ninecode.cim.do_topo_islands", "false")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
             val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
-            val ele = ntp.process (false)
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
-            val sc_options = ShortCircuitOptions ()
+            val sc_options = ShortCircuitOptions (
+                cmax = 0.95,
+                cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val house_connection = shortcircuit.run ()
+            house_connection.cache ()
 
             // write output to file and console
-            val output = PRIVATE_FILE_DEPOT + "/result"
+            val output = FILE_DEPOT + "result"
             val string = house_connection.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -912,8 +916,130 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            // output SQLite database
-            Database.store ("test", sc_options) (house_connection.collect)
+            val consumer = house_connection.filter (_.node == "Line_3_node_2_topo")
+            assert (0 < consumer.count (), "Line_3_node_2_topo not found")
+            val data = consumer.first ()
+            assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
+            assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
+            assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
+            assert (0 == house_connection.filter (_.errors != null).count, "expected no errors")
     }
-*/
+
+    test ("normalOpen=false open=true Fuse")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME10
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                cmax = 0.95,
+                cmin = 0.95)
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val house_connection = shortcircuit.run ()
+            house_connection.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "result"
+            val string = house_connection.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val results = string.collect
+            println ("results: " + results.length)
+            println (HouseConnection.csv_header)
+            for (i <- results.indices)
+            {
+                val h = results (i)
+                println (h)
+            }
+
+            val consumer = house_connection.filter (_.node == "Line_3_node_2_topo")
+            assert (0 < consumer.count (), "Line_3_node_2_topo not found")
+            val data = consumer.first ()
+            assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
+            assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
+            assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
+            assert (0 == house_connection.filter (_.errors != null).count, "expected no errors")
+    }
+
+/*
+            test ("CKW")
+            {
+                session: SparkSession ⇒
+
+                    val filename = PRIVATE_FILE_DEPOT + "CIM_Export_CKW_Stripe1.rdf"
+
+                    val start = System.nanoTime
+                    val files = filename.split (",")
+                    val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+                    options.put ("path", filename)
+                    options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+                    options.put ("ch.ninecode.cim.make_edges", "false")
+                    options.put ("ch.ninecode.cim.do_join", "false")
+                    options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+                    options.put ("ch.ninecode.cim.do_topo_islands", "false")
+
+                    val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+                    println (elements.count + " elements")
+                    val read = System.nanoTime
+                    println ("read: " + (read - start) /  1e9 + " seconds")
+
+                    // identify topological nodes
+                    val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+                    val ele = ntp.process (false)
+                    println (ele.count () + " elements")
+
+                    val topo = System.nanoTime ()
+                    println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+                    // short circuit calculations
+                    val sc_options = ShortCircuitOptions ()
+                    val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+                    val house_connection = shortcircuit.run ()
+
+                    // write output to file and console
+                    val output = PRIVATE_FILE_DEPOT + "result"
+                    val string = house_connection.sortBy (_.tx).map (_.csv)
+
+                    val path = new File (output)
+                    FileUtils.deleteQuietly (path)
+                    string.saveAsTextFile (output)
+
+                    val results = string.collect
+                    println ("results: " + results.length)
+                    println (HouseConnection.csv_header)
+                    for (i <- results.indices)
+                    {
+                        val h = results (i)
+                        println (h)
+                    }
+
+                    // output SQLite database
+                    Database.store ("test", sc_options) (house_connection.collect)
+            }
+        */
 }
