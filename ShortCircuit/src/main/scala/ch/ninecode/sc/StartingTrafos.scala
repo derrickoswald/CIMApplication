@@ -13,7 +13,7 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
 extends
     Serializable
 {
-    lazy val primary_impedance: Impedanzen =
+    val primary_impedance: Impedanzen =
     {
         val c = 1.0
 
@@ -32,7 +32,7 @@ extends
         Impedanzen (Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0))
     }
 
-    lazy val secondary_impedance: Impedanzen =
+    val secondary_impedance: Impedanzen =
     {
         val zt = transformer.total_impedance
 //        if (zt._2)

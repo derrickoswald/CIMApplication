@@ -6,8 +6,8 @@ import scala.language.implicitConversions
 // from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
 case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
 {
-    lazy val modulus = sqrt (pow (re, 2) + pow (im, 2))
-    lazy val angle = atan2 (im, re)
+    val modulus = sqrt (pow (re, 2) + pow (im, 2))
+    val angle = atan2 (im, re)
 
     // Constructors
     //def this (re: Double) = this (re, 0.0)

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
  */
 case class TransformerSet (transformers: Array[TData])
 {
-    lazy val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // there should be at least one transformer
     transformers.length match
@@ -21,7 +21,7 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // primary and secondary voltage should be the same on all edges - use the first
-    lazy val v0: Double =
+    val v0: Double =
     {
         val v = transformers.head.voltage0
         if (!transformers.forall (_.voltage0 == v))
@@ -30,7 +30,7 @@ case class TransformerSet (transformers: Array[TData])
         1000.0 * v
     }
 
-    lazy val v1: Double =
+    val v1: Double =
     {
         val v = transformers.head.voltage1
         if (!transformers.forall (_.voltage1 == v))
@@ -40,14 +40,14 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // all primaries and secondaries should be connected to the same nodes (respectively)
-    lazy val node0: String =
+    val node0: String =
     {
         val n = transformers.head.node0
         if (!transformers.forall (_.node0 == n))
             log.error ("transformer set " + transformer_name + " has different nodes on terminal 0 " + transformers.map (_.node0).mkString (" "))
         n
     }
-    lazy val node1: String =
+    val node1: String =
     {
         val n = transformers.head.node1
         if (!transformers.forall (_.node1 == n))
@@ -69,7 +69,7 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // get the configuration name (of the parallel transformers)
-    lazy val configurationName: String =
+    val configurationName: String =
     {
         val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("||") + "_configuration"
         // limit to 64 bytes with null:
@@ -86,7 +86,7 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // get the transformer name (of the parallel transformers)
-    lazy val transformer_name: String =
+    val transformer_name: String =
     {
         val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
         if (n.getBytes.length > 63)
@@ -96,10 +96,10 @@ case class TransformerSet (transformers: Array[TData])
     }
 
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-    lazy val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
+    val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
 
     // base power (for per unit calculations)
-    lazy val base_va: Double =
+    val base_va: Double =
     {
         val va = transformers.head.end1.ratedS
         if (!transformers.forall (_.end1.ratedS == va))
@@ -107,7 +107,7 @@ case class TransformerSet (transformers: Array[TData])
         va
     }
     // per unit impedance of the transformer
-    lazy val impedances: Array[Complex] = transformers.map (
+    val impedances: Array[Complex] = transformers.map (
         (edge) =>
         {
             val sqrt3 = Math.sqrt (3)
@@ -127,7 +127,7 @@ case class TransformerSet (transformers: Array[TData])
      *
      *  Calculate the impedance as 1 / sum (1/Zi)
      */
-    lazy val total_impedance: (Complex, Boolean) =
+    val total_impedance: (Complex, Boolean) =
     {
         val zero = Complex (0.0)
         if (impedances.foldLeft (zero)(_.+(_)) == zero)
@@ -136,7 +136,7 @@ case class TransformerSet (transformers: Array[TData])
             (impedances.map (_.reciprocal).foldLeft (zero)(_.+(_)).reciprocal, false)
     }
 
-    lazy val network_short_circuit_power: Double =
+    val network_short_circuit_power: Double =
     {
         val power = transformers.head.shortcircuit.maxP
         if (!transformers.forall (_.shortcircuit.maxP == power))
@@ -144,7 +144,7 @@ case class TransformerSet (transformers: Array[TData])
         power
     }
 
-    lazy val network_short_circuit_impedance: Complex =
+    val network_short_circuit_impedance: Complex =
     {
         val impedance = Complex (transformers.head.shortcircuit.r, transformers.head.shortcircuit.x)
         if (!transformers.forall (x ⇒ Complex (x.shortcircuit.r, x.shortcircuit.x) == impedance))
