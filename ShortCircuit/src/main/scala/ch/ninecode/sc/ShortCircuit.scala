@@ -379,7 +379,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val _transformers = new Transformers (spark, storage_level)
-        val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_angle)
+        val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_impedance)
 
         val transformers: Array[Array[TData]] = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
@@ -402,11 +402,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
-                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List (), errors)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List (), null)
                     else
+                    {
+                        val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
                         ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, List (), errors)
+                    }
                 case None ⇒
                     v
             }

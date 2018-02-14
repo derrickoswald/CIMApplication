@@ -139,7 +139,7 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
             if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
             {
                 val base_ohms = v1 * v1 / base_va
-                (default_impedance / base_ohms, true)
+                (default_impedance * base_ohms, true)
             }
             else
                 (Complex (edge.end1.r, edge.end1.x), false)

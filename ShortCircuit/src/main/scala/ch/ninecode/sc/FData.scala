@@ -5,6 +5,7 @@ object FData
     case class Amp (Ik: Double, Rating: Double)
     val recommended: Array[Amp] =
         Array (
+            Amp (Double.MinPositiveValue, 0), // failsafe fallback for currents less than 65A
             Amp (65, 25),
             Amp (105, 40),
             Amp (140, 50),

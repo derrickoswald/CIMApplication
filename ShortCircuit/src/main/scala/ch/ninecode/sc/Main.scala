@@ -71,6 +71,8 @@ object Main
         checkpoint_dir: String = "",
         csv_file: String = "",
         trafos: String = "",
+        default_network_power: Double = 200e6,
+        default_network_impedance: Complex = Complex (0.437785783, -1.202806555),
         default_transformer_power: Double = 630000.0,
         default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
         cmax: Double = 1.0,
@@ -115,6 +117,14 @@ object Main
             action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data (KS_leistungen.csv)")
 
+        opt[Double]('p', "netp").valueName ("<Sk>").
+            action ((x, c) ⇒ c.copy (default_network_power = x)).
+            text ("network power if not in CIM, VA")
+
+        opt[Complex]('e', "netz").valueName ("<r + xj>").
+            action ((x, c) ⇒ c.copy (default_network_impedance = x)).
+            text ("network impedance if not in CIM, Ω")
+
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
@@ -135,7 +145,7 @@ object Main
             action ((x, c) => c.copy (cmin = x)).
             text ("voltage factor for minimum fault level, used for protections settings")
 
-        opt[Double]('p', "cosphi").
+        opt[Double]('f', "cosphi").
             action ((x, c) => c.copy (cosphi = x)).
             text ("load power factor, used for maximum inrush current")
 
@@ -300,6 +310,8 @@ object Main
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
+                    default_supply_network_short_circuit_power = arguments.default_network_power,
+                    default_supply_network_short_circuit_impedance = arguments.default_network_impedance,
                     trafos = arguments.trafos,
                     default_transformer_power_rating = arguments.default_transformer_power,
                     default_transformer_impedance = arguments.default_transformer_impedance,

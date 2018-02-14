@@ -24,7 +24,7 @@ object Database
         resultset1.close ()
         if (!exists1)
         {
-            statement.executeUpdate ("create table shortcircuit_run (id integer primary key autoincrement, description text, time text, default_supply_network_short_circuit_power double, default_supply_network_short_circuit_angle double, cmax double, cmin double, cosphi double, starting_ratio double)")
+            statement.executeUpdate ("create table shortcircuit_run (id integer primary key autoincrement, description text, time text, default_supply_network_short_circuit_power double, default_supply_network_short_circuit_resistance double, default_supply_network_short_circuit_reactance double, cmax double, cmin double, cosphi double, starting_ratio double)")
             statement.executeUpdate ("create index if not exists epoc on shortcircuit_run (time)")
         }
         val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
@@ -62,16 +62,17 @@ object Database
             {
                 // insert the simulation
                 val now = Calendar.getInstance ()
-                val insert = connection.prepareStatement ("insert into shortcircuit_run (id, description, time, default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle, cmax, cmin, cosphi, starting_ratio) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val insert = connection.prepareStatement ("insert into shortcircuit_run (id, description, time, default_supply_network_short_circuit_power, default_supply_network_short_circuit_resistance, default_supply_network_short_circuit_reactance, cmax, cmin, cosphi, starting_ratio) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 insert.setNull (1, Types.INTEGER)
                 insert.setString (2, description)
                 insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
                 insert.setDouble (4, options.default_supply_network_short_circuit_power)
-                insert.setDouble (5, options.default_supply_network_short_circuit_angle)
-                insert.setDouble (6, options.cmax)
-                insert.setDouble (7, options.cmin)
-                insert.setDouble (8, options.cosphi)
-                insert.setDouble (9, options.starting_ratio)
+                insert.setDouble (5, options.default_supply_network_short_circuit_impedance.re)
+                insert.setDouble (6, options.default_supply_network_short_circuit_impedance.im)
+                insert.setDouble (7, options.cmax)
+                insert.setDouble (8, options.cmin)
+                insert.setDouble (9, options.cosphi)
+                insert.setDouble (10, options.starting_ratio)
                 insert.executeUpdate ()
                 val statement = connection.createStatement ()
                 val resultset = statement.executeQuery ("select last_insert_rowid() id")

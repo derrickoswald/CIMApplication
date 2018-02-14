@@ -127,7 +127,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         ret
     }
 
-    def addSC (voltages: Map[String, Double]) (default_supply_network_short_circuit_power: Double = 200.0e6, default_supply_network_short_circuit_angle: Double = -70.0) (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
+    def addSC (voltages: Map[String, Double]) (
+        default_supply_network_short_circuit_power: Double = 200.0e6,
+        default_supply_network_short_circuit_impedance: Complex = Complex (0.437785783, -1.202806555))
+        (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
     {
         arg._2 match
         {
@@ -136,15 +139,11 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
                 // ToDo: fix this 1kV multiplier on the voltages
                 val v1 = arg._1._3._2 * 1000.0
                 val sk = default_supply_network_short_circuit_power
-                val wik = default_supply_network_short_circuit_angle
-                val c = 1.0
+                val netz_r1 = default_supply_network_short_circuit_impedance.re
+                val netz_x1 = default_supply_network_short_circuit_impedance.im
                 //val ratioZ0Z1 = 4
                 //val ratioX0R0 = 10
-                val zqt = (c * v1 * v1) / sk
                 //val zqt0 = zqt * ratioZ0Z1
-                val wik_radians = Math.PI / 180.0 * wik
-                val netz_r1 = zqt * Math.cos (wik_radians)
-                val netz_x1 = zqt * Math.sin (wik_radians)
                 val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
                 val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
 
@@ -174,7 +173,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
     def getTransformerData (
         topological_nodes: Boolean = true,
         default_supply_network_short_circuit_power: Double = 200.0e6,
-        default_supply_network_short_circuit_angle: Double = -70.0): RDD[TData] =
+        default_supply_network_short_circuit_impedance: Complex = Complex (0.437785783, -1.202806555)): RDD[TData] =
     {
         /**
          * The name of the node associated with a terminal.
@@ -250,7 +249,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         val injections_by_node = injections.keyBy (_.id).join (terms).values.map (x ⇒ (x._2.head.ConnectivityNode, x._1)) // ToDo: could be TopologicalNode?
 
         val transformers_stations_plus_ends_plus_terminals_plus_sc =
-            transformers_stations_plus_ends_plus_terminals.keyBy (_._3._3.ConnectivityNode).leftOuterJoin (injections_by_node).values.map (addSC (voltages) (default_supply_network_short_circuit_power, default_supply_network_short_circuit_angle))
+            transformers_stations_plus_ends_plus_terminals.keyBy (_._3._3.ConnectivityNode).leftOuterJoin (injections_by_node).values.map (addSC (voltages) (default_supply_network_short_circuit_power, default_supply_network_short_circuit_impedance))
 
         // convert to TData
         val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (
