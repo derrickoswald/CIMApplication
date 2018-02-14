@@ -87,32 +87,32 @@ class ShortCircuitSuite
                 default_supply_network_short_circuit_impedance = Complex (0.0, 20.166666666666667), // purely reactive
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "L2_node_2_topo")
+            val consumer = results.filter (_.node == "L2_node_2_topo")
             assert (0 < consumer.count (), "L2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = house_connection.filter (_.node == "L2_node_1_topo")
+            val busbar = results.filter (_.node == "L2_node_1_topo")
             assert (0 < busbar.count (), "L2_node_1 not found")
             val sc = busbar.first ()
             assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
@@ -147,32 +147,32 @@ class ShortCircuitSuite
             val sc_options = ShortCircuitOptions (
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "L2_node_2_topo")
+            val consumer = results.filter (_.node == "L2_node_2_topo")
             assert (0 < consumer.count (), "L2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = house_connection.filter (_.node == "L2_node_1_topo")
+            val busbar = results.filter (_.node == "L2_node_1_topo")
             assert (0 < busbar.count (), "L2_node_1 not found")
             val sc = busbar.first ()
             assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
@@ -209,27 +209,27 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            val consumer = results.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.r - 0.19521016) < 0.0005, "expected r=195mΩ")
@@ -271,27 +271,27 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            val consumer = results.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.r - 193.36016e-3) < 0.0005, "expected r=193mΩ")
@@ -333,27 +333,27 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            val consumer = results.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (Math.abs (data.r - 162.55141e-3) < 0.0005, "expected r=163mΩ")
@@ -395,27 +395,27 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            val consumer = results.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (null != data.errors)
@@ -453,27 +453,27 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line2_node_2_topo")
+            val consumer = results.filter (_.node == "Line2_node_2_topo")
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (null != data.errors)
@@ -512,27 +512,27 @@ class ShortCircuitSuite
                 cosphi = 1.0,
                 starting_ratio = 1.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer1 = house_connection.filter (_.node == "HAS9754_topo")
+            val consumer1 = results.filter (_.node == "HAS9754_topo")
             assert (0 < consumer1.count (), "HAS9754_topo not found")
             val data1 = consumer1.first ()
             assert (Math.abs (data1.ik - 740) < 0.5, "expected ik1polig=740A")
@@ -540,7 +540,7 @@ class ShortCircuitSuite
             assert (Math.abs (data1.sk - 0.970e6) < 5e3, "expected sk=0.970MVA")
             assert (Math.abs (data1.motor_3ph_max_med / 400.0 - 48.39) < 0.5, "expected maxanlaufstrom=48A")
 
-            val consumer2 = house_connection.filter (_.node == "HAS9753_topo")
+            val consumer2 = results.filter (_.node == "HAS9753_topo")
             assert (0 < consumer2.count (), "HAS9753_topo not found")
             val data2 = consumer2.first ()
             assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 258.5) < 0.5, "expected maxanlaufstrom=259A")
@@ -576,34 +576,34 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line_3_node_2_topo")
+            val consumer = results.filter (_.node == "Line_3_node_2_topo")
             assert (0 < consumer.count (), "Line_3_node_2_topo not found")
             val data = consumer.first ()
             assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
             assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
             assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == house_connection.filter (_.errors != null).count, "expected no errors")
+            assert (0 == results.filter (_.errors != null).count, "expected no errors")
     }
 
     test ("normalOpen=false open=true Fuse")
@@ -636,34 +636,34 @@ class ShortCircuitSuite
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
-            house_connection.cache ()
+            val results = shortcircuit.run ()
+            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
-            val consumer = house_connection.filter (_.node == "Line_3_node_2_topo")
+            val consumer = results.filter (_.node == "Line_3_node_2_topo")
             assert (0 < consumer.count (), "Line_3_node_2_topo not found")
             val data = consumer.first ()
             assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
             assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
             assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == house_connection.filter (_.errors != null).count, "expected no errors")
+            assert (0 == results.filter (_.errors != null).count, "expected no errors")
             // if the transformer impedances are removed from the sample file, this command yields the same results:
             // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
             // except there is a warning "NONFATAL: transformer has no impedance value, using default 0.01375+0.05312j"

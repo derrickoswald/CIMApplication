@@ -277,7 +277,7 @@ object Main
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.sc.Complex],
                         classOf[ch.ninecode.sc.Graphable],
-                        classOf[ch.ninecode.sc.HouseConnection],
+                        classOf[ch.ninecode.sc.ScResult],
                         classOf[ch.ninecode.sc.Impedanzen],
                         classOf[ch.ninecode.sc.ScEdge],
                         classOf[ch.ninecode.sc.ScNode],
@@ -333,9 +333,9 @@ object Main
                 }
 
                 val shortcircuit = ShortCircuit (session, storage, options)
-                val house_connection = shortcircuit.run ()
+                val results = shortcircuit.run ()
 
-                val string = house_connection.sortBy (_.tx).map (h ⇒ {
+                val string = results.sortBy (_.tx).map (h ⇒ {
                     h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + (if (null == h.fuses) "" else h.fuses.mkString (",")) + ";" + FData.fuse (h.ik) + ";" + FData.fuseOK (h.ik, h.fuses) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
                 })
                 log.info ("output_path: " + workdir)
@@ -349,10 +349,10 @@ object Main
                 string.saveAsTextFile (workdir)
 
                 // output SQLite database
-                Database.store ("test", options) (house_connection.collect)
+                Database.store ("test", options) (results.collect)
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + house_connection.count + " house connections calculated")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")
 
                 sys.exit (0)
             case None ⇒

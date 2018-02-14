@@ -179,7 +179,7 @@ class SparkSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.sc.Complex],
             classOf[ch.ninecode.sc.Graphable],
-            classOf[ch.ninecode.sc.HouseConnection],
+            classOf[ch.ninecode.sc.ScResult],
             classOf[ch.ninecode.sc.Impedanzen],
             classOf[ch.ninecode.sc.ScEdge],
             classOf[ch.ninecode.sc.ScNode],

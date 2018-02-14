@@ -56,27 +56,27 @@ class PrivateSuite
             // short circuit calculations
             val sc_options = ShortCircuitOptions (trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
+            val results = shortcircuit.run ()
 
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (house_connection.collect)
+            Database.store ("test", sc_options) (results.collect)
     }
 
     test ("Extended")
@@ -119,29 +119,28 @@ class PrivateSuite
             // short circuit calculations
             val sc_options = ShortCircuitOptions ()
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
+            val results = shortcircuit.run ()
 
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (house_connection.collect)
+            Database.store ("test", sc_options) (results.collect)
     }
-
 /*
     test ("CKW")
     {
@@ -175,27 +174,27 @@ class PrivateSuite
             // short circuit calculations
             val sc_options = ShortCircuitOptions ()
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val house_connection = shortcircuit.run ()
+            val results = shortcircuit.run ()
 
             // write output to file and console
             val output = PRIVATE_FILE_DEPOT + "result"
-            val string = house_connection.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
 
-            val results = string.collect
-            println ("results: " + results.length)
-            println (HouseConnection.csv_header)
-            for (i <- results.indices)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
             {
-                val h = results (i)
+                val h = csv (i)
                 println (h)
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (house_connection.collect)
+            Database.store ("test", sc_options) (results.collect)
     }
 */
 }

@@ -35,7 +35,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, null, null)
+    val default_node = ScNode ("", 0.0, null, null, null, null, null)
 
     def has (string: String): String =
     {
@@ -62,7 +62,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, null, null)
+        ScNode (node.id, voltage, null, null, null, null, null)
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
@@ -232,7 +232,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 val errors = if (null != message.error) if (null == v.errors) List (message.error) else v.errors :+ message.error else v.errors
                 var z = if ((null != message.ref) && (null != message.edge)) Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz) else v.impedance
                 var fuses = if (null != message.fuses) message.fuses else v.fuses
-                v.copy (source = message.source, impedance = z, fuses = fuses, errors = errors)
+                v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
             }
         }
 
@@ -324,7 +324,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     // compute the short-circuit values
-    def calculate_short_circuit (node: ScNode): HouseConnection =
+    def calculate_short_circuit (node: ScNode): ScResult =
     {
         val v2 = node.voltage
         val root3 = Math.sqrt (3.0)
@@ -363,12 +363,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
         val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
 
-        HouseConnection (node.id_seq, has (node.id_seq), node.source,
+        ScResult (node.id_seq, has (node.id_seq), node.source, node.id_prev,
             node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
             node.fuses, node.errors, ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
     }
 
-    def run (): RDD[HouseConnection] =
+    def run (): RDD[ScResult] =
     {
         // check if topology exists, and if not then generate it
         if (null == get[TopologicalNode])
@@ -403,11 +403,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, null, null)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null, null)
                     else
                     {
                         val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, null, errors)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
                     }
                 case None ⇒
                     v
@@ -419,10 +419,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val graph = trace (initial_with_starting_nodes)
 
         // get the leaf nodes with their data
-        val has = graph.vertices.filter (null != _._2.impedance).values
-        has.setName ("house_connections")
-        has.persist (storage_level)
+        val result = graph.vertices.filter (null != _._2.impedance).values
+        result.setName ("scresult")
+        result.persist (storage_level)
 
-        has.map (calculate_short_circuit)
+        result.map (calculate_short_circuit)
     }
 }
