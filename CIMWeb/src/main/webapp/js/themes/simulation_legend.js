@@ -23,12 +23,14 @@ define
                 this._theme = theme;
                 this._times = times; // { start: start, finish: finish }
                 this._template =
-                "<div class='well'>\n" +
-                "  <h3>Legend</h3>\n" +
-                "  <label for='slider'>\n" +
-                "    <input id='slider' type='text'/>\n" +
-                "    Time\n" +
-                "  </label>\n" +
+                "<div class='card'>\n" +
+                "  <div class='card-body'>\n" +
+                "    <h5 class='card-title'>Legend\n" +
+                "    <label for='simulation_slider'>\n" +
+                "      <input id='simulation_slider' type='text'/>\n" +
+                "      Time\n" +
+                "    </label>\n" +
+                "  </div>\n" +
                 "</div>\n";
             }
 

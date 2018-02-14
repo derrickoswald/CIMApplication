@@ -21,7 +21,9 @@ import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
+import ch.ninecode.sc.Complex
 import ch.ninecode.sc.ShortCircuitOptions
+import ch.ninecode.sc.ScError
 
 @Stateless
 @Path ("/short_circuit/")
@@ -33,13 +35,17 @@ class ShortCircuitCalculation extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def GetShortCircuitData (
         @DefaultValue ("200e6") @MatrixParam ("network_short_circuit_power") network_short_circuit_power: Double,
-        @DefaultValue ("-70.0") @MatrixParam ("network_short_circuit_angle") network_short_circuit_angle: Double,
+        @DefaultValue ("0.437785783") @MatrixParam ("network_short_circuit_resistance") network_short_circuit_resistance: Double,
+        @DefaultValue ("-1.202806555") @MatrixParam ("network_short_circuit_reactance") network_short_circuit_reactance: Double,
+        @DefaultValue ("630000") @MatrixParam ("transformer_power_rating") transformer_power_rating: Double,
+        @DefaultValue ("0.005899999998374999") @MatrixParam ("transformer_resistance") transformer_resistance: Double,
+        @DefaultValue ("0.039562482211875") @MatrixParam ("transformer_reactance") transformer_reactance: Double,
         @DefaultValue ("1.0") @MatrixParam ("cmax") cmax: Double,
         @DefaultValue ("0.9") @MatrixParam ("cmin") cmin: Double,
         @DefaultValue ("0.5") @MatrixParam ("cosphi") cosphi: Double,
         @DefaultValue ("1.0") @MatrixParam ("starting_ratio") starting_ratio: Double
     ): String =
-        GetShortCircuitData ("all", network_short_circuit_power, network_short_circuit_angle, cmax, cmin, cosphi, starting_ratio)
+        GetShortCircuitData ("all", network_short_circuit_power, network_short_circuit_resistance, network_short_circuit_reactance, transformer_power_rating, transformer_resistance, transformer_reactance, cmax, cmin, cosphi, starting_ratio)
 
     def packRow (resultset: CIMResultSet, meta: ResultSetMetaData): JsonObjectBuilder =
     {
@@ -136,8 +142,8 @@ class ShortCircuitCalculation extends RESTful
                                 }
                                 catch
                                 {
-                                    case _: Throwable =>
-                                        ret.add (name, "class: " + value.getClass.getName)
+                                    case x: Throwable =>
+                                        ret.add (name, "class: " + value.getClass.getName + " (" + x.getMessage + ")")
                                 }
                         }
                 case _ ⇒
@@ -153,7 +159,11 @@ class ShortCircuitCalculation extends RESTful
     def GetShortCircuitData (
         @PathParam ("item") item: String,
         @DefaultValue ("200e6") @MatrixParam ("network_short_circuit_power") network_short_circuit_power: Double,
-        @DefaultValue ("-70.0") @MatrixParam ("network_short_circuit_angle") network_short_circuit_angle: Double,
+        @DefaultValue ("0.437785783") @MatrixParam ("network_short_circuit_resistance") network_short_circuit_resistance: Double,
+        @DefaultValue ("-1.202806555") @MatrixParam ("network_short_circuit_reactance") network_short_circuit_reactance: Double,
+        @DefaultValue ("630000") @MatrixParam ("transformer_power_rating") transformer_power_rating: Double,
+        @DefaultValue ("0.005899999998374999") @MatrixParam ("transformer_resistance") transformer_resistance: Double,
+        @DefaultValue ("0.039562482211875") @MatrixParam ("transformer_reactance") transformer_reactance: Double,
         @DefaultValue ("1.0") @MatrixParam ("cmax") cmax: Double,
         @DefaultValue ("0.9") @MatrixParam ("cmin") cmin: Double,
         @DefaultValue ("0.5") @MatrixParam ("cosphi") cosphi: Double,
@@ -161,7 +171,9 @@ class ShortCircuitCalculation extends RESTful
     ): String =
     {
         val transformer = if (null != item && !(item == "")) if (item.startsWith ("/")) item.substring (1) else item else null
-        _Logger.info ("shortcircuit transformer=%s network=%g<%g° cmax=%g cmin=%g cosφ=%g ratio=%g".format (transformer, network_short_circuit_power, network_short_circuit_angle, cmax, cmin, cosphi, starting_ratio))
+        val netz = Complex (network_short_circuit_resistance, network_short_circuit_reactance)
+        val txz = Complex (transformer_resistance, transformer_reactance)
+        _Logger.info ("shortcircuit transformer=%s network=%gVA,%sΩ tx=%gVA,%sΩ cmax=%g cmin=%g cosφ=%g ratio=%g".format (transformer, network_short_circuit_power, netz, transformer_power_rating, txz, cmax, cmin, cosphi, starting_ratio))
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
         if (null != connection)
@@ -170,7 +182,7 @@ class ShortCircuitCalculation extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                val options = ShortCircuitOptions (false, network_short_circuit_power, network_short_circuit_angle, cmax, cmin, cosphi, starting_ratio, transformer, null)
+                val options = ShortCircuitOptions (false, network_short_circuit_power, netz, transformer_power_rating, txz, cmax, cmin, cosphi, starting_ratio, transformer, null)
                 val query = ShortCircuitFunction (options)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction

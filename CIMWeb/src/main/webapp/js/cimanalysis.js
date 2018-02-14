@@ -17,27 +17,27 @@ define
     {
         // The analysis details.
         // provisional schema:
-        // [
-        //     {
-        //         "node": "HAS9753_fuse_topo",
-        //         "equipment": "HAS9753_fuse",
-        //         "tx": "TRA927",
-        //         "r": 0.0254,
-        //         "x": 0.022199999999999998,
-        //         "r0": 0.08360000000000001,
-        //         "x0": 0.0468,
-        //         "fuses": "WrappedArray(-1.0)",
-        //         "ik": 3818.9066230186995,
-        //         "ik3pol": 6845.8634601014855,
-        //         "ip": 10181.680167258599,
-        //         "sk": 4742953.3338300185,
-        //         "motor_3ph_max_low": 173607.8294153827,
-        //         "motor_1ph_max_low": 50116.26352319892,
-        //         "motor_l_l_max_low": 150348.79056959678,
-        //         "motor_3ph_max_med": 86803.91470769135,
-        //         "motor_1ph_max_med": 25058.13176159946,
-        //         "motor_l_l_max_med": 75174.39528479839
-        //     },
+        //[
+        //    {
+        //        "node": "Line_3_node_1_topo",
+        //        "equipment": "Line_3_node_1",
+        //        "tx": "T1",
+        //        "prev": "T1_node_2_topo",
+        //        "r": 0.06074579999974,
+        //        "x": 0.023079997153900002,
+        //        "r0": 0.23719399999973997,
+        //        "x0": 0.08032999715389999,
+        //        "ik": 1639.1965106015975,
+        //        "ik3pol": 3553.876001557771,
+        //        "ip": 5128.291999404527,
+        //        "sk": 2462197.519399116,
+        //        "motor_3ph_max_low": 110057.15878818948,
+        //        "motor_1ph_max_low": 31770.765126303293,
+        //        "motor_l_l_max_low": 86403.53609172089,
+        //        "motor_3ph_max_med": 55028.57939409474,
+        //        "motor_1ph_max_med": 15885.382563151647,
+        //        "motor_l_l_max_med": 43201.768045860445
+        //    },
         //     ...
         // ]
         var TheAnalysis;
@@ -60,14 +60,22 @@ define
 
                         // ToDo: validation
                         var network_power = Number (document.getElementById ("network_power").value);
-                        var network_angle = Number (document.getElementById ("network_angle").value);
+                        var network_resistance = Number (document.getElementById ("network_resistance").value);
+                        var network_reactance = Number (document.getElementById ("network_reactance").value);
+                        var transformer_power = Number (document.getElementById ("transformer_power").value);
+                        var transformer_resistance = Number (document.getElementById ("transformer_resistance").value);
+                        var transformer_reactance = Number (document.getElementById ("transformer_reactance").value);
                         var cmax = Number (document.getElementById ("cmax").value);
                         var cmin = Number (document.getElementById ("cmin").value);
                         var motor_power_factor = Number (document.getElementById ("motor_power_factor").value);
                         var starting_ratio = Number (document.getElementById ("starting_ratio").value);
                         url = util.home () + "cim/short_circuit" +
                             ";network_short_circuit_power=" + network_power +
-                            ";network_short_circuit_angle=" + network_angle +
+                            ";network_short_circuit_resistance=" + network_resistance +
+                            ";network_short_circuit_reactance=" + network_reactance +
+                            ";transformer_power_rating=" + transformer_power +
+                            ";transformer_resistance=" + transformer_resistance +
+                            ";transformer_reactance=" + transformer_reactance +
                             ";cmax=" + cmax +
                             ";cmin=" + cmin +
                             ";cosphi=" + motor_power_factor +
@@ -172,10 +180,34 @@ define
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_angle'>Network angle</label>\n" +
+                "          <label class='col-sm-2 col-form-label' for='network_resistance'>Network resistance</label>\n" +
+                "          <div class='col-sm-4'>\n" +
+                "            <input id='network_resistance' class='form-control' type='text' name='network_resistance' aria-describedby='network_resistanceHelp' value='0.437785783'>\n" +
+                "            <small id='network_resistanceHelp' class='form-text text-muted'>Default supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>\n" +
+                "          </div>\n" +
+                "          <label class='col-sm-2 col-form-label' for='network_reactance'>Network reactance</label>\n" +
+                "          <div class='col-sm-4'>\n" +
+                "            <input id='network_reactance' class='form-control' type='text' name='network_reactance' aria-describedby='network_reactanceHelp' value='-1.202806555'>\n" +
+                "            <small id='network_reactanceHelp' class='form-text text-muted'>Default supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <label class='col-sm-2 col-form-label' for='transformer_power'>Transformer power</label>\n" +
                 "          <div class='col-sm-10'>\n" +
-                "            <input id='network_angle' class='form-control' type='text' name='network_angle' aria-describedby='network_angleHelp' value='-70.0'>\n" +
-                "            <small id='network_angleHelp' class='form-text text-muted'>Default supply network short circuit power angle, to be used if no equivalent injection is found (degrees).</small>\n" +
+                "            <input id='transformer_power' class='form-control' type='text' name='transformer_power' aria-describedby='transformer_powerHelp' value='630000'>\n" +
+                "            <small id='transformer_powerHelp' class='form-text text-muted'>Default transformer rated power, to be used if it wasn't specified for a transformer (VA).</small>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <label class='col-sm-2 col-form-label' for='transformer_resistance'>Transformer resistance</label>\n" +
+                "          <div class='col-sm-4'>\n" +
+                "            <input id='transformer_resistance' class='form-control' type='text' name='transformer_resistance' aria-describedby='transformer_resistanceHelp' value='0.005899999998374999'>\n" +
+                "            <small id='transformer_resistanceHelp' class='form-text text-muted'>Default transformer characteristic resistance, to be used if it wasn't specified for a transformer (Ω).</small>\n" +
+                "          </div>\n" +
+                "          <label class='col-sm-2 col-form-label' for='transformer_reactance'>Transformer reactance</label>\n" +
+                "          <div class='col-sm-4'>\n" +
+                "            <input id='transformer_reactance' class='form-control' type='text' name='transformer_reactance' aria-describedby='transformer_reactanceHelp' value='0.039562482211875'>\n" +
+                "            <small id='transformer_reactanceHelp' class='form-text text-muted'>Default transformer characteristic reactance, to be used if it wasn't specified for a transformer (Ω).</small>\n" +
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group row'>\n" +

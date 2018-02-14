@@ -419,7 +419,7 @@ class ShortCircuitSuite
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (null != data.errors)
-            assert (data.errors.contains (ScError (true, "non-radial network detected through Line2")))
+            assert (data.errors.contains (ScError (true, "non-radial network detected through Line2").toString))
     }
 
     test ("Complex 2 Parallel")
@@ -477,7 +477,7 @@ class ShortCircuitSuite
             assert (0 < consumer.count (), "Line2_node_2 not found")
             val data = consumer.first ()
             assert (null != data.errors)
-            assert (data.errors.contains (ScError (true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo")))
+            assert (data.errors.contains (ScError (true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo").toString))
     }
 
     test ("IBW")
@@ -603,7 +603,7 @@ class ShortCircuitSuite
             assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
             assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == results.filter (_.errors != null).count, "expected no errors")
+            assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
     }
 
     test ("normalOpen=false open=true Fuse")
@@ -663,7 +663,7 @@ class ShortCircuitSuite
             assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
             assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == results.filter (_.errors != null).count, "expected no errors")
+            assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
             // if the transformer impedances are removed from the sample file, this command yields the same results:
             // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
             // except there is a warning "NONFATAL: transformer has no impedance value, using default 0.01375+0.05312j"

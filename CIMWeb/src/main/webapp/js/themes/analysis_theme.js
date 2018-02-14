@@ -29,6 +29,7 @@ define
                 );
                 this._recommended =
                     [
+                        [0, 0],
                         [65, 25],
                         [105, 40],
                         [140, 50],
@@ -44,6 +45,34 @@ define
                         [1750, 500],
                         [2400, 630]
                     ];
+                this._items =
+                    [
+                        {
+                            id: "fuseOK",
+                            description: "<span style='width: 15px; height: 15px; background: rgb(0, 255, 0);'>&nbsp;&nbsp;&nbsp;</span> Fuse OK",
+                            checked: true,
+                            color: "rgb(0, 255, 0)"
+                        },
+                        {
+                            id: "fuseBAD",
+                            description: "<span style='width: 15px; height: 15px; background: rgb(255, 0, 0);'>&nbsp;&nbsp;&nbsp;</span> Fuse NOT OK",
+                            checked: true,
+                            color: "rgb(255, 0, 0)"
+                        },
+                        {
+                            id: "failure",
+                            description: "<span style='width: 15px; height: 15px; background: rgb(143, 0, 255);'>&nbsp;&nbsp;&nbsp;</span> Failure",
+                            checked: true,
+                            color: "rgb(143, 0, 255)"
+                        },
+                        {
+                            id: "unknown",
+                            description: "<span style='width: 15px; height: 15px; background: rgb(128, 128, 128);'>&nbsp;&nbsp;&nbsp;</span> Status unknown",
+                            checked: true,
+                            color: "rgb(128, 128, 128)"
+                        }
+                    ];
+
             }
 
             getName ()
@@ -62,6 +91,14 @@ define
             }
 
             /**
+             * Item list for the legend.
+             */
+            getItems ()
+            {
+                return (this._items);
+            }
+
+            /**
              * Add analysis information.
              * @param {Object} data - the hash table object of CIM classes by class name
              * @function process_spatial_objects_again
@@ -77,6 +114,20 @@ define
                     var object = equipment[id];
                     if (object)
                         object["analysis"] = anal;
+                }
+                for (var id in equipment)
+                {
+                    var color = "rgb(128, 128, 128)";
+                    var anal = equipment[id].analysis;
+                    if ("undefined" != typeof (anal))
+                    {
+                        if (anal.errors && anal.errors.find (x => x.startsWith ("FATAL")))
+                            color = "rgb(143, 0, 255)";
+                        else
+                            if (anal.fuses && !isNaN (Number (anal.ik)))
+                                color = this.fuseOK (anal.ik, anal.fuses.filter (x => x > 0.0)) ? "rgb(0, 255, 0)" : "rgb(255, 0, 0)";
+                    }
+                    equipment[id].color = color;
                 }
             }
 
@@ -128,7 +179,7 @@ define
 
             fuse (ik)
             {
-                return (this._recommended.filter (amp => amp[0] <= ik).slice(-1)[0][1]);
+                return (!isNaN (Number (ik)) ? this._recommended.filter (amp => amp[0] <= ik).slice(-1)[0][1] : this._recommended.slice(-1)[0][1]);
             }
 
             fuseOK (ik, fuses)
@@ -154,6 +205,14 @@ define
                     if (f.length > 0)
                         ret = "<div>Fuse" + (f.length > 1 ? "s" : "") + " = " + f.map (a => a.toString ().split("\\.")[0] + "A").join (", ") + " recommended: " + this.fuse (analysis.ik) + "A " + this.glyph (this.fuseOK (analysis.ik, f)) + "</div>"
                 }
+                return (ret);
+            }
+
+            errors (analysis)
+            {
+                var ret = "";
+                if (analysis.errors)
+                    analysis.errors.forEach (function (error) { ret = ret + "<div style='color: " + (error.startsWith ("FATAL") ? "red" : "orange") + ";'>" + error + "</div>"; });
                 return (ret);
             }
 
@@ -189,6 +248,7 @@ define
                     "  </tr>" +
                     "</table>" +
                     this.fuses (analysis) +
+                    this.errors (analysis) +
                     "</p>";
                 }
 

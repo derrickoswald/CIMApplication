@@ -365,7 +365,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         ScResult (node.id_seq, has (node.id_seq), node.source, node.id_prev,
             node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
-            node.fuses, node.errors, ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
+            node.fuses, if (null == node.errors) List () else node.errors.map (_.toString), ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
     }
 
     def run (): RDD[ScResult] =

@@ -34,7 +34,7 @@ case class ScResult (
     r0: Double,
     x0: Double,
     fuses: List[Double],
-    errors: List[ScError],
+    errors: List[String],
     ik: Double = 0.0,
     ik3pol: Double = 0.0,
     ip: Double = 0.0,
