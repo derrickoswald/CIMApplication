@@ -18,10 +18,16 @@ class MaximumStartingCurrentSuite extends FunSuite
     test ("Motor Start-up")
     {
         number: Int ⇒
-            val z = Complex.fromPolar (400.0 * 400.0 / 2.13e6, 29.5, true)
-            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (2.13e6, z, 0.5, 8.0)
+            val v = 400.0
+            val Sk = 2.13e6
+            val phi = 29.5 // °
+            val cosphi = 0.5
+            val iair = 8.0
+            val Z = v * v / Sk
+            val z = Complex.fromPolar (Z, phi, true /* ° */)
+            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (Sk, z, cosphi, iair)
+            val imax = pmax._1 / v
             val ratio = 0.013 / MaximumStartingCurrent.dmax_low_rep // example has dmax=1.3%
-            val imax = pmax._1 * ratio / (400.0 * sqrt (3))
-            assert (Math.abs (imax - 5.8) < 5e-3, "expected 5.8 A")
+            assert (Math.abs ((imax * ratio) - 5.8) < 5e-3, "expected 5.8 A")
     }
 }

@@ -35,7 +35,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, List (), null)
+    val default_node = ScNode ("", 0.0, null, null, null, null)
 
     def has (string: String): String =
     {
@@ -62,7 +62,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, List (), null)
+        ScNode (node.id, voltage, null, null, null, null)
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
@@ -403,11 +403,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, List (), null)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.primary_impedance, null, null)
                     else
                     {
                         val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, List (), errors)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, node.secondary_impedance, null, errors)
                     }
                 case None ⇒
                     v

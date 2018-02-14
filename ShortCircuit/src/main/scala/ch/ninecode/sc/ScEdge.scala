@@ -163,19 +163,19 @@ case class ScEdge (
     }
 
     /**
-     * Compute the list of fuse values to the given node as accumulated from the reference
+     * Compute the list of fuse values as accumulated from the reference
      *
-     * @param ref fuse value list of the node at the end of the edge (List[Double] (A))
-     * @return list of fuses to the given node
+     * @param ref fuse value list of the node at one end of the edge (List[Double] (A))
+     * @return list of fuses at the other end of the edge
      */
     def fusesTo (ref: List[Double]): List[Double] =
     {
         element match
         {
             case fuse: Fuse ⇒
-                ref :+ fuse.Switch.ratedCurrent
+                if (null == ref) List (fuse.Switch.ratedCurrent) else ref :+ fuse.Switch.ratedCurrent
             case breaker: Breaker ⇒
-                ref :+ breaker.ProtectedSwitch.Switch.ratedCurrent
+                if (null == ref) List (breaker.ProtectedSwitch.Switch.ratedCurrent) else ref :+ breaker.ProtectedSwitch.Switch.ratedCurrent
             case _ ⇒
                 ref
         }

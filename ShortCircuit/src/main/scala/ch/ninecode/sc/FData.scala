@@ -5,7 +5,7 @@ object FData
     case class Amp (Ik: Double, Rating: Double)
     val recommended: Array[Amp] =
         Array (
-            Amp (Double.MinPositiveValue, 0), // failsafe fallback for currents less than 65A
+            Amp (0, 0), // failsafe fallback for currents less than 65A
             Amp (65, 25),
             Amp (105, 40),
             Amp (140, 50),
@@ -21,13 +21,27 @@ object FData
             Amp (1750, 500),
             Amp (2400, 630)
         )
-    def fuse (ik: Double): Double = recommended.filter (_.Ik <= ik).last.Rating
+    def fuse (ik: Double): Double =
+    {
+        if (ik.isNaN)
+            recommended.last.Rating
+        else
+        {
+            val i = Math.abs (ik)
+            recommended.filter (_.Ik <= i).last.Rating
+        }
+    }
     def fuseOK (ik: Double, fuses: List[Double]): Boolean =
     {
-        val valid = fuses.reverse.filter (_ > 0.0)
-        if (valid.isEmpty)
+        if (null == fuses)
             false
         else
-            fuse (ik) >= valid.head
+        {
+            val valid = fuses.reverse.filter (_ > 0.0)
+            if (valid.isEmpty)
+                false
+            else
+                fuse (ik) >= valid.head
+        }
     }
 }

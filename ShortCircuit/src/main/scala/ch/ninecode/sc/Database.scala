@@ -94,14 +94,15 @@ object Database
                     datainsert.setDouble (7, records(i).x)
                     datainsert.setDouble (8, records(i).r0)
                     datainsert.setDouble (9, records(i).x0)
-                    datainsert.setString (10, records(i).fuses.mkString (","))
-                    if (records(i).fuses.isEmpty)
+                    if ((null == records(i).fuses) || records(i).fuses.isEmpty)
                     {
+                        datainsert.setNull (10, Types.VARCHAR)
                         datainsert.setNull (11, Types.DOUBLE)
                         datainsert.setNull (12, Types.BOOLEAN)
                     }
                     else
                     {
+                        datainsert.setString (10, records(i).fuses.mkString (","))
                         datainsert.setDouble (11, FData.fuse (records(i).ik))
                         datainsert.setBoolean (12, FData.fuseOK (records(i).ik, records(i).fuses))
                     }

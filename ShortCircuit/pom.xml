@@ -159,7 +159,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>ShortCircuitSuite.txt</filereports>
-                    <suites>ch.ninecode.sc.ShortCircuitSuite</suites>
+                    <suites>ch.ninecode.sc.TestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

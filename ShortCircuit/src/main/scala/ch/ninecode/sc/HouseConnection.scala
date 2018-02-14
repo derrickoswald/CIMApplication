@@ -46,7 +46,7 @@ case class HouseConnection (
 {
     def csv: String =
         equipment + ";" + tx + ";" + ik + ";" + ik3pol + ";" + ip + ";" + r + ";" + r0 + ";" + x + ";" + x0 + ";" + sk + ";" +
-        fuses.mkString (",") + ";" + (if (fuses.isEmpty) ";" else FData.fuse (ik) + ";" + FData.fuseOK (ik, fuses)) + ";" +
+        (if (null == fuses) "" else fuses.mkString (",")) + ";" + FData.fuse (ik) + ";" + FData.fuseOK (ik, fuses) + ";" +
         (if (null != errors) errors.mkString (",") else "") + ";" +
         motor_3ph_max_low + ";" + motor_1ph_max_low + ";" + motor_l_l_max_low + ";" + motor_3ph_max_med + ";" + motor_1ph_max_med + ";" + motor_l_l_max_med
 }

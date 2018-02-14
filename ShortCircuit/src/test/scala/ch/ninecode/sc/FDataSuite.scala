@@ -22,6 +22,18 @@ class FDataSuite extends FunSuite
             assert (FData.fuse (649.99) == 160.0, "expected 160A")
     }
 
+    test ("FuseSmall")
+    {
+        number: Int ⇒
+            assert (FData.fuse (25.0) == 0.0, "expected 0A")
+    }
+
+    test ("FuseZero")
+    {
+        number: Int ⇒
+            assert (FData.fuse (0.0) == 0.0, "expected 0A")
+    }
+
     test ("FuseOK")
     {
         number: Int ⇒

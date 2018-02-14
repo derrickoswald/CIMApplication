@@ -336,7 +336,7 @@ object Main
                 val house_connection = shortcircuit.run ()
 
                 val string = house_connection.sortBy (_.tx).map (h ⇒ {
-                    h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + h.fuses.mkString (",") + ";" + (if (h.fuses.isEmpty) ";" else FData.fuse (h.ik) + ";" + FData.fuseOK (h.ik, h.fuses)) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
+                    h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + (if (null == h.fuses) "" else h.fuses.mkString (",")) + ";" + FData.fuse (h.ik) + ";" + FData.fuseOK (h.ik, h.fuses) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
                 })
                 log.info ("output_path: " + workdir)
                 val hdfs_configuration = new Configuration()
