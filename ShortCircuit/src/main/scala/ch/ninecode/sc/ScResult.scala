@@ -5,6 +5,7 @@ package ch.ninecode.sc
  *
  * @param node TopologicalNode mRID
  * @param equipment conducting equipment mRID
+ * @param terminal number for equipment
  * @param tx the feeding transformer
  * @param prev the previous node
  * @param r aggregate positive sequence resistance from the source (primary of feeding transformer) to this node (Ω)
@@ -27,6 +28,7 @@ package ch.ninecode.sc
 case class ScResult (
     node: String,
     equipment: String,
+    terminal: Int,
     tx: String,
     prev: String,
     r: Double,
@@ -47,7 +49,7 @@ case class ScResult (
     motor_l_l_max_med: Double = 0.0)
 {
     def csv: String =
-        equipment + ";" + tx + ";" + ik + ";" + ik3pol + ";" + ip + ";" + r + ";" + r0 + ";" + x + ";" + x0 + ";" + sk + ";" +
+        equipment + ";" + terminal + ";" + tx + ";" + ik + ";" + ik3pol + ";" + ip + ";" + r + ";" + r0 + ";" + x + ";" + x0 + ";" + sk + ";" +
         (if (null == fuses) "" else fuses.mkString (",")) + ";" + FData.fuse (ik) + ";" + FData.fuseOK (ik, fuses) + ";" +
         (if (null != errors) errors.mkString (",") else "") + ";" +
         motor_3ph_max_low + ";" + motor_1ph_max_low + ";" + motor_l_l_max_low + ";" + motor_3ph_max_med + ";" + motor_1ph_max_med + ";" + motor_l_l_max_med
@@ -55,5 +57,5 @@ case class ScResult (
 
 object ScResult
 {
-    val csv_header: String = "has;tra;ik;ik3pol;ip;r;x;r0;x0;sk;fuses;fusemax;fuseOK;errors;motor3phmax_low;motor1phmax_low;motorllmax_low;motor3phmax_med;motor1phmax_med;motorllmax_med"
+    val csv_header: String = "equipment;terminal;transformer;ik;ik3pol;ip;r;x;r0;x0;sk;fuses;fusemax;fuseOK;errors;motor3phmax_low;motor1phmax_low;motorllmax_low;motor3phmax_med;motor1phmax_med;motorllmax_med"
 }
