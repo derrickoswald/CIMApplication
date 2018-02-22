@@ -21,8 +21,6 @@ object MaximumStartingCurrent
      * @param network_impedance network resistance and reactance at the point of common coupling (Ω)
      * @param motor_power_factor the cosine of the motor starting current-voltage phase angle (dimensionless)
      *                           typical values range from 0.2 (φ = 78°) to 0.6 (φ = 53°) during startup
-     * @param motor_starting_current_ratio ratio between the motor starting current and rated current (dimensionless)
-     *                                     typical values range from 3.0 to 8.0
      * @return the maximum motor power rating that falls within the DACHCZ limit for short-term network voltage change,
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      *         this can be converted to maximum current by dividing by root 3 times the nominal voltage
@@ -30,14 +28,13 @@ object MaximumStartingCurrent
     def max_power_3_phase_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = 1.0, // e.g. cos (60)
-        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
+        motor_power_factor: Double = 1.0 // e.g. cos (60)
         ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
         val phin = network_impedance.angle
         val phim = acos (motor_power_factor)
-        val pmax = Math.abs (network_short_circuit_power / (root3 * cos (phin - phim))) / motor_starting_current_ratio
+        val pmax = Math.abs (network_short_circuit_power / (root3 * cos (phin - phim)))
         (dmax_low_rep * pmax, dmax_medium_rep * pmax)
     }
 
@@ -49,8 +46,7 @@ object MaximumStartingCurrent
      * @param network_impedance network resistance and reactance at the point of common coupling (Ω)
      * @param motor_power_factor the cosine of the motor starting current-voltage phase angle (dimensionless)
      *                           typical values range from 0.2 (φ = 78°) to 0.6 (φ = 53°) during startup
-     * @param motor_starting_current_ratio ratio between the motor starting current and rated current (dimensionless)
-     *                                     typical values range from 3.0 to 8.0
+
      * @return the maximum motor power rating that falls within the DACHCZ limit for short-term network voltage change,
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      *         this can be converted to maximum current by dividing by the nominal line to neutral voltage
@@ -58,13 +54,13 @@ object MaximumStartingCurrent
     def max_power_1_phase_line_to_neutral_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = 1.0, // e.g. cos (60)
-        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
+        motor_power_factor: Double = 1.0 // e.g. cos (60)
         ): (Double, Double) =
     {
+        val root3 = sqrt (3.0)
         val phin = network_impedance.angle
         val phim = acos (motor_power_factor)
-        val pmax = Math.abs (network_short_circuit_power / (6.0 * cos (phin - phim))) / motor_starting_current_ratio
+        val pmax = Math.abs (network_short_circuit_power * root3 / (6.0 * cos (phin - phim)))
         (dmax_low_rep * pmax, dmax_medium_rep * pmax)
     }
 
@@ -76,8 +72,6 @@ object MaximumStartingCurrent
      * @param network_impedance network resistance and reactance at the point of common coupling (Ω)
      * @param motor_power_factor the cosine of the motor starting current-voltage phase angle (dimensionless)
      *                           typical values range from 0.2 (φ = 78°) to 0.6 (φ = 53°) during startup
-     * @param motor_starting_current_ratio ratio between the motor starting current and rated current (dimensionless)
-     *                                     typical values range from 3.0 to 8.0
      * @return the maximum motor power rating that falls within the DACHCZ limit for short-term network voltage change,
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      *         this can be converted to maximum current by dividing by the nominal line to line voltage
@@ -85,8 +79,7 @@ object MaximumStartingCurrent
     def max_power_1_phase_line_to_line_motor (
         network_short_circuit_power: Double,
         network_impedance: Complex,
-        motor_power_factor: Double = 1.0, // e.g. cos (60)
-        motor_starting_current_ratio: Double = 1.0 // e.g. 5.0
+        motor_power_factor: Double = 1.0 // e.g. cos (60)
         ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
@@ -95,29 +88,18 @@ object MaximumStartingCurrent
         val phin = network_impedance.angle
         val phim = acos (motor_power_factor)
 
-        val temp_low = dmax_low_rep / root3 * network_short_circuit_power
-        val pmax_line_neutral_low = min (
-            abs (temp_low / cos (phin - (phim - thirty))), // dL1−N
-            abs (temp_low / cos (phin - (phim + thirty)))) // dL2−N
-        val pmax_line_line_low = min (
-            abs (dmax_low_rep / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
+        val temp = 1.0 / root3 * network_short_circuit_power
+        val pmax_line_neutral = min (
+            abs (temp / cos (phin - (phim - thirty))), // dL1−N
+            abs (temp / cos (phin - (phim + thirty)))) // dL2−N
+        val pmax_line_line = min (
+            abs (1.0 / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
             min (
-                abs (dmax_low_rep * network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
-                abs (dmax_low_rep * network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
+                abs (network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
+                abs (network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
         )
-        val pmax_low = min (pmax_line_neutral_low, pmax_line_line_low)
+        val pmax = min (pmax_line_neutral, pmax_line_line)
 
-        val temp_med = dmax_medium_rep / root3 * network_short_circuit_power
-        val pmax_line_neutral_med = min (
-            abs (temp_med / cos (phin - (phim - thirty))),
-            abs (temp_med / cos (phin - (phim + thirty))))
-        val pmax_line_line_med = min (
-            abs (dmax_medium_rep / 2.0 * network_short_circuit_power / cos (phin - phim)),
-            min (
-                abs (dmax_medium_rep * network_short_circuit_power / cos (phin - (phim + sixty))),
-                abs (dmax_medium_rep * network_short_circuit_power / cos (phin - (phim - sixty))))
-        )
-        val pmax_med = min (pmax_line_neutral_med, pmax_line_line_med)
-        (pmax_low / motor_starting_current_ratio, pmax_med / motor_starting_current_ratio)
+        (dmax_low_rep * pmax, dmax_medium_rep * pmax)
     }
 }

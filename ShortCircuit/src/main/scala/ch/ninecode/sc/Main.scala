@@ -75,10 +75,12 @@ object Main
         default_network_impedance: Complex = Complex (0.437785783, -1.202806555),
         default_transformer_power: Double = 630000.0,
         default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
+        base_temperature: Double = 20.0,
+        low_temperature: Double = 60.0,
+        high_temperature: Double = 90.0,
         cmax: Double = 1.0,
         cmin: Double = 0.90,
         cosphi: Double = 1.0,
-        starting_ratio: Double = 1.0,
         workdir: String = "",
         files: Seq[String] = Seq ())
 
@@ -125,6 +127,18 @@ object Main
             action ((x, c) ⇒ c.copy (default_network_impedance = x)).
             text ("network impedance if not in CIM, Ω")
 
+        opt[Double]('b', "tbase").valueName ("temperature").
+            action ((x, c) ⇒ c.copy (base_temperature = x)).
+            text ("temperature assumed in CIM file (°C)")
+
+        opt[Double]('w', "tlow").valueName ("temperature").
+            action ((x, c) ⇒ c.copy (low_temperature = x)).
+            text ("low temperature for maximum fault (°C)")
+
+        opt[Double]('h', "thigh").valueName ("temperature").
+            action ((x, c) ⇒ c.copy (low_temperature = x)).
+            text ("high temperature for minimum fault (°C)")
+
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
@@ -148,10 +162,6 @@ object Main
         opt[Double]('f', "cosphi").
             action ((x, c) => c.copy (cosphi = x)).
             text ("load power factor, used for maximum inrush current")
-
-        opt[Double]('r', "starting_ratio").
-            action ((x, c) => c.copy (starting_ratio = x)).
-            text ("load current starting ratio, used for maximum inrush current")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -312,13 +322,15 @@ object Main
                     verbose = !arguments.quiet,
                     default_supply_network_short_circuit_power = arguments.default_network_power,
                     default_supply_network_short_circuit_impedance = arguments.default_network_impedance,
-                    trafos = arguments.trafos,
                     default_transformer_power_rating = arguments.default_transformer_power,
                     default_transformer_impedance = arguments.default_transformer_impedance,
+                    base_temperature = arguments.base_temperature,
+                    low_temperature = arguments.low_temperature,
+                    high_temperature = arguments.high_temperature,
                     cmax = arguments.cmax,
                     cmin = arguments.cmin,
                     cosphi = arguments.cosphi,
-                    starting_ratio = arguments.starting_ratio,
+                    trafos = arguments.trafos,
                     workdir = workdir
                 )
 
@@ -334,19 +346,6 @@ object Main
 
                 val shortcircuit = ShortCircuit (session, storage, options)
                 val results = shortcircuit.run ()
-
-                val string = results.sortBy (_.tx).map (h ⇒ {
-                    h.equipment + ";" + h.tx + ";" + h.ik + ";" + h.ik3pol + ";" + h.ip + ";" + h.r + ";" + h.r0 + ";" + h.x + ";" + h.x0 + ";" + h.sk + ";" + (if (null == h.fuses) "" else h.fuses.mkString (",")) + ";" + FData.fuse (h.ik) + ";" + FData.fuseOK (h.ik, h.fuses) + ";" + h.motor_3ph_max_low + ";" + h.motor_1ph_max_low + ";" + h.motor_l_l_max_low + ";" + h.motor_3ph_max_med + ";" + h.motor_1ph_max_med + ";" + h.motor_l_l_max_med
-                })
-                log.info ("output_path: " + workdir)
-                val hdfs_configuration = new Configuration()
-                hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-                hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-                val hdfs = FileSystem.get (URI.create (workdir), hdfs_configuration)
-
-                val directory = new Path (workdir)
-                hdfs.delete (directory, true)
-                string.saveAsTextFile (workdir)
 
                 // output SQLite database
                 Database.store ("test", options) (results.collect)

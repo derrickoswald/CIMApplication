@@ -85,6 +85,8 @@ class ShortCircuitSuite
             val sc_options = ShortCircuitOptions (
                 default_supply_network_short_circuit_power = 600.0e6,
                 default_supply_network_short_circuit_impedance = Complex (0.0, 20.166666666666667), // purely reactive
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
@@ -107,15 +109,11 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "L2_node_2_topo")
-            assert (0 < consumer.count (), "L2_node_2 not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
+            val consumer = results.filter (_.equipment == "E1").first ()
+            assert (Math.abs (consumer.low_sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = results.filter (_.node == "L2_node_1_topo")
-            assert (0 < busbar.count (), "L2_node_1 not found")
-            val sc = busbar.first ()
-            assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
+            val busbar = results.filter (_.equipment == "SS").first ()
+            assert (Math.abs (busbar.low_sk - 8.98e6) < 5e3, "expected 8.98MVA")
     }
 
     test ("DACHCZ with EquivalentInjection")
@@ -145,6 +143,8 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
@@ -167,15 +167,11 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "L2_node_2_topo")
-            assert (0 < consumer.count (), "L2_node_2 not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.sk - 2.13e6) < 5e3, "expected 2.13MVA")
+            val consumer = results.filter (_.equipment == "E1").first ()
+            assert (Math.abs (consumer.low_sk - 2.13e6) < 5e3, "expected 2.13MVA")
 
-            val busbar = results.filter (_.node == "L2_node_1_topo")
-            assert (0 < busbar.count (), "L2_node_1 not found")
-            val sc = busbar.first ()
-            assert (Math.abs (sc.sk - 8.98e6) < 5e3, "expected 8.98MVA")
+            val busbar = results.filter (_.equipment == "SS").first ()
+            assert (Math.abs (busbar.low_sk - 8.98e6) < 5e3, "expected 8.98MVA")
     }
 
     test ("SAK Spreadsheet")
@@ -205,9 +201,11 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample.transformers",
+                base_temperature = 20.0,
+                low_temperature = 60.0,
                 cmax = 0.95,
-                cmin = 0.95)
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -229,15 +227,13 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line2_node_2_topo")
-            assert (0 < consumer.count (), "Line2_node_2 not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.r - 0.19521016) < 0.0005, "expected r=195mΩ")
-            assert (Math.abs (data.x - 0.05195) < 0.0005, "expected x=52mΩ")
-            assert (Math.abs (data.ik - 595) < 0.5, "expected ik1polig=595A")
-            assert (Math.abs (data.ik3pol - 1086) < 0.5, "expected ik3polig=1086A")
-            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 0.752e6) < 5e3, "expected 0.752MVA")
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (Math.abs (consumer.low_r - 0.19521016) < 0.0005, "expected r=195mΩ")
+            assert (Math.abs (consumer.low_x - 0.05195) < 0.0005, "expected x=52mΩ")
+            assert (Math.abs (consumer.low_ik - 604) < 0.5, "expected ik1polig=604A")
+            assert (Math.abs (consumer.low_ik3pol - 1085) < 0.5, "expected ik3polig=1085A")
+            // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
+            assert (Math.abs (consumer.low_sk * sc_options.cmax - 0.752e6) < 5e3, "expected 0.752MVA")
     }
 
     test ("SAK Spreadsheet Ganged")
@@ -267,9 +263,11 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample_ganged.transformers",
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 cmax = 0.95,
-                cmin = 0.95)
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample_ganged.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -291,15 +289,13 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line2_node_2_topo")
-            assert (0 < consumer.count (), "Line2_node_2 not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.r - 193.36016e-3) < 0.0005, "expected r=193mΩ")
-            assert (Math.abs (data.x - 46.45e-3) < 0.0005, "expected x=46mΩ")
-            assert (Math.abs (data.ik - 601) < 0.5, "expected ik1polig=601A")
-            assert (Math.abs (data.ik3pol - 1103) < 0.5, "expected ik3polig=1103A")
-            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 0.764e6) < 5e3, "expected 0.764MVA")
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (Math.abs (consumer.low_r - 193.36016e-3) < 0.0005, "expected r=193mΩ")
+            assert (Math.abs (consumer.low_x - 46.45e-3) < 0.0005, "expected x=46mΩ")
+            assert (Math.abs (consumer.low_ik - 601) < 0.5, "expected ik1polig=601A")
+            assert (Math.abs (consumer.low_ik3pol - 1103) < 0.5, "expected ik3polig=1103A")
+            // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
+            assert (Math.abs (consumer.low_sk * sc_options.cmax - 0.764e6) < 5e3, "expected 0.764MVA")
     }
 
     test ("SAK Spreadsheet Parallel")
@@ -329,9 +325,11 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample.transformers",
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 cmax = 0.95,
-                cmin = 0.95)
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -353,15 +351,13 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line2_node_2_topo")
-            assert (0 < consumer.count (), "Line2_node_2 not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.r - 162.55141e-3) < 0.0005, "expected r=163mΩ")
-            assert (Math.abs (data.x - 37.1e-3) < 0.0005, "expected x=37mΩ")
-            assert (Math.abs (data.ik - 746) < 0.5, "expected ik1polig=746A")
-            assert (Math.abs (data.ik3pol - 1316) < 0.5, "expected ik3polig=1316A")
-            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 0.912e6) < 5e3, "expected 0.912MVA")
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (Math.abs (consumer.low_r - 162.55141e-3) < 0.0005, "expected r=163mΩ")
+            assert (Math.abs (consumer.low_x - 37.1e-3) < 0.0005, "expected x=37mΩ")
+            assert (Math.abs (consumer.low_ik - 746) < 0.5, "expected ik1polig=746A")
+            assert (Math.abs (consumer.low_ik3pol - 1316) < 0.5, "expected ik3polig=1316A")
+            // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
+            assert (Math.abs (consumer.low_sk * sc_options.cmax - 0.912e6) < 5e3, "expected 0.912MVA")
     }
 
     test ("Complex Parallel")
@@ -391,9 +387,9 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample.transformers",
                 cmax = 0.95,
-                cmin = 0.95)
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -415,11 +411,9 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line2_node_2_topo")
-            assert (0 < consumer.count (), "Line2_node_2 not found")
-            val data = consumer.first ()
-            assert (null != data.errors)
-            assert (data.errors.contains (ScError (true, "non-radial network detected through Line2").toString))
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (null != consumer.errors)
+            assert (consumer.errors.contains (ScError (true, "non-radial network detected through Line2").toString))
     }
 
     test ("Complex 2 Parallel")
@@ -449,9 +443,9 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                trafos = FILE_DEPOT + "sak_sample.transformers",
                 cmax = 0.95,
-                cmin = 0.95)
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -473,11 +467,9 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line2_node_2_topo")
-            assert (0 < consumer.count (), "Line2_node_2 not found")
-            val data = consumer.first ()
-            assert (null != data.errors)
-            assert (data.errors.contains (ScError (true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo").toString))
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (null != consumer.errors)
+            assert (consumer.errors.contains (ScError (true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo").toString))
     }
 
     test ("IBW")
@@ -507,10 +499,11 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 cmax = 1.0,
                 cmin = 1.0,
-                cosphi = 1.0,
-                starting_ratio = 1.0)
+                cosphi = 1.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
             results.cache ()
@@ -532,18 +525,18 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer1 = results.filter (_.node == "HAS9754_topo")
-            assert (0 < consumer1.count (), "HAS9754_topo not found")
-            val data1 = consumer1.first ()
-            assert (Math.abs (data1.ik - 740) < 0.5, "expected ik1polig=740A")
-            assert (Math.abs (data1.ik3pol - 1400) < 0.5, "expected ik3polig=1400A")
-            assert (Math.abs (data1.sk - 0.970e6) < 5e3, "expected sk=0.970MVA")
-            assert (Math.abs (data1.motor_3ph_max_med / 400.0 - 48.39) < 0.5, "expected maxanlaufstrom=48A")
+            val data1 = results.filter (_.equipment == "HAS9754").first ()
+            assert (Math.abs (data1.low_ik - 756.115324830728) < 0.5, "expected ik1polig=756A")
+            assert (Math.abs (data1.low_ik3pol - 1460.71083079341) < 0.5, "expected ik3polig=1461A")
+            assert (Math.abs (data1.low_sk - 1.01198046357367e6) < 5e3, "expected sk=1.012MVA")
+            assert (Math.abs (data1.low_motor_3ph_max_med / 400.0 - 49.3) < 0.5, "expected maxanlaufstrom=49A")
+            assert (Math.abs (data1.low_motor_l_l_max_med / 400.0 - 42.7) < 0.5, "expected maxanlaufstrom=43A")
+            assert (Math.abs (data1.low_motor_1ph_max_med / 400.0 - 24.7) < 0.5, "expected maxanlaufstrom=25A")
 
-            val consumer2 = results.filter (_.node == "HAS9753_topo")
-            assert (0 < consumer2.count (), "HAS9753_topo not found")
-            val data2 = consumer2.first ()
-            assert (Math.abs (data2.motor_3ph_max_med / 400.0 - 258.5) < 0.5, "expected maxanlaufstrom=259A")
+            val data2 = results.filter (_.equipment == "HAS9753")first ()
+            assert (Math.abs (data2.low_motor_3ph_max_med / 400.0 - 288.6) < 0.5, "expected maxanlaufstrom=289A")
+            assert (Math.abs (data2.low_motor_l_l_max_med / 400.0 - 212.8) < 0.5, "expected maxanlaufstrom=213A") // not 250A like the spreadsheet says
+            assert (Math.abs (data2.low_motor_1ph_max_med / 400.0 - 144.3) < 0.5, "expected maxanlaufstrom=145A")
     }
 
     test ("normalOpen=true Fuse")
@@ -573,6 +566,8 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -596,13 +591,11 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line_3_node_2_topo")
-            assert (0 < consumer.count (), "Line_3_node_2_topo not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
-            assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
-            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (Math.abs (consumer.low_ik - 812) < 0.5, "expected ik1polig=812A")
+            assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
+            assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
             assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
     }
 
@@ -633,6 +626,8 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
+                base_temperature = 20.0,
+                low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -656,13 +651,11 @@ class ShortCircuitSuite
                 println (h)
             }
 
-            val consumer = results.filter (_.node == "Line_3_node_2_topo")
-            assert (0 < consumer.count (), "Line_3_node_2_topo not found")
-            val data = consumer.first ()
-            assert (Math.abs (data.ik - 812) < 0.5, "expected ik1polig=812A")
-            assert (Math.abs (data.ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
-            // I'm not sure why SAK uses ik3pol (which is scaled bx cmax) to calculate Sk
-            assert (Math.abs (data.sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (Math.abs (consumer.low_ik - 812) < 0.5, "expected ik1polig=812A")
+            assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
+            assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
             assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
             // if the transformer impedances are removed from the sample file, this command yields the same results:
             // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"

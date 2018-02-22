@@ -31,31 +31,48 @@ case class ScResult (
     terminal: Int,
     tx: String,
     prev: String,
-    r: Double,
-    x: Double,
-    r0: Double,
-    x0: Double,
+    low_r: Double,
+    low_x: Double,
+    low_r0: Double,
+    low_x0: Double,
+    high_r: Double,
+    high_x: Double,
+    high_r0: Double,
+    high_x0: Double,
     fuses: List[Double],
     errors: List[String],
-    ik: Double = 0.0,
-    ik3pol: Double = 0.0,
-    ip: Double = 0.0,
-    sk: Double = 0.0,
-    motor_3ph_max_low: Double = 0.0,
-    motor_1ph_max_low: Double = 0.0,
-    motor_l_l_max_low: Double = 0.0,
-    motor_3ph_max_med: Double = 0.0,
-    motor_1ph_max_med: Double = 0.0,
-    motor_l_l_max_med: Double = 0.0)
+    low_ik: Double = 0.0,
+    low_ik3pol: Double = 0.0,
+    low_ip: Double = 0.0,
+    low_sk: Double = 0.0,
+    low_motor_3ph_max_low: Double = 0.0,
+    low_motor_1ph_max_low: Double = 0.0,
+    low_motor_l_l_max_low: Double = 0.0,
+    low_motor_3ph_max_med: Double = 0.0,
+    low_motor_1ph_max_med: Double = 0.0,
+    low_motor_l_l_max_med: Double = 0.0,
+    high_ik: Double = 0.0,
+    high_ik3pol: Double = 0.0,
+    high_ip: Double = 0.0,
+    high_sk: Double = 0.0,
+    high_motor_3ph_max_low: Double = 0.0,
+    high_motor_1ph_max_low: Double = 0.0,
+    high_motor_l_l_max_low: Double = 0.0,
+    high_motor_3ph_max_med: Double = 0.0,
+    high_motor_1ph_max_med: Double = 0.0,
+    high_motor_l_l_max_med: Double = 0.0
+
+                    )
 {
     def csv: String =
-        equipment + ";" + terminal + ";" + tx + ";" + ik + ";" + ik3pol + ";" + ip + ";" + r + ";" + r0 + ";" + x + ";" + x0 + ";" + sk + ";" +
-        (if (null == fuses) "" else fuses.mkString (",")) + ";" + FData.fuse (ik) + ";" + FData.fuseOK (ik, fuses) + ";" +
-        (if (null != errors) errors.mkString (",") else "") + ";" +
-        motor_3ph_max_low + ";" + motor_1ph_max_low + ";" + motor_l_l_max_low + ";" + motor_3ph_max_med + ";" + motor_1ph_max_med + ";" + motor_l_l_max_med
+        equipment + ";" + terminal + ";" + node + ";" + tx + ";" + (if (null != errors) errors.mkString (",") else "") + ";" +
+        low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" +
+        low_motor_3ph_max_low + ";" + low_motor_1ph_max_low + ";" + low_motor_l_l_max_low + ";" + low_motor_3ph_max_med + ";" + low_motor_1ph_max_med + ";" + low_motor_l_l_max_med + ";" +
+        (if (null == fuses) "" else fuses.mkString (",")) + ";" + FData.fuse (high_ik) + ";" + FData.fuseOK (high_ik, fuses) + ";" +
+        high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_sk
 }
 
 object ScResult
 {
-    val csv_header: String = "equipment;terminal;transformer;ik;ik3pol;ip;r;x;r0;x0;sk;fuses;fusemax;fuseOK;errors;motor3phmax_low;motor1phmax_low;motorllmax_low;motor3phmax_med;motor1phmax_med;motorllmax_med"
+    val csv_header: String = "equipment;terminal;node;transformer;errors;ik;ik3pol;ip;r;x;r0;x0;sk;motor3phmax_low;motor1phmax_low;motorllmax_low;motor3phmax_med;motor1phmax_med;motorllmax_med;fuses;fusemax;fuseOK;ik;ik3pol;ip;r;x;r0;x0;sk"
 }

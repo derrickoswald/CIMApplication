@@ -16,6 +16,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
+import ch.ninecode.sc.ScEdge.resistanceAt
 
 /**
  * Short circuit calculation.
@@ -34,7 +35,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val default_impendanz = Impedanzen (Complex (Double.PositiveInfinity, Double.PositiveInfinity), Complex (Double.PositiveInfinity, Double.PositiveInfinity))
+    val default_impendanz = Impedanzen (
+        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
+        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
+        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
+        Complex (Double.PositiveInfinity, Double.PositiveInfinity))
     val default_node = ScNode ("", 0.0, null, null, null, null, null)
 
     def make_graph_vertices (v: ScNode): (VertexId, ScNode) =
@@ -92,7 +97,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 case line: ACLineSegment ⇒
                     val dist_km = line.Conductor.len / 1000.0
-                    Impedanzen (Complex (line.r * dist_km, line.x * dist_km), Complex (line.r0 * dist_km, line.x0 * dist_km))
+                    Impedanzen (
+                        Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                        Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
+                        Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                        Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
                 case transformer: PowerTransformer ⇒
                     pte_op match
                     {
@@ -100,14 +109,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                             val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
                             val end = tends (0) // primary
                             val z = Complex (end.r, end.x)
-                            Impedanzen (z, z)
+                            Impedanzen (z, z, z, z)
                         case None ⇒
                             // ToDo what if no data
-                            Impedanzen (0.0, 0.0)
+                            Impedanzen (0.0, 0.0, 0.0, 0.0)
                     }
 
                 case _ ⇒
-                    Impedanzen (0.0, 0.0)
+                    Impedanzen (0.0, 0.0, 0.0, 0.0)
             }
 
             // Note: we eliminate 230V edges because transformer information doesn't exist and
@@ -221,7 +230,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             else
             {
                 val errors = if (null != message.error) if (null == v.errors) List (message.error) else v.errors :+ message.error else v.errors
-                var z = if ((null != message.ref) && (null != message.edge)) Impedanzen (message.ref.impedanz + message.edge.impedanz, message.ref.null_impedanz + message.edge.null_impedanz) else v.impedance
+                var z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
                 var fuses = if (null != message.fuses) message.fuses else v.fuses
                 v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
             }
@@ -238,8 +247,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     {
                         case line: ACLineSegment ⇒
                             val diff = triplet.srcAttr.impedance - triplet.dstAttr.impedance
-                            val expected = triplet.attr.impedanceTo ("not used")
-                            val isequal = Math.abs (!diff.impedanz - !expected.impedanz) < 1e-6 && Math.abs (!diff.null_impedanz - !expected.null_impedanz) < 1e-6
+                            val expected = triplet.attr.impedanceTo ("not important", options.low_temperature, options.high_temperature, options.base_temperature)
+                            val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
                             if (isequal)
                                 Iterator.empty
                             else
@@ -269,7 +278,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
                     {
                         val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
-                        val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
+                        val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq, options.low_temperature, options.high_temperature, options.base_temperature)
                         val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
                         Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, null)))
                     }
@@ -282,7 +291,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
                     {
                         val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
-                        val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
+                        val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq, options.low_temperature, options.high_temperature, options.base_temperature)
                         val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
                         Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, null)))
                     }
@@ -305,7 +314,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
             else
             {
-                val parallel = Impedanzen (a.edge.impedanz.parallel_impedanz (b.edge.impedanz), a.edge.null_impedanz.parallel_impedanz (b.edge.null_impedanz))
+                val parallel = a.edge.parallel (b.edge)
                 val warning = ScError (false, "reinforcement detected from %s".format (a.previous_node))
                 a.copy (edge = parallel, error = warning)
             }
@@ -314,24 +323,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         initial.pregel (ScMessage (null, null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
-    // compute the short-circuit values
-    def calculate_short_circuit (arg: (ScNode, Terminal)): ScResult =
+    def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
     {
-        val node = arg._1
-        val terminal = arg._2
-        val v2 = node.voltage
         val root3 = Math.sqrt (3.0)
 
         // Einpoligen Kurzschlussstrom berechnen
-        val ik_z = root3 * options.cmin * v2
-        val ik_n_sqrt1 = !node.impedance.impedanz
-        val ik_n_sqrt2 = !node.impedance.null_impedanz
+        val ik_z = root3 * options.cmin * voltage
+        val ik_n_sqrt1 = !impedanz
+        val ik_n_sqrt2 = !null_impedanz
         val ik_n = 2 * ik_n_sqrt1 + ik_n_sqrt2
         val ik = ik_z / ik_n
 
         // Dreipoligen Kurzschlussstrom berechnen
-        val ik3pol_n = root3 * !node.impedance.impedanz
-        val ik3pol = options.cmax * v2 / ik3pol_n
+        val ik3pol_n = root3 * !impedanz
+        val ik3pol = options.cmax * voltage / ik3pol_n
 
         // Stosskurzschlussstrom berechnen
         // was       val ip = (1.02 + 0.98 * Math.exp (-3.0 * (trafo_r1 + netz_r1) / (trafo_x1 + Math.abs (netz_x1)))) * Math.sqrt (2) * ik3pol
@@ -340,25 +345,41 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // http://at.dii.unipd.it/renato.gobbo/didattica/corsi/Componenti_tecnologie_elettrici/ABB_swithgear_manual_E11/ABB_11_E_03_druck.pdf pp71-80
         // http://studiecd.dk/cahiers_techniques/Calculation_of_short_circuit_currents.pdf pp7-10
         val kappa =
-            if ((0.0 == node.impedance.impedanz.im) && (0.0 == node.impedance.impedanz.re))
-                1.02 + 0.98 * Math.exp (-3.0)
-            else if (0.0 == node.impedance.impedanz.im)
-                0.0
-            else
-                1.02 + 0.98 * Math.exp (-3.0 * node.impedance.impedanz.re / node.impedance.impedanz.im)
+        if ((0.0 == impedanz.im) && (0.0 == impedanz.re))
+            1.02 + 0.98 * Math.exp (-3.0)
+        else if (0.0 == impedanz.im)
+            0.0
+        else
+            1.02 + 0.98 * Math.exp (-3.0 * impedanz.re / impedanz.im)
         val ip = kappa * Math.sqrt (2) * ik3pol
 
         // short-circuit power at the point of common coupling
-        val sk = (v2 * v2) / !node.impedance.impedanz
+        val sk = (voltage * voltage) / !impedanz
 
         // maximum (motor) power (W) for repetition_rate<0.01/min and 0.01≤r<0.1 /min, override default settings for pf=1.0=cos(90), inrush=1x
-        val m3phmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
-        val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
-        val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, node.impedance.impedanz, options.cosphi, options.starting_ratio)
+        val m3phmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, impedanz, options.cosphi)
+        val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, impedanz, options.cosphi)
+        val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, impedanz, options.cosphi)
+
+        ScIntermediate (ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
+    }
+
+    // compute the short-circuit values
+    def calculate_short_circuit (arg: (ScNode, Terminal)): ScResult =
+    {
+        val node = arg._1
+        val terminal = arg._2
+        val v2 = node.voltage
+        val low = calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low)
+        val high = calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high)
 
         ScResult (node.id_seq, terminal.ConductingEquipment, terminal.ACDCTerminal.sequenceNumber, node.source, node.id_prev,
-            node.impedance.impedanz.re, node.impedance.impedanz.im, node.impedance.null_impedanz.re, node.impedance.null_impedanz.im,
-            node.fuses, if (null == node.errors) List () else node.errors.map (_.toString), ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
+            node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
+            node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
+            node.fuses, if (null == node.errors) List () else node.errors.map (_.toString),
+             low.ik,  low.ik3pol,  low.ip,  low.sk,  low.motor_3ph_max_low,  low.motor_1ph_max_low,  low.motor_l_l_max_low,  low.motor_3ph_max_med,  low.motor_1ph_max_med,  low.motor_l_l_max_med,
+            high.ik, high.ik3pol, high.ip, high.sk, high.motor_3ph_max_low, high.motor_1ph_max_low, high.motor_l_l_max_low, high.motor_3ph_max_med, high.motor_1ph_max_med, high.motor_l_l_max_med
+        )
     }
 
     def run (): RDD[ScResult] =

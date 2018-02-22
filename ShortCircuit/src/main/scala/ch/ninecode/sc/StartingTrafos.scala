@@ -29,7 +29,7 @@ extends
         val netz_x1 = zqt.im
         val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
         val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
-        Impedanzen (Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0))
+        Impedanzen (Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0), Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0))
     }
 
     val secondary_impedance: Impedanzen =
@@ -43,6 +43,8 @@ extends
         val v2 = transformer.v1
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
-        Impedanzen (Complex (trafo_r1, trafo_x1) + (primary_impedance.impedanz * ratio2), Complex (trafo_r0, trafo_x0) + (primary_impedance.null_impedanz * ratio2))
+        Impedanzen (
+            Complex (trafo_r1, trafo_x1) + (primary_impedance.impedanz_low * ratio2), Complex (trafo_r0, trafo_x0) + (primary_impedance.null_impedanz_low * ratio2),
+            Complex (trafo_r1, trafo_x1) + (primary_impedance.impedanz_high * ratio2), Complex (trafo_r0, trafo_x0) + (primary_impedance.null_impedanz_high * ratio2))
     }
 }

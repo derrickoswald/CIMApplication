@@ -25,9 +25,9 @@ class MaximumStartingCurrentSuite extends FunSuite
             val iair = 8.0
             val Z = v * v / Sk
             val z = Complex.fromPolar (Z, phi, true /* ° */)
-            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (Sk, z, cosphi, iair)
+            val pmax = MaximumStartingCurrent.max_power_3_phase_motor (Sk, z, cosphi)
             val imax = pmax._1 / v
             val ratio = 0.013 / MaximumStartingCurrent.dmax_low_rep // example has dmax=1.3%
-            assert (Math.abs ((imax * ratio) - 5.8) < 5e-3, "expected 5.8 A")
+            assert (Math.abs ((imax * ratio) / iair - 5.8) < 5e-3, "expected 5.8 A")
     }
 }

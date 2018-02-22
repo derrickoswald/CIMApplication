@@ -114,13 +114,13 @@ case class ScEdge (
                 {
                     val ratio = v1 / v2
                     val ratio2 = ratio * ratio
-                    Impedanzen (ref.impedanz * ratio2, ref.null_impedanz * ratio2)
+                    Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
                 }
                 else if (id_cn == id_cn_2)
                 {
                     val ratio = v2 / v1
                     val ratio2 = ratio * ratio
-                    Impedanzen (ref.impedanz * ratio2, ref.null_impedanz * ratio2)
+                    Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
                 }
                 else
                     ref
@@ -135,30 +135,33 @@ case class ScEdge (
      * @param id_cn TopologicalNode to compute
      * @return impedance of the given node
      */
-    def impedanceTo (id_cn: String): Impedanzen =
+    def impedanceTo (id_cn: String, low: Double, high: Double, base: Double): Impedanzen =
     {
         element match
         {
             case line: ACLineSegment ⇒
                 val dist_km = line.Conductor.len / 1000.0
-                Impedanzen (Complex (line.r * dist_km, line.x * dist_km), Complex (line.r0 * dist_km, line.x0 * dist_km))
+                Impedanzen (Complex (resistanceAt (low, base, line.r) * dist_km, line.x * dist_km), Complex (resistanceAt (low, base, line.r0) * dist_km, line.x0 * dist_km),
+                Complex (resistanceAt (high, base, line.r) * dist_km, line.x * dist_km), Complex (resistanceAt (high, base, line.r0) * dist_km, line.x0 * dist_km))
             case transformer: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
                 {
-                    val tx_impedance = this.impedance.impedanz
-                    Impedanzen (tx_impedance, tx_impedance)
+                    val tx_impedance_low = this.impedance.impedanz_low
+                    val tx_impedance_high = this.impedance.impedanz_high
+                    Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
                 }
                 else if (id_cn == id_cn_2)
                 {
                     val ratio = v2 / v1
                     val ratio2 = ratio * ratio
-                    val tx_impedance = this.impedance.impedanz
-                    Impedanzen (tx_impedance * ratio2, tx_impedance * ratio2)
+                    val tx_impedance_low = this.impedance.impedanz_low * ratio2
+                    val tx_impedance_high = this.impedance.impedanz_high * ratio2
+                    Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
                 }
                 else
-                    Impedanzen (Complex (0.0), Complex (0.0))
+                    Impedanzen (Complex (0.0), Complex (0.0),Complex (0.0), Complex (0.0))
             case _ ⇒
-                Impedanzen (Complex (0.0), Complex (0.0))
+                Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
         }
     }
 
@@ -193,4 +196,28 @@ object ScEdge
      * Index of open field in Switch bitmask.
      */
     val openMask: Int = Switch.fields.indexOf ("open")
+
+    /**
+     * Temperature coefficient of resistance.
+     *
+     * A compromise between copper (0.00393) and aluminum (0.00403) /°C
+     *
+     * It's complicated (http://nvlpubs.nist.gov/nistpubs/bulletin/07/nbsbulletinv7n1p71_A2b.pdf) and depends on the
+     * alloy and how the wire is drawn and worked, e.g.
+     * "good commercial copper furnished for use as electrical conductors, the average deviation of C from the mean value
+     * 0.00393<sub>8</sub> is only o.ooooo<sub>8</sub>, or 0.2%. Also, when the conductivity and temperature coefficient
+     * are altered by annealing or hard-drawing, C has been found to remain constant within the experimental error."
+     */
+    val alpha: Double = 0.004
+
+    /**
+     * Temperature adjusted resitance.
+     *
+     * @param temperature target temperature (°C)
+     * @param base temperature for the given resistance (°C)
+     * @param r the given resistance (Ω)
+     * @return the temperature compensated resistance (Ω)
+     */
+    def resistanceAt (temperature: Double, base: Double, r: Double): Double =
+        (1.0 + (alpha * (temperature - base))) * r
 }
