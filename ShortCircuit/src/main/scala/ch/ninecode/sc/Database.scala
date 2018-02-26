@@ -24,7 +24,23 @@ object Database
         resultset1.close ()
         if (!exists1)
         {
-            statement.executeUpdate ("create table shortcircuit_run (id integer primary key autoincrement, description text, time text, default_supply_network_short_circuit_power double, default_supply_network_short_circuit_resistance double, default_supply_network_short_circuit_reactance double, base_temperature double, low_temperature double, high_temperature double, cmax double, cmin double, cosphi double)")
+            statement.executeUpdate (
+                """create table shortcircuit_run
+                  |    -- table of parameters used for each program execution
+                  |(
+                  |    id integer primary key autoincrement,                   -- unique id for each program execution
+                  |    description text,                                       -- arbitrary text value describing this program execution
+                  |    time text,                                              -- the time of this program execution (number of miliseconds since 1970-01-01 00:00:00 UTC)
+                  |    default_supply_network_short_circuit_power double,      -- available short circuit network power used (at transformer primary) where no equivalent injection was found (VA)
+                  |    default_supply_network_short_circuit_resistance double, -- network short circuit resistance used where no equivalent injection was found (Ω)
+                  |    default_supply_network_short_circuit_reactance double,  -- network short circuit reactance used where no equivalent injection was found (Ω)
+                  |    base_temperature double,                                -- temperature of elements in the input CIM file (°C)
+                  |    low_temperature double,                                 -- low temperature for lowest resistance (maximum fault level) calculations (used for rating equipment) (°C)
+                  |    high_temperature double,                                -- high temperature for highest resistance (minimum fault level) calculations (used for protections settings) (°C)
+                  |    cmax double,                                            -- voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless)
+                  |    cmin double,                                            -- voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)
+                  |    cosphi double                                           -- power factor of (motor) load (dimensionless)
+                  |)""".stripMargin)
             statement.executeUpdate ("create index if not exists epoc on shortcircuit_run (time)")
         }
         val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
@@ -32,7 +48,33 @@ object Database
         resultset2.close ()
         if (!exists2)
         {
-            statement.executeUpdate ("create table shortcircuit (id integer primary key autoincrement, run integer, node text, equipment text, terminal integer, trafo text, prev text, r double, x double, r0 double, x0 double, errors text, ik double, ik3pol double, ip double, sk double, motor_3ph_max_low double, motor_1ph_max_low double, motor_l_l_max_low double, motor_3ph_max_med double, motor_1ph_max_med double, motor_l_l_max_med double)")
+            statement.executeUpdate (
+                """create table shortcircuit
+                  |    -- table of maximum fault level values
+                  |(
+                  |    id integer primary key autoincrement, -- unique id for each maximum fault level result record
+                  |    run integer,                          -- foreign key to corresponding shortcircuit_run table program execution
+                  |    node text,                            -- CIM ConnectivityNode mRID
+                  |    equipment text,                       -- CIM ConductingEquipment mRID
+                  |    terminal integer,                     -- CIM Terminal mRID referring to the node and equipment
+                  |    trafo text,                           -- CIM PowerTransformer supplying the node
+                  |    prev text,                            -- previous (on path from trafo to node) CIM ConnectivityNode mRID
+                  |    r double,                             -- aggregate positive sequence resistance from the trafo (primary) to this node (Ω)
+                  |    x double,                             -- aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
+                  |    r0 double,                            -- aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
+                  |    x0 double,                            -- aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
+                  |    errors text,                          -- error and warning messages encountered in processing
+                  |    ik double,                            -- one phase short bolted circuit current (A)
+                  |    ik3pol double,                        -- three phase bolted short circuit current (A)
+                  |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
+                  |    sk double,                            -- short-circuit power at the point of common coupling (VA)
+                  |    motor_3ph_max_low double,             -- maximum motor power (3 phase) for repetition_rate<0.01/min (W)
+                  |    motor_1ph_max_low double,             -- maximum motor power (1 phase, line to neutral) for repetition_rate<0.01/min (W)
+                  |    motor_l_l_max_low double,             -- maximum motor power (line to line) for repetition_rate<0.01/min (W)
+                  |    motor_3ph_max_med double,             -- maximum motor power (3 phase) for 0.01 ≤ repetition_rate < 0.1 /min (W)
+                  |    motor_1ph_max_med double,             -- maximum motor power (1 phase, line to neutral) for 0.01 ≤ repetition_rate < 0.1 /min (W)
+                  |    motor_l_l_max_med double              -- maximum motor power (1 phase, line to line) for 0.01 ≤ repetition_rate < 0.1 /min (W)
+                  |)""".stripMargin)
             statement.executeUpdate ("create index if not exists equipment_index on shortcircuit (equipment)")
             statement.executeUpdate ("create index if not exists run_index on shortcircuit (run)")
         }
@@ -41,7 +83,30 @@ object Database
         resultset3.close ()
         if (!exists3)
         {
-            statement.executeUpdate ("create table nullungsbedingung (id integer primary key autoincrement, run integer, node text, equipment text, terminal integer, trafo text, prev text, r double, x double, r0 double, x0 double, fuses text, fusemax double, fuseok boolean, errors text, ik double, ik3pol double, ip double, sk double)")
+            statement.executeUpdate (
+                """create table nullungsbedingung
+                  |    -- table of minimum fault level values
+                  |(
+                  |    id integer primary key autoincrement, -- unique id for each minimum fault level result record
+                  |    run integer,                          -- foreign key to corresponding shortcircuit_run table program execution
+                  |    node text,                            -- CIM ConnectivityNode mRID
+                  |    equipment text,                       -- CIM ConductingEquipment mRID
+                  |    terminal integer,                     -- CIM Terminal mRID referring to the node and equipment
+                  |    trafo text,                           -- CIM PowerTransformer supplying the node
+                  |    prev text,                            -- previous (on path from trafo to node) CIM ConnectivityNode mRID
+                  |    r double,                             -- aggregate positive sequence resistance from the trafo (primary) to this node (Ω)
+                  |    x double,                             -- aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
+                  |    r0 double,                            -- aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
+                  |    x0 double,                            -- aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
+                  |    fuses text,                           -- comma separated list of fuse values from the source (primary of feeding transformer) to this node (A)
+                  |    fusemax double,                       -- maximum recommended fuse value for the calculated fault current (A)
+                  |    fuseok boolean,                       -- evaluation of whether the first fuse is an appropriate value (true) or not (false)
+                  |    errors text,                          -- error and warning messages encountered in processing
+                  |    ik double,                            -- one phase short bolted circuit current (A)
+                  |    ik3pol double,                        -- three phase bolted short circuit current (A)
+                  |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
+                  |    sk double                             -- short-circuit power at the point of common coupling (VA)
+                  |)""".stripMargin)
             statement.executeUpdate ("create index if not exists equipment_index on nullungsbedingung (equipment)")
             statement.executeUpdate ("create index if not exists run_index on nullungsbedingung (run)")
         }
@@ -124,7 +189,7 @@ object Database
                     datainsert1.executeUpdate ()
                 }
                 datainsert1.close ()
-                val datainsert2 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, trafo, prev, r, x, r0, x0, fuses, fusemax, fuseok, errors, ik, ik3pol, ip, sk) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, trafo, prev, r, x, r0, x0, fuses, fusemax, fuseok, errors, ik, ik3pol, ip, sk) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert2.setNull (1, Types.INTEGER)

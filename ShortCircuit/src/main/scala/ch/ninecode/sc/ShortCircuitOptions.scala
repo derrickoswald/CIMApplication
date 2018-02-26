@@ -13,7 +13,7 @@ package ch.ninecode.sc
  * @param high_temperature high temperature for highest resistance (minimum fault level) calculations (used for protections settings) (°C)
  * @param cmax voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless)
  * @param cmin voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)
- * @param cosphi power factor of (motor) load
+ * @param cosphi power factor of (motor) load (dimensionless)
  * @param trafos file name of transformer names to process
  * @param workdir shared directory (HDFS or NFS share) for intermediate results
  */
