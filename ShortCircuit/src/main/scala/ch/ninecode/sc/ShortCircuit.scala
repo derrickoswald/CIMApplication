@@ -357,11 +357,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val sk = (voltage * voltage) / !impedanz
 
         // maximum (motor) power (W) for repetition_rate<0.01/min and 0.01≤r<0.1 /min, override default settings for pf=1.0=cos(90), inrush=1x
-        val m3phmax = MaximumStartingCurrent.max_power_3_phase_motor (sk, impedanz, options.cosphi)
-        val m1phmax = MaximumStartingCurrent.max_power_1_phase_line_to_neutral_motor (sk, impedanz, options.cosphi)
-        val mllmax = MaximumStartingCurrent.max_power_1_phase_line_to_line_motor (sk, impedanz, options.cosphi)
+        val imax3ph = MaximumStartingCurrent.max_current_3_phase (sk, impedanz, voltage, options)
+        val imax1ph = MaximumStartingCurrent.max_current_1_phase (sk, impedanz, voltage, options)
+        val imax2ph = MaximumStartingCurrent.max_current_2_phase (sk, impedanz, voltage, options)
 
-        ScIntermediate (ik, ik3pol, ip, sk, m3phmax._1, m1phmax._1, mllmax._1, m3phmax._2, m1phmax._2, mllmax._2)
+        ScIntermediate (ik, ik3pol, ip, sk, imax3ph._1, imax1ph._1, imax2ph._1, imax3ph._2, imax1ph._2, imax2ph._2)
     }
 
     // compute the short-circuit values
@@ -373,13 +373,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val low = calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low)
         val high = calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high)
 
-        ScResult (node.id_seq, terminal.ConductingEquipment, terminal.ACDCTerminal.sequenceNumber, node.source, node.id_prev,
+        ScResult (node.id_seq, terminal.ConductingEquipment, terminal.ACDCTerminal.sequenceNumber,
+            if (null == node.errors) List () else node.errors.map (_.toString),
+            node.source, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
+            low.ik,  low.ik3pol,  low.ip,  low.sk,  low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
-            node.fuses, if (null == node.errors) List () else node.errors.map (_.toString),
-             low.ik,  low.ik3pol,  low.ip,  low.sk,  low.motor_3ph_max_low,  low.motor_1ph_max_low,  low.motor_l_l_max_low,  low.motor_3ph_max_med,  low.motor_1ph_max_med,  low.motor_l_l_max_med,
-            high.ik, high.ik3pol, high.ip, high.sk, high.motor_3ph_max_low, high.motor_1ph_max_low, high.motor_l_l_max_low, high.motor_3ph_max_med, high.motor_1ph_max_med, high.motor_l_l_max_med
-        )
+            high.ik, high.ik3pol, high.ip, high.sk,
+            node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
     }
 
     def run (): RDD[ScResult] =
@@ -393,7 +394,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val _transformers = new Transformers (spark, storage_level)
-        val tdata = _transformers.getTransformerData (true, options.default_supply_network_short_circuit_power, options.default_supply_network_short_circuit_impedance)
+        val tdata = _transformers.getTransformerData (true, options.default_short_circuit_power, options.default_short_circuit_impedance)
 
         val transformers: Array[Array[TData]] = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray

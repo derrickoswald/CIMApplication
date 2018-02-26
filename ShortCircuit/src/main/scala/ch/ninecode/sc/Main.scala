@@ -80,6 +80,7 @@ object Main
         high_temperature: Double = 90.0,
         cmax: Double = 1.0,
         cmin: Double = 0.90,
+        worstcasepf: Boolean = true,
         cosphi: Double = 1.0,
         workdir: String = "",
         files: Seq[String] = Seq ())
@@ -158,6 +159,10 @@ object Main
         opt[Double]('i', "cmin").
             action ((x, c) => c.copy (cmin = x)).
             text ("voltage factor for minimum fault level, used for protections settings")
+
+        opt[Unit]('r', "worstcasepf").
+            action ((_, c) ⇒ c.copy (worstcasepf = true)).
+            text ("use worst case cosphi (cos term = 1.0, ignore --cosphi)")
 
         opt[Double]('f', "cosphi").
             action ((x, c) => c.copy (cosphi = x)).
@@ -320,8 +325,8 @@ object Main
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
-                    default_supply_network_short_circuit_power = arguments.default_network_power,
-                    default_supply_network_short_circuit_impedance = arguments.default_network_impedance,
+                    default_short_circuit_power = arguments.default_network_power,
+                    default_short_circuit_impedance = arguments.default_network_impedance,
                     default_transformer_power_rating = arguments.default_transformer_power,
                     default_transformer_impedance = arguments.default_transformer_impedance,
                     base_temperature = arguments.base_temperature,

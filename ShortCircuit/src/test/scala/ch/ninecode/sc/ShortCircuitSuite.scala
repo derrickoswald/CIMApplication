@@ -503,6 +503,7 @@ class ShortCircuitSuite
                 low_temperature = 20.0,
                 cmax = 1.0,
                 cmin = 1.0,
+                worstcasepf = false,
                 cosphi = 1.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
@@ -515,6 +516,9 @@ class ShortCircuitSuite
             val path = new File (output)
             FileUtils.deleteQuietly (path)
             string.saveAsTextFile (output)
+
+            // output SQLite database
+            Database.store ("test", sc_options) (results.collect)
 
             val csv = string.collect
             println ("results: " + csv.length)
@@ -529,14 +533,16 @@ class ShortCircuitSuite
             assert (Math.abs (data1.low_ik - 756.115324830728) < 0.5, "expected ik1polig=756A")
             assert (Math.abs (data1.low_ik3pol - 1460.71083079341) < 0.5, "expected ik3polig=1461A")
             assert (Math.abs (data1.low_sk - 1.01198046357367e6) < 5e3, "expected sk=1.012MVA")
-            assert (Math.abs (data1.low_motor_3ph_max_med / 400.0 - 49.3) < 0.5, "expected maxanlaufstrom=49A")
-            assert (Math.abs (data1.low_motor_l_l_max_med / 400.0 - 42.7) < 0.5, "expected maxanlaufstrom=43A")
-            assert (Math.abs (data1.low_motor_1ph_max_med / 400.0 - 24.7) < 0.5, "expected maxanlaufstrom=25A")
+            assert (Math.abs (data1.imax_3ph_med - 49.3) < 0.5, "expected maxanlaufstrom=49A")
+            assert (Math.abs (data1.imax_2ph_med - 42.7) < 0.5, "expected maxanlaufstrom=43A")
+            assert (Math.abs (data1.imax_1ph_med - 24.7) < 0.5, "expected maxanlaufstrom=25A")
 
             val data2 = results.filter (_.equipment == "HAS9753")first ()
-            assert (Math.abs (data2.low_motor_3ph_max_med / 400.0 - 288.6) < 0.5, "expected maxanlaufstrom=289A")
-            assert (Math.abs (data2.low_motor_l_l_max_med / 400.0 - 212.8) < 0.5, "expected maxanlaufstrom=213A") // not 250A like the spreadsheet says
-            assert (Math.abs (data2.low_motor_1ph_max_med / 400.0 - 144.3) < 0.5, "expected maxanlaufstrom=145A")
+            assert (Math.abs (data2.imax_3ph_med - 288.6) < 0.5, "expected maxanlaufstrom=289A")
+            assert (Math.abs (data2.imax_2ph_med - 212.8) < 0.5, "expected maxanlaufstrom=213A") // not 250A like the spreadsheet says
+            assert (Math.abs (data2.imax_1ph_med - 144.3) < 0.5, "expected maxanlaufstrom=145A")
+
+
     }
 
     test ("normalOpen=true Fuse")
