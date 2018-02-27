@@ -4,6 +4,7 @@ package ch.ninecode.sc
  * Short circuit calculation options.
  *
  * @param verbose flag to output progress and interesting values
+ * @param description text describing this program execution
  * @param default_short_circuit_power available short circuit power (at transformer primary) to be used if no equivalent injection is found (VA)
  * @param default_short_circuit_impedance short circuit impedance to be used if no equivalent injection is found (Ω)
  * @param default_transformer_power_rating default transformer maximum power rating to be applied if a transformer has no ratedS specified (VA)
@@ -20,6 +21,7 @@ package ch.ninecode.sc
  */
 case class ShortCircuitOptions (
     verbose: Boolean = true,
+    description: String = "",
     default_short_circuit_power: Double = 200.0e6,
     default_short_circuit_impedance: Complex = Complex (0.437785783, -1.202806555),
     default_transformer_power_rating: Double = 630000,

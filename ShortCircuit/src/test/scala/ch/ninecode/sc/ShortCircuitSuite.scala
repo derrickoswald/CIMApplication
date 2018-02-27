@@ -499,6 +499,7 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
+                description = "IBW",
                 base_temperature = 20.0,
                 low_temperature = 20.0,
                 cmax = 1.0,
@@ -518,7 +519,7 @@ class ShortCircuitSuite
             string.saveAsTextFile (output)
 
             // output SQLite database
-            Database.store ("test", sc_options) (results.collect)
+            Database.store (sc_options) (results.collect)
 
             val csv = string.collect
             println ("results: " + csv.length)

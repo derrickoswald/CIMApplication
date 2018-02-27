@@ -136,7 +136,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, options: ShortCircuitOptions) (records: Array[ScResult]): Int = synchronized
+    def store (options: ShortCircuitOptions) (records: Array[ScResult]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -161,7 +161,7 @@ object Database
                 val now = Calendar.getInstance ()
                 val insert = connection.prepareStatement ("insert into shortcircuit_run (id, description, time, default_short_circuit_power, default_short_circuit_resistance, default_short_circuit_reactance, base_temperature, low_temperature, high_temperature, cmax, cmin, worstcasepf, cosphi) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 insert.setNull (1, Types.INTEGER)
-                insert.setString (2, description)
+                insert.setString (2, options.description)
                 insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
                 insert.setDouble (4, options.default_short_circuit_power)
                 insert.setDouble (5, options.default_short_circuit_impedance.re)

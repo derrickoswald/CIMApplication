@@ -36,7 +36,8 @@ object Main
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 
-    object LogLevels extends Enumeration {
+    object LogLevels extends Enumeration
+    {
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
@@ -68,6 +69,7 @@ object Main
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
         csv_file: String = "",
+        description: String = "",
         trafos: String = "",
         default_network_power: Double = 200e6,
         default_network_impedance: Complex = Complex (0.437785783, -1.202806555),
@@ -83,96 +85,99 @@ object Main
         workdir: String = "",
         files: Seq[String] = Seq ())
 
-    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments] (APPLICATION_NAME) {
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments] (APPLICATION_NAME)
+    {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        opt[Unit]('q', "quiet").
-            action ((_, c) ⇒ c.copy (quiet = true)).
-            text ("supress informational messages")
+        val default = new Arguments
 
-        opt[String]('m', "master").valueName ("MASTER_URL").
+        opt[Unit]("quiet").
+            action ((_, c) ⇒ c.copy (quiet = true)).
+            text ("supress informational messages [false]")
+
+        opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt[Map[String, String]]('o', "opts").valueName ("k1=v1,k2=v2").
+        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = x)).
             text ("other Spark options")
 
-        opt[String]('s', "storage_level").
+        opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
-            text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
+            text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[Unit]('u', "deduplicate").
+        opt[Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
-            text ("de-duplicate input (striped) files")
+            text ("de-duplicate input (striped) files [false]")
 
-        opt[LogLevels.Value]('l', "logging").
+        opt[LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
-            text ("log level, one of " + LogLevels.values.iterator.mkString (","))
+            text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
-        opt[String]('k', "checkpointdir").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt[String]('c', "csv").valueName ("<file>").
+        opt[String]("csv").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data (KS_leistungen.csv)")
 
-        opt[Double]('p', "netp").valueName ("<Sk>").
+        opt[String]("description").valueName ("<text>").
+            action ((x, c) ⇒ c.copy (description = x)).
+            text ("text describing this program execution for SQLite run table")
+
+        opt[Double]("netp").valueName ("<Sk>").
             action ((x, c) ⇒ c.copy (default_network_power = x)).
-            text ("network power if not in CIM, VA")
+            text ("network power if not in CIM, VA [%g]".format (default.default_network_power))
 
-        opt[Complex]('e', "netz").valueName ("<r + xj>").
+        opt[Complex]("netz").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance = x)).
-            text ("network impedance if not in CIM, Ω")
+            text ("network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance))
 
-        opt[Double]('b', "tbase").valueName ("temperature").
+        opt[Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
-            text ("temperature assumed in CIM file (°C)")
+            text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
-        opt[Double]('w', "tlow").valueName ("temperature").
+        opt[Double]("tlow").valueName ("<value>").
             action ((x, c) ⇒ c.copy (low_temperature = x)).
-            text ("low temperature for maximum fault (°C)")
+            text ("low temperature for maximum fault (°C) [%g]".format (default.low_temperature))
 
-        opt[Double]('h', "thigh").valueName ("temperature").
-            action ((x, c) ⇒ c.copy (low_temperature = x)).
-            text ("high temperature for minimum fault (°C)")
+        opt[Double]("thigh").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (high_temperature = x)).
+            text ("high temperature for minimum fault (°C) [%g]".format (default.high_temperature))
 
-        opt[String]('t', "trafos").valueName ("<TRA file>").
+        opt[String]("trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt[Double]('x', "trafop").valueName ("<ratedS>").
+        opt[Double]("trafop").valueName ("<ratedS>").
             action ((x, c) => c.copy (default_transformer_power = x)).
-            text ("transformer power if not in CIM, VA")
+            text ("transformer power if not in CIM, VA [%g]".format (default.default_transformer_power))
 
-        opt[Complex]('z', "trafoz").valueName ("<r + xj>").
+        opt[Complex]("trafoz").valueName ("<r + xj>").
             action ((x, c) => c.copy (default_transformer_impedance = x)).
-            text ("transformer impedance if not in CIM, Ω")
+            text ("transformer impedance if not in CIM, Ω [%s]".format (default.default_transformer_impedance))
 
-        opt[Double]('a', "cmax").
+        opt[Double]("cmax").
             action ((x, c) => c.copy (cmax = x)).
-            text ("voltage factor for maximum fault level, used for rating equipment")
+            text ("voltage factor for maximum fault level, used for rating equipment [%g]".format (default.cmax))
 
-        opt[Double]('i', "cmin").
+        opt[Double]("cmin").
             action ((x, c) => c.copy (cmin = x)).
-            text ("voltage factor for minimum fault level, used for protections settings")
+            text ("voltage factor for minimum fault level, used for protections settings [%g]".format (default.cmin))
 
-        opt[Boolean]('r', "worstcasepf").
-            action ((x, c) ⇒ c.copy (worstcasepf = x)).
-            text ("use worst case cosphi (cos term = 1.0, ignore --cosphi)")
+        opt[Double]("cosphi").
+            action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
+            text ("load power factor, used for maximum inrush current [worst case]")
 
-        opt[Double]('f', "cosphi").
-            action ((x, c) => c.copy (cosphi = x)).
-            text ("load power factor, used for maximum inrush current")
-
-        opt[String]('w', "workdir").valueName ("<dir>").
+        opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
-        arg[String]("<CIM> <CIM> ...").unbounded ().
+        arg[String]("<CIM>,<CIM>...").unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -221,10 +226,11 @@ object Main
      *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
-    def read_cim (session: SparkSession, arguments: Arguments, storage_level: StorageLevel): RDD[Element] =
+    def read_cim (session: SparkSession, arguments: Arguments): RDD[Element] =
     {
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
+        val storage = StorageLevel.fromString (arguments.storage)
         val reader_options = new HashMap[String, String] ()
         reader_options.put ("StorageLevel", arguments.storage)
         reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
@@ -233,23 +239,19 @@ object Main
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage_level)
-
-        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
-            elements.explain
-        else
-            log.info (elements.count () + " elements")
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
+        log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString (arguments.storage), true, true)
+        val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true)
         val ele: RDD[Element] = ntp.process (false)
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
         ele.name = "Elements"
-        ele.persist (storage_level)
+        ele.persist (storage)
         ele
     }
 
@@ -290,15 +292,19 @@ object Main
                     configuration.registerKryoClasses (Array (
                         classOf[ch.ninecode.sc.Complex],
                         classOf[ch.ninecode.sc.Graphable],
-                        classOf[ch.ninecode.sc.ScResult],
                         classOf[ch.ninecode.sc.Impedanzen],
                         classOf[ch.ninecode.sc.ScEdge],
+                        classOf[ch.ninecode.sc.ScError],
+                        classOf[ch.ninecode.sc.ScIntermediate],
+                        classOf[ch.ninecode.sc.ScMessage],
                         classOf[ch.ninecode.sc.ScNode],
+                        classOf[ch.ninecode.sc.ScResult],
                         classOf[ch.ninecode.sc.ShortCircuit],
                         classOf[ch.ninecode.sc.ShortCircuitInfo],
                         classOf[ch.ninecode.sc.ShortCircuitOptions],
                         classOf[ch.ninecode.sc.StartingTrafos],
                         classOf[ch.ninecode.sc.TData],
+                        classOf[ch.ninecode.sc.TransformerDetails],
                         classOf[ch.ninecode.sc.Transformers],
                         classOf[ch.ninecode.sc.TransformerSet]))
                     GraphXUtils.registerKryoClasses (configuration)
@@ -318,11 +324,12 @@ object Main
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                read_cim (session, arguments, storage)
+                read_cim (session, arguments)
 
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
+                    description = arguments.description,
                     default_short_circuit_power = arguments.default_network_power,
                     default_short_circuit_impedance = arguments.default_network_impedance,
                     default_transformer_power_rating = arguments.default_transformer_power,
@@ -341,7 +348,7 @@ object Main
                 // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
                 if ("" != arguments.csv_file)
                 {
-                    val infos = ShortCircuitInfo (session, StorageLevel.MEMORY_AND_DISK_SER)
+                    val infos = ShortCircuitInfo (session, storage)
                     val equivalents = infos.getShortCircuitInfo (arguments.csv_file)
                     val export = new CIMExport (session)
                     export.export (equivalents, arguments.csv_file.replace (".csv", ".rdf"), "generated from " + arguments.csv_file)
@@ -352,7 +359,7 @@ object Main
                 val results = shortcircuit.run ()
 
                 // output SQLite database
-                Database.store ("test", options) (results.collect)
+                Database.store (options) (results.collect)
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")

@@ -54,7 +54,7 @@ class PrivateSuite
             infos.merge (equivalents)
 
             // short circuit calculations
-            val sc_options = ShortCircuitOptions (trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
+            val sc_options = ShortCircuitOptions (description = "Basic", trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -76,7 +76,7 @@ class PrivateSuite
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (results.collect)
+            Database.store (sc_options) (results.collect)
     }
 
     test ("Extended")
@@ -117,7 +117,7 @@ class PrivateSuite
             infos.merge (equivalents)
 
             // short circuit calculations
-            val sc_options = ShortCircuitOptions ()
+            val sc_options = ShortCircuitOptions (description = "Extended")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -139,7 +139,7 @@ class PrivateSuite
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (results.collect)
+            Database.store (sc_options) (results.collect)
     }
 /*
     test ("CKW")
