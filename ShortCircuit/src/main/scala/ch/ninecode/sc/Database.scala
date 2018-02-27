@@ -57,7 +57,8 @@ object Database
                   |    run integer,                          -- foreign key to corresponding shortcircuit_run table program execution
                   |    node text,                            -- CIM ConnectivityNode mRID
                   |    equipment text,                       -- CIM ConductingEquipment mRID
-                  |    terminal integer,                     -- CIM Terminal mRID referring to the node and equipment
+                  |    terminal integer,                     -- CIM Terminal sequence number referring to the node and equipment
+                  |    container text,                       -- CIM EquipmentContainer mRID the equipment resides in
                   |    errors text,                          -- comma separated list of error and warning messages encountered in processing
                   |    trafo text,                           -- CIM PowerTransformer supplying the node
                   |    prev text,                            -- previous (on path from trafo to node) CIM ConnectivityNode mRID
@@ -76,8 +77,8 @@ object Database
                   |    imax_1ph_med double,                  -- maximum inrush current (1 phase, line to neutral) for 0.01 ≤ repetition_rate < 0.1 /min (A)
                   |    imax_2ph_med double                   -- maximum inrush current (1 phase, line to line) for 0.01 ≤ repetition_rate < 0.1 /min (A)
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists equipment_index on shortcircuit (equipment)")
-            statement.executeUpdate ("create index if not exists run_index on shortcircuit (run)")
+            statement.executeUpdate ("create index if not exists sc_equipment_index on shortcircuit (equipment)")
+            statement.executeUpdate ("create index if not exists sc_run_index on shortcircuit (run)")
         }
         val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'nullungsbedingung'")
         val exists3 = resultset3.next ()
@@ -92,7 +93,8 @@ object Database
                   |    run integer,                          -- foreign key to corresponding shortcircuit_run table program execution
                   |    node text,                            -- CIM ConnectivityNode mRID
                   |    equipment text,                       -- CIM ConductingEquipment mRID
-                  |    terminal integer,                     -- CIM Terminal mRID referring to the node and equipment
+                  |    terminal integer,                     -- CIM Terminal sequence number referring to the node and equipment
+                  |    container text,                       -- CIM EquipmentContainer mRID the equipment resides in
                   |    errors text,                          -- comma separated list of error and warning messages encountered in processing
                   |    trafo text,                           -- CIM PowerTransformer supplying the node
                   |    prev text,                            -- previous (on path from trafo to node) CIM ConnectivityNode mRID
@@ -108,8 +110,28 @@ object Database
                   |    fusemax double,                       -- maximum recommended fuse value for the calculated fault current (A)
                   |    fuseok boolean                        -- evaluation of whether the first fuse is an appropriate value (true) or not (false)
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists equipment_index on nullungsbedingung (equipment)")
-            statement.executeUpdate ("create index if not exists run_index on nullungsbedingung (run)")
+            statement.executeUpdate ("create index if not exists nu_equipment_index on nullungsbedingung (equipment)")
+            statement.executeUpdate ("create index if not exists nu_run_index on nullungsbedingung (run)")
+        }
+        val resultset4 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'fusesummary'")
+        val exists4 = resultset4.next ()
+        resultset4.close ()
+        if (!exists4)
+        {
+            statement.executeUpdate (
+                """create table fusesummary
+                  |    -- table summarizing fuse results
+                  |(
+                  |    id integer primary key autoincrement, -- unique id for each summary record
+                  |    run integer,                          -- foreign key to corresponding shortcircuit_run table program execution
+                  |    container text,                       -- CIM EquipmentContainer mRID the equipment resides in
+                  |    allok boolean,                        -- evaluation of whether all fuses in the container are ok (true) or not (false)
+                  |    ok integer,                           -- number of appropriate fuse values in the container
+                  |    bad integer,                          -- number of inappropriate fuse values in the container
+                  |    unknown integer                       -- number of unknown fuse status values in the container
+                  |)""".stripMargin)
+            statement.executeUpdate ("create index if not exists fs_container_index on fusesummary (container)")
+            statement.executeUpdate ("create index if not exists fs_run_index on nullungsbedingung (run)")
         }
         statement.close ()
     }
@@ -160,7 +182,7 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert1.setNull (1, Types.INTEGER)
@@ -168,30 +190,34 @@ object Database
                     datainsert1.setString (3, records(i).node)
                     datainsert1.setString (4, records(i).equipment)
                     datainsert1.setInt (5, records(i).terminal)
-                    if (null == records(i).errors)
+                    if ((null == records(i).container) || ("" == records(i).container))
                         datainsert1.setNull (6, Types.VARCHAR)
                     else
-                        datainsert1.setString (6, records(i).errors.mkString (","))
-                    datainsert1.setString (7, records(i).tx)
-                    datainsert1.setString (8, records(i).prev)
-                    datainsert1.setDouble (9, records(i).low_r)
-                    datainsert1.setDouble (10, records(i).low_x)
-                    datainsert1.setDouble (11, records(i).low_r0)
-                    datainsert1.setDouble (12, records(i).low_x0)
-                    datainsert1.setDouble (13, records(i).low_ik)
-                    datainsert1.setDouble (14, records(i).low_ik3pol)
-                    datainsert1.setDouble (15, records(i).low_ip)
-                    datainsert1.setDouble (16, records(i).low_sk)
-                    datainsert1.setDouble (17, records(i).imax_3ph_low)
-                    datainsert1.setDouble (18, records(i).imax_1ph_low)
-                    datainsert1.setDouble (19, records(i).imax_2ph_low)
-                    datainsert1.setDouble (20, records(i).imax_3ph_med)
-                    datainsert1.setDouble (21, records(i).imax_1ph_med)
-                    datainsert1.setDouble (22, records(i).imax_2ph_med)
+                        datainsert1.setString (6, records(i).container)
+                    if (null == records(i).errors)
+                        datainsert1.setNull (7, Types.VARCHAR)
+                    else
+                        datainsert1.setString (7, records(i).errors.mkString (","))
+                    datainsert1.setString (8, records(i).tx)
+                    datainsert1.setString (9, records(i).prev)
+                    datainsert1.setDouble (10, records(i).low_r)
+                    datainsert1.setDouble (11, records(i).low_x)
+                    datainsert1.setDouble (12, records(i).low_r0)
+                    datainsert1.setDouble (13, records(i).low_x0)
+                    datainsert1.setDouble (14, records(i).low_ik)
+                    datainsert1.setDouble (15, records(i).low_ik3pol)
+                    datainsert1.setDouble (16, records(i).low_ip)
+                    datainsert1.setDouble (17, records(i).low_sk)
+                    datainsert1.setDouble (18, records(i).imax_3ph_low)
+                    datainsert1.setDouble (19, records(i).imax_1ph_low)
+                    datainsert1.setDouble (20, records(i).imax_2ph_low)
+                    datainsert1.setDouble (21, records(i).imax_3ph_med)
+                    datainsert1.setDouble (22, records(i).imax_1ph_med)
+                    datainsert1.setDouble (23, records(i).imax_2ph_med)
                     datainsert1.executeUpdate ()
                 }
                 datainsert1.close ()
-                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert2.setNull (1, Types.INTEGER)
@@ -199,35 +225,46 @@ object Database
                     datainsert2.setString (3, records(i).node)
                     datainsert2.setString (4, records(i).equipment)
                     datainsert2.setInt (5, records(i).terminal)
-                    if (null == records(i).errors)
+                    if ((null == records(i).container) || ("" == records(i).container))
                         datainsert2.setNull (6, Types.VARCHAR)
                     else
-                        datainsert2.setString (6, records(i).errors.mkString (","))
-                    datainsert2.setString (7, records(i).tx)
-                    datainsert2.setString (8, records(i).prev)
-                    datainsert2.setDouble (9, records(i).high_r)
-                    datainsert2.setDouble (10, records(i).high_x)
-                    datainsert2.setDouble (11, records(i).high_r0)
-                    datainsert2.setDouble (12, records(i).high_x0)
-                    datainsert2.setDouble (13, records(i).high_ik)
-                    datainsert2.setDouble (14, records(i).high_ik3pol)
-                    datainsert2.setDouble (15, records(i).high_ip)
-                    datainsert2.setDouble (16, records(i).high_sk)
+                        datainsert2.setString (6, records(i).container)
+                    if (null == records(i).errors)
+                        datainsert2.setNull (7, Types.VARCHAR)
+                    else
+                        datainsert2.setString (7, records(i).errors.mkString (","))
+                    datainsert2.setString (8, records(i).tx)
+                    datainsert2.setString (9, records(i).prev)
+                    datainsert2.setDouble (10, records(i).high_r)
+                    datainsert2.setDouble (11, records(i).high_x)
+                    datainsert2.setDouble (12, records(i).high_r0)
+                    datainsert2.setDouble (13, records(i).high_x0)
+                    datainsert2.setDouble (14, records(i).high_ik)
+                    datainsert2.setDouble (15, records(i).high_ik3pol)
+                    datainsert2.setDouble (16, records(i).high_ip)
+                    datainsert2.setDouble (17, records(i).high_sk)
                     if ((null == records(i).fuses) || records(i).fuses.isEmpty)
                     {
-                        datainsert2.setNull (17, Types.VARCHAR)
-                        datainsert2.setNull (18, Types.DOUBLE)
-                        datainsert2.setNull (19, Types.BOOLEAN)
+                        datainsert2.setNull (18, Types.VARCHAR)
+                        datainsert2.setNull (19, Types.DOUBLE)
+                        datainsert2.setNull (20, Types.BOOLEAN)
                     }
                     else
                     {
-                        datainsert2.setString (17, records(i).fuses.mkString (","))
-                        datainsert2.setDouble (18, FData.fuse (records(i).high_ik))
-                        datainsert2.setBoolean (19, FData.fuseOK (records(i).high_ik, records(i).fuses))
+                        datainsert2.setString (18, records(i).fuses.mkString (","))
+                        datainsert2.setDouble (19, FData.fuse (records(i).high_ik))
+                        datainsert2.setBoolean (20, FData.fuseOK (records(i).high_ik, records(i).fuses))
                     }
                     datainsert2.executeUpdate ()
                 }
                 datainsert2.close ()
+
+                // add fuse summary
+                val datainsert3 = connection.prepareStatement ("insert into fusesummary (id, run, container, allok, ok, bad, unknown) select NULL, ?, container, cast (0 = (total (not fuseOK) + total (fuseOK is NULL)) as boolean), cast (total (fuseOK) as integer), cast (total (not fuseOK) as integer), cast (total (fuseOK is NULL) as integer) from nullungsbedingung where run = ? and container is not null group by container")
+                datainsert3.setInt (1, id)
+                datainsert3.setInt (2, id)
+                datainsert3.executeUpdate ()
+                datainsert3.close ()
 
                 connection.commit ()
 

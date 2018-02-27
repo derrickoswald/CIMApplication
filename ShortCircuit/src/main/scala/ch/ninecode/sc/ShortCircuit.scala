@@ -365,15 +365,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     // compute the short-circuit values
-    def calculate_short_circuit (arg: (ScNode, Terminal)): ScResult =
+    def calculate_short_circuit (arg: (ScNode, Int, String, String)): ScResult =
     {
         val node = arg._1
         val terminal = arg._2
+        val equipment = arg._3
+        val container = arg._4
         val v2 = node.voltage
         val low = calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low)
         val high = calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high)
 
-        ScResult (node.id_seq, terminal.ConductingEquipment, terminal.ACDCTerminal.sequenceNumber,
+        ScResult (node.id_seq, equipment, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
             node.source, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
@@ -434,11 +436,30 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val graph = trace (initial_with_starting_nodes)
 
         // get the leaf nodes with their data
-        val result = graph.vertices.filter (null != _._2.impedance).values
+        val result: RDD[ScNode] = graph.vertices.filter (null != _._2.impedance).values
         result.setName ("scresult")
         result.persist (storage_level)
 
+        // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
+        def station_fn (arg: (((ScNode, Terminal), ConductingEquipment), Option[Any])): (ScNode, Int, String, String) =
+        {
+            arg match
+            {
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (station: Substation)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (bay: Bay)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (level: VoltageLevel)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), None) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case _ => throw new Exception ("unknown container type for %s".format (arg._1._1._1.id_seq))
+            }
+        }
+
         // join results with terminals to get equipment
-        result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values.map (calculate_short_circuit)
+        val d: RDD[(ScNode, Terminal)] = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
+        // join by equipment to get containers
+        val e: RDD[((ScNode, Terminal), ConductingEquipment)] = d.keyBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).values
+        val f: RDD[(((ScNode, Terminal), ConductingEquipment), Option[Element])] = e.keyBy (_._2.Equipment.EquipmentContainer).leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
+        // resolve to top level containers and flatten the list
+        val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
+        g.map (calculate_short_circuit)
     }
 }

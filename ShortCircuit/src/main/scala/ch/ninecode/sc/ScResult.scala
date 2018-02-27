@@ -6,6 +6,7 @@ package ch.ninecode.sc
  * @param node TopologicalNode mRID
  * @param equipment conducting equipment mRID
  * @param terminal number for equipment
+ * @param container container for equipment
  * @param errors errors encountered in processing
  * @param tx the feeding transformer
  * @param prev the previous node
@@ -37,6 +38,7 @@ case class ScResult (
     node: String,
     equipment: String,
     terminal: Int,
+    container: String,
     errors: List[String],
     tx: String,
     prev: String,
@@ -68,7 +70,7 @@ case class ScResult (
 )
 {
     def csv: String =
-        node + ";" + equipment + ";" + terminal + ";" + (if (null != errors) errors.mkString (",") else "") + ";" + tx + ";" +
+        node + ";" + equipment + ";" + terminal + ";" + container + ";" + (if (null != errors) errors.mkString (",") else "") + ";" + tx + ";" +
         low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" +
         imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
         high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
@@ -77,5 +79,5 @@ case class ScResult (
 
 object ScResult
 {
-    val csv_header: String = "node;equipment;terminal;errors;transformer;ik;ik3pol;ip;r;x;r0;x0;sk;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;r;x;r0;x0;ik;ik3pol;ip;sk;fuses;fusemax;fuseOK"
+    val csv_header: String = "node;equipment;terminal;container;errors;transformer;ik;ik3pol;ip;r;x;r0;x0;sk;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;r;x;r0;x0;ik;ik3pol;ip;sk;fuses;fusemax;fuseOK"
 }
