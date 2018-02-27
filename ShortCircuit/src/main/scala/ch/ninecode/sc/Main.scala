@@ -15,14 +15,12 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.model.Element
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
 
 object Main
 {
@@ -160,8 +158,8 @@ object Main
             action ((x, c) => c.copy (cmin = x)).
             text ("voltage factor for minimum fault level, used for protections settings")
 
-        opt[Unit]('r', "worstcasepf").
-            action ((_, c) ⇒ c.copy (worstcasepf = true)).
+        opt[Boolean]('r', "worstcasepf").
+            action ((x, c) ⇒ c.copy (worstcasepf = x)).
             text ("use worst case cosphi (cos term = 1.0, ignore --cosphi)")
 
         opt[Double]('f', "cosphi").
@@ -334,6 +332,7 @@ object Main
                     high_temperature = arguments.high_temperature,
                     cmax = arguments.cmax,
                     cmin = arguments.cmin,
+                    worstcasepf = arguments.worstcasepf,
                     cosphi = arguments.cosphi,
                     trafos = arguments.trafos,
                     workdir = workdir

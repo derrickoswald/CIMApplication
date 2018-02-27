@@ -83,8 +83,8 @@ class ShortCircuitSuite
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                default_supply_network_short_circuit_power = 600.0e6,
-                default_supply_network_short_circuit_impedance = Complex (0.0, 20.166666666666667), // purely reactive
+                default_short_circuit_power = 600.0e6,
+                default_short_circuit_impedance = Complex (0.0, 20.166666666666667), // purely reactive
                 base_temperature = 20.0,
                 low_temperature = 20.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
