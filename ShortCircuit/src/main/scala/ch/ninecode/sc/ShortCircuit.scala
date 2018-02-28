@@ -229,7 +229,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 v
             else
             {
-                val errors = if (null != message.error) if (null == v.errors) List (message.error) else v.errors :+ message.error else v.errors
+                val errors: List[ScError] = if (null != message.errors) if (null == v.errors) message.errors else v.errors ::: message.errors else v.errors
                 var z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
                 var fuses = if (null != message.fuses) message.fuses else v.fuses
                 v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
@@ -256,8 +256,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 val error = ScError (true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                                 log.error (error.message)
                                 Iterator (
-                                    (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, error)),
-                                    (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, error))
+                                    (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, List (error))),
+                                    (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, List (error)))
                                 )
                             }
                         case _ ⇒
@@ -280,7 +280,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq, options.low_temperature, options.high_temperature, options.base_temperature)
                         val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
-                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, null)))
+                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, triplet.srcAttr.errors)))
                     }
                     else
                         Iterator.empty
@@ -293,7 +293,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq, options.low_temperature, options.high_temperature, options.base_temperature)
                         val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
-                        Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, null)))
+                        Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, triplet.dstAttr.errors)))
                     }
                     else
                         Iterator.empty
@@ -310,13 +310,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 val error = ScError (true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
                 log.error (error.message)
-                a.copy (error = error)
+                a.copy (errors = if (null == a.errors) List (error) else a.errors :+ error)
             }
             else
             {
                 val parallel = a.edge.parallel (b.edge)
                 val warning = ScError (false, "reinforcement detected from %s".format (a.previous_node))
-                a.copy (edge = parallel, error = warning)
+                a.copy (edge = parallel, errors = if (null == a.errors) List (warning) else  a.errors :+ warning)
             }
         }
 
