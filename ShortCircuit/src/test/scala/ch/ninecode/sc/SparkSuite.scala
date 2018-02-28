@@ -179,15 +179,19 @@ class SparkSuite
         configuration.registerKryoClasses (Array (
             classOf[ch.ninecode.sc.Complex],
             classOf[ch.ninecode.sc.Graphable],
-            classOf[ch.ninecode.sc.ScResult],
             classOf[ch.ninecode.sc.Impedanzen],
             classOf[ch.ninecode.sc.ScEdge],
+            classOf[ch.ninecode.sc.ScError],
+            classOf[ch.ninecode.sc.ScIntermediate],
+            classOf[ch.ninecode.sc.ScMessage],
             classOf[ch.ninecode.sc.ScNode],
+            classOf[ch.ninecode.sc.ScResult],
             classOf[ch.ninecode.sc.ShortCircuit],
             classOf[ch.ninecode.sc.ShortCircuitInfo],
             classOf[ch.ninecode.sc.ShortCircuitOptions],
             classOf[ch.ninecode.sc.StartingTrafos],
             classOf[ch.ninecode.sc.TData],
+            classOf[ch.ninecode.sc.TransformerDetails],
             classOf[ch.ninecode.sc.Transformers],
             classOf[ch.ninecode.sc.TransformerSet]))
         GraphXUtils.registerKryoClasses (configuration)
