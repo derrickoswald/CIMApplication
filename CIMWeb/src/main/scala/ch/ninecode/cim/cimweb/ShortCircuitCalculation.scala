@@ -8,7 +8,6 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import java.sql.ResultSetMetaData
 import java.sql.SQLException
-import java.sql.Timestamp
 import java.sql.Types
 import javax.json.Json
 import javax.json.JsonObjectBuilder
@@ -40,12 +39,14 @@ class ShortCircuitCalculation extends RESTful
         @DefaultValue ("630000") @MatrixParam ("transformer_power_rating") transformer_power_rating: Double,
         @DefaultValue ("0.005899999998374999") @MatrixParam ("transformer_resistance") transformer_resistance: Double,
         @DefaultValue ("0.039562482211875") @MatrixParam ("transformer_reactance") transformer_reactance: Double,
+        @DefaultValue ("20.0") @MatrixParam ("tbase") tbase: Double,
+        @DefaultValue ("60.0") @MatrixParam ("tlow") tlow: Double,
+        @DefaultValue ("90.0") @MatrixParam ("thigh") thigh: Double,
         @DefaultValue ("1.0") @MatrixParam ("cmax") cmax: Double,
         @DefaultValue ("0.9") @MatrixParam ("cmin") cmin: Double,
-        @DefaultValue ("0.5") @MatrixParam ("cosphi") cosphi: Double,
-        @DefaultValue ("1.0") @MatrixParam ("starting_ratio") starting_ratio: Double
+        @DefaultValue ("NaN") @MatrixParam ("cosphi") cosphi: Double
     ): String =
-        GetShortCircuitData ("all", network_short_circuit_power, network_short_circuit_resistance, network_short_circuit_reactance, transformer_power_rating, transformer_resistance, transformer_reactance, cmax, cmin, cosphi, starting_ratio)
+        GetShortCircuitData ("all", network_short_circuit_power, network_short_circuit_resistance, network_short_circuit_reactance, transformer_power_rating, transformer_resistance, transformer_reactance, tbase, tlow, thigh, cmax, cmin, cosphi)
 
     def packRow (resultset: CIMResultSet, meta: ResultSetMetaData): JsonObjectBuilder =
     {
@@ -164,16 +165,18 @@ class ShortCircuitCalculation extends RESTful
         @DefaultValue ("630000") @MatrixParam ("transformer_power_rating") transformer_power_rating: Double,
         @DefaultValue ("0.005899999998374999") @MatrixParam ("transformer_resistance") transformer_resistance: Double,
         @DefaultValue ("0.039562482211875") @MatrixParam ("transformer_reactance") transformer_reactance: Double,
+        @DefaultValue ("20.0") @MatrixParam ("tbase") tbase: Double,
+        @DefaultValue ("60.0") @MatrixParam ("tlow") tlow: Double,
+        @DefaultValue ("90.0") @MatrixParam ("thigh") thigh: Double,
         @DefaultValue ("1.0") @MatrixParam ("cmax") cmax: Double,
         @DefaultValue ("0.9") @MatrixParam ("cmin") cmin: Double,
-        @DefaultValue ("0.5") @MatrixParam ("cosphi") cosphi: Double,
-        @DefaultValue ("1.0") @MatrixParam ("starting_ratio") starting_ratio: Double
+        @DefaultValue ("NaN") @MatrixParam ("cosphi") cosphi: Double
     ): String =
     {
         val transformer = if (null != item && !(item == "")) if (item.startsWith ("/")) item.substring (1) else item else null
         val netz = Complex (network_short_circuit_resistance, network_short_circuit_reactance)
         val txz = Complex (transformer_resistance, transformer_reactance)
-        _Logger.info ("shortcircuit transformer=%s network=%gVA,%sΩ tx=%gVA,%sΩ cmax=%g cmin=%g cosφ=%g ratio=%g".format (transformer, network_short_circuit_power, netz, transformer_power_rating, txz, cmax, cmin, cosphi, starting_ratio))
+        _Logger.info ("shortcircuit transformer=%s network=%gVA,%sΩ tx=%gVA,%sΩ tbase=%g tlow=%g thigh=%g cmax=%g cmin=%g cosφ=%g".format (transformer, network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, cosphi))
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
         if (null != connection)
@@ -182,7 +185,8 @@ class ShortCircuitCalculation extends RESTful
                 val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
-                val options = ShortCircuitOptions (false, network_short_circuit_power, netz, transformer_power_rating, txz, cmax, cmin, cosphi, starting_ratio, transformer, null)
+                val worstcasepf = cosphi.isNaN
+                val options = ShortCircuitOptions (false, "CIMApplication", network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, worstcasepf, cosphi, transformer, null)
                 val query = ShortCircuitFunction (options)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction
@@ -200,12 +204,31 @@ class ShortCircuitCalculation extends RESTful
                             try
                             {
                                 // form the response
-                                val houses = Json.createArrayBuilder
+                                val records = Json.createArrayBuilder
                                 val meta = resultset.getMetaData
                                 while (resultset.next)
-                                    houses.add (packRow (resultset, meta))
+                                    records.add (packRow (resultset, meta))
                                 resultset.close ()
-                                ret.setResult (houses.build)
+                                val result = Json.createObjectBuilder
+                                val parameters = Json.createObjectBuilder
+                                parameters.add ("verbose", options.verbose)
+                                parameters.add ("description", options.description)
+                                parameters.add ("default_short_circuit_power", options.default_short_circuit_power)
+                                parameters.add ("default_short_circuit_impedance", options.default_short_circuit_impedance.toString)
+                                parameters.add ("default_transformer_power_rating", options.default_transformer_power_rating)
+                                parameters.add ("default_transformer_impedance", options.default_transformer_impedance.toString)
+                                parameters.add ("base_temperature", options.base_temperature)
+                                parameters.add ("low_temperature", options.low_temperature)
+                                parameters.add ("high_temperature", options.high_temperature)
+                                parameters.add ("cmax", options.cmax)
+                                parameters.add ("cmin", options.cmin)
+                                parameters.add ("worstcasepf", options.worstcasepf)
+                                parameters.add ("cosphi", if (options.cosphi.isNaN) "NaN" else options.cosphi.toString)
+                                parameters.add ("trafos", if (null == options.trafos) "null" else options.trafos)
+                                parameters.add ("workdir", if (null == options.workdir) "null" else options.workdir)
+                                result.add ("parameters", parameters)
+                                result.add ("records", records)
+                                ret.setResult (result.build)
                             }
                             catch
                             {

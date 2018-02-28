@@ -448,6 +448,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (station: Substation)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
                 case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (bay: Bay)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
                 case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (level: VoltageLevel)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (line: Line)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (line: MktLine)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (plant: Plant)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dc: DCEquipmentContainer)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dcc: DCConverterUnit)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dcl: DCLine)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
                 case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), None) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
                 case _ => throw new Exception ("unknown container type for %s".format (arg._1._1._1.id_seq))
             }

@@ -239,7 +239,9 @@ public class CIMResultSetMetaData implements ResultSetMetaData
         // see https://spark.apache.org/docs/1.5.2/api/java/index.html?org/apache/spark/sql/types/package-summary.html
         if (type.typeName ().equals ("boolean"))
             ret = Types.BOOLEAN;
-        else if (type.simpleString ().equals ("byte"))
+        else if (type.simpleString ().equals ("byte")) // old name?
+            ret = Types.TINYINT;
+        else if (type.simpleString ().equals ("tinyint"))
             ret = Types.TINYINT;
         else if (type.simpleString ().equals ("calendarinterval")) // there is no interval in JDBC - say it's a string
             ret = Types.NVARCHAR;
@@ -249,11 +251,17 @@ public class CIMResultSetMetaData implements ResultSetMetaData
             ret = Types.DOUBLE;
         else if (type.simpleString ().equals ("float"))
             ret = Types.FLOAT;
-        else if (type.simpleString ().equals ("integer"))
+        else if (type.simpleString ().equals ("integer")) // old name?
             ret = Types.INTEGER;
-        else if (type.simpleString ().equals ("long"))
+        else if (type.simpleString ().equals ("int"))
+            ret = Types.INTEGER;
+        else if (type.simpleString ().equals ("long")) // old name?
             ret = Types.BIGINT;
-        else if (type.simpleString ().equals ("short"))
+        else if (type.simpleString ().equals ("bigint"))
+            ret = Types.BIGINT;
+        else if (type.simpleString ().equals ("short")) // old name?
+            ret = Types.SMALLINT;
+        else if (type.simpleString ().equals ("smallint"))
             ret = Types.SMALLINT;
         else if (type.simpleString ().equals ("string"))
             ret = Types.NCHAR;
@@ -262,6 +270,7 @@ public class CIMResultSetMetaData implements ResultSetMetaData
         else if (type.simpleString ().equals ("timestamp"))
             ret = Types.TIMESTAMP;
         else
+            // array, Object
             ret = Types.OTHER;
 
         return (ret);

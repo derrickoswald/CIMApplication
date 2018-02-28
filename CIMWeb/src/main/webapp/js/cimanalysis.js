@@ -17,29 +17,61 @@ define
     {
         // The analysis details.
         // provisional schema:
-        //[
-        //    {
-        //        "node": "Line_3_node_1_topo",
-        //        "equipment": "Line_3_node_1",
-        //        "tx": "T1",
-        //        "prev": "T1_node_2_topo",
-        //        "r": 0.06074579999974,
-        //        "x": 0.023079997153900002,
-        //        "r0": 0.23719399999973997,
-        //        "x0": 0.08032999715389999,
-        //        "ik": 1639.1965106015975,
-        //        "ik3pol": 3553.876001557771,
-        //        "ip": 5128.291999404527,
-        //        "sk": 2462197.519399116,
-        //        "motor_3ph_max_low": 110057.15878818948,
-        //        "motor_1ph_max_low": 31770.765126303293,
-        //        "motor_l_l_max_low": 86403.53609172089,
-        //        "motor_3ph_max_med": 55028.57939409474,
-        //        "motor_1ph_max_med": 15885.382563151647,
-        //        "motor_l_l_max_med": 43201.768045860445
+        //{
+        //    "parameters": {
+        //        "verbose": false,
+        //        "description": "CIMApplication",
+        //        "default_short_circuit_power": 200000000,
+        //        "default_short_circuit_impedance": "0.43779-1.20281j",
+        //        "default_transformer_power_rating": 630000,
+        //        "default_transformer_impedance": "0.0059+0.03956j",
+        //        "base_temperature": 20,
+        //        "low_temperature": 60,
+        //        "high_temperature": 90,
+        //        "cmax": 1,
+        //        "cmin": 0.9,
+        //        "worstcasepf": true,
+        //        "cosphi": "NaN",
+        //        "trafos": "all",
+        //        "workdir": "null"
         //    },
-        //     ...
-        // ]
+        //    "records": [
+        //        {
+        //            "node": "HAS111_topo",
+        //            "equipment": "ABG7456",
+        //            "terminal": 1,
+        //            "container": "STA12",
+        //            "errors": [],
+        //            "tx": "TRA154",
+        //            "prev": "self",
+        //            "low_r": 0.0033536161143749997,
+        //            "low_x": 0.014948997477524999,
+        //            "low_r0": 0.00308,
+        //            "low_x0": 0.0157007515744,
+        //            "low_ik": 13368.858758173696,
+        //            "low_ik3pol": 15073.877937122674,
+        //            "low_ip": 32402.162369335812,
+        //            "low_sk": 10443488.981675202,
+        //            "imax_3ph_low": 904.4326762273602,
+        //            "imax_1ph_low": 452.2163381136801,
+        //            "imax_2ph_low": 783.2616736256401,
+        //            "imax_3ph_med": 452.2163381136801,
+        //            "imax_1ph_med": 226.10816905684004,
+        //            "imax_2ph_med": 391.63083681282006,
+        //            "high_r": 0.0033536161143749997,
+        //            "high_x": 0.014948997477524999,
+        //            "high_r0": 0.00308,
+        //            "high_x0": 0.0157007515744,
+        //            "high_ik": 13368.858758173696,
+        //            "high_ik3pol": 15073.877937122674,
+        //            "high_ip": 32402.162369335812,
+        //            "high_sk": 10443488.981675202,
+        //            "fuse": 630,
+        //            "fuseOK": false
+        //        },
+        //    ...
+        //    ]
+        //}
         var TheAnalysis;
 
         /**
@@ -65,10 +97,13 @@ define
                         var transformer_power = Number (document.getElementById ("transformer_power").value);
                         var transformer_resistance = Number (document.getElementById ("transformer_resistance").value);
                         var transformer_reactance = Number (document.getElementById ("transformer_reactance").value);
+                        var tbase = Number (document.getElementById ("tbase").value);
+                        var tlow = Number (document.getElementById ("tlow").value);
+                        var thigh = Number (document.getElementById ("thigh").value);
                         var cmax = Number (document.getElementById ("cmax").value);
                         var cmin = Number (document.getElementById ("cmin").value);
-                        var motor_power_factor = Number (document.getElementById ("motor_power_factor").value);
-                        var starting_ratio = Number (document.getElementById ("starting_ratio").value);
+                        var motor_power_factor = document.getElementById ("motor_power_factor").value;
+                        var cosphi = motor_power_factor == "" ? Number.NaN : Number (motor_power_factor);
                         url = util.home () + "cim/short_circuit" +
                             ";network_short_circuit_power=" + network_power +
                             ";network_short_circuit_resistance=" + network_resistance +
@@ -76,10 +111,13 @@ define
                             ";transformer_power_rating=" + transformer_power +
                             ";transformer_resistance=" + transformer_resistance +
                             ";transformer_reactance=" + transformer_reactance +
+                            ";tbase=" + tbase +
+                            ";tlow=" + tlow +
+                            ";thigh=" + thigh +
                             ";cmax=" + cmax +
-                            ";cmin=" + cmin +
-                            ";cosphi=" + motor_power_factor +
-                            ";starting_ratio=" + starting_ratio;
+                            ";cmin=" + cmin;
+                        if (!isNaN (cosphi))
+                            url = url + ";cosphi=" + cosphi;
                         xmlhttp = util.createCORSRequest ("GET", url);
                         xmlhttp.onreadystatechange = function ()
                         {
@@ -143,7 +181,7 @@ define
             function successCallback (data)
             {
                 TheAnalysis = data
-                var theme = new AnalysisTheme (TheAnalysis);
+                var theme = new AnalysisTheme (TheAnalysis.records);
                 cimmap.get_themer ().removeTheme (theme);
                 cimmap.get_themer ().addTheme (theme);
                 alert ("successfully sent results to the map");
@@ -211,6 +249,27 @@ define
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group row'>\n" +
+                "          <label class='col-sm-2 col-form-label' for='tbase'>Base temperature</label>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <input id='tbase' class='form-control' type='text' name='tbase' aria-describedby='tbaseHelp' value='20.0'>\n" +
+                "            <small id='tbaseHelp' class='form-text text-muted'>Basis temperature used in the CIM file impedances (°C).</small>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <label class='col-sm-2 col-form-label' for='tlow'>Low temperature</label>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <input id='tlow' class='form-control' type='text' name='tlow' aria-describedby='tlowHelp' value='60.0'>\n" +
+                "            <small id='tlowHelp' class='form-text text-muted'>Low temperature (minimum impedances, maximum fault level) for calculations used for rating equipment (°C).</small>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
+                "          <label class='col-sm-2 col-form-label' for='thigh'>Low temperature</label>\n" +
+                "          <div class='col-sm-10'>\n" +
+                "            <input id='thigh' class='form-control' type='text' name='thigh' aria-describedby='thighHelp' value='90.0'>\n" +
+                "            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum impedances, minimum fault level) for calculations used for protections settings (°C).</small>\n" +
+                "          </div>\n" +
+                "        </div>\n" +
+                "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='cmax'>C<sub>max</sub></label>\n" +
                 "          <div class='col-sm-10'>\n" +
                 "            <input id='cmax' class='form-control' type='text' name='cmax' aria-describedby='cmaxHelp' value='1.0'>\n" +
@@ -228,15 +287,8 @@ define
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='motor_power_factor'>Motor power factor</label>\n" +
                 "          <div class='col-sm-10'>\n" +
-                "            <input id='motor_power_factor' class='form-control' type='text' name='motor_power_factor' aria-describedby='motor_power_factorHelp' value='0.5'>\n" +
-                "            <small id='motor_power_factorHelp' class='form-text text-muted'>Power factor of motor load at startup (dimensionless).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='starting_ratio'>Starting current ratio</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <input id='starting_ratio' class='form-control' type='text' name='starting_ratio' aria-describedby='starting_ratioHelp' value='1.0'>\n" +
-                "            <small id='starting_ratioHelp' class='form-text text-muted'>Ratio between initial starting current I<sub>A</sub> and rated current I<sub>N</sub>.</small>\n" +
+                "            <input id='motor_power_factor' class='form-control' type='text' name='motor_power_factor' aria-describedby='motor_power_factorHelp' value=''>\n" +
+                "            <small id='motor_power_factorHelp' class='form-text text-muted'>Power factor of motor load at startup, e.g cos(60°)=0.5, if not specified worst-case is assumed (dimensionless).</small>\n" +
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +

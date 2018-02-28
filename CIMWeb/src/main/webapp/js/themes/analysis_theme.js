@@ -27,24 +27,6 @@ define
                         closeOnClick: false
                     }
                 );
-                this._recommended =
-                    [
-                        [0, 0],
-                        [65, 25],
-                        [105, 40],
-                        [140, 50],
-                        [180, 63],
-                        [240, 80],
-                        [320, 100],
-                        [380, 125],
-                        [500, 160],
-                        [650, 200],
-                        [800, 250],
-                        [1050, 315],
-                        [1300, 400],
-                        [1750, 500],
-                        [2400, 630]
-                    ];
                 this._items =
                     [
                         {
@@ -124,8 +106,8 @@ define
                         if (anal.errors && anal.errors.find (x => x.startsWith ("FATAL")))
                             color = "rgb(143, 0, 255)";
                         else
-                            if (anal.fuses && !isNaN (Number (anal.ik)))
-                                color = this.fuseOK (anal.ik, anal.fuses.filter (x => x > 0.0)) ? "rgb(0, 255, 0)" : "rgb(255, 0, 0)";
+                            if (anal.fuses)
+                                color = anal.fuseOK ? "rgb(0, 255, 0)" : "rgb(255, 0, 0)";
                     }
                     equipment[id].color = color;
                 }
@@ -177,20 +159,6 @@ define
                 return (ret);
             }
 
-            fuse (ik)
-            {
-                return (!isNaN (Number (ik)) ? this._recommended.filter (amp => amp[0] <= ik).slice(-1)[0][1] : this._recommended.slice(-1)[0][1]);
-            }
-
-            fuseOK (ik, fuses)
-            {
-                var ret = false;
-                var some = fuses.reverse ().filter (x => x > 0.0);
-                if (some.length > 0)
-                    ret = this.fuse (Number (ik)) >= some[0];
-                return (ret);
-            }
-
             glyph (bool)
             {
                 return (bool ? "<span style='color: #00ff00'>&#x2713;</span>" : "<span style='color: #ff0000'>&#x2717;</span>");
@@ -199,11 +167,11 @@ define
             fuses (analysis)
             {
                 var ret = "";
-                if (analysis.fuses && !isNaN (Number (analysis.ik)))
+                if (analysis.fuses)
                 {
                     var f = analysis.fuses.filter (x => x > 0.0);
                     if (f.length > 0)
-                        ret = "<div>Fuse" + (f.length > 1 ? "s" : "") + " = " + f.map (a => a.toString ().split("\\.")[0] + "A").join (", ") + " recommended: " + this.fuse (analysis.ik) + "A " + this.glyph (this.fuseOK (analysis.ik, f)) + "</div>"
+                        ret = "<div>Fuse" + (f.length > 1 ? "s" : "") + " = " + f.map (a => a.toString ().split("\\.")[0] + "A").join (", ") + " recommended: " + analysis.fuse + "A " + this.glyph (analysis.fuseOK) + "</div>"
                 }
                 return (ret);
             }
@@ -230,21 +198,21 @@ define
                     ret =
                     "<strong>" + analysis.equipment + " (" + analysis.tx + ")</strong>" +
                     "<p>" +
-                    "<div>S<sub>k</sub> = " + this.mvalue (analysis.sk) + "VA</div>" +
-                    "<div>Z<sub>11</sub> = " + this.impedance (analysis.r, analysis.x) + " Z<sub>00</sub> = " + this.impedance (analysis.r0, analysis.x0) + "</div>" +
-                    "<div>I<sub>p</sub> = " + this.dvalue (analysis.ip) + "A</div>" +
+                    "<div>S<sub>k</sub> = " + this.mvalue (analysis.low_sk) + "VA</div>" +
+                    "<div>Z<sub>11</sub> = " + this.impedance (analysis.low_r, analysis.low_x) + " Z<sub>00</sub> = " + this.impedance (analysis.low_r0, analysis.low_x0) + "</div>" +
+                    "<div>I<sub>p</sub> = " + this.dvalue (analysis.low_ip) + "A</div>" +
                     "<table class='analysis-table'>" +
                     "  <tr>" +
                     "    <th></th><th>3&#x0278; (A)</th><th>1&#x0278; (A)</th><th>2&#x0278;<sub>L-L</sub> (A)</th>" +
                     "  </tr>" +
                     "  <tr>" +
-                    "    <th>I<sub>sc</sub></th><td>" + this.dvalue (analysis.ik3pol) + "</td><td>" + this.dvalue (analysis.ik) + "</td><td></td>" +
+                    "    <th>I<sub>sc</sub></th><td>" + this.dvalue (analysis.low_ik3pol) + "</td><td>" + this.dvalue (analysis.low_ik) + "</td><td></td>" +
                     "  </tr>" +
                     "  <tr>" +
-                    "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (analysis.motor_3ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_low / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_low / 400.0) + "</td>" +
+                    "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (analysis.imax_3ph_low) + "</td><td>" + this.dvalue (analysis.imax_1ph_low) + "</td><td>" + this.dvalue (analysis.imax_2ph_low) + "</td>" +
                     "  </tr>" +
                     "  <tr>" +
-                    "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.motor_3ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_1ph_max_med / 400.0) + "</td><td>" + this.dvalue (analysis.motor_l_l_max_med / 400.0) + "</td>" +
+                    "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.imax_3ph_med) + "</td><td>" + this.dvalue (analysis.imax_1ph_med) + "</td><td>" + this.dvalue (analysis.imax_2ph_med) + "</td>" +
                     "  </tr>" +
                     "</table>" +
                     this.fuses (analysis) +
