@@ -14,6 +14,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 import ch.ninecode.sc.ScEdge.resistanceAt
@@ -61,13 +62,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         ScNode (node.id, voltage, null, null, null, null, null)
     }
 
-    def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[ScEdge] =
+    def edge_operator (voltages: Map[String, Double]) (arg: ((Element, Iterable[Terminal]), Option[Iterable[PowerTransformerEnd]])): List[ScEdge] =
     {
         var ret = List[ScEdge] ()
 
         val e = arg._1._1
-        val pte_op = arg._1._2
-        val t_it = arg._2
+        val t_it = arg._1._2
+        val pte_op = arg._2
 
         // get the ConductingEquipment
         var c = e
@@ -123,34 +124,28 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!volts.contains (230.0))
                 // make a short-circuit edge for each pair of terminals
-                ret = terminals.length match {
+                ret = terminals.length match
+                {
                     case 1 ⇒
-                        ret :+
-                            ScEdge (
-                                terminals(0).ACDCTerminal.id,
-                                terminals(0).TopologicalNode,
-                                volts(0),
-                                "",
-                                "",
-                                volts(0),
-                                terminals(0).ConductingEquipment,
-                                equipment,
-                                e,
-                                impedance)
+                        ret
                     case _ ⇒
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
-                            ret = ret :+ ScEdge (
-                                terminals(0).ACDCTerminal.id,
-                                terminals(0).TopologicalNode,
-                                volts(0),
-                                terminals(i).ACDCTerminal.id,
-                                terminals(i).TopologicalNode,
-                                volts(i),
-                                terminals(0).ConductingEquipment,
-                                equipment,
-                                e,
-                                impedance)
+                            val node1 = terminals(0).TopologicalNode
+                            val node2 = terminals(i).TopologicalNode
+                            // eliminate edges with only one connectivity node, or the same connectivity node
+                            if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
+                                ret = ret :+ ScEdge (
+                                    terminals(0).ACDCTerminal.id,
+                                    terminals(0).TopologicalNode,
+                                    volts(0),
+                                    terminals(i).ACDCTerminal.id,
+                                    terminals(i).TopologicalNode,
+                                    volts(i),
+                                    terminals(0).ConductingEquipment,
+                                    equipment,
+                                    e,
+                                    impedance)
                         }
                         ret
                 }
@@ -176,8 +171,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // get the terminals
         val terminals = get[Terminal].filter (null != _.ConnectivityNode)
 
-        // get the terminals keyed by equipment
-        val terms = terminals.groupBy (_.ConductingEquipment)
+        // get the terminals keyed by equipment and filter for two (or more) terminals
+        val terms = terminals.groupBy (_.ConductingEquipment).filter (_._2.size > 1)
 
         // get all elements
         val elements = get[Element]("Elements")
@@ -185,25 +180,18 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // get the transformer ends keyed by transformer
         val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
-        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
-        val elementsplus = elements.keyBy (_.id).leftOuterJoin (ends)
-
         // map the terminal 'pairs' to edges
-        val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
-
-        // eliminate edges with only one connectivity node, or the same connectivity node
-        val real_edges = edges.filter (x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
+        // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
+        val edges = elements.keyBy (_.id).join (terms).leftOuterJoin (ends).values.flatMap (edge_operator (voltages))
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
-        // get the nodes RDD
-        val tnodes = get[TopologicalNode]
-        // map the topological nodes to prenodes with voltages
-        val nodes = tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
+        // map the topological nodes to short circuit nodes with voltages
+        val nodes = get[TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
 
         // persist edges and nodes to avoid recompute
-        val xedges = real_edges.map (make_graph_edges)
+        val xedges = edges.map (make_graph_edges)
         val xnodes = nodes.map (make_graph_vertices)
         xedges.name = "xedges"
         xedges.persist (storage_level)
@@ -230,8 +218,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             else
             {
                 val errors: List[ScError] = if (null != message.errors) if (null == v.errors) message.errors else v.errors ::: message.errors else v.errors
-                var z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
-                var fuses = if (null != message.fuses) message.fuses else v.fuses
+                val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
+                val fuses = if (null != message.fuses) message.fuses else v.fuses
                 v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
             }
         }
@@ -245,7 +233,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     // check if the non-null impedance difference matches what we expect for this cable
                     triplet.attr.element match
                     {
-                        case line: ACLineSegment ⇒
+                        case _: ACLineSegment ⇒
                             val diff = triplet.srcAttr.impedance - triplet.dstAttr.impedance
                             val expected = triplet.attr.impedanceTo ("not important", options.low_temperature, options.high_temperature, options.base_temperature)
                             val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
@@ -435,37 +423,62 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val initial_with_starting_nodes = initial.mapVertices (starting_map (starting_nodes)).persist (storage_level)
         val graph = trace (initial_with_starting_nodes)
 
-        // get the leaf nodes with their data
-        val result: RDD[ScNode] = graph.vertices.filter (null != _._2.impedance).values
+        // get the visited nodes with their data
+        val result = graph.vertices.filter (null != _._2.impedance).values
         result.setName ("scresult")
         result.persist (storage_level)
 
-        // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
-        def station_fn (arg: (((ScNode, Terminal), ConductingEquipment), Option[Any])): (ScNode, Int, String, String) =
+        // join results with terminals to get equipment
+        val d = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
+        // join with equipment to get containers
+        val e = d.keyBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2))
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+        // resolve to top level containers
+        // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
+        def station_fn (arg: (ScNode, Terminal, ConductingEquipment, Option[Any])): (ScNode, Int, String, String) =
         {
-            arg match
+            val node = arg._1
+            val terminal = arg._2
+            val equipment = arg._3
+            val container = arg._4
+            container match
             {
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (station: Substation)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (bay: Bay)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (level: VoltageLevel)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (line: Line)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (line: MktLine)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (plant: Plant)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dc: DCEquipmentContainer)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dcc: DCConverterUnit)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), Some (dcl: DCLine)) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case (((node: ScNode, terminal: Terminal), equipment: ConductingEquipment), None) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-                case _ => throw new Exception ("unknown container type for %s".format (arg._1._1._1.id_seq))
+                case Some (station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
+                case Some (bay: Bay)            => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
+                case Some (level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
+                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
             }
         }
-
-        // join results with terminals to get equipment
-        val d: RDD[(ScNode, Terminal)] = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
-        // join by equipment to get containers
-        val e: RDD[((ScNode, Terminal), ConductingEquipment)] = d.keyBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).values
-        val f: RDD[(((ScNode, Terminal), ConductingEquipment), Option[Element])] = e.keyBy (_._2.Equipment.EquipmentContainer).leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
-        // resolve to top level containers and flatten the list
-        val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
+        val g = f.map (station_fn)
+        // compute results
         g.map (calculate_short_circuit)
+    }
+}
+
+object ShortCircuit
+{
+    /**
+     * The list of classes that can be persisted in RDD.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.sc.Complex],
+            classOf[ch.ninecode.sc.Graphable],
+            classOf[ch.ninecode.sc.Impedanzen],
+            classOf[ch.ninecode.sc.ScEdge],
+            classOf[ch.ninecode.sc.ScError],
+            classOf[ch.ninecode.sc.ScIntermediate],
+            classOf[ch.ninecode.sc.ScMessage],
+            classOf[ch.ninecode.sc.ScNode],
+            classOf[ch.ninecode.sc.ScResult],
+            classOf[ch.ninecode.sc.ShortCircuit],
+            classOf[ch.ninecode.sc.ShortCircuitInfo],
+            classOf[ch.ninecode.sc.ShortCircuitOptions],
+            classOf[ch.ninecode.sc.StartingTrafos],
+            classOf[ch.ninecode.sc.TData],
+            classOf[ch.ninecode.sc.TransformerDetails],
+            classOf[ch.ninecode.sc.Transformers],
+            classOf[ch.ninecode.sc.TransformerSet])
     }
 }

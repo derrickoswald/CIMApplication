@@ -172,28 +172,13 @@ class SparkSuite
         configuration.set ("spark.executor.memory", "4g")
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
+        configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
         // register ShortCircuit analysis classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.sc.Complex],
-            classOf[ch.ninecode.sc.Graphable],
-            classOf[ch.ninecode.sc.Impedanzen],
-            classOf[ch.ninecode.sc.ScEdge],
-            classOf[ch.ninecode.sc.ScError],
-            classOf[ch.ninecode.sc.ScIntermediate],
-            classOf[ch.ninecode.sc.ScMessage],
-            classOf[ch.ninecode.sc.ScNode],
-            classOf[ch.ninecode.sc.ScResult],
-            classOf[ch.ninecode.sc.ShortCircuit],
-            classOf[ch.ninecode.sc.ShortCircuitInfo],
-            classOf[ch.ninecode.sc.ShortCircuitOptions],
-            classOf[ch.ninecode.sc.StartingTrafos],
-            classOf[ch.ninecode.sc.TData],
-            classOf[ch.ninecode.sc.TransformerDetails],
-            classOf[ch.ninecode.sc.Transformers],
-            classOf[ch.ninecode.sc.TransformerSet]))
+        configuration.registerKryoClasses (ShortCircuit.classes)
+        // register GraphX classes
         GraphXUtils.registerKryoClasses (configuration)
 
         // create the fixture
