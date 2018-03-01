@@ -27,7 +27,6 @@ import ch.ninecode.model.Switch
  * @param id_cn_2 TopologicalNode 2 mRID
  * @param v2 voltage on Terminal 2 (V)
  * @param id_equ ConductingEquipment mRID
- * @param equipment ConductingEquipment object
  * @param element conducting equipment subclass object
  * @param impedance impedance of the edge (Ω)
  */
@@ -39,7 +38,6 @@ case class ScEdge (
     id_cn_2: String,
     v2: Double,
     id_equ: String,
-    equipment: ConductingEquipment,
     element: Element,
     impedance: Impedanzen) extends Graphable with Serializable
 {
@@ -135,15 +133,13 @@ case class ScEdge (
      * @param id_cn TopologicalNode to compute
      * @return impedance of the given node
      */
-    def impedanceTo (id_cn: String, low: Double, high: Double, base: Double): Impedanzen =
+    def impedanceTo (id_cn: String): Impedanzen =
     {
         element match
         {
-            case line: ACLineSegment ⇒
-                val dist_km = line.Conductor.len / 1000.0
-                Impedanzen (Complex (resistanceAt (low, base, line.r) * dist_km, line.x * dist_km), Complex (resistanceAt (low, base, line.r0) * dist_km, line.x0 * dist_km),
-                Complex (resistanceAt (high, base, line.r) * dist_km, line.x * dist_km), Complex (resistanceAt (high, base, line.r0) * dist_km, line.x0 * dist_km))
-            case transformer: PowerTransformer ⇒
+            case _: ACLineSegment ⇒
+                this.impedance
+            case _: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
                 {
                     val tx_impedance_low = this.impedance.impedanz_low
