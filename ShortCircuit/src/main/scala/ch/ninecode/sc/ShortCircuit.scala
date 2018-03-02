@@ -388,7 +388,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // check if topology exists, and if not then generate it
         if (null == get[TopologicalNode])
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, true, false) // force retain fuses
+            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, true, true, false) // force retain switches and fuses
             val elements = ntp.process (false)
             log.info ("%d elements after topology generated".format (elements.count ()))
         }

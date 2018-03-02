@@ -39,7 +39,7 @@ class PrivateSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
             val ele = ntp.process (false)
             println (ele.count () + " elements")
 
@@ -86,7 +86,7 @@ class PrivateSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
             val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (ele.count () + " elements")
 
@@ -142,7 +142,7 @@ class PrivateSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true)
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
             val ele = ntp.process (false)
             println (ele.count () + " elements")
 
