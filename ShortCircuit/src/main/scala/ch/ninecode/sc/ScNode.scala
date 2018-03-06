@@ -22,6 +22,5 @@ case class ScNode (
 extends
     Graphable
 {
-    def noFatalErrors: Boolean = (null == errors) || errors.forall (!_.fatal)
-    def reinforcement: Boolean = (null != errors) && errors.exists (_.message.startsWith ("reinforcement"))
+    def fatalErrors: Boolean = (null != errors) && errors.exists (_.fatal)
 }

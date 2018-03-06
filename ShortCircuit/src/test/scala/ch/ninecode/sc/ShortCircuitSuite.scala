@@ -30,6 +30,7 @@ class ShortCircuitSuite
     val FILENAME8 = "ibw_cim_export.rdf"
     val FILENAME9 = "fuse_no_sample.rdf"
     val FILENAME10 = "fuse_nc_sample.rdf"
+    val FILENAME11 = "messagetest.rdf"
 
     before
     {
@@ -54,6 +55,8 @@ class ShortCircuitSuite
             new Unzip ().unzip (FILE_DEPOT + "fuse_no_sample.zip", FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME10).exists)
             new Unzip ().unzip (FILE_DEPOT + "fuse_nc_sample.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME11).exists)
+            new Unzip ().unzip (FILE_DEPOT + "messagetest.zip", FILE_DEPOT)
     }
 
     test ("DACHCZ")
@@ -667,5 +670,59 @@ class ShortCircuitSuite
             // if the transformer impedances are removed from the sample file, this command yields the same results:
             // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.0-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
             // except there is a warning "NONFATAL: transformer has no impedance value, using default 0.01375+0.05312j"
+    }
+
+    test ("message test")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME11
+            val MESSAGELIMIT = 2;
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
+            val ele = ntp.process (false).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                messagemax = MESSAGELIMIT)
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val results = shortcircuit.run ()
+            results.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "result"
+            val string = results.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
+            {
+                val h = csv (i)
+                println (h)
+            }
+
+            assert (0 == results.filter (_.errors.size > MESSAGELIMIT).count, "expected no more than %d errors".format (MESSAGELIMIT))
+            assert (0 != results.filter (_.errors.exists (_.startsWith ("FATAL"))).count, "expected a fatal message")
     }
 }

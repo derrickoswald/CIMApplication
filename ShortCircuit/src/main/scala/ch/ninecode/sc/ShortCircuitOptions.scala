@@ -16,6 +16,7 @@ package ch.ninecode.sc
  * @param cmin voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)
  * @param worstcasepf assume worst case motor power factor (cos term = 1.0, ignore cosphi)
  * @param cosphi power factor of (motor) load e.g. cos (60), the cosine of the motor starting current-voltage phase angle, typical values range from 0.2 (φ = 78°) to 0.6 (φ = 53°) during startup (dimensionless)
+ * @param messagemax mximum number of warning and error messages to keep for each node
  * @param trafos file name of transformer names to process
  * @param workdir shared directory (HDFS or NFS share) for intermediate results
  */
@@ -33,5 +34,6 @@ case class ShortCircuitOptions (
     cmin: Double = 0.90,
     worstcasepf: Boolean = true,
     cosphi: Double = 0.5,
+    messagemax: Int = 5,
     trafos: String = "",
     workdir: String = "")

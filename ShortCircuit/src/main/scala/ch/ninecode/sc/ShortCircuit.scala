@@ -36,7 +36,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val MAXERRORS = 5
     val default_impendanz = Impedanzen (
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
@@ -228,27 +227,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 v
             else
             {
-                val errors: List[ScError] =
-                    if (null != message.errors)
-                        if (null == v.errors)
-                            message.errors
-                        else
-                            if (v.errors.size < MAXERRORS)
-                                v.errors ++ message.errors // just append until maximum reached
-                            else
-                                if (message.errors.forall (!_.fatal)) // all new ones are non-fatal
-                                    v.errors // keep what we have and drop the new ones on the floor
-                                else
-                                    if (v.errors.forall (!_.fatal)) // no fatal errors yet
-                                    {
-                                        val mm = message.errors.filter (_.fatal)
-                                        // squeeze in the fatal messages
-                                        v.errors.take (Math.max (0, MAXERRORS - mm.size)) ++ mm
-                                    }
-                                    else
-                                        v.errors // keep what we have and drop the new ones on the floor
-                    else
-                        v.errors
+                val errors = message.combine_errors (v.errors, message.errors, options.messagemax)
                 val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
                 val fuses = if (null != message.fuses) message.fuses else v.fuses
                 v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
@@ -258,8 +237,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         def handleMesh (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
         {
             // don't propagate indefinitely
-            if (triplet.srcAttr.noFatalErrors && triplet.dstAttr.noFatalErrors)
-                if (!triplet.srcAttr.reinforcement && !triplet.dstAttr.reinforcement)
+            if (triplet.srcAttr.fatalErrors || triplet.dstAttr.fatalErrors)
+                Iterator.empty
+            else
+                if ((triplet.srcAttr.id_prev == triplet.dstAttr.id_seq) || (triplet.dstAttr.id_prev == triplet.srcAttr.id_seq)) // reinforcement
+                    Iterator.empty
+                else
                 {
                     // check if the non-null impedance difference matches what we expect for this cable
                     triplet.attr.element match
@@ -274,36 +257,16 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                             {
                                 val error = ScError (true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                                 log.error (error.message)
-                                if (triplet.dstAttr.noFatalErrors)
-                                    if (triplet.srcAttr.noFatalErrors)
-                                        // neither node has a fatal error yet, send a message to both to mark them with a fatal error
-                                        Iterator (
-                                            (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, List (error))),
-                                            (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, List (error)))
-                                        )
-                                    else
-                                        // only dst has no fatal errors yet, send a message to mark it with a fatal error
-                                        Iterator (
-                                            (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, List (error)))
-                                        )
-                                else
-                                    if (triplet.srcAttr.noFatalErrors)
-                                        // only src has no fatal errors yet, send a message to mark it with a fatal error
-                                        Iterator (
-                                            (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, List (error)))
-                                        )
-                                    else
-                                        // both already have fatal errors, just ignore the mesh
-                                        Iterator.empty
+                                // neither node has a fatal error yet, send a message to both to mark them with a fatal error
+                                Iterator (
+                                    (triplet.dstId, ScMessage (triplet.dstAttr.source, null, null, null, triplet.srcAttr.id_seq, List (error))),
+                                    (triplet.srcId, ScMessage (triplet.srcAttr.source, null, null, null, triplet.dstAttr.id_seq, List (error)))
+                                )
                             }
                         case _ ⇒
                             Iterator.empty
                     }
                 }
-                else
-                    Iterator.empty
-            else
-                Iterator.empty
         }
 
         def sendMessage (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
@@ -346,13 +309,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 val error = ScError (true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
                 log.error (error.message)
-                a.copy (errors = if (null == a.errors) List (error) else a.errors :+ error)
+                a.copy (errors = a.combine_errors (a.errors, b.combine_errors (b.errors, List (error), options.messagemax), options.messagemax))
             }
             else
             {
                 val parallel = a.edge.parallel (b.edge)
                 val warning = ScError (false, "reinforcement detected from %s".format (a.previous_node))
-                a.copy (edge = parallel, errors = if (null == a.errors) List (warning) else  a.errors :+ warning)
+                a.copy (edge = parallel, errors = a.combine_errors (a.errors, b.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
             }
         }
 

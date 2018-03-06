@@ -82,6 +82,7 @@ object Main
         cmin: Double = 0.90,
         worstcasepf: Boolean = true,
         cosphi: Double = 1.0,
+        messagemax: Int = 5,
         workdir: String = "",
         files: Seq[String] = Seq ())
 
@@ -170,6 +171,10 @@ object Main
         opt[Double]("cosphi").
             action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
             text ("load power factor, used for maximum inrush current [worst case]")
+
+        opt[Int]("messagemax").
+            action ((x, c) => c.copy (messagemax = x)).
+            text ("maximum number of warning and error messages per node [%d]".format (default.messagemax))
 
         opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -323,6 +328,7 @@ object Main
                     cmin = arguments.cmin,
                     worstcasepf = arguments.worstcasepf,
                     cosphi = arguments.cosphi,
+                    messagemax = arguments.messagemax,
                     trafos = arguments.trafos,
                     workdir = workdir
                 )
