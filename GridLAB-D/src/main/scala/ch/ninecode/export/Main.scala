@@ -158,11 +158,11 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/Export-2.11-2.2.0-2.3.9-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/Export-2.11-2.2.1-2.4.0-jar-with-dependencies.jar):
      *     mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Export-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Export-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
      */
     def main (args: Array[String])
     {

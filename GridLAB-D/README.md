@@ -104,7 +104,7 @@ The program is submitted to the cluster with the [spark-submit command](https://
 
 Of the many arguments to spark-submit, the crucial one to execute the GridLAB-D program is the correct full path to the `.jar` file. A bit of help text is available if you add a `--help` switch:
 ```
-$ spark-submit /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --help
+$ spark-submit /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --help
 GridLAB-D 2.2.0
 Usage: GridLAB-D [options] <CIM> <CIM> ...
 
@@ -133,7 +133,7 @@ Usage: GridLAB-D [options] <CIM> <CIM> ...
 
 _NOTE: It is important to understand that options before the jar file are consumed (and normally understood) by `spark-submit`, while options after the jar file are passed to the `GridLAB-D` program. While `spark-submit` and `GridLAB-D` both have a `--master` option, in the following example `yarn` is passed to `spark-submit` while `local[*]` is passed to `GridLAB-D` (which overrides the default master set by `spark-submit`:_
 ```
-$ spark-submit --master yarn /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --master local[*]
+$ spark-submit --master yarn /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --master local[*]
 ```
 
 The resulting SQLite database is `./simulation/results.db`, path relative to where the `spark-submit` command was executed.
@@ -160,9 +160,9 @@ Performs the pre-calculation phase only (see below) that calculates the maximum 
 ### trafos
 Allows the specification of a file containing a list of transformers to simulate, and calculate the maximum feed-in power for connected houses. A typical use-case is `--precalculation` followed by `--trafos` after editing the list of transformers:
 ```
-$ spark-submit /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --precalculation hdfs://...
+$ spark-submit /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --precalculation hdfs://...
 _edit the trafos.txt file_
-$ spark-submit /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --trafos trafos.txt hdfs://...
+$ spark-submit /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --trafos trafos.txt hdfs://...
 ```
 
 ### all
@@ -187,10 +187,10 @@ hdfs dfs -rm -R "/checkpoint/*"
 ### simulation
 Performs the simulation phase only (see below) using the results of a prior pre-calculation as specified by the simulation number. This allows the processing to proceed in two phases separated by an arbitrary amount of time or to re-execute a failed job. A typical use-case is `--precalculation` followed by `--simulation` after some pause:
 ```
-$ spark-submit /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --precalculation hdfs://...
+$ spark-submit /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --precalculation hdfs://...
 **the simulation number is 42**
 _some time later_
-$ spark-submit /opt/code/GridLAB-D-2.11-2.2.0-2.3.9-jar-with-dependencies.jar --simulation 42 hdfs://...
+$ spark-submit /opt/code/GridLAB-D-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --simulation 42 hdfs://...
 ```
 
 ### reference
