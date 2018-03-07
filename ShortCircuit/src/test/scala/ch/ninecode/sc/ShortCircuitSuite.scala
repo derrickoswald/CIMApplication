@@ -522,7 +522,7 @@ class ShortCircuitSuite
             string.saveAsTextFile (output)
 
             // output SQLite database
-            Database.store (sc_options) (results.collect)
+            Database.store (sc_options) (results)
 
             val csv = string.collect
             println ("results: " + csv.length)
@@ -606,7 +606,7 @@ class ShortCircuitSuite
             assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
             assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
+            assert (0 == results.filter (_.errors.nonEmpty).count, "expected no errors")
     }
 
     test ("normalOpen=false open=true Fuse")
@@ -666,7 +666,7 @@ class ShortCircuitSuite
             assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
             // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
             assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
-            assert (0 == results.filter (!_.errors.isEmpty).count, "expected no errors")
+            assert (0 == results.filter (_.errors.nonEmpty).count, "expected no errors")
             // if the transformer impedances are removed from the sample file, this command yields the same results:
             // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
             // except there is a warning "NONFATAL: transformer has no impedance value, using default 0.01375+0.05312j"
@@ -677,7 +677,7 @@ class ShortCircuitSuite
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME11
-            val MESSAGELIMIT = 2;
+            val MESSAGELIMIT = 2
 
             val start = System.nanoTime
             val files = filename.split (",")

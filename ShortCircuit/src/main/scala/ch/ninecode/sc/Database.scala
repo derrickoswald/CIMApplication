@@ -9,6 +9,8 @@ import java.sql.Timestamp
 import java.sql.Types
 import java.util.Calendar
 
+import org.apache.spark.rdd.RDD
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -136,7 +138,7 @@ object Database
         statement.close ()
     }
 
-    def store (options: ShortCircuitOptions) (records: Array[ScResult]): Int = synchronized
+    def store (options: ShortCircuitOptions) (records: RDD[ScResult]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -155,7 +157,7 @@ object Database
             // create schema
             makeSchema (connection)
 
-            if (0 != records.length)
+            if (!records.isEmpty)
             {
                 // insert the simulation
                 val now = Calendar.getInstance ()
@@ -183,80 +185,92 @@ object Database
 
                 // insert the results
                 val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                for (i <- records.indices)
-                {
-                    datainsert1.setNull (1, Types.INTEGER)
-                    datainsert1.setInt (2, id)
-                    datainsert1.setString (3, records(i).node)
-                    datainsert1.setString (4, records(i).equipment)
-                    datainsert1.setInt (5, records(i).terminal)
-                    if ((null == records(i).container) || ("" == records(i).container))
-                        datainsert1.setNull (6, Types.VARCHAR)
-                    else
-                        datainsert1.setString (6, records(i).container)
-                    if (null == records(i).errors)
-                        datainsert1.setNull (7, Types.VARCHAR)
-                    else
-                        datainsert1.setString (7, records(i).errors.mkString (","))
-                    datainsert1.setString (8, records(i).tx)
-                    datainsert1.setString (9, records(i).prev)
-                    datainsert1.setDouble (10, records(i).low_r)
-                    datainsert1.setDouble (11, records(i).low_x)
-                    datainsert1.setDouble (12, records(i).low_r0)
-                    datainsert1.setDouble (13, records(i).low_x0)
-                    datainsert1.setDouble (14, records(i).low_ik)
-                    datainsert1.setDouble (15, records(i).low_ik3pol)
-                    datainsert1.setDouble (16, records(i).low_ip)
-                    datainsert1.setDouble (17, records(i).low_sk)
-                    datainsert1.setDouble (18, records(i).imax_3ph_low)
-                    datainsert1.setDouble (19, records(i).imax_1ph_low)
-                    datainsert1.setDouble (20, records(i).imax_2ph_low)
-                    datainsert1.setDouble (21, records(i).imax_3ph_med)
-                    datainsert1.setDouble (22, records(i).imax_1ph_med)
-                    datainsert1.setDouble (23, records(i).imax_2ph_med)
-                    datainsert1.executeUpdate ()
-                }
-                datainsert1.close ()
                 val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                for (i <- records.indices)
+                val zipped = records.zipWithIndex
+                var index = 0L
+                var done = false
+                do
                 {
-                    datainsert2.setNull (1, Types.INTEGER)
-                    datainsert2.setInt (2, id)
-                    datainsert2.setString (3, records(i).node)
-                    datainsert2.setString (4, records(i).equipment)
-                    datainsert2.setInt (5, records(i).terminal)
-                    if ((null == records(i).container) || ("" == records(i).container))
-                        datainsert2.setNull (6, Types.VARCHAR)
-                    else
-                        datainsert2.setString (6, records(i).container)
-                    if (null == records(i).errors)
-                        datainsert2.setNull (7, Types.VARCHAR)
-                    else
-                        datainsert2.setString (7, records(i).errors.mkString (","))
-                    datainsert2.setString (8, records(i).tx)
-                    datainsert2.setString (9, records(i).prev)
-                    datainsert2.setDouble (10, records(i).high_r)
-                    datainsert2.setDouble (11, records(i).high_x)
-                    datainsert2.setDouble (12, records(i).high_r0)
-                    datainsert2.setDouble (13, records(i).high_x0)
-                    datainsert2.setDouble (14, records(i).high_ik)
-                    datainsert2.setDouble (15, records(i).high_ik3pol)
-                    datainsert2.setDouble (16, records(i).high_ip)
-                    datainsert2.setDouble (17, records(i).high_sk)
-                    if ((null == records(i).fuses) || records(i).fuses.isEmpty)
+                    val batch = zipped.filter (x ⇒ x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
+                    for (i <- batch.indices)
                     {
-                        datainsert2.setNull (18, Types.VARCHAR)
-                        datainsert2.setNull (19, Types.DOUBLE)
-                        datainsert2.setNull (20, Types.BOOLEAN)
+                        datainsert1.setNull (1, Types.INTEGER)
+                        datainsert1.setInt (2, id)
+                        datainsert1.setString (3, batch(i).node)
+                        datainsert1.setString (4, batch(i).equipment)
+                        datainsert1.setInt (5, batch(i).terminal)
+                        if ((null == batch(i).container) || ("" == batch(i).container))
+                            datainsert1.setNull (6, Types.VARCHAR)
+                        else
+                            datainsert1.setString (6, batch(i).container)
+                        if (null == batch(i).errors)
+                            datainsert1.setNull (7, Types.VARCHAR)
+                        else
+                            datainsert1.setString (7, batch(i).errors.mkString (","))
+                        datainsert1.setString (8, batch(i).tx)
+                        datainsert1.setString (9, batch(i).prev)
+                        datainsert1.setDouble (10, batch(i).low_r)
+                        datainsert1.setDouble (11, batch(i).low_x)
+                        datainsert1.setDouble (12, batch(i).low_r0)
+                        datainsert1.setDouble (13, batch(i).low_x0)
+                        datainsert1.setDouble (14, batch(i).low_ik)
+                        datainsert1.setDouble (15, batch(i).low_ik3pol)
+                        datainsert1.setDouble (16, batch(i).low_ip)
+                        datainsert1.setDouble (17, batch(i).low_sk)
+                        datainsert1.setDouble (18, batch(i).imax_3ph_low)
+                        datainsert1.setDouble (19, batch(i).imax_1ph_low)
+                        datainsert1.setDouble (20, batch(i).imax_2ph_low)
+                        datainsert1.setDouble (21, batch(i).imax_3ph_med)
+                        datainsert1.setDouble (22, batch(i).imax_1ph_med)
+                        datainsert1.setDouble (23, batch(i).imax_2ph_med)
+                        datainsert1.executeUpdate ()
                     }
-                    else
+                    for (i <- batch.indices)
                     {
-                        datainsert2.setString (18, records(i).fuses.mkString (","))
-                        datainsert2.setDouble (19, FData.fuse (records(i).high_ik))
-                        datainsert2.setBoolean (20, FData.fuseOK (records(i).high_ik, records(i).fuses))
+                        datainsert2.setNull (1, Types.INTEGER)
+                        datainsert2.setInt (2, id)
+                        datainsert2.setString (3, batch(i).node)
+                        datainsert2.setString (4, batch(i).equipment)
+                        datainsert2.setInt (5, batch(i).terminal)
+                        if ((null == batch(i).container) || ("" == batch(i).container))
+                            datainsert2.setNull (6, Types.VARCHAR)
+                        else
+                            datainsert2.setString (6, batch(i).container)
+                        if (null == batch(i).errors)
+                            datainsert2.setNull (7, Types.VARCHAR)
+                        else
+                            datainsert2.setString (7, batch(i).errors.mkString (","))
+                        datainsert2.setString (8, batch(i).tx)
+                        datainsert2.setString (9, batch(i).prev)
+                        datainsert2.setDouble (10, batch(i).high_r)
+                        datainsert2.setDouble (11, batch(i).high_x)
+                        datainsert2.setDouble (12, batch(i).high_r0)
+                        datainsert2.setDouble (13, batch(i).high_x0)
+                        datainsert2.setDouble (14, batch(i).high_ik)
+                        datainsert2.setDouble (15, batch(i).high_ik3pol)
+                        datainsert2.setDouble (16, batch(i).high_ip)
+                        datainsert2.setDouble (17, batch(i).high_sk)
+                        if ((null == batch(i).fuses) || batch(i).fuses.isEmpty)
+                        {
+                            datainsert2.setNull (18, Types.VARCHAR)
+                            datainsert2.setNull (19, Types.DOUBLE)
+                            datainsert2.setNull (20, Types.BOOLEAN)
+                        }
+                        else
+                        {
+                            datainsert2.setString (18, batch(i).fuses.mkString (","))
+                            datainsert2.setDouble (19, FData.fuse (batch(i).high_ik))
+                            datainsert2.setBoolean (20, FData.fuseOK (batch(i).high_ik, batch(i).fuses))
+                        }
+                        datainsert2.executeUpdate ()
                     }
-                    datainsert2.executeUpdate ()
+                    if (0 == batch.length || batch.length < options.batchsize)
+                        done = true
+                    else
+                        index = index + options.batchsize
                 }
+                while (!done)
+                datainsert1.close ()
                 datainsert2.close ()
 
                 // add fuse summary

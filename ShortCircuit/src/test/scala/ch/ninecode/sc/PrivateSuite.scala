@@ -55,7 +55,7 @@ class PrivateSuite
             println ("short circuit: " + (sc - topo) / 1e9 + " seconds")
 
             // output SQLite database
-            Database.store (sc_options) (results.collect)
+            Database.store (sc_options) (results)
 
             val db = System.nanoTime ()
             println ("database: " + (db - sc) / 1e9 + " seconds")
@@ -112,7 +112,7 @@ class PrivateSuite
             println ("short circuit: " + (sc - inj) / 1e9 + " seconds")
 
             // output SQLite database
-            Database.store (sc_options) (results.collect)
+            Database.store (sc_options) (results)
 
             val db = System.nanoTime ()
             println ("database: " + (db - sc) / 1e9 + " seconds")
@@ -172,7 +172,7 @@ class PrivateSuite
             }
 
             // output SQLite database
-            Database.store ("test", sc_options) (results.collect)
+            Database.store ("test", sc_options) (results)
     }
 */
 }

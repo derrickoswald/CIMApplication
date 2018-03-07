@@ -83,6 +83,7 @@ object Main
         worstcasepf: Boolean = true,
         cosphi: Double = 1.0,
         messagemax: Int = 5,
+        batchsize: Long = 10000L,
         workdir: String = "",
         files: Seq[String] = Seq ())
 
@@ -175,6 +176,10 @@ object Main
         opt[Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
             text ("maximum number of warning and error messages per node [%d]".format (default.messagemax))
+
+        opt[Long]("batchsize").
+            action ((x, c) => c.copy (batchsize = x)).
+            text ("size of result collections for driver database writes [%d]".format (default.batchsize))
 
         opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -329,6 +334,7 @@ object Main
                     worstcasepf = arguments.worstcasepf,
                     cosphi = arguments.cosphi,
                     messagemax = arguments.messagemax,
+                    batchsize = arguments.batchsize,
                     trafos = arguments.trafos,
                     workdir = workdir
                 )
@@ -347,7 +353,7 @@ object Main
                 val results = shortcircuit.run ()
 
                 // output SQLite database
-                Database.store (options) (results.collect)
+                Database.store (options) (results)
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")
