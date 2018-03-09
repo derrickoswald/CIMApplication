@@ -170,7 +170,7 @@ public class CIMResourceAdapterTest
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
         // the CIMReader jar is included as a maven reference if you don't have the CIMReader project open when testing
-        // ret.getJars ().add ("../../CIMReader/target/CIMReader-2.11-2.2.1-2.8.0.jar"); // assumes CIMReader project is peer of CIMApplication
+        // ret.getJars ().add ("../../CIMReader/target/CIMReader-2.11-2.3.0-2.8.0.jar"); // assumes CIMReader project is peer of CIMApplication
 
         return (ret);
     }

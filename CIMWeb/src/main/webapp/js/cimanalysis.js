@@ -263,7 +263,7 @@ define
                 "          </div>\n" +
                 "        </div>\n" +
                 "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='thigh'>Low temperature</label>\n" +
+                "          <label class='col-sm-2 col-form-label' for='thigh'>High temperature</label>\n" +
                 "          <div class='col-sm-10'>\n" +
                 "            <input id='thigh' class='form-control' type='text' name='thigh' aria-describedby='thighHelp' value='90.0'>\n" +
                 "            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum impedances, minimum fault level) for calculations used for protections settings (°C).</small>\n" +

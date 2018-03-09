@@ -151,7 +151,7 @@ class SparkSuite
                         // We've found an address that looks reasonable!
                         val newenv = new java.util.HashMap[String, String] ()
                         newenv.put ("SPARK_LOCAL_IP", ip.getHostAddress)
-                        newenv.put ("SPARK_HOME", "/home/derrick/spark/spark-2.2.0-bin-hadoop2.7")
+                        newenv.put ("SPARK_HOME", "/home/derrick/spark/spark-2.3.0-bin-hadoop2.7")
                         setEnv (newenv)
                     }
                 }

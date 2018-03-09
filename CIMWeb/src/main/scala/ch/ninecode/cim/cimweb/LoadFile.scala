@@ -85,7 +85,7 @@ class LoadFile extends RESTful
                 options.put ("ch.ninecode.cim.do_topo", do_topo)
                 options.put ("ch.ninecode.cim.split_maxsize", split_maxsize)
                 LoadCIMFileFunction (files, options)
-            case "CSV" ⇒ // see https://spark.apache.org/docs/2.2.0/api/scala/index.html#org.apache.spark.sql.DataFrameReader
+            case "CSV" ⇒ // see https://spark.apache.org/docs/2.3.0/api/scala/index.html#org.apache.spark.sql.DataFrameReader
                 options.put ("header", header)
                 options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
                 options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
