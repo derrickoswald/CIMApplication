@@ -155,13 +155,13 @@ object Main
 
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+
                 val sim = Simulation (session, options)
                 sim.run ()
 
                 val calculate = System.nanoTime ()
                 log.info ("execution: " + (calculate - begin) / 1e9 + " seconds")
 
-                //sys.exit (0)
             case None =>
                 sys.exit (1)
         }

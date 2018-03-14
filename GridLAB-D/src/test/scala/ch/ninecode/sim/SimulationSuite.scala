@@ -1,12 +1,14 @@
 package ch.ninecode.sim
 
+import java.io.Closeable
+import java.io.File
+import java.io.PrintWriter
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.util
 
 import scala.collection.JavaConverters._
-
 import org.scalatest.FunSuite
 import org.scalatest.BeforeAndAfterAll
 
@@ -85,18 +87,55 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         }
     }
 
+    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    {
+        try { block (resource) }
+        finally { resource.close () }
+    }
+
     override def beforeAll ()
     {
         setLocalIP ()
+        // ? mkdir (FILE_DEPOT)
     }
 
     test ("Basic")
     {
-        main (Array ("--verbose", "loser.json", "stupid.json"))
+        val json = FILE_DEPOT + "basic.json"
+        using (new PrintWriter (new File (json), "UTF-8"))
+        {
+            writer =>
+                writer.write (
+                    """
+                    |{
+                    |    "name": "Sample",
+                    |    "island": "TRA2755_terminal_2_island",
+                    |    "station": "STA206",
+                    |    "cim": "/STA206/Sample/TRA2755_terminal_2_island.rdf",
+                    |    "description": "sample simulation file for illustrative purposes",
+                    |    "players": [
+                    |         {
+                    |             "title": "all EnergyConsumer with PSRType == 'PSRType_HouseService'",
+                    |             "rdfquery": "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                    |             "cassandraquery": "select time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where type='energy' and mrid='%s' allow filtering"
+                    |         }
+                    |    ],
+                    |    "recorders": [
+                    |        {
+                    |            "title": "cable currents",
+                    |            "cassandraquery": "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment"
+                    |        }
+                    |    ],
+                    |   "glm": "/STA206/Sample/Sample.glm"
+                    |}
+                    """.stripMargin
+                )
+        }
+        main (Array ("--verbose", json))
     }
 
     ignore ("Help")
     {
-        main (Array ("--help", "loser.json", "stupid.json"))
+        main (Array ("--help"))
     }
 }

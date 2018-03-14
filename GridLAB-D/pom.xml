@@ -18,6 +18,7 @@
 
     <properties>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
+        <version.dependency.json>1.1.2</version.dependency.json>
         <version.dependency.scopt>3.5.0</version.dependency.scopt>
     </properties>
 
@@ -41,6 +42,12 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>${version.dependency.sqlite}</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+            <version>${version.dependency.json}</version>
         </dependency>
 
         <dependency>
@@ -157,7 +164,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.esl.TestSuite</suites>
+                    <suites>ch.ninecode.sim.SimulationSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
