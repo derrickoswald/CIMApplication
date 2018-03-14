@@ -228,6 +228,24 @@
                             </archive>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>make-simulation-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>Simulation-${project.parent.version}</finalName>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>ch.ninecode.sim.Main</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

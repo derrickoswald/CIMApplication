@@ -1,0 +1,43 @@
+package ch.ninecode.sim
+
+import ch.ninecode.sim.Main.LogLevels
+import ch.ninecode.sim.Main.LogLevels.LogLevels
+
+case class SimulationOptions
+(
+    /**
+     * If <code>true</code>, emit progress messages.
+     */
+    verbose: Boolean = false,
+
+    /**
+     * Spark master.
+     */
+    master: String = "local[*]",
+
+    /**
+     * Storage level for RDD serialization.
+     */
+    storage: String = "MEMORY_AND_DISK_SER",
+
+    /**
+     * Logging level.
+     */
+    log_level: LogLevels = LogLevels.OFF,
+
+    /**
+     * Session RDD checkpoint directory.
+     */
+    checkpoint: String = "",
+
+    /**
+     * Working directory for executors.
+     */
+    workdir: String = "",
+
+    /**
+     * Simulation JSON files.
+     */
+    simulation: Seq[String] = Seq ()
+)
+
