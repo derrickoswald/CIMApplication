@@ -8,13 +8,11 @@ import java.util.Properties
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import org.apache.spark.SparkConf
-import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
-import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -39,20 +37,6 @@ object Main
     }
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
-        (s) =>
-        {
-            var ret = Map[String, String] ()
-            val ss = s.split (",")
-            for (p <- ss)
-            {
-                val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
-            }
-            ret
-        }
-    )
-
     val parser: OptionParser[SimulationOptions] = new scopt.OptionParser[SimulationOptions](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
@@ -60,7 +44,7 @@ object Main
         val default = new SimulationOptions
 
         opt[Unit]("verbose").
-            action ((_, c) ⇒ c.copy (verbose = false)).
+            action ((_, c) ⇒ c.copy (verbose = true)).
             text ("emit progress messages [%s]".format (default.verbose))
 
         opt[String]("master").valueName ("MASTER_URL").
@@ -116,19 +100,6 @@ object Main
     }
 
     /**
-     * Generate a working directory matching the files.
-     */
-//    def derive_work_dir (files: Seq[String]): String =
-//    {
-//        val file = files.head.split (",")(0).replace (" ", "%20")
-//        val uri = new URI (file)
-//        if (null == uri.getScheme)
-//            "/simulation/"
-//        else
-//            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
-//    }
-
-    /**
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
@@ -143,7 +114,7 @@ object Main
         {
             case Some (options) =>
 
-                if (options.verbose) org.apache.log4j.LogManager.getLogger ("ch.ninecode.sim.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
@@ -152,28 +123,24 @@ object Main
                 configuration.setAppName (APPLICATION_NAME)
                 if ("" != options.master)
                     configuration.setMaster (options.master)
-//                if (options.opts.nonEmpty)
-//                    options.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
-//                if ("" != options.master)
-//                {
-//                    val s1 = jarForObject (new DefaultSource ())
-//                    val s2 = jarForObject (Simulation ())
-//                    if (s1 != s2)
-//                        configuration.setJars (Array (s1, s2))
-//                    else
-//                        configuration.setJars (Array (s1))
-//                }
+                if ("" != options.master)
+                {
+                    val s1 = jarForObject (new DefaultSource ())
+                    val s2 = jarForObject (SimulationOptions ())
+                    if (s1 != s2)
+                        configuration.setJars (Array (s1, s2))
+                    else
+                        configuration.setJars (Array (s1))
+                }
 
                 val storage = StorageLevel.fromString (options.storage)
                 configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                 // register CIMReader classes
                 configuration.registerKryoClasses (CIMClasses.list)
                 // register Simulation analysis classes
-//                configuration.registerKryoClasses (Simulation.classes)
-                // register GraphX classes
-                GraphXUtils.registerKryoClasses (configuration)
+                configuration.registerKryoClasses (Simulation.classes)
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
                 // make a Spark session
@@ -188,13 +155,13 @@ object Main
 
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-//                val sim = Simulation (session, options)
-//                sim.run ()
+                val sim = Simulation (session, options)
+                sim.run ()
 
                 val calculate = System.nanoTime ()
                 log.info ("execution: " + (calculate - begin) / 1e9 + " seconds")
 
-                sys.exit (0)
+                //sys.exit (0)
             case None =>
                 sys.exit (1)
         }
