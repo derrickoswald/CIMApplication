@@ -1,16 +1,18 @@
 package ch.ninecode.sim
 
 import java.io.StringReader
-
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
+import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import scala.collection.immutable
+import scala.collection.mutable
 
 case class SimulationJob
 (
@@ -18,12 +20,13 @@ case class SimulationJob
     name: String,
     description: String,
     cim: String,
+    cimreaderoptions: Map[String,String],
     transformers: Seq[String],
     players: Seq[SimulationPlayer],
     recorders: Seq[SimulationRecorder]
 )
 {
-
+    def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString(",")
 }
 
 object SimulationJob
@@ -59,6 +62,15 @@ object SimulationJob
         }
     }
 
+    def parseCIMReaderOptions (log: Logger, options: SimulationOptions, cim: String, simulation: String, json: JsonObject): Map[String,String] =
+    {
+        val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala // ToDo: more robust checking
+        val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
+        map ("path") = cim // add path to support multiple files
+        map ("StorageLevel") = options.storage // add storage option from command line
+        map.toMap
+    }
+
     def parseTransformers (log: Logger, simulation: String, json: JsonObject): Seq[String] =
     {
         val transformers: JsonArray = json.getJsonArray ("transformers") // ToDo: more robust checking
@@ -71,7 +83,7 @@ object SimulationJob
     def parsePlayer (log: Logger, simulation: String, recorder: JsonObject): List[SimulationPlayer] =
     {
         val title = recorder.getString ("title", "")
-        var rdfquery = recorder.getString ("rdfquery", null)
+        val rdfquery = recorder.getString ("rdfquery", null)
         if (null == rdfquery)
         {
             log.error (""""%s" does not specify an RDF query for player "%s""".format (simulation, title))
@@ -79,7 +91,7 @@ object SimulationJob
         }
         else
         {
-            var cassandraquery = recorder.getString ("cassandraquery", null)
+            val cassandraquery = recorder.getString ("cassandraquery", null)
             if (null == cassandraquery)
             {
                 log.error (""""%s" does not specify a Cassandra query for player "%s"""".format (simulation, title))
@@ -99,7 +111,7 @@ object SimulationJob
     def parseRecorder (log: Logger, simulation: String, recorder: JsonObject): List[SimulationRecorder] =
     {
         val title = recorder.getString ("title", "")
-        var query = recorder.getString ("query", null)
+        val query = recorder.getString ("query", null)
         if (null == query)
         {
             log.error (""""%s" does not specify a query for recorder "%s""".format (simulation, title))
@@ -115,12 +127,12 @@ object SimulationJob
         recorders.flatMap (parseRecorder (log, simulation, _))
     }
 
-    def parseJob (log: Logger, simulation: String, json: JsonObject): List[SimulationJob] =
+    def parseJob (log: Logger, options: SimulationOptions, simulation: String, json: JsonObject): List[SimulationJob] =
     {
 
-        var name = json.getString ("name", "")
-        var description = json.getString ("description", "")
-        var cim = json.getString ("cim", null)
+        val name = json.getString ("name", "")
+        val description = json.getString ("description", "")
+        val cim = json.getString ("cim", null)
         if (null == cim)
         {
             log.error (""""%s" does not specify a CIM file""".format (simulation))
@@ -128,10 +140,11 @@ object SimulationJob
         }
         else
         {
+            val cimreaderoptions = parseCIMReaderOptions (log, options, cim, simulation, json)
             val transformers = parseTransformers (log, simulation, json)
             val players = parsePlayers (log, simulation, json)
             val recorders = parseRecorders (log, simulation, json)
-            List (SimulationJob (simulation, name, description, cim, transformers, players, recorders))
+            List (SimulationJob (simulation, name, description, cim, cimreaderoptions, transformers, players, recorders))
         }
     }
 
@@ -141,10 +154,10 @@ object SimulationJob
             org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
         val log: Logger = LoggerFactory.getLogger (getClass)
 
-        var jsons = options.simulation.map (readJSON (log, _))
+        val jsons = options.simulation.map (readJSON (log, _))
         if (!jsons.forall ({ case Some (_) ⇒ true case None ⇒ false }))
             log.info ("""not all simulations will be processed""")
 
-        jsons.flatMap ({ case Some (pair) ⇒ parseJob (log, pair._1, pair._2) case None ⇒ List () })
+        jsons.flatMap ({ case Some (pair) ⇒ parseJob (log, options, pair._1, pair._2) case None ⇒ List () })
     }
 }
