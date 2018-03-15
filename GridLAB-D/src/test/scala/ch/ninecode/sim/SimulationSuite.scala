@@ -109,10 +109,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     """
                     |{
                     |    "name": "Sample",
-                    |    "island": "TRA2755_terminal_2_island",
-                    |    "station": "STA206",
-                    |    "cim": "/STA206/Sample/TRA2755_terminal_2_island.rdf",
                     |    "description": "sample simulation file for illustrative purposes",
+                    |    "cim": "/STA206/Sample/TRA2755_terminal_2_island.rdf",
+                    |    "transformers": [
+                    |         "TRA123",
+                    |         "TRA456"
+                    |    ],
                     |    "players": [
                     |         {
                     |             "title": "all EnergyConsumer with PSRType == 'PSRType_HouseService'",
@@ -123,10 +125,9 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |    "recorders": [
                     |        {
                     |            "title": "cable currents",
-                    |            "cassandraquery": "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment"
+                    |            "query": "select concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment"
                     |        }
-                    |    ],
-                    |   "glm": "/STA206/Sample/Sample.glm"
+                    |    ]
                     |}
                     """.stripMargin
                 )
