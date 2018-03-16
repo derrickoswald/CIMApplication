@@ -8,11 +8,10 @@ import javax.json.JsonObject
 import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.collection.immutable
-import scala.collection.mutable
 
 case class SimulationJob
 (
@@ -80,10 +79,10 @@ object SimulationJob
         ret
     }
 
-    def parsePlayer (log: Logger, simulation: String, recorder: JsonObject): List[SimulationPlayer] =
+    def parsePlayer (log: Logger, simulation: String, player: JsonObject): List[SimulationPlayer] =
     {
-        val title = recorder.getString ("title", "")
-        val rdfquery = recorder.getString ("rdfquery", null)
+        val title = player.getString ("title", "")
+        val rdfquery = player.getString ("rdfquery", null)
         if (null == rdfquery)
         {
             log.error (""""%s" does not specify an RDF query for player "%s""".format (simulation, title))
@@ -91,14 +90,20 @@ object SimulationJob
         }
         else
         {
-            val cassandraquery = recorder.getString ("cassandraquery", null)
+            val cassandraquery = player.getString ("cassandraquery", null)
             if (null == cassandraquery)
             {
                 log.error (""""%s" does not specify a Cassandra query for player "%s"""".format (simulation, title))
                 List()
             }
             else
-                List (SimulationPlayer (title, rdfquery, cassandraquery))
+            {
+                val binds = player.getJsonArray ("bind")
+                val array = Array.ofDim[String](binds.size)
+                for (i <- 0 until binds.size)
+                    array(i) = binds.getString (i)
+                List (SimulationPlayer (title, rdfquery, cassandraquery, array))
+            }
         }
     }
 

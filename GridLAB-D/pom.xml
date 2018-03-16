@@ -17,8 +17,12 @@
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
 
     <properties>
+        <!-- component versions -->
+        <version.dependency.cassandra>2.0.7</version.dependency.cassandra>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
         <version.dependency.json>1.1.2</version.dependency.json>
+
+        <!-- test dependencies versions -->
         <version.dependency.scopt>3.5.0</version.dependency.scopt>
     </properties>
 
@@ -48,6 +52,19 @@
             <groupId>org.glassfish</groupId>
             <artifactId>javax.json</artifactId>
             <version>${version.dependency.json}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.datastax.spark</groupId>
+            <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.cassandra}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scala-reflect</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
