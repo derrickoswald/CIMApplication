@@ -1,12 +1,19 @@
 package ch.ninecode.sim
 
+import java.io.Closeable
+import java.io.File
+import java.io.PrintWriter
 import java.io.StringReader
 import java.io.StringWriter
+import java.text.SimpleDateFormat
 import java.util
+import java.util.Calendar
+import java.util.TimeZone
 
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
+import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.stream.JsonGenerator
@@ -100,6 +107,37 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         job.copy (recorders = recorders)
     }
 
+    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    {
+        try { block (resource) }
+        finally { resource.close () }
+    }
+
+    def write_player_csv (name: String, resultset: Seq[JsonObject]): Unit =
+    {
+        val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        val calendar = Calendar.getInstance ()
+        calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
+        date_format.setCalendar (calendar)
+        // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
+        def format (obj: JsonObject): String =
+        {
+            val o = obj.asScala
+            val time = date_format.format (o("time").asInstanceOf[JsonNumber].longValue)
+            val real = o("real").asInstanceOf[JsonNumber].doubleValue
+            val imag = o("imag").asInstanceOf[JsonNumber].doubleValue
+            time + "," + real + "," + imag
+        }
+        val target = options.workdir + name
+        val text = resultset.map (format).mkString ("\n")
+        using (new PrintWriter (new File (name), "UTF-8"))
+        {
+            writer =>
+                writer.write (text)
+
+        }
+    }
+
     def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): Unit =
     {
         val range = "date = '%s' and time >= '%s' and time < '%s'".format (date, start, end)
@@ -112,7 +150,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                 log.info ("""executing "%s" as %s""".format (player.title, sql))
                 val query = SimulationCassandraQuery (session, sql)
                 val resultset: Seq[JsonObject] = query.execute ()
-                resultset.foreach (dump)
+                val file = new File (options.workdir + "input_data/" + json("mrid").asInstanceOf[JsonString].getString + "_" + date + ".csv")
+                file.getParentFile.mkdirs
+                write_player_csv (file.getCanonicalPath, resultset)
             }
         )
     }

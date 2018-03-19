@@ -68,7 +68,7 @@ object Main
             text ("checkpoint directory on HDFS, e.g. hdfs://... [\"%s\"]".format (default.checkpoint))
 
         opt[String]("workdir").valueName ("<dir>").
-            action ((x, c) ⇒ c.copy (workdir = x)).
+            action ((x, c) ⇒ { val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep) }).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [\"%s\"]".format (default.workdir))
 
         arg[String]("<JSON> <JSON>...").unbounded ().
