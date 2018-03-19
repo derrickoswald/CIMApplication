@@ -3,14 +3,15 @@ package ch.ninecode.sim
 import java.io.StringReader
 import java.io.StringWriter
 import java.util
+
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
+import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
-
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -87,11 +88,50 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         recorder.copy (jsons = stringify (resultset))
     }
 
-    def query (job: SimulationJob): SimulationJob =
+    def queryplayers (job: SimulationJob): SimulationJob =
     {
         val players = job.players.map (input)
+        job.copy (players = players)
+    }
+
+    def queryrecorders (job: SimulationJob): SimulationJob =
+    {
         val recorders = job.recorders.map (output)
-        job.copy (players = players, recorders = recorders)
+        job.copy (recorders = recorders)
+    }
+
+    def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): Unit =
+    {
+        val range = "date = '%s' and time >= '%s' and time < '%s'".format (date, start, end)
+        val jsons = destringify (player.jsons)
+        jsons.foreach (x ⇒
+            {
+                val json = x.asScala
+                val substitutions: Array[String] = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
+                val sql = player.cassandraquery.format (substitutions: _*) + " and " + range + " order by time allow filtering"
+                log.info ("""executing "%s" as %s""".format (player.title, sql))
+                val query = SimulationCassandraQuery (session, sql)
+                val resultset: Seq[JsonObject] = query.execute ()
+                resultset.foreach (dump)
+            }
+        )
+    }
+
+    def generate_player (player: SimulationPlayer, start: String, end: String): Unit =
+    {
+// ToDo: convert to java.util.Calendar and select (datestart dateend]
+//        "interval": {
+//            "start": "2017-07-18T00:00:00.000+0000",
+//            "end": "2017-07-19T00:00:00.000+0000"
+//        },
+        val date = start.substring (0, start.indexOf ("T"))
+        generate_player_csv (player, date, start, end)
+    }
+
+    def generate_players (job: SimulationJob): Unit =
+    {
+
+        job.players.foreach (player ⇒ generate_player (player, job.interval("start"), job.interval("end")))
     }
 
     def execute (job: SimulationJob): Unit =
@@ -105,9 +145,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
     {
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions)
-        val newbatch = batch.map (query)
+        val newbatch = batch.map (queryplayers)
+        newbatch.foreach (generate_players)
+        val finalbatch = newbatch.map (queryrecorders)
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
-        val simulations = session.sparkContext.parallelize (newbatch, executors)
+        val simulations = session.sparkContext.parallelize (finalbatch, executors)
         simulations.foreach (execute)
     }
 

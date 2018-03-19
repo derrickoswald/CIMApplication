@@ -1,15 +1,16 @@
 package ch.ninecode.sim
 
 import java.io.StringReader
+
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
+import javax.json.JsonString
 import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -20,6 +21,7 @@ case class SimulationJob
     description: String,
     cim: String,
     cimreaderoptions: Map[String,String],
+    interval: Map[String,String],
     transformers: Seq[String],
     players: Seq[SimulationPlayer],
     recorders: Seq[SimulationRecorder]
@@ -70,6 +72,13 @@ object SimulationJob
         map.toMap
     }
 
+    def parseInterval (log: Logger, simulation: String, json: JsonObject): Map[String,String] =
+    {
+        val interval: mutable.Map[String, JsonValue] = json.getJsonObject ("interval").asScala // ToDo: more robust checking
+        val map: mutable.Map[String, String] = interval.map (x ⇒ (x._1, x._2.asInstanceOf[JsonString].getString))
+        map.toMap
+    }
+
     def parseTransformers (log: Logger, simulation: String, json: JsonObject): Seq[String] =
     {
         val transformers: JsonArray = json.getJsonArray ("transformers") // ToDo: more robust checking
@@ -101,7 +110,7 @@ object SimulationJob
                 val binds = player.getJsonArray ("bind")
                 val array = Array.ofDim[String](binds.size)
                 for (i <- 0 until binds.size)
-                    array(i) = binds.getString (i)
+                    array(i) = binds.getJsonString (i).getString
                 List (SimulationPlayer (title, rdfquery, cassandraquery, array))
             }
         }
@@ -146,10 +155,11 @@ object SimulationJob
         else
         {
             val cimreaderoptions = parseCIMReaderOptions (log, options, cim, simulation, json)
+            val interval = parseInterval (log, simulation, json)
             val transformers = parseTransformers (log, simulation, json)
             val players = parsePlayers (log, simulation, json)
             val recorders = parseRecorders (log, simulation, json)
-            List (SimulationJob (simulation, name, description, cim, cimreaderoptions, transformers, players, recorders))
+            List (SimulationJob (simulation, name, description, cim, cimreaderoptions, interval, transformers, players, recorders))
         }
     }
 

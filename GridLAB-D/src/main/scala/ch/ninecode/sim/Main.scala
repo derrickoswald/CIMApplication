@@ -51,6 +51,10 @@ object Main
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
+        opt[String]("host").valueName ("Cassandra").
+            action ((x, c) ⇒ c.copy (host = x)).
+            text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
+
         opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
@@ -123,6 +127,8 @@ object Main
                 configuration.setAppName (APPLICATION_NAME)
                 if ("" != options.master)
                     configuration.setMaster (options.master)
+                if ("" != options.host)
+                    configuration.set ("spark.cassandra.connection.host", options.host);
 
                 // get the necessary jar files to send to the cluster
                 if ("" != options.master)

@@ -16,6 +16,11 @@ case class SimulationOptions
     master: String = "local[*]",
 
     /**
+     * Cassandra connection host.
+     */
+    host: String = "localhost",
+
+    /**
      * Storage level for RDD serialization.
      */
     storage: String = "MEMORY_AND_DISK_SER",
