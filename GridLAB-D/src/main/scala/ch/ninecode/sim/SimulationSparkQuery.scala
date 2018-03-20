@@ -37,9 +37,9 @@ case class SimulationSparkQuery (session: SparkSession, sql: String)
         ret.build
     }
 
-    def execute (): Array[JsonObject] =
+    def execute (): Seq[JsonObject] =
     {
         val df: DataFrame = session.sql (sql)
-        df.toLocalIterator.map (row ⇒ packRow (row)).toArray
+        df.toLocalIterator.map (row ⇒ packRow (row)).toSeq
     }
 }

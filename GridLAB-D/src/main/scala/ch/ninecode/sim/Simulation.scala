@@ -29,6 +29,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
+    val calendar: Calendar = Calendar.getInstance ()
+    calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
+    calendar.setTimeInMillis (0L)
+
+    val date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+    date_format.setCalendar (calendar)
+
     def read (rdf: String, reader_options: Map[String,String])
     {
         log.info ("""reading "%s"""".format (rdf))
@@ -46,7 +53,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         log.info (strings.mkString (" "))
     }
 
-    def stringify (resultset: Array[JsonObject]): String =
+    def stringify (resultset: Seq[JsonObject]): String =
     {
         val array = Json.createArrayBuilder
         for (i ← resultset.indices)
@@ -115,10 +122,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
 
     def write_player_csv (name: String, resultset: Seq[JsonObject]): Unit =
     {
-        val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        val calendar = Calendar.getInstance ()
-        calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        date_format.setCalendar (calendar)
         // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
         def format (obj: JsonObject): String =
         {
@@ -138,11 +141,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         }
     }
 
-    def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): Unit =
+    def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): SimulationPlayer =
     {
         val range = "date = '%s' and time >= '%s' and time < '%s'".format (date, start, end)
         val jsons = destringify (player.jsons)
-        jsons.foreach (x ⇒
+        val items = jsons.map (x ⇒
             {
                 val json = x.asScala
                 val substitutions: Array[String] = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
@@ -152,12 +155,34 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                 val resultset: Seq[JsonObject] = query.execute ()
                 val file = new File (options.workdir + "input_data/" + json("mrid").asInstanceOf[JsonString].getString + "_" + date + ".csv")
                 file.getParentFile.mkdirs
-                write_player_csv (file.getCanonicalPath, resultset)
+                if (0 == resultset.length)
+                {
+                    log.warn ("""no records found for "%s" as %s""".format (player.title, sql))
+                    // substitute zero player
+                    // "1970-01-01 00:00:00,0.0,0.0"
+                    val empty: Seq[JsonObject] =
+                    {
+                        val b = Json.createObjectBuilder ()
+                        b.add ("time", 0L)
+                        b.add ("real", 0.0)
+                        b.add ("imag", 0.0)
+                        List (b.build ())
+                    }
+                    write_player_csv (file.getCanonicalPath, empty)
+                }
+                else
+                    write_player_csv (file.getCanonicalPath, resultset)
+                val z = Json.createObjectBuilder ()
+                json.foreach (x ⇒ z.add (x._1, x._2))
+                z.add ("file", file.getCanonicalPath)
+                z.add ("count", resultset.length)
+                z.build ()
             }
         )
+        player.copy (jsons = stringify (items))
     }
 
-    def generate_player (player: SimulationPlayer, start: String, end: String): Unit =
+    def generate_player (player: SimulationPlayer, start: String, end: String): SimulationPlayer =
     {
 // ToDo: convert to java.util.Calendar and select (datestart dateend]
 //        "interval": {
@@ -168,10 +193,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         generate_player_csv (player, date, start, end)
     }
 
-    def generate_players (job: SimulationJob): Unit =
+    def generate_players (job: SimulationJob): SimulationJob =
     {
 
-        job.players.foreach (player ⇒ generate_player (player, job.interval("start"), job.interval("end")))
+        val players = job.players.map (player ⇒ generate_player (player, job.interval("start"), job.interval("end")))
+        job.copy (players = players)
     }
 
     def execute (job: SimulationJob): Unit =
@@ -186,8 +212,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions)
         val newbatch = batch.map (queryplayers)
-        newbatch.foreach (generate_players)
-        val finalbatch = newbatch.map (queryrecorders)
+        val notherbatch = newbatch.map (generate_players)
+        val finalbatch = notherbatch.map (queryrecorders)
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (finalbatch, executors)
         simulations.foreach (execute)
