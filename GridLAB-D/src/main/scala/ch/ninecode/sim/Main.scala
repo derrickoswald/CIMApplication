@@ -107,9 +107,10 @@ object Main
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/filename.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --workdir hdfs://sandbox:8020/tmp --host sandbox basic.json
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --workdir hdfs://hmaster:9000/tmp --host sandbox basic.json
+     * Note: At the moment the "cim" property in the json file is file-system dependent, e.g. "cim": "data/TRA2755_terminal_2_island.rdf", or "cim": "hdfs://sandbox:8020/data/TRA2755_terminal_2_island.rdf".
      */
     def main (args: Array[String])
     {

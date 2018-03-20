@@ -5,6 +5,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringReader
 import java.io.StringWriter
+import java.net.URI
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Calendar
@@ -17,6 +18,10 @@ import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.stream.JsonGenerator
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
 
 import scala.collection.JavaConverters._
 import org.apache.spark.sql.SparkSession
@@ -35,6 +40,43 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
 
     val date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
     date_format.setCalendar (calendar)
+
+    /**
+     * Get the scheme for the working directory.
+     */
+    val workdir_scheme: String =
+    {
+        val uri = new URI (options.workdir)
+        if (null == uri.getScheme)
+            ""
+        else
+            uri.getScheme
+    }
+
+    /**
+     * Get the path component of the working directory.
+     */
+    val workdir_path: String =
+    {
+        val uri = new URI (options.workdir)
+        if (null == uri.getPath)
+            "/"
+        else
+            uri.getPath
+    }
+
+    /**
+     * Get just the URI for the working directory.
+     */
+    val workdir_uri: String =
+    {
+        val uri = new URI (options.workdir)
+        if (null == uri.getScheme)
+            ""
+        else
+            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
+    }
+
 
     def read (rdf: String, reader_options: Map[String,String])
     {
@@ -120,33 +162,55 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         finally { resource.close () }
     }
 
-    def write_player_csv (name: String, resultset: Seq[JsonObject]): Unit =
+    // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
+    def format (obj: JsonObject): String =
     {
-        // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-        def format (obj: JsonObject): String =
-        {
-            var time = 0L
-            var real = 0.0
-            var imag = 0.0
-            val o = obj.asScala
-            o.foreach (
-                x ⇒
-                    x._1 match
-                    {
-                        case "time" ⇒ time = x._2.asInstanceOf[JsonNumber].longValue
-                        case "real" ⇒ real = x._2.asInstanceOf[JsonNumber].doubleValue
-                        case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
-                    }
-            )
-            date_format.format (time) + "," + real + "," + imag
-        }
-        val target = options.workdir + name
-        val text = resultset.map (format).mkString ("\n")
-        using (new PrintWriter (new File (name), "UTF-8"))
-        {
-            writer =>
-                writer.write (text)
+        var time = 0L
+        var real = 0.0
+        var imag = 0.0
+        val o = obj.asScala
+        o.foreach (
+            x ⇒
+                x._1 match
+                {
+                    case "time" ⇒ time = x._2.asInstanceOf[JsonNumber].longValue
+                    case "real" ⇒ real = x._2.asInstanceOf[JsonNumber].doubleValue
+                    case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
+                }
+        )
+        date_format.format (time) + "," + real + "," + imag
+    }
 
+    def write_player_csv (name: String, text: String): Unit =
+    {
+        if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
+        {
+            val file = new File (options.workdir + name)
+            file.getParentFile.mkdirs
+            if (null != text)
+                using (new PrintWriter (file, "UTF-8"))
+                {
+                    writer =>
+                        writer.write (text)
+
+                }
+        }
+        else
+        {
+            val file = new Path (options.workdir + name)
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
+            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
+            if (null != text)
+            {
+                val bytes = text.getBytes ("UTF-8")
+                val out = hdfs.create(file)
+                out.write(bytes)
+                out.close()
+            }
         }
     }
 
@@ -162,28 +226,29 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                 log.info ("""executing "%s" as %s""".format (player.title, sql))
                 val query = SimulationCassandraQuery (session, sql)
                 val resultset: Seq[JsonObject] = query.execute ()
-                val file = new File (options.workdir + "input_data/" + json("mrid").asInstanceOf[JsonString].getString + "_" + date + ".csv")
-                file.getParentFile.mkdirs
-                if (0 == resultset.length)
-                {
-                    log.warn ("""no records found for "%s" as %s""".format (player.title, sql))
-                    // substitute zero player
-                    // "1970-01-01 00:00:00,0.0,0.0"
-                    val empty: Seq[JsonObject] =
+                val text =
+                    if (0 == resultset.length)
                     {
-                        val b = Json.createObjectBuilder ()
-                        b.add ("time", 0L)
-                        b.add ("real", 0.0)
-                        b.add ("imag", 0.0)
-                        List (b.build ())
+                        log.warn ("""no records found for "%s" as %s""".format (player.title, sql))
+                        // substitute zero player
+                        // "1970-01-01 00:00:00,0.0,0.0"
+                        val empty: Seq[JsonObject] =
+                        {
+                            val b = Json.createObjectBuilder ()
+                            b.add ("time", 0L)
+                            b.add ("real", 0.0)
+                            b.add ("imag", 0.0)
+                            List (b.build ())
+                        }
+                        empty.map (format).mkString ("\n")
                     }
-                    write_player_csv (file.getCanonicalPath, empty)
-                }
-                else
-                    write_player_csv (file.getCanonicalPath, resultset)
+                    else
+                        resultset.map (format).mkString ("\n")
+                val name = "input_data/" + json("mrid").asInstanceOf[JsonString].getString + "_" + date + ".csv"
+                write_player_csv (name, text)
                 val z = Json.createObjectBuilder ()
                 json.foreach (x ⇒ z.add (x._1, x._2))
-                z.add ("file", file.getCanonicalPath)
+                z.add ("file", name)
                 z.add ("count", resultset.length)
                 z.build ()
             }
