@@ -125,11 +125,20 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
         def format (obj: JsonObject): String =
         {
+            var time = 0L
+            var real = 0.0
+            var imag = 0.0
             val o = obj.asScala
-            val time = date_format.format (o("time").asInstanceOf[JsonNumber].longValue)
-            val real = o("real").asInstanceOf[JsonNumber].doubleValue
-            val imag = o("imag").asInstanceOf[JsonNumber].doubleValue
-            time + "," + real + "," + imag
+            o.foreach (
+                x ⇒
+                    x._1 match
+                    {
+                        case "time" ⇒ time = x._2.asInstanceOf[JsonNumber].longValue
+                        case "real" ⇒ real = x._2.asInstanceOf[JsonNumber].doubleValue
+                        case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
+                    }
+            )
+            date_format.format (time) + "," + real + "," + imag
         }
         val target = options.workdir + name
         val text = resultset.map (format).mkString ("\n")
