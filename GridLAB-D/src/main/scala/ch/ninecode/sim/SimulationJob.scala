@@ -24,7 +24,8 @@ case class SimulationJob
     interval: Map[String,String],
     transformers: Seq[String],
     players: Seq[SimulationPlayer],
-    recorders: Seq[SimulationRecorder]
+    recorders: Seq[SimulationRecorder],
+    tasks: Seq[SimulationTask] = null
 )
 {
     def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString(",")

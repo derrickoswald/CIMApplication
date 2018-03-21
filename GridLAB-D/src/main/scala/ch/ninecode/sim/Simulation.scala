@@ -18,15 +18,17 @@ import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.stream.JsonGenerator
+
+import scala.collection.JavaConverters._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
-
-import scala.collection.JavaConverters._
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import scala.collection.mutable
 
 case class Simulation (session: SparkSession, options: SimulationOptions)
 {
@@ -38,8 +40,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
     calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
     calendar.setTimeInMillis (0L)
 
-    val date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-    date_format.setCalendar (calendar)
+    val glm_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+    glm_date_format.setCalendar (calendar)
+
+    val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    iso_date_format.setCalendar (calendar)
+
+    val just_date: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd")
+    just_date.setCalendar (calendar)
 
     /**
      * Get the scheme for the working directory.
@@ -128,7 +136,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         }
     }
 
-    def input (player: SimulationPlayer): SimulationPlayer =
+    def queryplayers (player: SimulationPlayer): SimulationPlayer =
     {
         log.info ("""executing "%s" as %s""".format (player.title, player.rdfquery))
         val query = SimulationSparkQuery (session, player.rdfquery)
@@ -136,24 +144,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         player.copy (jsons = stringify (resultset))
     }
 
-    def output (recorder: SimulationRecorder): SimulationRecorder =
+    def queryrecorders (recorder: SimulationRecorder): SimulationRecorder =
     {
         log.info ("""executing "%s" as %s""".format (recorder.title, recorder.query))
         val query = SimulationSparkQuery (session, recorder.query)
         val resultset = query.execute ()
         recorder.copy (jsons = stringify (resultset))
-    }
-
-    def queryplayers (job: SimulationJob): SimulationJob =
-    {
-        val players = job.players.map (input)
-        job.copy (players = players)
-    }
-
-    def queryrecorders (job: SimulationJob): SimulationJob =
-    {
-        val recorders = job.recorders.map (output)
-        job.copy (recorders = recorders)
     }
 
     def using[T <: Closeable, R](resource: T)(block: T => R): R =
@@ -178,7 +174,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                     case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
                 }
         )
-        date_format.format (time) + "," + real + "," + imag
+        glm_date_format.format (time) + "," + real + "," + imag
     }
 
     def write_player_csv (name: String, text: String): Unit =
@@ -214,11 +210,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         }
     }
 
-    def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): SimulationPlayer =
+    def generate_player_csv (player: SimulationPlayer, date: String, start: String, end: String): Seq[SimulationPlayer] =
     {
+        log.info ("""generating "%s" date: %s [%s, %s)""".format (player.title, date, start, end))
+        var ret = List[SimulationPlayer]()
         val range = "date = '%s' and time >= '%s' and time < '%s'".format (date, start, end)
         val jsons = destringify (player.jsons)
-        val items = jsons.map (x ⇒
+        jsons.foreach (
+            x ⇒
             {
                 val json = x.asScala
                 val substitutions: Array[String] = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
@@ -226,70 +225,85 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                 log.info ("""executing "%s" as %s""".format (player.title, sql))
                 val query = SimulationCassandraQuery (session, sql)
                 val resultset: Seq[JsonObject] = query.execute ()
-                val text =
-                    if (0 == resultset.length)
+                val count = resultset.length
+                val set =
+                    if (0 == count)
                     {
                         log.warn ("""no records found for "%s" as %s""".format (player.title, sql))
                         // substitute zero player
                         // "1970-01-01 00:00:00,0.0,0.0"
-                        val empty: Seq[JsonObject] =
-                        {
-                            val b = Json.createObjectBuilder ()
-                            b.add ("time", 0L)
-                            b.add ("real", 0.0)
-                            b.add ("imag", 0.0)
-                            List (b.build ())
-                        }
-                        empty.map (format).mkString ("\n")
+                        val b = Json.createObjectBuilder ()
+                        b.add ("time", 0L)
+                        b.add ("real", 0.0)
+                        b.add ("imag", 0.0)
+                        List (b.build ())
                     }
                     else
-                        resultset.map (format).mkString ("\n")
+                        resultset
+                val text = set.map (format).mkString ("\n")
                 val name = "input_data/" + json("mrid").asInstanceOf[JsonString].getString + "_" + date + ".csv"
                 write_player_csv (name, text)
-                val z = Json.createObjectBuilder ()
-                json.foreach (x ⇒ z.add (x._1, x._2))
-                z.add ("file", name)
-                z.add ("count", resultset.length)
-                z.build ()
+                val n: SimulationPlayer = player.copy (jsons = stringify (Seq(x)), file = name, count = count)
+                ret = ret :+ n
             }
         )
-        player.copy (jsons = stringify (items))
+        ret
     }
 
-    def generate_player (player: SimulationPlayer, start: String, end: String): SimulationPlayer =
+    def iso_parse (s: String): Calendar =
     {
-// ToDo: convert to java.util.Calendar and select (datestart dateend]
-//        "interval": {
-//            "start": "2017-07-18T00:00:00.000+0000",
-//            "end": "2017-07-19T00:00:00.000+0000"
-//        },
-        val date = start.substring (0, start.indexOf ("T"))
-        generate_player_csv (player, date, start, end)
+        val ret = Calendar.getInstance ()
+        ret.setTime (iso_date_format.parse (s))
+        ret
     }
 
-    def generate_players (job: SimulationJob): SimulationJob =
+    def make_tasks (job: SimulationJob): Seq[SimulationTask] =
     {
+        log.info ("""preparing simulation job "%s"""".format (job.name))
 
-        val players = job.players.map (player ⇒ generate_player (player, job.interval("start"), job.interval("end")))
-        job.copy (players = players)
+        val players = job.players.map (queryplayers)
+        val recorders = job.recorders.map (queryrecorders)
+        // loop over all days
+        val start = iso_parse (job.interval("start"))
+        val startplus = start.clone.asInstanceOf[Calendar]
+        val end = iso_parse (job.interval("end"))
+        var ret = List[SimulationTask]()
+        while (start.before (end))
+        {
+            // figure out the ending time as a midnight
+            startplus.add (Calendar.DAY_OF_MONTH, 1)
+            val next = just_date.format (startplus.getTime)
+            startplus.setTime (just_date.parse (next))
+            // set up for creating the CSV
+            val date = just_date.format (start.getTime)
+            val t0 = iso_date_format.format (start.getTime)
+            val t1 = iso_date_format.format (startplus.getTime)
+            val task = SimulationTask (
+                "whatever",
+                start,
+                startplus,
+                players.flatMap (x ⇒ generate_player_csv (x, date, t0, t1)),
+                recorders
+            )
+            ret = ret :+ task
+            start.setTime (startplus.getTime)
+        }
+        ret
     }
 
-    def execute (job: SimulationJob): Unit =
+    def execute (task: SimulationTask): Unit =
     {
-        log.info ("""executing simulation job "%s"""".format (job.name))
-        job.players.foreach (x ⇒ destringify (x.jsons).foreach (dump))
-        job.recorders.foreach (x ⇒ destringify (x.jsons).foreach (dump))
+        task.players.foreach (x ⇒ { destringify (x.jsons).foreach (dump); log.info ( x.file + " " + x.count + " records") })
+        task.recorders.foreach (x ⇒ destringify (x.jsons).foreach (dump))
     }
 
     def process (batch: Seq[SimulationJob]): Unit =
     {
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions)
-        val newbatch = batch.map (queryplayers)
-        val notherbatch = newbatch.map (generate_players)
-        val finalbatch = notherbatch.map (queryrecorders)
+        val tasks = batch.flatMap (make_tasks)
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
-        val simulations = session.sparkContext.parallelize (finalbatch, executors)
+        val simulations = session.sparkContext.parallelize (tasks, executors)
         simulations.foreach (execute)
     }
 
@@ -311,10 +325,13 @@ object Simulation
     {
         Array (
             classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationCassandraQuery],
             classOf[ch.ninecode.sim.SimulationJob],
             classOf[ch.ninecode.sim.SimulationOptions],
             classOf[ch.ninecode.sim.SimulationPlayer],
-            classOf[ch.ninecode.sim.SimulationRecorder]
+            classOf[ch.ninecode.sim.SimulationRecorder],
+            classOf[ch.ninecode.sim.SimulationSparkQuery],
+            classOf[ch.ninecode.sim.SimulationTask]
         )
     }
 }

@@ -198,11 +198,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |    ],
                     |    "players": [
                     |         {
-                    |             "title": "all EnergyConsumer with PSRType == 'PSRType_HouseService'",
-                    |             "rdfquery": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
-                    |             "cassandraquery": "select time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where mrid='%s' and type='energy'",
+                    |             "title": "house services",
+                    |             "rdfquery": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment",
+                    |             "cassandraquery": "select time, real_a as real, imag_a as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
                     |             "bind": [
-                    |                 "mrid"
+                    |                 "mrid",
+                    |                 "type"
                     |             ]
                     |         }
                     |    ],

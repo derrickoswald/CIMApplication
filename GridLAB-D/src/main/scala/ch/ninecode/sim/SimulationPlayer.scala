@@ -19,7 +19,17 @@ case class SimulationPlayer
     /**
      * Results of the rdfquery, and generated file (includes name and (record) count) of the Cassandra query as a Json array.
      */
-    jsons: String = null
+    jsons: String = null,
+
+    /**
+     * Per binding and date file name, e.g. HAS1964_2017-07-18.csv.
+     */
+    file: String = "",
+
+    /**
+     * The number of measurements in the file.
+     */
+    count: Int = 0
 )
 {
 }
