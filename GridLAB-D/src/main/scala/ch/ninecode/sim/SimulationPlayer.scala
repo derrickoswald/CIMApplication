@@ -24,7 +24,7 @@ case class SimulationPlayer
     /**
      * Per binding and date file name, e.g. HAS1964_2017-07-18.csv.
      */
-    file: String = "",
+    file: String = null,
 
     /**
      * The number of measurements in the file.

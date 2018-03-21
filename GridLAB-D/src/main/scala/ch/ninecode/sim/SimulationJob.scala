@@ -127,13 +127,14 @@ object SimulationJob
     {
         val title = recorder.getString ("title", "")
         val query = recorder.getString ("query", null)
+        val interval = recorder.getInt ("interval", 900)
         if (null == query)
         {
             log.error (""""%s" does not specify a query for recorder "%s""".format (simulation, title))
             List()
         }
         else
-            List (SimulationRecorder (title, query))
+            List (SimulationRecorder (title, query, interval))
     }
 
     def parseRecorders (log: Logger, simulation: String, json: JsonObject): Seq[SimulationRecorder] =
