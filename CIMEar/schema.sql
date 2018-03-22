@@ -5,6 +5,7 @@ create table if not exists measured_value_by_day (
     type text,
     date date,
     time timestamp,
+    interval int,
     real_a double,
     imag_a double,
     real_b double,

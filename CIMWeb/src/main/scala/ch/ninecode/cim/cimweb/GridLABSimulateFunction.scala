@@ -149,6 +149,7 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
             |   type text,
             |   date date,
             |   time timestamp,
+            |   interval int,
             |   real_a double,
             |   imag_a double,
             |   real_b double,

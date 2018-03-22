@@ -110,20 +110,19 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             }
             if ("" != cassandra_table_name)
             {
+                // insert into cimapplication.measured_value_by_day (mrid, type, date, time, interval, real_a, imag_a, units) values ('HAS1234', 'energy', '2017-07-18', '2017-07-18T20:00:00.000+0000', 900000, 0.0, 0.0, 'Watt-hours');
                 val rows: RDD[Row] = df.rdd
                 val len = rows.first.length
-                if ((len == 6) || (len == 8) || (len == 10))
+                if ((len == 8) || (len == 12))
                 {
-                    if (len == 6)
-                        rows.map (row ⇒ (row.getString (0), row.getString (1), row.getString (2).substring (0, 10), row.getString (2), row.getDouble (3), row.getDouble (4), row.getString (5))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "real_a", "imag_a", "units"))
-                    else if (len == 8)
-                        rows.map (row ⇒ (row.getString (0), row.getString (1), row.getString (2).substring (0, 10), row.getString (2), row.getDouble (3), row.getDouble (4), row.getDouble (5), row.getDouble (6), row.getString (7))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "real_a", "imag_a", "real_b", "imag_b", "units"))
-                    else if (len == 10)
-                        rows.map (row ⇒ (row.getString (0), row.getString (1), row.getString (2).substring (0, 10), row.getString (2), row.getDouble (3), row.getDouble (4), row.getDouble (5), row.getDouble (6), row.getString (7), row.getDouble (8), row.getString (9))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
+                    if (len == 8)
+                        rows.map (row ⇒ (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("date")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
+                    else if (len == 12)
+                        rows.map (row ⇒ (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("date")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getDouble (row.fieldIndex ("real_b")), row.getDouble (row.fieldIndex ("imag_b")), row.getDouble (row.fieldIndex ("real_c")), row.getDouble (row.fieldIndex ("imag_c")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
                 }
                 else
                     // ToDo: need an error mechanism
-                    println ("Cassandra format error: RDD has rows of %d columns, not 6, 8, or 10 (\"mrid\", \"type\", \"time\", \"real_a\", \"imag_a\", ... \"units\")".format (rows.first.length))
+                    println ("Cassandra format error: RDD has rows of %d columns, not 8, or 12 (\"mrid\", \"type\", \"time\", \"real_a\", \"imag_a\", ... \"units\")".format (rows.first.length))
             }
             for (row ← df.toLocalIterator)
                 response.add (packRow (row))
