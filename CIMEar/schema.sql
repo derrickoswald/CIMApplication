@@ -16,3 +16,58 @@ create table if not exists measured_value_by_day (
     primary key ((mrid,type,date),time)
 ) with clustering order by (time asc);
 
+/*
+ * Requires adjustment of cassandra.yaml to enable user defined functions
+ * and scripted user defined functions:
+ *
+ * $ sed --in-place 's/enable_user_defined_functions: false/enable_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml \
+ * $ sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml
+ *
+ */
+create or replace function cimapplication.add_days (t timestamp, days int)
+    returns null on null input
+    returns timestamp
+    language java
+    as $$ return (new Date (t.getTime() + (long)(days * (24*60*60*1000)))); $$;
+
+create or replace function cimapplication.subtract_days (t timestamp, days int)
+    returns null on null input
+    returns timestamp
+    language java
+    as $$ return (new Date (t.getTime() - (long)(days * (24*60*60*1000)))); $$;
+
+create or replace function cimapplication.add_offset (t timestamp, offset int)
+    returns null on null input
+    returns timestamp
+    language java
+    as $$ return (new Date (t.getTime() + (long)(offset))); $$;
+
+create or replace function cimapplication.subtract_offset (t timestamp, offset int)
+    returns null on null input
+    returns timestamp
+    language java
+    as $$ return (new Date (t.getTime() - (long)(offset))); $$;
+
+create or replace function cimapplication.add_amount (value double, amount double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (value + amount); $$;
+
+create or replace function cimapplication.subtract_amount (value double, amount double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (value - amount); $$;
+
+create or replace function cimapplication.multiply (value double, amount double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (value * amount); $$;
+
+create or replace function cimapplication.divide (value double, amount double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (value / amount); $$;

@@ -158,12 +158,12 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/Einspeiseleistung-2.11-2.2.1-2.4.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/MediumVoltage-2.11-2.2.1-2.4.0-jar-with-dependencies.jar "hdfs://sandbox:8020/data/MediumVoltage1.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/MediumVoltage1.rdf"
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MediumVoltage-2.11-2.2.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
     def main (args: Array[String])
     {
