@@ -97,32 +97,45 @@ case class TransformerSet (transformers: Array[TData])
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
     val power_rating: Double = transformers.foldLeft (0.0) ((sum, edge) => sum + edge.end1.ratedS)
 
-    // calculate the impedance as 1 / sum (1/Zi)
-    val impedances: Array[Complex] = transformers.map (
-        (edge) =>
-        {
-            val sqrt3 = Math.sqrt (3)
-            val base_va = edge.end1.ratedS
-            // equivalent per unit values
-            val base_amps = base_va / v1 / sqrt3
-            val base_ohms = v1 / base_amps / sqrt3
-            // this end's impedance
-            val r = edge.end1.r / base_ohms
-            val x = edge.end1.x / base_ohms
-            Complex (r, x)
-        }
-    )
-
     /**
-     *  Return the total impedance and a flag indicating if it is the default value (no impedances were non-zero)
+     *  Return the total impedance and a flag indicating if it includes a default value (an impedance was zero)
      *  i.e. (total_impedance, default)
+     *  calculate the impedance as 1 / sum (1/Zi)
      */
     val total_impedance: (Complex, Boolean) =
     {
+        // get a list of primary impedances or default
+        val impedances: Array[(Complex, Boolean)] = transformers.map (
+            (edge) =>
+            {
+                // this end's impedance
+                var default = false
+                var r = edge.end0.r
+                var x = edge.end0.x
+                if (0.0 == r)
+                {
+                    r = 2.397460317
+                    default = true
+                }
+                if (0.0 == x)
+                {
+                    x = 16.07618325
+                    default = true
+                }
+                (Complex (r, x), default)
+            }
+        )
+
         val zero = Complex (0.0)
-        if (impedances.foldLeft (zero)(_.+(_)) == zero)
-            (Complex (2.397460317, 16.07618325), true)
-        else
-            (impedances.map (_.reciprocal).foldLeft (zero)(_.+(_)).reciprocal, false)
+        val inv = impedances.map (z ⇒ (z._1.reciprocal, z._2)).foldLeft ((zero, false))((z1, z2) ⇒ (z1._1 + z2._1, z1._2 || z2._2))
+        val parallel = (inv._1.reciprocal, inv._2)
+
+        val sqrt3 = Math.sqrt (3)
+        val base_va = power_rating
+        // equivalent per unit values
+        val base_amps = base_va / v0 / sqrt3
+        val base_ohms = v0 / base_amps / sqrt3
+        // per unit impedance
+        (parallel._1 / base_ohms, parallel._2)
     }
 }
