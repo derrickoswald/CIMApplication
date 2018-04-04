@@ -103,7 +103,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 
         // determine the set of transformers to work on
         /**
-         * The name of the node associated with the hight voltage terminal.
+         * The name of the node associated with the high voltage terminal.
          * @param pair The transformer information and topological node pair to get the island for.
          * @return The name of the TopologicalNode or ConnectivityNode.
          */

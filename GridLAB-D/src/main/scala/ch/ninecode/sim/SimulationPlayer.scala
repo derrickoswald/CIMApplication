@@ -4,25 +4,27 @@ case class SimulationPlayer
 (
     /**
      * The name for the player.
+     * Must be unique in the generated GLM file.
      */
-    title: String,
+    name: String,
 
     /**
-     * The query to determine what nodes or edges are played.
-     * Must return mrid, name, parent, property, and unit.
+     * The parent object (node or edge).
      */
-    rdfquery: String,
-
-    cassandraquery: String,
-    bind: Array[String],
+    parent: String,
 
     /**
-     * Results of the rdfquery, and generated file (includes name and (record) count) of the Cassandra query as a Json array.
+     * The player type - 'energy' adds a load object to the glm.
      */
-    jsons: String = null,
+    typ: String,
 
     /**
-     * Per binding and date file name, e.g. HAS1964_2017-07-18.csv.
+     * The property of the parent object to play.
+     */
+    property: String,
+
+    /**
+     * Per name and date file name, e.g. HAS1964_2017-07-18.csv.
      */
     file: String = null,
 

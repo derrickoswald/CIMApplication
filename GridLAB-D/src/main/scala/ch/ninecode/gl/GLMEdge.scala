@@ -1,6 +1,6 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model.{ConductingEquipment, Element}
+import ch.ninecode.model.Element
 
 /**
  * Basic properties of an edge.
@@ -27,13 +27,6 @@ trait GLMEdge extends Serializable
      * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 2.
      */
     def cn2: String
-
-    /**
-     * The generic ConductingEquipment object for this edge.
-     *
-     * @return The ConductingEquipment superclass of the CIM model object that is this edge.
-     */
-    def eq: ConductingEquipment
 
     /**
      * The CIM model object for this edge.

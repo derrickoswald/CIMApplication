@@ -82,7 +82,7 @@ class Line (one_phase: Boolean) extends Serializable
     // get the configuration name (of the parallel lines)
     def configurationName (iter: Iterable[GLMEdge]): String =
     {
-        val n = iter.map (_.eq.Equipment.PowerSystemResource.IdentifiedObject.name)
+        val n = iter.map (_.el.asInstanceOf[ACLineSegment].Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
         .map (valid_config_name).toArray.sortWith (_ < _).mkString ("||")
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {

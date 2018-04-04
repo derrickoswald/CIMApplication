@@ -23,8 +23,8 @@ case class SimulationJob
     cimreaderoptions: Map[String,String],
     interval: Map[String,String],
     transformers: Seq[String],
-    players: Seq[SimulationPlayer],
-    recorders: Seq[SimulationRecorder],
+    players: Seq[SimulationPlayerQuery],
+    recorders: Seq[SimulationRecorderQuery],
     tasks: Seq[SimulationTask] = null
 )
 {
@@ -89,7 +89,7 @@ object SimulationJob
         ret
     }
 
-    def parsePlayer (log: Logger, simulation: String, player: JsonObject): List[SimulationPlayer] =
+    def parsePlayer (log: Logger, simulation: String, player: JsonObject): List[SimulationPlayerQuery] =
     {
         val title = player.getString ("title", "")
         val rdfquery = player.getString ("rdfquery", null)
@@ -112,18 +112,18 @@ object SimulationJob
                 val array = Array.ofDim[String](binds.size)
                 for (i <- 0 until binds.size)
                     array(i) = binds.getJsonString (i).getString
-                List (SimulationPlayer (title, rdfquery, cassandraquery, array))
+                List (SimulationPlayerQuery (title, rdfquery, cassandraquery, array))
             }
         }
     }
 
-    def parsePlayers (log: Logger, simulation: String, json: JsonObject): Seq[SimulationPlayer] =
+    def parsePlayers (log: Logger, simulation: String, json: JsonObject): Seq[SimulationPlayerQuery] =
     {
         val players: Seq[JsonObject] = json.getJsonArray ("players").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
         players.flatMap (parsePlayer (log, simulation, _))
     }
 
-    def parseRecorder (log: Logger, simulation: String, recorder: JsonObject): List[SimulationRecorder] =
+    def parseRecorder (log: Logger, simulation: String, recorder: JsonObject): List[SimulationRecorderQuery] =
     {
         val title = recorder.getString ("title", "")
         val query = recorder.getString ("query", null)
@@ -134,10 +134,10 @@ object SimulationJob
             List()
         }
         else
-            List (SimulationRecorder (title, query, interval))
+            List (SimulationRecorderQuery (title, query, interval))
     }
 
-    def parseRecorders (log: Logger, simulation: String, json: JsonObject): Seq[SimulationRecorder] =
+    def parseRecorders (log: Logger, simulation: String, json: JsonObject): Seq[SimulationRecorderQuery] =
     {
         val recorders: Seq[JsonObject] = json.getJsonArray ("recorders").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
         recorders.flatMap (parseRecorder (log, simulation, _))

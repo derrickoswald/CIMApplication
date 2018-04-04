@@ -1,7 +1,6 @@
 package ch.ninecode.gl
 
 import ch.ninecode.model.Breaker
-import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Cut
 import ch.ninecode.model.Disconnector
 import ch.ninecode.model.Element
@@ -26,7 +25,6 @@ import ch.ninecode.model.Switch
  * @param v2 Terminal 2 voltage
  * @param id_equ ConductingEquipment MRID.
  * @param ratedCurrent Cable rated current (A).
- * @param equipment ConductingEquipment object for the edge.
  * @param element Element object for the edge.
  */
 case class PreEdge(
@@ -38,7 +36,6 @@ case class PreEdge(
     v2: Double,
     id_equ: String,
     ratedCurrent: Double,
-    equipment: ConductingEquipment,
     element: Element)
 extends
     GLMEdge
@@ -55,7 +52,6 @@ with
     override def id: String = id_equ
     override def cn1: String = id_cn_1
     override def cn2: String = id_cn_2
-    override def eq: ConductingEquipment = equipment
     override def el: Element = element
 
     /**

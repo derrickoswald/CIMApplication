@@ -39,12 +39,18 @@ while ! nc -z $NAMENODE 50070; do
 done;
 
 # configure Cassandra cluster
+if [[ -n "${2}" ]]; then
+    export CASSANDRANODE=${2}
+else
+    export CASSANDRANODE=$NAMENODE
+fi
+
 sed -i "s|cluster_name: 'Test Cluster'|cluster_name: 'sandbox'|g" /etc/cassandra/cassandra.yaml
-seed=$(getent ahosts $NAMENODE | grep $NAMENODE | cut --delimiter " " --fields 1) && sed -i "s|- seeds: \"127.0.0.1\"|- seeds: \"$seed\"|g" /etc/cassandra/cassandra.yaml
+seed=$(getent ahosts $CASSANDRANODE | grep $CASSANDRANODE | cut --delimiter " " --fields 1) && sed -i "s|- seeds: \"127.0.0.1\"|- seeds: \"$seed\"|g" /etc/cassandra/cassandra.yaml
 me=$(hostname -i) && sed -i "s|listen_address: localhost|listen_address: $me|g" /etc/cassandra/cassandra.yaml
 
 # if localhost, start Cassandra
-if [[ "localhost" == "${1}" ]]; then
+if [[ "localhost" == "$CASSANDRANODE" ]]; then
     service cassandra start 2>/dev/null
     declare -i i
     i=0
@@ -80,7 +86,7 @@ if [[ "localhost" == "${1}" ]]; then
     done
     rpc_host=localhost
 else
-    rpc_host=$NAMENODE
+    rpc_host=$CASSANDRANODE
 fi
 
 # load Cassandra schema
@@ -95,12 +101,12 @@ sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/conf,${HADOOP_CONF_DIR}|g" 
 # if not localhost, add the Spark master setting as ConnectionURL and Cassandra connect.host as ServerName to the system.properties
 if [[ "localhost" == "${1}" ]]; then
     echo "SparkConnectionFactory.ConnectionURL=local[*]" >> /usr/local/tomee/conf/system.properties
-    echo "SparkConnectionFactory.ServerName=localhost" >> /usr/local/tomee/conf/system.properties
+    echo "SparkConnectionFactory.ServerName=$CASSANDRANODE" >> /usr/local/tomee/conf/system.properties
     echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
     echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
 else
     echo "SparkConnectionFactory.ConnectionURL=spark://$NAMENODE:7077" >> /usr/local/tomee/conf/system.properties
-    echo "SparkConnectionFactory.ServerName=$NAMENODE" >> /usr/local/tomee/conf/system.properties
+    echo "SparkConnectionFactory.ServerName=$CASSANDRANODE" >> /usr/local/tomee/conf/system.properties
     echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
     echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
 fi

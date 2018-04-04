@@ -1,20 +1,20 @@
 package ch.ninecode.sim
 
 import java.io.UnsupportedEncodingException
-import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
-import scala.tools.nsc.io.Jar
-import scala.util.Random
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
 
 object Main
 {
@@ -129,7 +129,7 @@ object Main
                 if ("" != options.master)
                     configuration.setMaster (options.master)
                 if ("" != options.host)
-                    configuration.set ("spark.cassandra.connection.host", options.host);
+                    configuration.set ("spark.cassandra.connection.host", options.host)
 
                 // get the necessary jar files to send to the cluster
                 if ("" != options.master)
@@ -142,7 +142,6 @@ object Main
                         configuration.setJars (Array (s1))
                 }
 
-                val storage = StorageLevel.fromString (options.storage)
                 configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                 // register CIMReader classes
                 configuration.registerKryoClasses (CIMClasses.list)
@@ -167,7 +166,7 @@ object Main
                 sim.run ()
 
                 val calculate = System.nanoTime ()
-                log.info ("execution: " + (calculate - begin) / 1e9 + " seconds")
+                log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
 
             case None =>
                 sys.exit (1)

@@ -2,12 +2,18 @@
 
 if [[ $# -eq 0 ]] ; then
     master=localhost
+    cassandra=localhost
     network=
     publish="--publish 8080:8080 --publish 4040:4040 --publish 50070:50070"
 else
     master=$1
     network="--network spark_default"
     publish=""
+    if [[ -n "${2}" ]]; then
+        cassandra=$2
+    else
+        cassandra=$master
+    fi
 fi
 set -x
-docker run --name tomee --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish --volume /home/derrick/code/CIMReader/private_data:/opt/private_data derrickoswald/cimapplication start-tomee $master &
+docker run --name tomee --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish --volume /home/derrick/code/CIMReader/private_data:/opt/private_data derrickoswald/cimapplication start-tomee $master $cassandra &

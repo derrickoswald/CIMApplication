@@ -21,22 +21,36 @@ import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.TData
+import ch.ninecode.gl.Transformers
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Element
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
 
-case class Simulation (session: SparkSession, options: SimulationOptions)
+case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
     if (options.verbose)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
 
     val calendar: Calendar = Calendar.getInstance ()
     calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
@@ -138,7 +152,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         }
     }
 
-    def queryplayers (island: String) (player: SimulationPlayer): SimulationPlayer =
+    def queryplayers (island: String) (player: SimulationPlayerQuery): SimulationPlayerQuery =
     {
         val numbind = player.rdfquery.split ("%s").length - 1
         val sql = if (0 < numbind)
@@ -154,7 +168,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         player.copy (jsons = stringify (resultset))
     }
 
-    def queryrecorders (island: String) (recorder: SimulationRecorder): SimulationRecorder =
+    def queryrecorders (island: String) (recorder: SimulationRecorderQuery): SimulationRecorderQuery =
     {
         val numbind = recorder.query.split ("%s").length - 1
         val sql = if (0 < numbind)
@@ -228,9 +242,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         }
     }
 
-    def generate_player_csv (player: SimulationPlayer, date: String, start: Long, end: Long): Seq[SimulationPlayer] =
+    def generate_player_csv (player: SimulationPlayerQuery, date: String, start: Long, end: Long): Seq[SimulationPlayer] =
     {
-        log.info ("""generating "%s" date: %s [%s, %s)""".format (player.title, date, start, end))
+        log.info ("""generating "%s" date: %s [%s, %s)""".format (player.title, date, iso_date_format.format (new Date (start)), iso_date_format.format (new Date (end))))
         var ret = List[SimulationPlayer]()
         val range = "date = '%s'".format (date)
         val jsons = destringify (player.jsons)
@@ -267,16 +281,22 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                         )
                     }
                 val text = set.map (format).mkString ("\n")
-                val name = "input_data/" + json("name").asInstanceOf[JsonString].getString + "_" + date + ".csv"
-                write_player_csv (name, text)
-                val n = player.copy (jsons = stringify (Seq(x)), file = name, count = count)
-                ret = ret :+ n
+                val name = json("name").asInstanceOf[JsonString].getString
+                val file = "input_data/" + name + "_" + date + ".csv"
+                write_player_csv (file, text)
+                ret = ret :+ SimulationPlayer (
+                    name,
+                    json("parent").asInstanceOf[JsonString].getString,
+                    json("type").asInstanceOf[JsonString].getString,
+                    json("property").asInstanceOf[JsonString].getString,
+                    file,
+                    count)
             }
         )
         ret
     }
 
-    def generate_recorder_csv (recorder: SimulationRecorder, date: String, start: Long, end: Long): Seq[SimulationRecorder] =
+    def generate_recorder_csv (recorder: SimulationRecorderQuery, date: String, start: Long, end: Long): Seq[SimulationRecorder] =
     {
         val t0 = Calendar.getInstance ()
         t0.setTimeZone (TimeZone.getTimeZone ("GMT"))
@@ -291,9 +311,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
             x ⇒
             {
                 val json = x.asScala
-                val name = "output_data/" + json("name").asInstanceOf[JsonString].getString + "_" + date + ".csv"
-                val n = recorder.copy (jsons = stringify (Seq(x)), file = name)
-                ret = ret :+ n
+                val name = json("name").asInstanceOf[JsonString].getString
+                val file = "output_data/" + name + "_" + date + ".csv"
+                ret = ret :+ SimulationRecorder (
+                    name,
+                    json("parent").asInstanceOf[JsonString].getString,
+                    json("property").asInstanceOf[JsonString].getString,
+                    file,
+                    recorder.interval)
             }
         )
         ret
@@ -309,6 +334,34 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
     def pack (string: String): String =
     {
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
+    }
+
+    def queryNetwork (island: String): (Iterable[GLMNode], Iterable[Iterable[GLMEdge]]) =
+    {
+        val toponodes = get[TopologicalNode]
+        val members = toponodes.filter (_.TopologicalIsland == island)
+        val terminals: RDD[Terminal] = get[Terminal].keyBy (_.TopologicalNode).join (members.keyBy (_.id)).values.map (_._1)
+        val equipment: RDD[(ConductingEquipment, Terminal)] = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_.ConductingEquipment)).values
+        // get all nodes with a voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
+        // but this doesn't include the transformer primary node - it's not part of the topology
+        // ToDo: fix this 1kV multiplier on the voltages
+        val nodes = equipment.keyBy (_._1.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
+            node ⇒ SimulationNode (node._1._2.TopologicalNode, node._2.nominalVoltage * 1000.0, null, null)
+        ).collect.distinct
+        // get all equipment with two nodes in the topology that separate different TopologicalNode
+        val eq: RDD[(String, Iterable[(ConductingEquipment, Terminal)])] = equipment.keyBy (_._1.id).groupByKey.filter (
+            edge ⇒ edge._2.size > 1 && edge._2.head._2.TopologicalNode != edge._2.tail.head._2.TopologicalNode
+        )
+        // convert ConductingEquipment to Element
+        val eq2: RDD[(Element, Iterable[Terminal])] = get[Element]("Elements").keyBy (_.id).join (eq).values.map (x ⇒ (x._1, x._2.map (_._2)))
+        // combine parallel equipment
+        val eq3: RDD[Iterable[(Element, Iterable[Terminal])]] = eq2.keyBy (_._2.map (_.id).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        val edges = eq3.map (
+            _.map (
+                e ⇒ SimulationEdge (e._1.id, e._2.head.TopologicalNode, e._2.tail.head.TopologicalNode, e._1, null, null)
+            )
+        ).collect
+        (nodes, edges)
     }
 
     def make_tasks (job: SimulationJob): Seq[SimulationTask] =
@@ -345,6 +398,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                     if (!names.forall (_ == island))
                         log.error ("""transformer "%s" has different topological islands (%s) on its secondary connections, using %s""".format (transformer, names.mkString (", "), island))
 
+                    val (nodes, edges) = queryNetwork (island)
+
                     val players = job.players.map (queryplayers (island))
                     val recorders = job.recorders.map (queryrecorders (island))
                     // loop over all days
@@ -366,8 +421,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
                             island,
                             start,
                             startplus,
-                            players.flatMap (x ⇒ generate_player_csv (x, date, t0, t1)),
-                            recorders.flatMap (x ⇒ generate_recorder_csv (x, date, t0, t1))
+                            nodes,
+                            edges,
+                            players.flatMap (x ⇒ generate_player_csv (x, date, t0, t1)).toArray,
+                            recorders.flatMap (x ⇒ generate_recorder_csv (x, date, t0, t1)).toArray
                         )
                         ret = ret :+ task
                         start.setTime (startplus.getTime)
@@ -378,28 +435,66 @@ case class Simulation (session: SparkSession, options: SimulationOptions)
         ret
     }
 
-    def execute (task: SimulationTask): Unit =
+    def execute (trafo: SimulationTrafoKreis): Unit =
     {
-        log.info (task.island + " from " + iso_date_format.format (task.start.getTime) + " to " + iso_date_format.format (task.end.getTime))
-        task.players.foreach (x ⇒ { destringify (x.jsons).foreach (dump); log.info ( x.file + " " + x.count + " records ") })
-        task.recorders.foreach (x ⇒ { destringify (x.jsons).foreach (dump); log.info ( x.file + " every " + x.interval + " seconds ") })
+        log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
+        trafo.players.foreach (x ⇒ log.info (x.toString))
+        trafo.recorders.foreach (x ⇒ log.info (x.toString))
+
     }
 
     def process (batch: Seq[SimulationJob]): Unit =
     {
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions)
-        val tasks = batch.flatMap (make_tasks)
+        val tasks: Seq[SimulationTask] = batch.flatMap (make_tasks)
+
+        val storage = StorageLevel.fromString (options.storage)
+        val transformers = new Transformers (session, storage)
+        val tdata: RDD[TData] = transformers.getTransformerData (topological_nodes = true, null)
+        val trafokreise = tasks.map (
+            task ⇒
+            {
+                val (nodes, edges) = queryNetwork (task.island)
+                // get the transformer(s)
+                val transformers: Array[TransformerSet] = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
+                    .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
+                    .filter (_._2._2.TopologicalIsland == task.island) // ... for this Trafokreis
+                    .map (x ⇒ (x._1, x._2._1)) // (low_voltage_node_name, TData)
+                    .groupByKey.values.map (_.toArray).map (TransformerSet).collect
+                if (transformers.length > 1)
+                    log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
+                SimulationTrafoKreis (
+                    task.island,
+                    transformers(0),
+                    nodes,
+                    edges,
+                    task.start,
+                    task.end,
+                    task.players,
+                    task.recorders)
+            }
+        )
+
+
+        val gridlabd = new GridLABD (session = session, topological_nodes = true, one_phase = true, storage_level = storage, workdir = options.workdir)
+        trafokreise.foreach (
+            trafo ⇒
+            {
+                val generator = SimulationGLMGenerator (one_phase = true, date_format = glm_date_format, trafo)
+                gridlabd.export (generator)
+            }
+        )
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
-        val simulations = session.sparkContext.parallelize (tasks, executors)
+        val simulations = session.sparkContext.parallelize (trafokreise, executors)
         simulations.foreach (execute)
     }
 
     def run (): Unit =
     {
-        var jobs = SimulationJob.getAll (options)
+        val jobs = SimulationJob.getAll (options)
         // organize by same RDF and same options
-        var batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
+        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
         batches.values.foreach (process)
     }
 }
@@ -414,12 +509,18 @@ object Simulation
         Array (
             classOf[ch.ninecode.sim.Simulation],
             classOf[ch.ninecode.sim.SimulationCassandraQuery],
+            classOf[ch.ninecode.sim.SimulationEdge],
+            classOf[ch.ninecode.sim.SimulationGLMGenerator],
             classOf[ch.ninecode.sim.SimulationJob],
+            classOf[ch.ninecode.sim.SimulationNode],
             classOf[ch.ninecode.sim.SimulationOptions],
             classOf[ch.ninecode.sim.SimulationPlayer],
+            classOf[ch.ninecode.sim.SimulationPlayerQuery],
             classOf[ch.ninecode.sim.SimulationRecorder],
+            classOf[ch.ninecode.sim.SimulationRecorderQuery],
             classOf[ch.ninecode.sim.SimulationSparkQuery],
-            classOf[ch.ninecode.sim.SimulationTask]
+            classOf[ch.ninecode.sim.SimulationTask],
+            classOf[ch.ninecode.sim.SimulationTrafoKreis]
         )
     }
 }

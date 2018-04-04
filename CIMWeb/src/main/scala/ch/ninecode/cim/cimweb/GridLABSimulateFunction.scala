@@ -158,7 +158,55 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
             |   imag_c double,
             |   units text,
             |   primary key ((mrid,type,date),time)
-            | ) with clustering order by (time asc);""".stripMargin
+            | ) with clustering order by (time asc);
+            |
+            | create or replace function cimapplication.add_days (t timestamp, days int)
+            |    returns null on null input
+            |    returns timestamp
+            |    language java
+            |    as $$ return (new Date (t.getTime() + (long)(days * (24*60*60*1000)))); $$;
+            |
+            |create or replace function cimapplication.subtract_days (t timestamp, days int)
+            |    returns null on null input
+            |    returns timestamp
+            |    language java
+            |    as $$ return (new Date (t.getTime() - (long)(days * (24*60*60*1000)))); $$;
+            |
+            |create or replace function cimapplication.add_offset (t timestamp, offset int)
+            |    returns null on null input
+            |    returns timestamp
+            |    language java
+            |    as $$ return (new Date (t.getTime() + (long)(offset))); $$;
+            |
+            |create or replace function cimapplication.subtract_offset (t timestamp, offset int)
+            |    returns null on null input
+            |    returns timestamp
+            |    language java
+            |    as $$ return (new Date (t.getTime() - (long)(offset))); $$;
+            |
+            |create or replace function cimapplication.add_amount (value double, amount double)
+            |    returns null on null input
+            |    returns double
+            |    language java
+            |    as $$ return (value + amount); $$;
+            |
+            |create or replace function cimapplication.subtract_amount (value double, amount double)
+            |    returns null on null input
+            |    returns double
+            |    language java
+            |    as $$ return (value - amount); $$;
+            |
+            |create or replace function cimapplication.multiply (value double, amount double)
+            |    returns null on null input
+            |    returns double
+            |    language java
+            |    as $$ return (value * amount); $$;
+            |
+            |create or replace function cimapplication.divide (value double, amount double)
+            |    returns null on null input
+            |    returns double
+            |    language java
+            |    as $$ return (value / amount); $$;""".stripMargin
         CassandraConnector (spark.sparkContext.getConf).withSessionDo (session => session.execute (sql))
         ("cimapplication", "simulated_value_by_day")
     }

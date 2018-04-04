@@ -68,7 +68,6 @@ class Island (
                                 terminals(0)._2,
                                 terminals(0)._1.ConductingEquipment,
                                 ratedCurrent,
-                                equipment,
                                 element)
                     case _ ⇒
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
@@ -82,7 +81,6 @@ class Island (
                                 terminals(i)._2,
                                 terminals(0)._1.ConductingEquipment,
                                 ratedCurrent,
-                                equipment,
                                 element)
                         }
                         ret

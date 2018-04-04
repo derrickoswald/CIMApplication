@@ -163,7 +163,6 @@ class GridLABD (
                                 volts(0),
                                 terminals(0).ConductingEquipment,
                                 ratedCurrent,
-                                equipment,
                                 e)
                     case _ ⇒
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
@@ -177,7 +176,6 @@ class GridLABD (
                                 volts(i),
                                 terminals(0).ConductingEquipment,
                                 ratedCurrent,
-                                equipment,
                                 e)
                         }
                         ret
@@ -251,7 +249,6 @@ class GridLABD (
         cables
     }
 
-    // Note: we return a bogus value just so there is a time sequential dependence on this by later code
     def prepare(): (RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]) =
     {
         // get a map of voltages
