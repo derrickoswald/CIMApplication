@@ -334,12 +334,13 @@ class GridLABD (
 
     def export (generator: GLMGenerator): Unit =
     {
+        val directory = generator.directory
         val name = generator.name
         eraseInputFile (name)
         val result = generator.make_glm ()
-        writeInputFile (name, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
-        //writeInputFile (name, "input_data/dummy", null) // mkdir
-        writeInputFile (name, "output_data/dummy", null) // mkdir
+        writeInputFile (directory, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
+        //writeInputFile (directory, "input_data/dummy", null) // mkdir
+        writeInputFile (directory, "output_data/dummy", null) // mkdir
     }
 
     def check (input: String): Boolean =
@@ -455,12 +456,12 @@ class GridLABD (
         files.map (extract_trafo).flatMapValues (read)
     }
 
-    def writeInputFile (equipment: String, path: String, bytes: Array[Byte]): Any =
+    def writeInputFile (directory: String, path: String, bytes: Array[Byte]): Any =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
             // ToDo: check for IOException
-            val file = Paths.get (workdir_path + equipment + "/" + path)
+            val file = Paths.get (workdir_path + directory + "/" + path)
             Files.createDirectories (file.getParent)
             if (null != bytes)
                 Files.write (file, bytes)
@@ -472,7 +473,7 @@ class GridLABD (
             hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
             val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
 
-            val file = new Path (workdir_slash + equipment + "/" + path)
+            val file = new Path (workdir_slash + directory + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
             hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))

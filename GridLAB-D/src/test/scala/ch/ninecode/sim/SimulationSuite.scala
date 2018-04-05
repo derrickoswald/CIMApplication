@@ -167,6 +167,11 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             new Unzip ().unzip (FILE_DEPOT + FILENAME1 + ".zip", FILE_DEPOT)
     }
 
+    test ("Help")
+    {
+        main (Array ("--unittest", "--help"))
+    }
+
     test ("Basic")
     {
         val json = FILE_DEPOT + "basic.json"
@@ -219,11 +224,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        main (Array ("--verbose", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
-    }
-
-    ignore ("Help")
-    {
-        main (Array ("--help"))
+        main (Array ("--unittest", "--verbose", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 }

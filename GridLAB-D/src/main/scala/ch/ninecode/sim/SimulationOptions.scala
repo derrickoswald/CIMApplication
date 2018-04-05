@@ -6,6 +6,11 @@ import ch.ninecode.sim.Main.LogLevels.LogLevels
 case class SimulationOptions
 (
     /**
+     * If <code>true</code>, don't call sys.exit().
+     */
+    unittest: Boolean = false,
+
+    /**
      * If <code>true</code>, emit progress messages.
      */
     verbose: Boolean = false,

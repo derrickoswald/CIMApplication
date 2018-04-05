@@ -15,7 +15,8 @@ case class SimulationTrafoKreis (
     start_time: Calendar,
     finish_time: Calendar,
     players: Array[SimulationPlayer],
-    recorders: Array[SimulationRecorder])
+    recorders: Array[SimulationRecorder],
+    directory: String)
 {
     val name: String = transformer.transformer_name
     val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))

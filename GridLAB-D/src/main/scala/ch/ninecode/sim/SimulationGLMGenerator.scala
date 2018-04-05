@@ -13,6 +13,8 @@ case class SimulationGLMGenerator (
 
     override def name: String = kreis.name
 
+    override def directory: String = kreis.directory
+
     override def start_time: Calendar = kreis.start_time
 
     override def finish_time: Calendar = kreis.finish_time

@@ -37,11 +37,26 @@ object Main
     }
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
+    var do_exit = true
+
     val parser: OptionParser[SimulationOptions] = new scopt.OptionParser[SimulationOptions](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
         val default = new SimulationOptions
+
+        override def terminate (exitState: Either[String, Unit]): Unit =
+            if (do_exit)
+                exitState match
+                {
+                    case Left(_)  => sys.exit(1)
+                    case Right(_) => sys.exit(0)
+                }
+
+        opt[Unit]("unittest").
+            hidden ().
+            action ((_, c) ⇒ c.copy (unittest = true)).
+            text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
         opt[Unit]("verbose").
             action ((_, c) ⇒ c.copy (verbose = true)).
@@ -71,7 +86,7 @@ object Main
             action ((x, c) ⇒ { val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep) }).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [\"%s\"]".format (default.workdir))
 
-        arg[String]("<JSON> <JSON>...").unbounded ().
+        arg[String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (simulation = c.simulation :+ x)).
             text ("simulation files to process")
 
@@ -114,6 +129,8 @@ object Main
      */
     def main (args: Array[String])
     {
+        do_exit = !args.contains ("--unittest")
+
         // parser.parse returns Option[C]
         parser.parse (args, SimulationOptions ()) match
         {
@@ -121,55 +138,63 @@ object Main
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
-                val begin = System.nanoTime ()
 
-                // create the configuration
-                val configuration = new SparkConf (false)
-                configuration.setAppName (APPLICATION_NAME)
-                if ("" != options.master)
-                    configuration.setMaster (options.master)
-                if ("" != options.host)
-                    configuration.set ("spark.cassandra.connection.host", options.host)
-
-                // get the necessary jar files to send to the cluster
-                if ("" != options.master)
+                if (0 != options.simulation.size)
                 {
-                    val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (SimulationOptions ())
-                    if (s1 != s2)
-                        configuration.setJars (Array (s1, s2))
-                    else
-                        configuration.setJars (Array (s1))
+                    val begin = System.nanoTime ()
+
+                    // create the configuration
+                    val configuration = new SparkConf (false)
+                    configuration.setAppName (APPLICATION_NAME)
+                    if ("" != options.master)
+                        configuration.setMaster (options.master)
+                    if ("" != options.host)
+                        configuration.set ("spark.cassandra.connection.host", options.host)
+
+                    // get the necessary jar files to send to the cluster
+                    if ("" != options.master)
+                    {
+                        val s1 = jarForObject (new DefaultSource ())
+                        val s2 = jarForObject (SimulationOptions ())
+                        if (s1 != s2)
+                            configuration.setJars (Array (s1, s2))
+                        else
+                            configuration.setJars (Array (s1))
+                    }
+
+                    configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                    // register CIMReader classes
+                    configuration.registerKryoClasses (CIMClasses.list)
+                    // register Simulation analysis classes
+                    configuration.registerKryoClasses (Simulation.classes)
+                    configuration.set ("spark.ui.showConsoleProgress", "false")
+
+                    // make a Spark session
+                    val session = SparkSession.builder ().config (configuration).getOrCreate ()
+                    session.sparkContext.setLogLevel (options.log_level.toString)
+                    if ("" != options.checkpoint)
+                        session.sparkContext.setCheckpointDir (options.checkpoint)
+                    val version = session.version
+                    log.info (s"Spark $version session established")
+                    if (version.take (SPARK.length) != SPARK.take (version.length))
+                        log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+
+                    val setup = System.nanoTime ()
+                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+
+                    val sim = Simulation (session, options)
+                    sim.run ()
+
+                    val calculate = System.nanoTime ()
+                    log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
                 }
 
-                configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                // register CIMReader classes
-                configuration.registerKryoClasses (CIMClasses.list)
-                // register Simulation analysis classes
-                configuration.registerKryoClasses (Simulation.classes)
-                configuration.set ("spark.ui.showConsoleProgress", "false")
-
-                // make a Spark session
-                val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (options.log_level.toString)
-                if ("" != options.checkpoint)
-                    session.sparkContext.setCheckpointDir (options.checkpoint)
-                val version = session.version
-                log.info (s"Spark $version session established")
-                if (version.take (SPARK.length) != SPARK.take (version.length))
-                    log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
-                val setup = System.nanoTime ()
-                log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-
-                val sim = Simulation (session, options)
-                sim.run ()
-
-                val calculate = System.nanoTime ()
-                log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
+                if (do_exit)
+                    sys.exit (0)
 
             case None =>
-                sys.exit (1)
+                if (do_exit)
+                    sys.exit (1)
         }
     }
 }

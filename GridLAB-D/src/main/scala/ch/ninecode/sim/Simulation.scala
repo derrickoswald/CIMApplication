@@ -360,8 +360,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                         val task = SimulationTask (
                             island,
-                            start,
-                            startplus,
+                            start.clone.asInstanceOf[Calendar],
+                            startplus.clone.asInstanceOf[Calendar],
                             nodes,
                             edges,
                             players.flatMap (x ⇒ generate_player_csv (x, date, t0, t1)).toArray,
@@ -445,7 +445,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         val cluster = Cluster.builder.addContactPoint (options.host).build
-        trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.name + System.getProperty ("file.separator")))
+        trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         trafo.recorders.foreach (x ⇒ log.info (x.toString))
     }
 
@@ -470,6 +470,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .groupByKey.values.map (_.toArray).map (TransformerSet).collect
                 if (transformers.length > 1)
                     log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
+                val date = just_date.format (task.start.getTime)
                 SimulationTrafoKreis (
                     task.island,
                     transformers(0),
@@ -478,7 +479,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     task.start,
                     task.end,
                     task.players,
-                    task.recorders)
+                    task.recorders,
+                    transformers(0).transformer_name + "_" + date + System.getProperty ("file.separator")
+                )
             }
         )
 

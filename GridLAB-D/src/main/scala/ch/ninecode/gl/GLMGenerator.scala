@@ -36,6 +36,14 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     def name: String = "gridlabd"
 
     /**
+     * The directory to place the simulation files in.
+     * Defaults to the name of the generated GLM file.
+     *
+     * @return The (relative) directory to use for files (glm, players, recorders).
+     */
+    def directory: String = name
+
+    /**
      * The .glm header comment.
      *
      * @return A single line of text for the comment header.
