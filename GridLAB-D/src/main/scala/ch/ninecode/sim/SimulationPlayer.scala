@@ -29,9 +29,19 @@ case class SimulationPlayer
     file: String = null,
 
     /**
-     * The number of measurements in the file.
+     * The Cassandra query to fetch the player data.
      */
-    count: Int = 0
+    sql: String = null,
+
+    /**
+     * Starting time as unix epoch for client side filtering.
+     */
+    start: Long,
+
+    /**
+     * Ending time as unix epoch for client side filtering.
+     */
+    end: Long
 )
 {
 }

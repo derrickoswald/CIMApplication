@@ -5,6 +5,7 @@ import javax.json.JsonObject
 
 import scala.collection.JavaConversions._
 
+import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.DataType
 import com.datastax.driver.core.DataType.Name.ASCII
 import com.datastax.driver.core.DataType.Name.BIGINT
@@ -32,14 +33,12 @@ import com.datastax.driver.core.DataType.Name.UDT
 import com.datastax.driver.core.DataType.Name.UUID
 import com.datastax.driver.core.DataType.Name.VARCHAR
 import com.datastax.driver.core.DataType.Name.VARINT
-import org.apache.spark.sql.SparkSession
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.Row
-import com.datastax.spark.connector.cql.CassandraConnector
 
-case class SimulationCassandraQuery (session: SparkSession, sql: String)
+case class SimulationCassandraQuery (cluster: Cluster, sql: String)
 {
-    def packRow (row: com.datastax.driver.core.Row): JsonObject =
+    def packRow (row: Row): JsonObject =
     {
         val ret = Json.createObjectBuilder
         val definitions = row.getColumnDefinitions
@@ -83,11 +82,8 @@ case class SimulationCassandraQuery (session: SparkSession, sql: String)
 
     def execute (): Seq[JsonObject] =
     {
-        CassandraConnector (session.sparkContext.getConf).withSessionDo
-        {
-            session =>
-                val resultset: ResultSet = session.execute (sql)
-                resultset.iterator.map (packRow).toSeq
-        }
+        val session = cluster.connect
+        val resultset: ResultSet = session.execute (sql)
+        resultset.iterator.map (packRow).toSeq
     }
 }

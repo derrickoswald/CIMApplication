@@ -18,7 +18,8 @@
 
     <properties>
         <!-- component versions -->
-        <version.dependency.cassandra>2.0.7</version.dependency.cassandra>
+        <version.dependency.cassandra_spark>2.0.7</version.dependency.cassandra_spark>
+        <version.dependency.cassandra_java>3.4.0</version.dependency.cassandra_java>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
         <version.dependency.json>1.1.2</version.dependency.json>
 
@@ -57,12 +58,24 @@
         <dependency>
             <groupId>com.datastax.spark</groupId>
             <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
-            <version>${version.dependency.cassandra}</version>
+            <version>${version.dependency.cassandra_spark}</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.scala-lang</groupId>
                     <artifactId>scala-reflect</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
+            <version>${version.dependency.cassandra_java}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

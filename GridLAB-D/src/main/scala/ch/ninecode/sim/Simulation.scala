@@ -22,6 +22,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
 
+import com.datastax.driver.core.Cluster
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -100,7 +101,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         else
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
     }
-
 
     def read (rdf: String, reader_options: Map[String,String])
     {
@@ -209,39 +209,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         glm_date_format.format (time) + "," + real + "," + imag
     }
 
-    def write_player_csv (name: String, text: String): Unit =
-    {
-        if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
-        {
-            val file = new File (options.workdir + name)
-            file.getParentFile.mkdirs
-            if (null != text)
-                using (new PrintWriter (file, "UTF-8"))
-                {
-                    writer =>
-                        writer.write (text)
-
-                }
-        }
-        else
-        {
-            val file = new Path (options.workdir + name)
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
-            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
-            if (null != text)
-            {
-                val bytes = text.getBytes ("UTF-8")
-                val out = hdfs.create(file)
-                out.write(bytes)
-                out.close()
-            }
-        }
-    }
-
     def generate_player_csv (player: SimulationPlayerQuery, date: String, start: Long, end: Long): Seq[SimulationPlayer] =
     {
         log.info ("""generating "%s" date: %s [%s, %s)""".format (player.title, date, iso_date_format.format (new Date (start)), iso_date_format.format (new Date (end))))
@@ -254,43 +221,17 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val json = x.asScala
                 val substitutions = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
                 val sql = player.cassandraquery.format (substitutions: _*) + " and " + range + " order by time allow filtering"
-                log.info ("""executing "%s" as %s""".format (player.title, sql))
-                val query = SimulationCassandraQuery (session, sql)
-                val resultset = query.execute ()
-                val count = resultset.length
-                val set =
-                    if (0 == count)
-                    {
-                        log.warn ("""no records found for "%s" as %s""".format (player.title, sql))
-                        // substitute zero player
-                        // "1970-01-01 00:00:00,0.0,0.0"
-                        val b = Json.createObjectBuilder ()
-                        b.add ("time", 0L)
-                        b.add ("real", 0.0)
-                        b.add ("imag", 0.0)
-                        List (b.build ())
-                    }
-                    else
-                    {
-                        resultset.filter (
-                            j ⇒
-                            {
-                                val time = j.getJsonNumber ("time").longValue
-                                time >= start && time <= end
-                            }
-                        )
-                    }
-                val text = set.map (format).mkString ("\n")
                 val name = json("name").asInstanceOf[JsonString].getString
                 val file = "input_data/" + name + "_" + date + ".csv"
-                write_player_csv (file, text)
                 ret = ret :+ SimulationPlayer (
                     name,
                     json("parent").asInstanceOf[JsonString].getString,
                     json("type").asInstanceOf[JsonString].getString,
                     json("property").asInstanceOf[JsonString].getString,
                     file,
-                    count)
+                    sql,
+                    start,
+                    end)
             }
         )
         ret
@@ -435,12 +376,77 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         ret
     }
 
+    def write_player_csv (name: String, text: String): Unit =
+    {
+        if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
+        {
+            val file = new File (options.workdir + name)
+            file.getParentFile.mkdirs
+            if (null != text)
+                using (new PrintWriter (file, "UTF-8"))
+                {
+                    writer =>
+                        writer.write (text)
+
+                }
+        }
+        else
+        {
+            val file = new Path (options.workdir + name)
+            val hdfs_configuration = new Configuration ()
+            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
+            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
+            if (null != text)
+            {
+                val bytes = text.getBytes ("UTF-8")
+                val out = hdfs.create(file)
+                out.write(bytes)
+                out.close()
+            }
+        }
+    }
+
+    def create_player_csv (cluster: Cluster, player: SimulationPlayer, file_prefix: String)
+    {
+        log.info ("""executing "%s" as %s""".format (player.name, player.sql))
+        val query = SimulationCassandraQuery (cluster, player.sql)
+        val resultset = query.execute ()
+        val count = resultset.length
+        val set =
+            if (0 == count)
+            {
+                log.warn ("""no records found for "%s" as %s""".format (player.name, player.sql))
+                // substitute zero player
+                // "1970-01-01 00:00:00,0.0,0.0"
+                val b = Json.createObjectBuilder ()
+                b.add ("time", 0L)
+                b.add ("real", 0.0)
+                b.add ("imag", 0.0)
+                List (b.build ())
+            }
+            else
+            {
+                resultset.filter (
+                    j ⇒
+                    {
+                        val time = j.getJsonNumber ("time").longValue
+                        time >= player.start && time <= player.end
+                    }
+                )
+            }
+        val text = set.map (format).mkString ("\n")
+        write_player_csv (file_prefix + player.file, text)
+    }
+
     def execute (trafo: SimulationTrafoKreis): Unit =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
-        trafo.players.foreach (x ⇒ log.info (x.toString))
+        val cluster = Cluster.builder.addContactPoint (options.host).build
+        trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.name + System.getProperty ("file.separator")))
         trafo.recorders.foreach (x ⇒ log.info (x.toString))
-
     }
 
     def process (batch: Seq[SimulationJob]): Unit =
@@ -475,7 +481,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     task.recorders)
             }
         )
-
 
         val gridlabd = new GridLABD (session = session, topological_nodes = true, one_phase = true, storage_level = storage, workdir = options.workdir)
         trafokreise.foreach (
