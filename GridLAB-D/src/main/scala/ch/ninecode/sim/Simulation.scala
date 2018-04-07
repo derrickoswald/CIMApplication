@@ -21,6 +21,7 @@ import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
+import scala.sys.process._
 
 import com.datastax.driver.core.Cluster
 import org.apache.hadoop.conf.Configuration
@@ -76,18 +77,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             ""
         else
             uri.getScheme
-    }
-
-    /**
-     * Get the path component of the working directory.
-     */
-    val workdir_path: String =
-    {
-        val uri = new URI (options.workdir)
-        if (null == uri.getPath)
-            "/"
-        else
-            uri.getPath
     }
 
     /**
@@ -211,7 +200,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def generate_player_csv (player: SimulationPlayerQuery, date: String, start: Long, end: Long): Seq[SimulationPlayer] =
     {
-        log.info ("""generating "%s" date: %s [%s, %s)""".format (player.title, date, iso_date_format.format (new Date (start)), iso_date_format.format (new Date (end))))
+        log.info ("""resolving "%s" date: %s [%s, %s)""".format (player.title, date, iso_date_format.format (new Date (start)), iso_date_format.format (new Date (end))))
         var ret = List[SimulationPlayer]()
         val range = "date = '%s'".format (date)
         val jsons = destringify (player.jsons)
@@ -441,11 +430,35 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         write_player_csv (file_prefix + player.file, text)
     }
 
+    def gridlabd (trafo: SimulationTrafoKreis): Boolean =
+    {
+        val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
+        var warningLines = 0
+        var errorLines = 0
+        def check (line: String): Unit =
+        {
+            log.info (line)
+            if (line.contains ("WARNING")) warningLines += 1
+            if (line.contains ("ERROR")) errorLines += 1
+        }
+        val countLogger = ProcessLogger (check, check)
+        val p: Process = Process (command).run (countLogger)
+        // wait for the process to finish
+        val exit_code = p.exitValue
+        if (0 != errorLines)
+            log.error ("%d warnings, %d errors".format (warningLines, errorLines))
+        else if (0 != warningLines)
+            log.warn ("%d warnings, %d errors".format (warningLines, errorLines))
+
+        (0 == exit_code) && (0 == errorLines)
+    }
+
     def execute (trafo: SimulationTrafoKreis): Unit =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         val cluster = Cluster.builder.addContactPoint (options.host).build
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
+        gridlabd (trafo)
         trafo.recorders.foreach (x ⇒ log.info (x.toString))
     }
 

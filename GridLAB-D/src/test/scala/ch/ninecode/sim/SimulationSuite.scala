@@ -224,6 +224,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        main (Array ("--unittest", "--verbose", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 }
