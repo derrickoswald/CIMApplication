@@ -182,11 +182,11 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      */
     def tzString: String =
     {
-        if (date_format.getTimeZone == TimeZone.getTimeZone("UTC"))
+        if ((date_format.getTimeZone == TimeZone.getTimeZone("UTC")) || (date_format.getTimeZone == TimeZone.getTimeZone("GMT")))
             "UTC0UTC"
         else
         {
-            val t = Calendar.getInstance
+            val t = date_format.getCalendar
             val tz = t.getTimeZone
             tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName (true, TimeZone.SHORT)
         }

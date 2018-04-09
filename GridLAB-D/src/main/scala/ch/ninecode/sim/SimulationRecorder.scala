@@ -14,9 +14,19 @@ case class SimulationRecorder
     parent: String,
 
     /**
+     * The recorder type - 'energy' performs sum() for aggregate values, all others perform average().
+     */
+    typ: String,
+
+    /**
      * The property of the parent object to record.
      */
     property: String,
+
+    /**
+     * The units for the recorder.
+     */
+    unit: String,
 
     /**
      * The file name for recording.

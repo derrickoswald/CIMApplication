@@ -144,20 +144,37 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
     def makeschema (spark: SparkSession): (String, String)=
     {
         val sql =
-         """| create table if not exists cimapplication.simulated_value_by_day (
-            |   mrid text,
-            |   type text,
-            |   date date,
-            |   time timestamp,
-            |   interval int,
-            |   real_a double,
-            |   imag_a double,
-            |   real_b double,
-            |   imag_b double,
-            |   real_c double,
-            |   imag_c double,
-            |   units text,
-            |   primary key ((mrid,type,date),time)
+         """
+            |create table if not exists cimapplication.measured_value_by_day (
+            |    mrid text,
+            |    type text,
+            |    date date,
+            |    time timestamp,
+            |    interval int,
+            |    real_a double,
+            |    imag_a double,
+            |    real_b double,
+            |    imag_b double,
+            |    real_c double,
+            |    imag_c double,
+            |    units text,
+            |    primary key ((mrid,type,date),time)
+            | ) with clustering order by (time asc);
+            |
+            |create table if not exists cimapplication.simulated_value_by_day (
+            |    mrid text,
+            |    type text,
+            |    date date,
+            |    time timestamp,
+            |    interval int,
+            |    real_a double,
+            |    imag_a double,
+            |    real_b double,
+            |    imag_b double,
+            |    real_c double,
+            |    imag_c double,
+            |    units text,
+            |    primary key ((mrid,type,date),time)
             | ) with clustering order by (time asc);
             |
             | create or replace function cimapplication.add_days (t timestamp, days int)

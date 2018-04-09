@@ -21,6 +21,7 @@ import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
+import scala.io.Source
 import scala.sys.process._
 
 import com.datastax.driver.core.Cluster
@@ -35,11 +36,13 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.TData
+import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
@@ -146,7 +149,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val numbind = player.rdfquery.split ("%s").length - 1
         val sql = if (0 < numbind)
         {
-            var ss = (for (i <- 1 to 2) yield island).toArray
+            val ss = (for (i <- 1 to 2) yield island).toArray
             player.rdfquery.format (ss: _*)
         }
         else
@@ -162,7 +165,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val numbind = recorder.query.split ("%s").length - 1
         val sql = if (0 < numbind)
         {
-            var ss = (for (i <- 1 to 2) yield island).toArray
+            val ss = (for (i <- 1 to 2) yield island).toArray
             recorder.query.format (ss: _*)
         }
         else
@@ -246,7 +249,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 ret = ret :+ SimulationRecorder (
                     name,
                     json("parent").asInstanceOf[JsonString].getString,
+                    json("type").asInstanceOf[JsonString].getString,
                     json("property").asInstanceOf[JsonString].getString,
+                    json("unit").asInstanceOf[JsonString].getString,
                     file,
                     recorder.interval)
             }
@@ -376,7 +381,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 {
                     writer =>
                         writer.write (text)
-
                 }
         }
         else
@@ -453,13 +457,50 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         (0 == exit_code) && (0 == errorLines)
     }
 
+    def read_recorder_csv (file: String, element: String, one_phase: Boolean, units: String): Iterator[ThreePhaseComplexDataElement] =
+    {
+        val name = new File (options.workdir + file)
+        val text: Iterator[String] = Source.fromFile (name, "UTF-8").getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
+        val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+        def toTimeStamp (string: String): Long =
+        {
+            date_format.parse (string).getTime
+        }
+        text.map (
+            line ⇒
+            {
+                val fields = line.split(",")
+                if (one_phase)
+                    if (fields.length == 2)
+                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex(0.0), Complex(0.0), units)
+                    else
+                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
+                else
+                    if (fields.length == 4)
+                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex.fromString (fields(2)), Complex.fromString (fields(3)), units)
+                    else
+                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
+            }
+        )
+    }
+
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, file_prefix: String): Unit =
+    {
+        log.info ("""storing "%s"""".format (recorder.name))
+        val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
+        val insert = SimulationCassandraInsert (cluster)
+        insert.execute (data, recorder.typ, recorder.interval)
+    }
+
     def execute (trafo: SimulationTrafoKreis): Unit =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         val cluster = Cluster.builder.addContactPoint (options.host).build
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
-        gridlabd (trafo)
-        trafo.recorders.foreach (x ⇒ log.info (x.toString))
+        if (gridlabd (trafo))
+            trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.directory))
+        else
+            log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
     }
 
     def process (batch: Seq[SimulationJob]): Unit =
@@ -529,6 +570,7 @@ object Simulation
     {
         Array (
             classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationCassandraInsert],
             classOf[ch.ninecode.sim.SimulationCassandraQuery],
             classOf[ch.ninecode.sim.SimulationEdge],
             classOf[ch.ninecode.sim.SimulationGLMGenerator],
