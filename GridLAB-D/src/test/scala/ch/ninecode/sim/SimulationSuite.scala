@@ -216,7 +216,25 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |        {
                     |            "title": "cable currents",
                     |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where Conductor.len != 0 and (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID and n.TopologicalIsland = '%s') and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s')",
-                    |            "interval": 900
+                    |            "interval": 900,
+                    |            "aggregations": [
+                    |                {
+                    |                    "intervals": 1,
+                    |                    "ttl": 1800
+                    |                },
+                    |                {
+                    |                    "intervals": 4,
+                    |                    "ttl": 3600
+                    |                },
+                    |                {
+                    |                    "intervals": 12,
+                    |                    "ttl": 7200
+                    |                },
+                    |                {
+                    |                    "intervals": 96,
+                    |                    "ttl": null
+                    |                }
+                    |            ]
                     |        }
                     |    ]
                     |}

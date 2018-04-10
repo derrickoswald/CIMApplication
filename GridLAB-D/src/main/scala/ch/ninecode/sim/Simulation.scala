@@ -253,7 +253,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     json("property").asInstanceOf[JsonString].getString,
                     json("unit").asInstanceOf[JsonString].getString,
                     file,
-                    recorder.interval)
+                    recorder.interval,
+                    recorder.aggregations)
             }
         )
         ret
@@ -489,7 +490,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""storing "%s"""".format (recorder.name))
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
-        insert.execute (data, recorder.typ, recorder.interval)
+        insert.execute (data, recorder.typ, recorder.interval, recorder.aggregations)
     }
 
     def execute (trafo: SimulationTrafoKreis): Unit =
@@ -570,6 +571,7 @@ object Simulation
     {
         Array (
             classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationAggregate],
             classOf[ch.ninecode.sim.SimulationCassandraInsert],
             classOf[ch.ninecode.sim.SimulationCassandraQuery],
             classOf[ch.ninecode.sim.SimulationEdge],

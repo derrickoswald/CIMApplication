@@ -31,5 +31,3 @@ case class SimulationPlayerQuery
      */
     count: Int = 0
 )
-{
-}

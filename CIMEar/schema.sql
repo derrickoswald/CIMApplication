@@ -20,8 +20,8 @@ create table if not exists cimapplication.simulated_value_by_day (
    mrid text,
    type text,
    date date,
-   time timestamp,
    interval int,
+   time timestamp,
    real_a double,
    imag_a double,
    real_b double,
@@ -29,7 +29,7 @@ create table if not exists cimapplication.simulated_value_by_day (
    real_c double,
    imag_c double,
    units text,
-   primary key ((mrid,type,date),time)
+   primary key ((mrid,type,date, interval),time)
 ) with clustering order by (time asc);
 
 /*

@@ -7,6 +7,7 @@ import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.JsonString
+import javax.json.JsonStructure
 import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
@@ -123,18 +124,30 @@ object SimulationJob
         players.flatMap (parsePlayer (log, simulation, _))
     }
 
+    def parseAggregation (log: Logger, ttl: JsonObject): List[SimulationAggregate] =
+    {
+        val intervals = ttl.getInt ("intervals")
+        val time = if (ttl.isNull ("ttl"))
+            ""
+        else
+            " using ttl " + ttl.getJsonNumber ("ttl").intValue
+        List (SimulationAggregate (intervals, time))
+    }
+
     def parseRecorder (log: Logger, simulation: String, recorder: JsonObject): List[SimulationRecorderQuery] =
     {
         val title = recorder.getString ("title", "")
         val query = recorder.getString ("query", null)
         val interval = recorder.getInt ("interval", 900)
+        val array = recorder.getJsonArray ("aggregations").getValuesAs (classOf [JsonObject]).asScala
+        val aggregations = array.flatMap (parseAggregation (log, _)).toList
         if (null == query)
         {
             log.error (""""%s" does not specify a query for recorder "%s""".format (simulation, title))
             List()
         }
         else
-            List (SimulationRecorderQuery (title, query, interval))
+            List (SimulationRecorderQuery (title, query, interval, aggregations))
     }
 
     def parseRecorders (log: Logger, simulation: String, json: JsonObject): Seq[SimulationRecorderQuery] =

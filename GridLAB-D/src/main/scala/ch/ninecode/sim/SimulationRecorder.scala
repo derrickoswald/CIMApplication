@@ -36,7 +36,11 @@ case class SimulationRecorder
     /**
      * The recording interval in seconds.
      */
-    interval: Int = 0
+    interval: Int = 0,
+
+    /**
+     * The list of aggregations.
+     */
+    aggregations: List[SimulationAggregate]
 )
-{
-}
+

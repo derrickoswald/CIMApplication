@@ -6,6 +6,7 @@ import java.util.Date
 import java.util.TimeZone
 
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.LocalDate
 
@@ -22,38 +23,98 @@ case class SimulationCassandraInsert (cluster: Cluster)
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int): Unit =
+    case class Accumulator (
+        sql: String,
+        statement: BoundStatement,
+        intervals: Int,
+        average: Boolean,
+        var count: Int = 0,
+        var value_a_re: Double = 0.0,
+        var value_a_im: Double = 0.0,
+        var value_b_re: Double = 0.0,
+        var value_b_im: Double = 0.0,
+        var value_c_re: Double = 0.0,
+        var value_c_im: Double = 0.0
+        )
+    {
+        def reset (): Unit =
+        {
+            count = 0
+            value_a_re = 0.0
+            value_a_im = 0.0
+            value_b_re = 0.0
+            value_b_im = 0.0
+            value_c_re = 0.0
+            value_c_im = 0.0
+        }
+    }
+
+    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, aggregates: List[SimulationAggregate]): Unit =
     {
         val session = cluster.connect
-        val sql = pack (
-            """
-            | insert into cimapplication.simulated_value_by_day
-            | (mrid, type, date, time, interval, real_a, imag_a, real_b, imag_b, real_c, imag_c, units)
-            | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            | using ttl 300
-            """.stripMargin)
-        val prepared = session.prepare (sql)
-        val bound = prepared.bind ()
+        val accumulators = aggregates.map (
+            aggregate ⇒
+            {
+                val sql = pack (
+                    """
+                    | insert into cimapplication.simulated_value_by_day
+                    | (mrid, type, date, interval, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units)
+                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """.stripMargin) + aggregate.time_to_live
+                val prepared = session.prepare (sql)
+                val bound = prepared.bind ()
+                Accumulator (sql, bound, aggregate.intervals, typ != "energy")
+            }
+        )
         val timestamp = new Date ()
         data.foreach (
             entry ⇒
             {
                 val date = LocalDate.fromMillisSinceEpoch (entry.millis)
                 timestamp.setTime (entry.millis)
-                bound.setString    ( 0, entry.element)
-                bound.setString    ( 1, typ)
-                bound.setDate      ( 2, date)
-                bound.setTimestamp ( 3, timestamp)
-                bound.setInt       ( 4, interval)
-                bound.setDouble    ( 5, entry.value_a.re)
-                bound.setDouble    ( 6, entry.value_a.im)
-                bound.setDouble    ( 7, entry.value_b.re)
-                bound.setDouble    ( 8, entry.value_b.im)
-                bound.setDouble    ( 9, entry.value_c.re)
-                bound.setDouble    (10, entry.value_c.im)
-                bound.setString    (11, entry.units)
+                accumulators.foreach (
+                    accumulator ⇒
+                    {
+                        accumulator.count = accumulator.count + 1
+                        accumulator.value_a_re = accumulator.value_a_re + entry.value_a.re
+                        accumulator.value_a_im = accumulator.value_a_im + entry.value_a.im
+                        accumulator.value_b_re = accumulator.value_b_re + entry.value_b.re
+                        accumulator.value_b_im = accumulator.value_b_im + entry.value_b.im
+                        accumulator.value_c_re = accumulator.value_c_re + entry.value_c.re
+                        accumulator.value_c_im = accumulator.value_c_im + entry.value_c.im
+                        if (accumulator.count >= accumulator.intervals)
+                        {
+                            accumulator.statement.setString        ( 0, entry.element)
+                            accumulator.statement.setString        ( 1, typ)
+                            accumulator.statement.setDate          ( 2, date)
+                            accumulator.statement.setInt           ( 3, interval * accumulator.intervals)
+                            accumulator.statement.setTimestamp     ( 4, timestamp)
+                            if (accumulator.average)
+                            {
+                                val n = accumulator.intervals
+                                accumulator.statement.setDouble    ( 5, accumulator.value_a_re / n)
+                                accumulator.statement.setDouble    ( 6, accumulator.value_a_im / n)
+                                accumulator.statement.setDouble    ( 7, accumulator.value_b_re / n)
+                                accumulator.statement.setDouble    ( 8, accumulator.value_b_im / n)
+                                accumulator.statement.setDouble    ( 9, accumulator.value_c_re / n)
+                                accumulator.statement.setDouble    (10, accumulator.value_c_im / n)
+                            }
+                            else
+                            {
+                                accumulator.statement.setDouble    ( 5, accumulator.value_a_re)
+                                accumulator.statement.setDouble    ( 6, accumulator.value_a_im)
+                                accumulator.statement.setDouble    ( 7, accumulator.value_b_re)
+                                accumulator.statement.setDouble    ( 8, accumulator.value_b_im)
+                                accumulator.statement.setDouble    ( 9, accumulator.value_c_re)
+                                accumulator.statement.setDouble    (10, accumulator.value_c_im)
+                            }
+                            accumulator.statement.setString        (11, entry.units)
 
-                session.execute (bound)
+                            session.execute (accumulator.statement)
+                            accumulator.reset ()
+                        }
+                    }
+                )
             }
         )
     }

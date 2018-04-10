@@ -165,8 +165,8 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
             |    mrid text,
             |    type text,
             |    date date,
-            |    time timestamp,
             |    interval int,
+            |    time timestamp,
             |    real_a double,
             |    imag_a double,
             |    real_b double,
@@ -174,7 +174,7 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
             |    real_c double,
             |    imag_c double,
             |    units text,
-            |    primary key ((mrid,type,date),time)
+            |    primary key ((mrid,type,date,interval),time)
             | ) with clustering order by (time asc);
             |
             | create or replace function cimapplication.add_days (t timestamp, days int)

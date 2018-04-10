@@ -43,5 +43,3 @@ case class SimulationPlayer
      */
     end: Long
 )
-{
-}

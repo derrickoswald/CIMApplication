@@ -15,7 +15,12 @@ case class SimulationRecorderQuery (
     /**
      * The recording interval in seconds.
      */
-    interval: Int = 0,
+    interval: Int,
+
+    /**
+     * The list of aggregations.
+     */
+    aggregations: List[SimulationAggregate],
 
     /**
      * The results of the query as a Json array.
@@ -26,5 +31,3 @@ case class SimulationRecorderQuery (
      * The file name for recording.
      */
     file: String = null)
-{
-}
