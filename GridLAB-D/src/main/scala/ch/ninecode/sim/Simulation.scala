@@ -5,7 +5,6 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringReader
 import java.io.StringWriter
-import java.net.URI
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Calendar
@@ -23,16 +22,16 @@ import javax.json.stream.JsonGenerator
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.sys.process._
+
 import com.datastax.driver.core.Cluster
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.commons.io.FileUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
@@ -47,8 +46,6 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-
-import scala.collection.immutable
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -70,31 +67,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     val just_date: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd")
     just_date.setCalendar (calendar)
 
-    /**
-     * Get the scheme for the working directory.
-     */
-    val workdir_scheme: String =
-    {
-        val uri = new URI (options.workdir)
-        if (null == uri.getScheme)
-            ""
-        else
-            uri.getScheme
-    }
-
-    /**
-     * Get just the URI for the working directory.
-     */
-    val workdir_uri: String =
-    {
-        val uri = new URI (options.workdir)
-        if (null == uri.getScheme)
-            ""
-        else
-            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
-    }
-
-    def read (rdf: String, reader_options: Map[String,String])
+    def read (rdf: String, reader_options: Map[String,String] = Map(), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     {
         log.info ("""reading "%s"""".format (rdf))
         val start = System.nanoTime ()
@@ -102,6 +75,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info (elements.count () + " elements")
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
+        session.sparkContext.getPersistentRDDs.find (_._2.name == "TopologicalIsland") match
+        {
+            case Some (_) =>
+            case None =>
+            {
+                val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
+                val ele = ntp.process (true)
+                log.info (ele.count () + " elements after topology creation")
+                val topology = System.nanoTime ()
+                log.info ("topology: " + (topology - read) / 1e9 + " seconds")
+            }
+        }
     }
 
     def dump (obj: JsonObject): Unit =
@@ -380,46 +365,25 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def write_player_csv (name: String, text: String): Unit =
     {
-        if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
-        {
-            val file = new File (options.workdir + name)
-            file.getParentFile.mkdirs
-            if (null != text)
-                using (new PrintWriter (file, "UTF-8"))
-                {
-                    writer =>
-                        writer.write (text)
-                }
-        }
-        else
-        {
-            val file = new Path (options.workdir + name)
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
-            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
-            if (null != text)
+        val file = new File (options.workdir + name)
+        file.getParentFile.mkdirs
+        if (null != text)
+            using (new PrintWriter (file, "UTF-8"))
             {
-                val bytes = text.getBytes ("UTF-8")
-                val out = hdfs.create(file)
-                out.write(bytes)
-                out.close()
+                writer =>
+                    writer.write (text)
             }
-        }
     }
 
     def create_player_csv (cluster: Cluster, player: SimulationPlayer, file_prefix: String)
     {
-        log.info ("""executing "%s" as %s""".format (player.name, player.sql))
         val query = SimulationCassandraQuery (cluster, player.sql)
         val resultset = query.execute ()
         val count = resultset.length
         val set =
             if (0 == count)
             {
-                log.warn ("""no records found for "%s" as %s""".format (player.name, player.sql))
+                log.warn ("""0 records found for "%s" as %s""".format (player.name, player.sql))
                 // substitute zero player
                 // "1970-01-01 00:00:00,0.0,0.0"
                 val b = Json.createObjectBuilder ()
@@ -430,13 +394,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
             else
             {
-                resultset.filter (
+                val found = resultset.filter (
                     j ⇒
                     {
                         val time = j.getJsonNumber ("time").longValue
                         time >= player.start && time <= player.end
                     }
                 )
+                log.info ("""%d records found for "%s" as %s""".format (found.size, player.name, player.sql))
+                found
             }
         val text = set.map (format).mkString ("\n")
         write_player_csv (file_prefix + player.file, text)
@@ -494,10 +460,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, file_prefix: String): Unit =
     {
-        log.info ("""storing "%s"""".format (recorder.name))
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
+        val count = data.size
         val insert = SimulationCassandraInsert (cluster)
         insert.execute (data, recorder.typ, recorder.interval, recorder.aggregations)
+        log.info ("""%d records stored for "%s"""".format (count, recorder.name))
     }
 
     def execute (trafo: SimulationTrafoKreis): Unit =
@@ -509,15 +476,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.directory))
         else
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
+        if (!options.keep)
+            FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
     }
 
     def process (batch: Seq[SimulationJob]): Unit =
     {
+        val storage = StorageLevel.fromString (options.storage)
+
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
-        read (ajob.cim, ajob.cimreaderoptions)
+        read (ajob.cim, ajob.cimreaderoptions, storage)
         val tasks: Seq[SimulationTask] = batch.flatMap (make_tasks)
 
-        val storage = StorageLevel.fromString (options.storage)
         val transformers = new Transformers (session, storage)
         val tdata: RDD[TData] = transformers.getTransformerData (topological_nodes = true, null)
         val trafokreise = tasks.map (

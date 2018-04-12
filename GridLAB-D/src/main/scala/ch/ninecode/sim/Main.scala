@@ -84,7 +84,11 @@ object Main
 
         opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ { val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep) }).
-            text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [\"%s\"]".format (default.workdir))
+            text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
+
+        opt[Unit]("keep").
+            action ((_, c) ⇒ c.copy (keep = true)).
+            text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
         arg[String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (simulation = c.simulation :+ x)).
@@ -122,9 +126,9 @@ object Main
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --workdir hdfs://sandbox:8020/tmp --host sandbox basic.json
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox basic.json
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --workdir hdfs://hmaster:9000/tmp --host sandbox basic.json
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox basic.json
      * Note: At the moment the "cim" property in the json file is file-system dependent, e.g. "cim": "data/TRA2755_terminal_2_island.rdf", or "cim": "hdfs://sandbox:8020/data/TRA2755_terminal_2_island.rdf".
      */
     def main (args: Array[String])

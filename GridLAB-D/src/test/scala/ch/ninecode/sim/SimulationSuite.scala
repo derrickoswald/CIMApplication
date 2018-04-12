@@ -23,6 +23,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 {
     val FILE_DEPOT = "data/"
     val FILENAME1 = "TRA2755_terminal_2_island"
+    val FILENAME2 = "NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo"
 
     /**
      * Add to the process environment.
@@ -165,6 +166,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         setLocalIP ()
         if (!new File (FILE_DEPOT + FILENAME1 + ".rdf").exists)
             new Unzip ().unzip (FILE_DEPOT + FILENAME1 + ".zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME2 + ".rdf").exists)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME2 + ".zip", FILE_DEPOT)
     }
 
     test ("Help")
@@ -242,7 +245,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        main (Array ("--unittest", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        main (Array ("--unittest", "--verbose", "--keep", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
     test ("Typical")
@@ -256,7 +259,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |{
                       |    "name": "Typical",
                       |    "description": "typical simulation file for illustrative purposes",
-                      |    "cim": "data/TRA2755_terminal_2_island.rdf",
+                      |    "cim": "data/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo.rdf",
                       |    "cimreaderoptions": {
                       |        "ch.ninecode.cim.do_about": false,
                       |        "ch.ninecode.cim.do_normalize": false,
@@ -314,6 +317,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", json))
     }
 }

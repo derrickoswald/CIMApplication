@@ -43,7 +43,12 @@ case class SimulationOptions
     /**
      * Working directory for executors.
      */
-    workdir: String = "",
+    workdir: String = "/tmp/",
+
+    /**
+     * If <code>true</code>, keep glm and input/output files in workdir.
+     */
+    keep: Boolean = false,
 
     /**
      * Simulation JSON files.
