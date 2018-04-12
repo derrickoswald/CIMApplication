@@ -23,7 +23,6 @@ import javax.json.stream.JsonGenerator
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.sys.process._
-
 import com.datastax.driver.core.Cluster
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -34,7 +33,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
@@ -49,6 +47,8 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+
+import scala.collection.immutable
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -300,6 +300,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         (nodes, edges)
     }
 
+    def all_transformers (trafo_islands: Map[String, String]): Seq[String] =
+        trafo_islands.groupBy (_._2).map (_._2.keys.toArray.sortWith (_ < _).mkString ("_")).toSeq
+
     def make_tasks (job: SimulationJob): Seq[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
@@ -307,21 +310,25 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // get all transformer secondary TopologicalIsland names
         val sql =
-            """select
-              |    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, n.TopologicalIsland
-              |from
-              |    Terminal t,
-              |    PowerTransformer p,
-              |    TopologicalNode n
-              |where
-              |    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
-              |and t.ACDCTerminal.sequenceNumber = 2
-              |and t.TopologicalNode = n.IdentifiedObject.mRID""".stripMargin
-        log.info ("""executing "%s"""".format (pack (sql)))
+            pack (
+                """select
+                  |    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, n.TopologicalIsland
+                  |from
+                  |    Terminal t,
+                  |    PowerTransformer p,
+                  |    TopologicalNode n
+                  |where
+                  |    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
+                  |and t.ACDCTerminal.sequenceNumber = 2
+                  |and t.TopologicalNode = n.IdentifiedObject.mRID""".stripMargin)
+        log.info ("""executing "%s"""".format (sql))
         val df = session.sql (sql)
         import session.implicits._
         val trafo_islands = df.map (row ⇒ (row.getString (0), row.getString (1))).collect.toMap
-        job.transformers.foreach (
+
+        // process the list of transformers
+        val transformers = if (0 != job.transformers.size) job.transformers else all_transformers (trafo_islands)
+        transformers.foreach (
             transformer ⇒
             {
                 // handle ganged transformers
