@@ -461,9 +461,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, file_prefix: String): Unit =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
-        val count = data.size
         val insert = SimulationCassandraInsert (cluster)
-        insert.execute (data, recorder.typ, recorder.interval, recorder.aggregations)
+        val count = insert.execute (data, recorder.typ, recorder.interval, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
     }
 
