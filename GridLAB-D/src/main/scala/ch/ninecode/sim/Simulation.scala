@@ -528,6 +528,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (trafokreise, executors)
         simulations.foreach (execute)
+        // clean up
+        session.sparkContext.getPersistentRDDs.foreach (
+            named ⇒
+            {
+                named._2.unpersist (false)
+                named._2.name = null
+            }
+        )
     }
 
     def run (): Unit =
