@@ -23,7 +23,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 {
     val FILE_DEPOT = "data/"
     val FILENAME1 = "TRA2755_terminal_2_island"
-    val FILENAME2 = "NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo"
+    val FILENAME2 = "SAK_sta117_sta206"
 
     /**
      * Add to the process environment.
@@ -198,8 +198,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |        "ch.ninecode.cim.split_maxsize": 67108864
                     |    },
                     |    "interval": {
-                    |         "start": "2018-02-18T00:00:00.000+0000",
-                    |         "end": "2018-02-19T00:00:00.000+0000"
+                    |         "start": "2017-07-18T00:00:00.000+0100",
+                    |         "end": "2017-07-19T00:00:00.000+0100"
                     |    },
                     |    "transformers": [
                     |         "TRA2755"
@@ -259,7 +259,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |{
                       |    "name": "Typical",
                       |    "description": "typical simulation file for illustrative purposes",
-                      |    "cim": "data/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo.rdf",
+                      |    "cim": "data/SAK_sta117_sta206.rdf",
                       |    "cimreaderoptions": {
                       |        "ch.ninecode.cim.do_about": false,
                       |        "ch.ninecode.cim.do_normalize": false,
@@ -271,8 +271,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        "ch.ninecode.cim.split_maxsize": 67108864
                       |    },
                       |    "interval": {
-                      |         "start": "2018-02-01T00:00:00.000+0000",
-                      |         "end": "2018-02-03T00:00:00.000+0000"
+                      |         "start": "2018-02-01T00:00:00.000+0100",
+                      |         "end": "2018-02-03T00:00:00.000+0100"
                       |    },
                       |    "transformers": [
                       |    ],

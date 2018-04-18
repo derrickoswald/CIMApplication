@@ -8,12 +8,21 @@ case class SimulationPlayerQuery
     title: String,
 
     /**
-     * The query to determine what nodes or edges are played.
+     * The Spark query to determine what nodes or edges are played.
      * Must return mrid, name, parent, type, property, and unit.
      */
     rdfquery: String,
 
+    /**
+     * The Cassandra query to determine the player file contents.
+     * Must return time, and the real and imag values for each time.
+     */
     cassandraquery: String,
+
+    /**
+     * Bind variables for placeholders in the cassandraquery.
+     * Can be any value returned from the rdfquery.
+     */
     bind: Array[String],
 
     /**

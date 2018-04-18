@@ -79,13 +79,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         {
             case Some (_) =>
             case None =>
-            {
                 val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
                 val ele = ntp.process (true)
                 log.info (ele.count () + " elements after topology creation")
                 val topology = System.nanoTime ()
                 log.info ("topology: " + (topology - read) / 1e9 + " seconds")
-            }
         }
     }
 
@@ -168,7 +166,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     }
 
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-    def format (obj: JsonObject): String =
+    def glm_format (obj: JsonObject): String =
     {
         var time = 0L
         var real = 0.0
@@ -186,20 +184,43 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         glm_date_format.format (time) + "," + real + "," + imag
     }
 
-    def generate_player_csv (player: SimulationPlayerQuery, date: String, start: Long, end: Long): Seq[SimulationPlayer] =
+    def generate_player_csv (player: SimulationPlayerQuery, begin: Long, end: Long): Seq[SimulationPlayer] =
     {
-        log.info ("""resolving "%s" date: %s [%s, %s)""".format (player.title, date, iso_date_format.format (new Date (start)), iso_date_format.format (new Date (end))))
+        var from = iso_date_format.format (new Date (begin))
+        var   to = iso_date_format.format (new Date (end))
+        if (begin > end)
+        {
+            log.error ("""player "%s" has a start time (%s) after the end time (%s)""".format (player.title, from, to))
+            return Seq()
+        }
+        log.info ("""resolving "%s" [%s, %s)""".format (player.title, from, to))
         var ret = List[SimulationPlayer]()
-        val range = "date = '%s'".format (date)
+        val day1 = just_date.format (begin)
+        val  day2 = just_date.format (end)
+        val range =
+            if (day1 == day2)
+                "date = '%s'".format (day1)
+            else
+            {
+                val start = iso_parse (from)
+                val stop = iso_parse (to)
+                var dates = List[String]()
+                while (0 >= start.compareTo (stop))
+                {
+                    dates = dates :+ just_date.format (start.getTimeInMillis)
+                    start.add (Calendar.DAY_OF_MONTH, 1)
+                }
+                dates.mkString("date in ('", "','", "')")
+            }
         val jsons = destringify (player.jsons)
         jsons.foreach (
             x ⇒
             {
                 val json = x.asScala
                 val substitutions = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
-                val sql = player.cassandraquery.format (substitutions: _*) + " and " + range + " order by time allow filtering"
+                val sql = player.cassandraquery.format (substitutions: _*) + " and " + range + " allow filtering"
                 val name = json("name").asInstanceOf[JsonString].getString
-                val file = "input_data/" + name + "_" + date + ".csv"
+                val file = "input_data/" + name + "_" + day1 + ".csv" // ToDo: use both dates?
                 ret = ret :+ SimulationPlayer (
                     name,
                     json("parent").asInstanceOf[JsonString].getString,
@@ -207,14 +228,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     json("property").asInstanceOf[JsonString].getString,
                     file,
                     sql,
-                    start,
+                    begin,
                     end)
             }
         )
         ret
     }
 
-    def generate_recorder_csv (recorder: SimulationRecorderQuery, date: String, start: Long, end: Long): Seq[SimulationRecorder] =
+    def generate_recorder_csv (recorder: SimulationRecorderQuery, start: Long, end: Long): Seq[SimulationRecorder] =
     {
         val t0 = Calendar.getInstance ()
         t0.setTimeZone (TimeZone.getTimeZone ("GMT"))
@@ -222,7 +243,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val t1 = Calendar.getInstance ()
         t1.setTimeZone (TimeZone.getTimeZone ("GMT"))
         t1.setTimeInMillis (end)
-        log.info ("""resolving "%s" date: %s [%s, %s)""".format (recorder.title, date, iso_date_format.format (t0.getTime), iso_date_format.format (t1.getTime)))
+        log.info ("""resolving "%s" [%s, %s)""".format (recorder.title, iso_date_format.format (t0.getTime), iso_date_format.format (t1.getTime)))
         var ret = List[SimulationRecorder]()
         val jsons = destringify (recorder.jsons)
         jsons.foreach (
@@ -230,7 +251,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val json = x.asScala
                 val name = json("name").asInstanceOf[JsonString].getString
-                val file = "output_data/" + name + "_" + date + ".csv"
+                val file = "output_data/" + name + "_" + just_date.format (start) + ".csv"
                 ret = ret :+ SimulationRecorder (
                     name,
                     json("parent").asInstanceOf[JsonString].getString,
@@ -330,33 +351,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                     val players = job.players.map (queryplayers (island))
                     val recorders = job.recorders.map (queryrecorders (island))
-                    // loop over all days
                     val start = iso_parse (job.interval("start"))
-                    val startplus = start.clone.asInstanceOf[Calendar]
                     val end = iso_parse (job.interval("end"))
-                    while (start.before (end))
-                    {
-                        // figure out the ending time as a midnight
-                        startplus.add (Calendar.DAY_OF_MONTH, 1)
-                        val next = just_date.format (startplus.getTime)
-                        startplus.setTime (just_date.parse (next))
-                        // set up for creating the CSV
-                        val date = just_date.format (start.getTime)
-                        val t0 = start.getTimeInMillis
-                        val t1 = startplus.getTimeInMillis
-
-                        val task = SimulationTask (
-                            island,
-                            start.clone.asInstanceOf[Calendar],
-                            startplus.clone.asInstanceOf[Calendar],
-                            nodes,
-                            edges,
-                            players.flatMap (x ⇒ generate_player_csv (x, date, t0, t1)).toArray,
-                            recorders.flatMap (x ⇒ generate_recorder_csv (x, date, t0, t1)).toArray
-                        )
-                        ret = ret :+ task
-                        start.setTime (startplus.getTime)
-                    }
+                    val task = SimulationTask (
+                        island,
+                        start.clone.asInstanceOf[Calendar],
+                        end.clone.asInstanceOf[Calendar],
+                        nodes,
+                        edges,
+                        players.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray,
+                        recorders.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                    )
+                    ret = ret :+ task
                 }
             }
         )
@@ -375,22 +381,28 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
     }
 
+    def make_record (time: Long, real: Double, imag: Double): JsonObject =
+        Json.createObjectBuilder ()
+            .add ("time", time)
+            .add ("real", real)
+            .add ("imag", imag)
+            .build ()
+
+    // zero player
+    // "1970-01-01 00:00:00,0.0,0.0"
+    def zero: JsonObject = make_record (0L, 0.0, 0.0)
+
     def create_player_csv (cluster: Cluster, player: SimulationPlayer, file_prefix: String)
     {
         val query = SimulationCassandraQuery (cluster, player.sql)
         val resultset = query.execute ()
         val count = resultset.length
+
         val set =
             if (0 == count)
             {
                 log.warn ("""0 records found for "%s" as %s""".format (player.name, player.sql))
-                // substitute zero player
-                // "1970-01-01 00:00:00,0.0,0.0"
-                val b = Json.createObjectBuilder ()
-                b.add ("time", 0L)
-                b.add ("real", 0.0)
-                b.add ("imag", 0.0)
-                List (b.build ())
+                List (zero)
             }
             else
             {
@@ -398,13 +410,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     j ⇒
                     {
                         val time = j.getJsonNumber ("time").longValue
-                        time >= player.start && time <= player.end
+                        time >= player.start && time < player.end
                     }
                 )
                 log.info ("""%d records found for "%s" as %s""".format (found.size, player.name, player.sql))
-                found
+                found.sortBy (_.getJsonNumber ("time").longValue)
+                // if it is necessary, bookend records could be added:
+                // make_record (player.start, 0.0, 0.0) +: sorted :+ make_record (player.end, 0.0, 0.0)
             }
-        val text = set.map (format).mkString ("\n")
+        val text = set.map (glm_format).mkString ("\n")
         write_player_csv (file_prefix + player.file, text)
     }
 

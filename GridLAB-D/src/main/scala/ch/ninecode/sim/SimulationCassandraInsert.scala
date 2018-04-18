@@ -71,8 +71,6 @@ case class SimulationCassandraInsert (cluster: Cluster)
         data.foreach (
             entry ⇒
             {
-                val date = LocalDate.fromMillisSinceEpoch (entry.millis)
-                timestamp.setTime (entry.millis)
                 accumulators.foreach (
                     accumulator ⇒
                     {
@@ -85,6 +83,10 @@ case class SimulationCassandraInsert (cluster: Cluster)
                         accumulator.value_c_im = accumulator.value_c_im + entry.value_c.im
                         if (accumulator.count >= accumulator.intervals)
                         {
+                            val timepoint = entry.millis - 1000L * (interval * (accumulator.intervals - 1))
+                            val date = LocalDate.fromMillisSinceEpoch (timepoint)
+                            timestamp.setTime (timepoint)
+
                             accumulator.statement.setString        ( 0, entry.element)
                             accumulator.statement.setString        ( 1, typ)
                             accumulator.statement.setDate          ( 2, date)

@@ -334,13 +334,10 @@ class GridLABD (
 
     def export (generator: GLMGenerator): Unit =
     {
-        val directory = generator.directory
-        val name = generator.name
-        eraseInputFile (name)
-        val result = generator.make_glm ()
-        writeInputFile (directory, name + ".glm", result.getBytes (StandardCharsets.UTF_8))
-        //writeInputFile (directory, "input_data/dummy", null) // mkdir
-        writeInputFile (directory, "output_data/dummy", null) // mkdir
+        eraseInputFile (generator.directory)
+        writeInputFile (generator.directory, generator.name + ".glm", generator.make_glm ().getBytes (StandardCharsets.UTF_8))
+        writeInputFile (generator.directory, "input_data/dummy", null) // mkdir
+        writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
     }
 
     def check (input: String): Boolean =
