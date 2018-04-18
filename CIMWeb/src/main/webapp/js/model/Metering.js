@@ -191,7 +191,7 @@ define
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "DemandResponseProgram";
                 base.parse_element (/<cim:DemandResponseProgram.type>([\s\S]*?)<\/cim:DemandResponseProgram.type>/g, obj, "type", base.to_string, sub, context);
-                base.parse_element (/<cim:DemandResponseProgram.validityInterval>([\s\S]*?)<\/cim:DemandResponseProgram.validityInterval>/g, obj, "validityInterval", base.to_string, sub, context);
+                base.parse_attribute (/<cim:DemandResponseProgram.validityInterval\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "validityInterval", sub, context);
                 base.parse_attributes (/<cim:DemandResponseProgram.EndDeviceGroups\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceGroups", sub, context);
                 base.parse_attributes (/<cim:DemandResponseProgram.CustomerAgreements\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "CustomerAgreements", sub, context);
                 base.parse_attributes (/<cim:DemandResponseProgram.UsagePointGroups\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "UsagePointGroups", sub, context);
@@ -208,7 +208,7 @@ define
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
                 base.export_element (obj, "DemandResponseProgram", "type", "type",  base.from_string, fields);
-                base.export_element (obj, "DemandResponseProgram", "validityInterval", "validityInterval",  base.from_string, fields);
+                base.export_attribute (obj, "DemandResponseProgram", "validityInterval", "validityInterval", fields);
                 base.export_attributes (obj, "DemandResponseProgram", "EndDeviceGroups", "EndDeviceGroups", fields);
                 base.export_attributes (obj, "DemandResponseProgram", "CustomerAgreements", "CustomerAgreements", fields);
                 base.export_attributes (obj, "DemandResponseProgram", "UsagePointGroups", "UsagePointGroups", fields);
@@ -234,7 +234,7 @@ define
                     {{#CustomerAgreements}}<div><b>CustomerAgreements</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/CustomerAgreements}}
                     {{#UsagePointGroups}}<div><b>UsagePointGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePointGroups}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -268,11 +268,11 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_validityInterval'>validityInterval: </label><div class='col-sm-8'><input id='{{id}}_validityInterval' class='form-control' type='text'{{#validityInterval}} value='{{validityInterval}}'{{/validityInterval}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups}}_string'{{/EndDeviceGroups}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_CustomerAgreements'>CustomerAgreements: </label><div class='col-sm-8'><input id='{{id}}_CustomerAgreements' class='form-control' type='text'{{#CustomerAgreements}} value='{{CustomerAgreements}}_string'{{/CustomerAgreements}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups}}_string'{{/UsagePointGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups_string}}'{{/EndDeviceGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_CustomerAgreements'>CustomerAgreements: </label><div class='col-sm-8'><input id='{{id}}_CustomerAgreements' class='form-control' type='text'{{#CustomerAgreements}} value='{{CustomerAgreements_string}}'{{/CustomerAgreements}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups_string}}'{{/UsagePointGroups}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -376,7 +376,7 @@ define
                     {{#EndDeviceControls}}<div><b>EndDeviceControls</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceControls}}
                     {{#EndDevices}}<div><b>EndDevices</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDevices}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -409,11 +409,11 @@ define
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DemandResponsePrograms'>DemandResponsePrograms: </label><div class='col-sm-8'><input id='{{id}}_DemandResponsePrograms' class='form-control' type='text'{{#DemandResponsePrograms}} value='{{DemandResponsePrograms}}_string'{{/DemandResponsePrograms}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls}}_string'{{/EndDeviceControls}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDevices'>EndDevices: </label><div class='col-sm-8'><input id='{{id}}_EndDevices' class='form-control' type='text'{{#EndDevices}} value='{{EndDevices}}_string'{{/EndDevices}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DemandResponsePrograms'>DemandResponsePrograms: </label><div class='col-sm-8'><input id='{{id}}_DemandResponsePrograms' class='form-control' type='text'{{#DemandResponsePrograms}} value='{{DemandResponsePrograms_string}}'{{/DemandResponsePrograms}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls_string}}'{{/EndDeviceControls}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDevices'>EndDevices: </label><div class='col-sm-8'><input id='{{id}}_EndDevices' class='form-control' type='text'{{#EndDevices}} value='{{EndDevices_string}}'{{/EndDevices}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -538,7 +538,7 @@ define
                     {{#isStripAndBaseboardHeater}}<div><b>isStripAndBaseboardHeater</b>: {{isStripAndBaseboardHeater}}</div>{{/isStripAndBaseboardHeater}}
                     {{#isWaterHeater}}<div><b>isWaterHeater</b>: {{isWaterHeater}}</div>{{/isWaterHeater}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -577,7 +577,7 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_isStripAndBaseboardHeater'>isStripAndBaseboardHeater: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_isStripAndBaseboardHeater' class='form-check-input' type='checkbox'{{#isStripAndBaseboardHeater}} checked{{/isStripAndBaseboardHeater}}></div></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_isWaterHeater'>isWaterHeater: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_isWaterHeater' class='form-check-input' type='checkbox'{{#isWaterHeater}} checked{{/isWaterHeater}}></div></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -635,7 +635,7 @@ define
                 base.parse_element (/<cim:Register.isVirtual>([\s\S]*?)<\/cim:Register.isVirtual>/g, obj, "isVirtual", base.to_boolean, sub, context);
                 base.parse_element (/<cim:Register.leftDigitCount>([\s\S]*?)<\/cim:Register.leftDigitCount>/g, obj, "leftDigitCount", base.to_string, sub, context);
                 base.parse_element (/<cim:Register.rightDigitCount>([\s\S]*?)<\/cim:Register.rightDigitCount>/g, obj, "rightDigitCount", base.to_string, sub, context);
-                base.parse_element (/<cim:Register.touTier>([\s\S]*?)<\/cim:Register.touTier>/g, obj, "touTier", base.to_string, sub, context);
+                base.parse_attribute (/<cim:Register.touTier\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "touTier", sub, context);
                 base.parse_element (/<cim:Register.touTierName>([\s\S]*?)<\/cim:Register.touTierName>/g, obj, "touTierName", base.to_string, sub, context);
                 base.parse_attribute (/<cim:Register.EndDeviceFunction\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceFunction", sub, context);
                 base.parse_attributes (/<cim:Register.Channels\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Channels", sub, context);
@@ -654,7 +654,7 @@ define
                 base.export_element (obj, "Register", "isVirtual", "isVirtual",  base.from_boolean, fields);
                 base.export_element (obj, "Register", "leftDigitCount", "leftDigitCount",  base.from_string, fields);
                 base.export_element (obj, "Register", "rightDigitCount", "rightDigitCount",  base.from_string, fields);
-                base.export_element (obj, "Register", "touTier", "touTier",  base.from_string, fields);
+                base.export_attribute (obj, "Register", "touTier", "touTier", fields);
                 base.export_element (obj, "Register", "touTierName", "touTierName",  base.from_string, fields);
                 base.export_attribute (obj, "Register", "EndDeviceFunction", "EndDeviceFunction", fields);
                 base.export_attributes (obj, "Register", "Channels", "Channels", fields);
@@ -682,7 +682,7 @@ define
                     {{#EndDeviceFunction}}<div><b>EndDeviceFunction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceFunction}}&quot;);}); return false;'>{{EndDeviceFunction}}</a></div>{{/EndDeviceFunction}}
                     {{#Channels}}<div><b>Channels</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Channels}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -717,7 +717,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_touTierName'>touTierName: </label><div class='col-sm-8'><input id='{{id}}_touTierName' class='form-control' type='text'{{#touTierName}} value='{{touTierName}}'{{/touTierName}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceFunction'>EndDeviceFunction: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceFunction' class='form-control' type='text'{{#EndDeviceFunction}} value='{{EndDeviceFunction}}'{{/EndDeviceFunction}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -782,11 +782,11 @@ define
                 base.parse_element (/<cim:EndDeviceControl.drProgramMandatory>([\s\S]*?)<\/cim:EndDeviceControl.drProgramMandatory>/g, obj, "drProgramMandatory", base.to_boolean, sub, context);
                 base.parse_element (/<cim:EndDeviceControl.issuerID>([\s\S]*?)<\/cim:EndDeviceControl.issuerID>/g, obj, "issuerID", base.to_string, sub, context);
                 base.parse_element (/<cim:EndDeviceControl.issuerTrackingID>([\s\S]*?)<\/cim:EndDeviceControl.issuerTrackingID>/g, obj, "issuerTrackingID", base.to_string, sub, context);
-                base.parse_element (/<cim:EndDeviceControl.priceSignal>([\s\S]*?)<\/cim:EndDeviceControl.priceSignal>/g, obj, "priceSignal", base.to_string, sub, context);
-                base.parse_element (/<cim:EndDeviceControl.primaryDeviceTiming>([\s\S]*?)<\/cim:EndDeviceControl.primaryDeviceTiming>/g, obj, "primaryDeviceTiming", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EndDeviceControl.priceSignal\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "priceSignal", sub, context);
+                base.parse_attribute (/<cim:EndDeviceControl.primaryDeviceTiming\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "primaryDeviceTiming", sub, context);
                 base.parse_element (/<cim:EndDeviceControl.reason>([\s\S]*?)<\/cim:EndDeviceControl.reason>/g, obj, "reason", base.to_string, sub, context);
-                base.parse_element (/<cim:EndDeviceControl.scheduledInterval>([\s\S]*?)<\/cim:EndDeviceControl.scheduledInterval>/g, obj, "scheduledInterval", base.to_string, sub, context);
-                base.parse_element (/<cim:EndDeviceControl.secondaryDeviceTiming>([\s\S]*?)<\/cim:EndDeviceControl.secondaryDeviceTiming>/g, obj, "secondaryDeviceTiming", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EndDeviceControl.scheduledInterval\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "scheduledInterval", sub, context);
+                base.parse_attribute (/<cim:EndDeviceControl.secondaryDeviceTiming\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "secondaryDeviceTiming", sub, context);
                 base.parse_attributes (/<cim:EndDeviceControl.EndDeviceGroups\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceGroups", sub, context);
                 base.parse_attribute (/<cim:EndDeviceControl.EndDeviceControlType\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceControlType", sub, context);
                 base.parse_attribute (/<cim:EndDeviceControl.EndDeviceAction\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceAction", sub, context);
@@ -809,11 +809,11 @@ define
                 base.export_element (obj, "EndDeviceControl", "drProgramMandatory", "drProgramMandatory",  base.from_boolean, fields);
                 base.export_element (obj, "EndDeviceControl", "issuerID", "issuerID",  base.from_string, fields);
                 base.export_element (obj, "EndDeviceControl", "issuerTrackingID", "issuerTrackingID",  base.from_string, fields);
-                base.export_element (obj, "EndDeviceControl", "priceSignal", "priceSignal",  base.from_string, fields);
-                base.export_element (obj, "EndDeviceControl", "primaryDeviceTiming", "primaryDeviceTiming",  base.from_string, fields);
+                base.export_attribute (obj, "EndDeviceControl", "priceSignal", "priceSignal", fields);
+                base.export_attribute (obj, "EndDeviceControl", "primaryDeviceTiming", "primaryDeviceTiming", fields);
                 base.export_element (obj, "EndDeviceControl", "reason", "reason",  base.from_string, fields);
-                base.export_element (obj, "EndDeviceControl", "scheduledInterval", "scheduledInterval",  base.from_string, fields);
-                base.export_element (obj, "EndDeviceControl", "secondaryDeviceTiming", "secondaryDeviceTiming",  base.from_string, fields);
+                base.export_attribute (obj, "EndDeviceControl", "scheduledInterval", "scheduledInterval", fields);
+                base.export_attribute (obj, "EndDeviceControl", "secondaryDeviceTiming", "secondaryDeviceTiming", fields);
                 base.export_attributes (obj, "EndDeviceControl", "EndDeviceGroups", "EndDeviceGroups", fields);
                 base.export_attribute (obj, "EndDeviceControl", "EndDeviceControlType", "EndDeviceControlType", fields);
                 base.export_attribute (obj, "EndDeviceControl", "EndDeviceAction", "EndDeviceAction", fields);
@@ -841,18 +841,16 @@ define
                     {{#issuerID}}<div><b>issuerID</b>: {{issuerID}}</div>{{/issuerID}}
                     {{#issuerTrackingID}}<div><b>issuerTrackingID</b>: {{issuerTrackingID}}</div>{{/issuerTrackingID}}
                     {{#priceSignal}}<div><b>priceSignal</b>: {{priceSignal}}</div>{{/priceSignal}}
-                    {{#primaryDeviceTiming}}<div><b>primaryDeviceTiming</b>: {{primaryDeviceTiming}}</div>{{/primaryDeviceTiming}}
-                    {{#reason}}<div><b>reason</b>: {{reason}}</div>{{/reason}}
+                    {{#primaryDeviceTiming}}<div><b>primaryDeviceTiming</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{primaryDeviceTiming}}&quot;);}); return false;'>{{primaryDeviceTiming}}</a></div>{{/primaryDeviceTiming}}\n                    {{#reason}}<div><b>reason</b>: {{reason}}</div>{{/reason}}
                     {{#scheduledInterval}}<div><b>scheduledInterval</b>: {{scheduledInterval}}</div>{{/scheduledInterval}}
-                    {{#secondaryDeviceTiming}}<div><b>secondaryDeviceTiming</b>: {{secondaryDeviceTiming}}</div>{{/secondaryDeviceTiming}}
-                    {{#EndDeviceGroups}}<div><b>EndDeviceGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceGroups}}
+                    {{#secondaryDeviceTiming}}<div><b>secondaryDeviceTiming</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{secondaryDeviceTiming}}&quot;);}); return false;'>{{secondaryDeviceTiming}}</a></div>{{/secondaryDeviceTiming}}\n                    {{#EndDeviceGroups}}<div><b>EndDeviceGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceGroups}}
                     {{#EndDeviceControlType}}<div><b>EndDeviceControlType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceControlType}}&quot;);}); return false;'>{{EndDeviceControlType}}</a></div>{{/EndDeviceControlType}}
                     {{#EndDeviceAction}}<div><b>EndDeviceAction</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceAction}}&quot;);}); return false;'>{{EndDeviceAction}}</a></div>{{/EndDeviceAction}}
                     {{#UsagePoints}}<div><b>UsagePoints</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePoints}}
                     {{#UsagePointGroups}}<div><b>UsagePointGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePointGroups}}
                     {{#EndDevices}}<div><b>EndDevices</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDevices}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -895,14 +893,14 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_reason'>reason: </label><div class='col-sm-8'><input id='{{id}}_reason' class='form-control' type='text'{{#reason}} value='{{reason}}'{{/reason}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_scheduledInterval'>scheduledInterval: </label><div class='col-sm-8'><input id='{{id}}_scheduledInterval' class='form-control' type='text'{{#scheduledInterval}} value='{{scheduledInterval}}'{{/scheduledInterval}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_secondaryDeviceTiming'>secondaryDeviceTiming: </label><div class='col-sm-8'><input id='{{id}}_secondaryDeviceTiming' class='form-control' type='text'{{#secondaryDeviceTiming}} value='{{secondaryDeviceTiming}}'{{/secondaryDeviceTiming}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups}}_string'{{/EndDeviceGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups_string}}'{{/EndDeviceGroups}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControlType'>EndDeviceControlType: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControlType' class='form-control' type='text'{{#EndDeviceControlType}} value='{{EndDeviceControlType}}'{{/EndDeviceControlType}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceAction'>EndDeviceAction: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceAction' class='form-control' type='text'{{#EndDeviceAction}} value='{{EndDeviceAction}}'{{/EndDeviceAction}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints}}_string'{{/UsagePoints}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups}}_string'{{/UsagePointGroups}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDevices'>EndDevices: </label><div class='col-sm-8'><input id='{{id}}_EndDevices' class='form-control' type='text'{{#EndDevices}} value='{{EndDevices}}_string'{{/EndDevices}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints_string}}'{{/UsagePoints}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups_string}}'{{/UsagePointGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDevices'>EndDevices: </label><div class='col-sm-8'><input id='{{id}}_EndDevices' class='form-control' type='text'{{#EndDevices}} value='{{EndDevices_string}}'{{/EndDevices}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1047,7 +1045,7 @@ define
                     {{#unitOfMeasure}}<div><b>unitOfMeasure</b>: {{unitOfMeasure}}</div>{{/unitOfMeasure}}
                     {{#PanPricing}}<div><b>PanPricing</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{PanPricing}}&quot;);}); return false;'>{{PanPricing}}</a></div>{{/PanPricing}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1088,7 +1086,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_unitOfMeasure'>unitOfMeasure: </label><div class='col-sm-8'><input id='{{id}}_unitOfMeasure' class='form-control' type='text'{{#unitOfMeasure}} value='{{unitOfMeasure}}'{{/unitOfMeasure}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PanPricing'>PanPricing: </label><div class='col-sm-8'><input id='{{id}}_PanPricing' class='form-control' type='text'{{#PanPricing}} value='{{PanPricing}}'{{/PanPricing}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1168,7 +1166,7 @@ define
                 base.parse_element (/<cim:UsagePoint.minimalUsageExpected>([\s\S]*?)<\/cim:UsagePoint.minimalUsageExpected>/g, obj, "minimalUsageExpected", base.to_boolean, sub, context);
                 base.parse_element (/<cim:UsagePoint.nominalServiceVoltage>([\s\S]*?)<\/cim:UsagePoint.nominalServiceVoltage>/g, obj, "nominalServiceVoltage", base.to_string, sub, context);
                 base.parse_element (/<cim:UsagePoint.outageRegion>([\s\S]*?)<\/cim:UsagePoint.outageRegion>/g, obj, "outageRegion", base.to_string, sub, context);
-                base.parse_element (/<cim:UsagePoint.phaseCode>([\s\S]*?)<\/cim:UsagePoint.phaseCode>/g, obj, "phaseCode", base.to_string, sub, context);
+                base.parse_attribute (/<cim:UsagePoint.phaseCode\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "phaseCode", sub, context);
                 base.parse_element (/<cim:UsagePoint.ratedCurrent>([\s\S]*?)<\/cim:UsagePoint.ratedCurrent>/g, obj, "ratedCurrent", base.to_string, sub, context);
                 base.parse_element (/<cim:UsagePoint.ratedPower>([\s\S]*?)<\/cim:UsagePoint.ratedPower>/g, obj, "ratedPower", base.to_string, sub, context);
                 base.parse_element (/<cim:UsagePoint.readCycle>([\s\S]*?)<\/cim:UsagePoint.readCycle>/g, obj, "readCycle", base.to_string, sub, context);
@@ -1214,7 +1212,7 @@ define
                 base.export_element (obj, "UsagePoint", "minimalUsageExpected", "minimalUsageExpected",  base.from_boolean, fields);
                 base.export_element (obj, "UsagePoint", "nominalServiceVoltage", "nominalServiceVoltage",  base.from_string, fields);
                 base.export_element (obj, "UsagePoint", "outageRegion", "outageRegion",  base.from_string, fields);
-                base.export_element (obj, "UsagePoint", "phaseCode", "phaseCode",  base.from_string, fields);
+                base.export_attribute (obj, "UsagePoint", "phaseCode", "phaseCode", fields);
                 base.export_element (obj, "UsagePoint", "ratedCurrent", "ratedCurrent",  base.from_string, fields);
                 base.export_element (obj, "UsagePoint", "ratedPower", "ratedPower",  base.from_string, fields);
                 base.export_element (obj, "UsagePoint", "readCycle", "readCycle",  base.from_string, fields);
@@ -1289,7 +1287,7 @@ define
                     {{#UsagePointGroups}}<div><b>UsagePointGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePointGroups}}
                     {{#EndDeviceControls}}<div><b>EndDeviceControls</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceControls}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1298,8 +1296,9 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.AmiBillingReadyKind = []; if (!obj.amiBillingReady) obj.AmiBillingReadyKind.push ({ id: '', selected: true}); for (var property in AmiBillingReadyKind) obj.AmiBillingReadyKind.push ({ id: property, selected: obj.amiBillingReady && obj.amiBillingReady.endsWith ('.' + property)});
-                obj.UsagePointConnectedKind = []; if (!obj.connectionState) obj.UsagePointConnectedKind.push ({ id: '', selected: true}); for (var property in UsagePointConnectedKind) obj.UsagePointConnectedKind.push ({ id: property, selected: obj.connectionState && obj.connectionState.endsWith ('.' + property)});
+                obj.amiBillingReadyAmiBillingReadyKind = [{ id: '', selected: (!obj.amiBillingReady)}]; for (var property in AmiBillingReadyKind) obj.amiBillingReadyAmiBillingReadyKind.push ({ id: property, selected: obj.amiBillingReady && obj.amiBillingReady.endsWith ('.' + property)});
+                obj.connectionStateUsagePointConnectedKind = [{ id: '', selected: (!obj.connectionState)}]; for (var property in UsagePointConnectedKind) obj.connectionStateUsagePointConnectedKind.push ({ id: property, selected: obj.connectionState && obj.connectionState.endsWith ('.' + property)});
+                obj.phaseCodePhaseCode = [{ id: '', selected: (!obj.phaseCode)}]; for (var property in Core.PhaseCode) obj.phaseCodePhaseCode.push ({ id: property, selected: obj.phaseCode && obj.phaseCode.endsWith ('.' + property)});
                 if (obj.Equipments) obj.Equipments_string = obj.Equipments.join ();
                 if (obj.MeterReadings) obj.MeterReadings_string = obj.MeterReadings.join ();
                 if (obj.PricingStructures) obj.PricingStructures_string = obj.PricingStructures.join ();
@@ -1317,8 +1316,9 @@ define
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.AmiBillingReadyKind;
-                delete obj.UsagePointConnectedKind;
+                delete obj.amiBillingReadyAmiBillingReadyKind;
+                delete obj.connectionStateUsagePointConnectedKind;
+                delete obj.phaseCodePhaseCode;
                 delete obj.Equipments_string;
                 delete obj.MeterReadings_string;
                 delete obj.PricingStructures_string;
@@ -1343,9 +1343,9 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_amiBillingReady'>amiBillingReady: </label><div class='col-sm-8'><select id='{{id}}_amiBillingReady' class='form-control'>{{#AmiBillingReadyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/AmiBillingReadyKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_amiBillingReady'>amiBillingReady: </label><div class='col-sm-8'><select id='{{id}}_amiBillingReady' class='form-control custom-select'>{{#amiBillingReadyAmiBillingReadyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/amiBillingReadyAmiBillingReadyKind}}</select></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_checkBilling'>checkBilling: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_checkBilling' class='form-check-input' type='checkbox'{{#checkBilling}} checked{{/checkBilling}}></div></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_connectionState'>connectionState: </label><div class='col-sm-8'><select id='{{id}}_connectionState' class='form-control'>{{#UsagePointConnectedKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/UsagePointConnectedKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_connectionState'>connectionState: </label><div class='col-sm-8'><select id='{{id}}_connectionState' class='form-control custom-select'>{{#connectionStateUsagePointConnectedKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/connectionStateUsagePointConnectedKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_estimatedLoad'>estimatedLoad: </label><div class='col-sm-8'><input id='{{id}}_estimatedLoad' class='form-control' type='text'{{#estimatedLoad}} value='{{estimatedLoad}}'{{/estimatedLoad}}></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_grounded'>grounded: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_grounded' class='form-check-input' type='checkbox'{{#grounded}} checked{{/grounded}}></div></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_isSdp'>isSdp: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_isSdp' class='form-check-input' type='checkbox'{{#isSdp}} checked{{/isSdp}}></div></div></div>
@@ -1353,26 +1353,26 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_minimalUsageExpected'>minimalUsageExpected: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_minimalUsageExpected' class='form-check-input' type='checkbox'{{#minimalUsageExpected}} checked{{/minimalUsageExpected}}></div></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_nominalServiceVoltage'>nominalServiceVoltage: </label><div class='col-sm-8'><input id='{{id}}_nominalServiceVoltage' class='form-control' type='text'{{#nominalServiceVoltage}} value='{{nominalServiceVoltage}}'{{/nominalServiceVoltage}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_outageRegion'>outageRegion: </label><div class='col-sm-8'><input id='{{id}}_outageRegion' class='form-control' type='text'{{#outageRegion}} value='{{outageRegion}}'{{/outageRegion}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_phaseCode'>phaseCode: </label><div class='col-sm-8'><input id='{{id}}_phaseCode' class='form-control' type='text'{{#phaseCode}} value='{{phaseCode}}'{{/phaseCode}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_phaseCode'>phaseCode: </label><div class='col-sm-8'><select id='{{id}}_phaseCode' class='form-control custom-select'>{{#phaseCodePhaseCode}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/phaseCodePhaseCode}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ratedCurrent'>ratedCurrent: </label><div class='col-sm-8'><input id='{{id}}_ratedCurrent' class='form-control' type='text'{{#ratedCurrent}} value='{{ratedCurrent}}'{{/ratedCurrent}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ratedPower'>ratedPower: </label><div class='col-sm-8'><input id='{{id}}_ratedPower' class='form-control' type='text'{{#ratedPower}} value='{{ratedPower}}'{{/ratedPower}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_readCycle'>readCycle: </label><div class='col-sm-8'><input id='{{id}}_readCycle' class='form-control' type='text'{{#readCycle}} value='{{readCycle}}'{{/readCycle}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_readRoute'>readRoute: </label><div class='col-sm-8'><input id='{{id}}_readRoute' class='form-control' type='text'{{#readRoute}} value='{{readRoute}}'{{/readRoute}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_serviceDeliveryRemark'>serviceDeliveryRemark: </label><div class='col-sm-8'><input id='{{id}}_serviceDeliveryRemark' class='form-control' type='text'{{#serviceDeliveryRemark}} value='{{serviceDeliveryRemark}}'{{/serviceDeliveryRemark}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_servicePriority'>servicePriority: </label><div class='col-sm-8'><input id='{{id}}_servicePriority' class='form-control' type='text'{{#servicePriority}} value='{{servicePriority}}'{{/servicePriority}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Equipments'>Equipments: </label><div class='col-sm-8'><input id='{{id}}_Equipments' class='form-control' type='text'{{#Equipments}} value='{{Equipments}}_string'{{/Equipments}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Equipments'>Equipments: </label><div class='col-sm-8'><input id='{{id}}_Equipments' class='form-control' type='text'{{#Equipments}} value='{{Equipments_string}}'{{/Equipments}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_CustomerAgreement'>CustomerAgreement: </label><div class='col-sm-8'><input id='{{id}}_CustomerAgreement' class='form-control' type='text'{{#CustomerAgreement}} value='{{CustomerAgreement}}'{{/CustomerAgreement}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PricingStructures'>PricingStructures: </label><div class='col-sm-8'><input id='{{id}}_PricingStructures' class='form-control' type='text'{{#PricingStructures}} value='{{PricingStructures}}_string'{{/PricingStructures}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PricingStructures'>PricingStructures: </label><div class='col-sm-8'><input id='{{id}}_PricingStructures' class='form-control' type='text'{{#PricingStructures}} value='{{PricingStructures_string}}'{{/PricingStructures}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ServiceSupplier'>ServiceSupplier: </label><div class='col-sm-8'><input id='{{id}}_ServiceSupplier' class='form-control' type='text'{{#ServiceSupplier}} value='{{ServiceSupplier}}'{{/ServiceSupplier}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Outages'>Outages: </label><div class='col-sm-8'><input id='{{id}}_Outages' class='form-control' type='text'{{#Outages}} value='{{Outages}}_string'{{/Outages}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MetrologyRequirements'>MetrologyRequirements: </label><div class='col-sm-8'><input id='{{id}}_MetrologyRequirements' class='form-control' type='text'{{#MetrologyRequirements}} value='{{MetrologyRequirements}}_string'{{/MetrologyRequirements}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Outages'>Outages: </label><div class='col-sm-8'><input id='{{id}}_Outages' class='form-control' type='text'{{#Outages}} value='{{Outages_string}}'{{/Outages}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MetrologyRequirements'>MetrologyRequirements: </label><div class='col-sm-8'><input id='{{id}}_MetrologyRequirements' class='form-control' type='text'{{#MetrologyRequirements}} value='{{MetrologyRequirements_string}}'{{/MetrologyRequirements}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointLocation'>UsagePointLocation: </label><div class='col-sm-8'><input id='{{id}}_UsagePointLocation' class='form-control' type='text'{{#UsagePointLocation}} value='{{UsagePointLocation}}'{{/UsagePointLocation}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ServiceCategory'>ServiceCategory: </label><div class='col-sm-8'><input id='{{id}}_ServiceCategory' class='form-control' type='text'{{#ServiceCategory}} value='{{ServiceCategory}}'{{/ServiceCategory}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ServiceLocation'>ServiceLocation: </label><div class='col-sm-8'><input id='{{id}}_ServiceLocation' class='form-control' type='text'{{#ServiceLocation}} value='{{ServiceLocation}}'{{/ServiceLocation}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups}}_string'{{/UsagePointGroups}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls}}_string'{{/EndDeviceControls}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePointGroups'>UsagePointGroups: </label><div class='col-sm-8'><input id='{{id}}_UsagePointGroups' class='form-control' type='text'{{#UsagePointGroups}} value='{{UsagePointGroups_string}}'{{/UsagePointGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls_string}}'{{/EndDeviceControls}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1383,9 +1383,9 @@ define
 
                 var obj = obj || { id: id, cls: "UsagePoint" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_amiBillingReady").value; if ("" != temp) { temp = AmiBillingReadyKind[temp]; if ("undefined" != typeof (temp)) obj.amiBillingReady = "http://iec.ch/TC57/2013/CIM-schema-cim16#AmiBillingReadyKind." + temp; }
+                temp = AmiBillingReadyKind[document.getElementById (id + "_amiBillingReady").value]; if (temp) obj.amiBillingReady = "http://iec.ch/TC57/2013/CIM-schema-cim16#AmiBillingReadyKind." + temp; else delete obj.amiBillingReady;
                 temp = document.getElementById (id + "_checkBilling").checked; if (temp) obj.checkBilling = true;
-                temp = document.getElementById (id + "_connectionState").value; if ("" != temp) { temp = UsagePointConnectedKind[temp]; if ("undefined" != typeof (temp)) obj.connectionState = "http://iec.ch/TC57/2013/CIM-schema-cim16#UsagePointConnectedKind." + temp; }
+                temp = UsagePointConnectedKind[document.getElementById (id + "_connectionState").value]; if (temp) obj.connectionState = "http://iec.ch/TC57/2013/CIM-schema-cim16#UsagePointConnectedKind." + temp; else delete obj.connectionState;
                 temp = document.getElementById (id + "_estimatedLoad").value; if ("" != temp) obj.estimatedLoad = temp;
                 temp = document.getElementById (id + "_grounded").checked; if (temp) obj.grounded = true;
                 temp = document.getElementById (id + "_isSdp").checked; if (temp) obj.isSdp = true;
@@ -1393,7 +1393,7 @@ define
                 temp = document.getElementById (id + "_minimalUsageExpected").checked; if (temp) obj.minimalUsageExpected = true;
                 temp = document.getElementById (id + "_nominalServiceVoltage").value; if ("" != temp) obj.nominalServiceVoltage = temp;
                 temp = document.getElementById (id + "_outageRegion").value; if ("" != temp) obj.outageRegion = temp;
-                temp = document.getElementById (id + "_phaseCode").value; if ("" != temp) obj.phaseCode = temp;
+                temp = Core.PhaseCode[document.getElementById (id + "_phaseCode").value]; if (temp) obj.phaseCode = "http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode." + temp; else delete obj.phaseCode;
                 temp = document.getElementById (id + "_ratedCurrent").value; if ("" != temp) obj.ratedCurrent = temp;
                 temp = document.getElementById (id + "_ratedPower").value; if ("" != temp) obj.ratedPower = temp;
                 temp = document.getElementById (id + "_readCycle").value; if ("" != temp) obj.readCycle = temp;
@@ -1505,7 +1505,7 @@ define
                     {{#denominator}}<div><b>denominator</b>: {{denominator}}</div>{{/denominator}}
                     {{#numerator}}<div><b>numerator</b>: {{numerator}}</div>{{/numerator}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1534,7 +1534,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_denominator'>denominator: </label><div class='col-sm-8'><input id='{{id}}_denominator' class='form-control' type='text'{{#denominator}} value='{{denominator}}'{{/denominator}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_numerator'>numerator: </label><div class='col-sm-8'><input id='{{id}}_numerator' class='form-control' type='text'{{#numerator}} value='{{numerator}}'{{/numerator}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1580,7 +1580,7 @@ define
                 obj = base.Element.prototype.parse.call (this, context, sub);
                 obj.cls = "EndDeviceEventDetail";
                 base.parse_element (/<cim:EndDeviceEventDetail.name>([\s\S]*?)<\/cim:EndDeviceEventDetail.name>/g, obj, "name", base.to_string, sub, context);
-                base.parse_element (/<cim:EndDeviceEventDetail.value>([\s\S]*?)<\/cim:EndDeviceEventDetail.value>/g, obj, "value", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EndDeviceEventDetail.value\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "value", sub, context);
                 base.parse_attribute (/<cim:EndDeviceEventDetail.EndDeviceEvent\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "EndDeviceEvent", sub, context);
                 var bucket = context.parsed.EndDeviceEventDetail;
                 if (null == bucket)
@@ -1595,7 +1595,7 @@ define
                 var fields = [];
 
                 base.export_element (obj, "EndDeviceEventDetail", "name", "name",  base.from_string, fields);
-                base.export_element (obj, "EndDeviceEventDetail", "value", "value",  base.from_string, fields);
+                base.export_attribute (obj, "EndDeviceEventDetail", "value", "value", fields);
                 base.export_attribute (obj, "EndDeviceEventDetail", "EndDeviceEvent", "EndDeviceEvent", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
@@ -1617,7 +1617,7 @@ define
                     {{#value}}<div><b>value</b>: {{value}}</div>{{/value}}
                     {{#EndDeviceEvent}}<div><b>EndDeviceEvent</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceEvent}}&quot;);}); return false;'>{{EndDeviceEvent}}</a></div>{{/EndDeviceEvent}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1647,7 +1647,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_value'>value: </label><div class='col-sm-8'><input id='{{id}}_value' class='form-control' type='text'{{#value}} value='{{value}}'{{/value}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceEvent'>EndDeviceEvent: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceEvent' class='form-control' type='text'{{#EndDeviceEvent}} value='{{EndDeviceEvent}}'{{/EndDeviceEvent}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1705,7 +1705,7 @@ define
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "MeterReading";
                 base.parse_element (/<cim:MeterReading.isCoincidentTrigger>([\s\S]*?)<\/cim:MeterReading.isCoincidentTrigger>/g, obj, "isCoincidentTrigger", base.to_boolean, sub, context);
-                base.parse_element (/<cim:MeterReading.valuesInterval>([\s\S]*?)<\/cim:MeterReading.valuesInterval>/g, obj, "valuesInterval", base.to_string, sub, context);
+                base.parse_attribute (/<cim:MeterReading.valuesInterval\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "valuesInterval", sub, context);
                 base.parse_attribute (/<cim:MeterReading.UsagePoint\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "UsagePoint", sub, context);
                 base.parse_attribute (/<cim:MeterReading.Meter\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Meter", sub, context);
                 base.parse_attributes (/<cim:MeterReading.Readings\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Readings", sub, context);
@@ -1725,7 +1725,7 @@ define
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
                 base.export_element (obj, "MeterReading", "isCoincidentTrigger", "isCoincidentTrigger",  base.from_boolean, fields);
-                base.export_element (obj, "MeterReading", "valuesInterval", "valuesInterval",  base.from_string, fields);
+                base.export_attribute (obj, "MeterReading", "valuesInterval", "valuesInterval", fields);
                 base.export_attribute (obj, "MeterReading", "UsagePoint", "UsagePoint", fields);
                 base.export_attribute (obj, "MeterReading", "Meter", "Meter", fields);
                 base.export_attributes (obj, "MeterReading", "Readings", "Readings", fields);
@@ -1757,7 +1757,7 @@ define
                     {{#CustomerAgreement}}<div><b>CustomerAgreement</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{CustomerAgreement}}&quot;);}); return false;'>{{CustomerAgreement}}</a></div>{{/CustomerAgreement}}
                     {{#IntervalBlocks}}<div><b>IntervalBlocks</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/IntervalBlocks}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1793,10 +1793,10 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_valuesInterval'>valuesInterval: </label><div class='col-sm-8'><input id='{{id}}_valuesInterval' class='form-control' type='text'{{#valuesInterval}} value='{{valuesInterval}}'{{/valuesInterval}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoint'>UsagePoint: </label><div class='col-sm-8'><input id='{{id}}_UsagePoint' class='form-control' type='text'{{#UsagePoint}} value='{{UsagePoint}}'{{/UsagePoint}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Meter'>Meter: </label><div class='col-sm-8'><input id='{{id}}_Meter' class='form-control' type='text'{{#Meter}} value='{{Meter}}'{{/Meter}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Readings'>Readings: </label><div class='col-sm-8'><input id='{{id}}_Readings' class='form-control' type='text'{{#Readings}} value='{{Readings}}_string'{{/Readings}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Readings'>Readings: </label><div class='col-sm-8'><input id='{{id}}_Readings' class='form-control' type='text'{{#Readings}} value='{{Readings_string}}'{{/Readings}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_CustomerAgreement'>CustomerAgreement: </label><div class='col-sm-8'><input id='{{id}}_CustomerAgreement' class='form-control' type='text'{{#CustomerAgreement}} value='{{CustomerAgreement}}'{{/CustomerAgreement}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1901,7 +1901,7 @@ define
                     {{#Register}}<div><b>Register</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Register}}&quot;);}); return false;'>{{Register}}</a></div>{{/Register}}
                     {{#ReadingType}}<div><b>ReadingType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ReadingType}}&quot;);}); return false;'>{{ReadingType}}</a></div>{{/ReadingType}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1931,7 +1931,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Register'>Register: </label><div class='col-sm-8'><input id='{{id}}_Register' class='form-control' type='text'{{#Register}} value='{{Register}}'{{/Register}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingType'>ReadingType: </label><div class='col-sm-8'><input id='{{id}}_ReadingType' class='form-control' type='text'{{#ReadingType}} value='{{ReadingType}}'{{/ReadingType}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2035,7 +2035,7 @@ define
                     {{#ReadingQualityType}}<div><b>ReadingQualityType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ReadingQualityType}}&quot;);}); return false;'>{{ReadingQualityType}}</a></div>{{/ReadingQualityType}}
                     {{#Reading}}<div><b>Reading</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Reading}}&quot;);}); return false;'>{{Reading}}</a></div>{{/Reading}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2067,7 +2067,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingQualityType'>ReadingQualityType: </label><div class='col-sm-8'><input id='{{id}}_ReadingQualityType' class='form-control' type='text'{{#ReadingQualityType}} value='{{ReadingQualityType}}'{{/ReadingQualityType}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reading'>Reading: </label><div class='col-sm-8'><input id='{{id}}_Reading' class='form-control' type='text'{{#Reading}} value='{{Reading}}'{{/Reading}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2165,7 +2165,7 @@ define
                     {{#value}}<div><b>value</b>: {{value}}</div>{{/value}}
                     {{#Meter}}<div><b>Meter</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Meter}}&quot;);}); return false;'>{{Meter}}</a></div>{{/Meter}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2174,13 +2174,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.MeterMultiplierKind = []; if (!obj.kind) obj.MeterMultiplierKind.push ({ id: '', selected: true}); for (var property in MeterMultiplierKind) obj.MeterMultiplierKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                obj.kindMeterMultiplierKind = [{ id: '', selected: (!obj.kind)}]; for (var property in MeterMultiplierKind) obj.kindMeterMultiplierKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.MeterMultiplierKind;
+                delete obj.kindMeterMultiplierKind;
             }
 
             edit_template ()
@@ -2193,11 +2193,11 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#MeterMultiplierKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/MeterMultiplierKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control custom-select'>{{#kindMeterMultiplierKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/kindMeterMultiplierKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_value'>value: </label><div class='col-sm-8'><input id='{{id}}_value' class='form-control' type='text'{{#value}} value='{{value}}'{{/value}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Meter'>Meter: </label><div class='col-sm-8'><input id='{{id}}_Meter' class='form-control' type='text'{{#Meter}} value='{{Meter}}'{{/Meter}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2208,7 +2208,7 @@ define
 
                 var obj = obj || { id: id, cls: "MeterMultiplier" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = MeterMultiplierKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#MeterMultiplierKind." + temp; }
+                temp = MeterMultiplierKind[document.getElementById (id + "_kind").value]; if (temp) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#MeterMultiplierKind." + temp; else delete obj.kind;
                 temp = document.getElementById (id + "_value").value; if ("" != temp) obj.value = temp;
                 temp = document.getElementById (id + "_Meter").value; if ("" != temp) obj.Meter = temp;
 
@@ -2295,7 +2295,7 @@ define
                     {{#siteAccessProblem}}<div><b>siteAccessProblem</b>: {{siteAccessProblem}}</div>{{/siteAccessProblem}}
                     {{#UsagePoints}}<div><b>UsagePoints</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePoints}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2327,7 +2327,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_remark'>remark: </label><div class='col-sm-8'><input id='{{id}}_remark' class='form-control' type='text'{{#remark}} value='{{remark}}'{{/remark}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_siteAccessProblem'>siteAccessProblem: </label><div class='col-sm-8'><input id='{{id}}_siteAccessProblem' class='form-control' type='text'{{#siteAccessProblem}} value='{{siteAccessProblem}}'{{/siteAccessProblem}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2422,7 +2422,7 @@ define
                     {{#ReadingTypes}}<div><b>ReadingTypes</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ReadingTypes}}
                     {{#UsagePoints}}<div><b>UsagePoints</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/UsagePoints}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2431,7 +2431,7 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.ReadingReasonKind = []; if (!obj.reason) obj.ReadingReasonKind.push ({ id: '', selected: true}); for (var property in ReadingReasonKind) obj.ReadingReasonKind.push ({ id: property, selected: obj.reason && obj.reason.endsWith ('.' + property)});
+                obj.reasonReadingReasonKind = [{ id: '', selected: (!obj.reason)}]; for (var property in ReadingReasonKind) obj.reasonReadingReasonKind.push ({ id: property, selected: obj.reason && obj.reason.endsWith ('.' + property)});
                 if (obj.ReadingTypes) obj.ReadingTypes_string = obj.ReadingTypes.join ();
                 if (obj.UsagePoints) obj.UsagePoints_string = obj.UsagePoints.join ();
             }
@@ -2439,7 +2439,7 @@ define
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.ReadingReasonKind;
+                delete obj.reasonReadingReasonKind;
                 delete obj.ReadingTypes_string;
                 delete obj.UsagePoints_string;
             }
@@ -2454,11 +2454,11 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_reason'>reason: </label><div class='col-sm-8'><select id='{{id}}_reason' class='form-control'>{{#ReadingReasonKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ReadingReasonKind}}</select></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingTypes'>ReadingTypes: </label><div class='col-sm-8'><input id='{{id}}_ReadingTypes' class='form-control' type='text'{{#ReadingTypes}} value='{{ReadingTypes}}_string'{{/ReadingTypes}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints}}_string'{{/UsagePoints}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_reason'>reason: </label><div class='col-sm-8'><select id='{{id}}_reason' class='form-control custom-select'>{{#reasonReadingReasonKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/reasonReadingReasonKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingTypes'>ReadingTypes: </label><div class='col-sm-8'><input id='{{id}}_ReadingTypes' class='form-control' type='text'{{#ReadingTypes}} value='{{ReadingTypes_string}}'{{/ReadingTypes}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints_string}}'{{/UsagePoints}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2469,7 +2469,7 @@ define
 
                 var obj = obj || { id: id, cls: "MetrologyRequirement" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_reason").value; if ("" != temp) { temp = ReadingReasonKind[temp]; if ("undefined" != typeof (temp)) obj.reason = "http://iec.ch/TC57/2013/CIM-schema-cim16#ReadingReasonKind." + temp; }
+                temp = ReadingReasonKind[document.getElementById (id + "_reason").value]; if (temp) obj.reason = "http://iec.ch/TC57/2013/CIM-schema-cim16#ReadingReasonKind." + temp; else delete obj.reason;
                 temp = document.getElementById (id + "_ReadingTypes").value; if ("" != temp) obj.ReadingTypes = temp.split (",");
                 temp = document.getElementById (id + "_UsagePoints").value; if ("" != temp) obj.UsagePoints = temp.split (",");
 
@@ -2554,7 +2554,7 @@ define
                     {{#Registers}}<div><b>Registers</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Registers}}
                     {{#EndDevice}}<div><b>EndDevice</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDevice}}&quot;);}); return false;'>{{EndDevice}}</a></div>{{/EndDevice}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2585,7 +2585,7 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_enabled'>enabled: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_enabled' class='form-check-input' type='checkbox'{{#enabled}} checked{{/enabled}}></div></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDevice'>EndDevice: </label><div class='col-sm-8'><input id='{{id}}_EndDevice' class='form-control' type='text'{{#EndDevice}} value='{{EndDevice}}'{{/EndDevice}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2685,7 +2685,7 @@ define
                     {{#timeZoneOffset}}<div><b>timeZoneOffset</b>: {{timeZoneOffset}}</div>{{/timeZoneOffset}}
                     {{#ComFunctions}}<div><b>ComFunctions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ComFunctions}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2717,7 +2717,7 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_supportsAutonomousDst'>supportsAutonomousDst: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_supportsAutonomousDst' class='form-check-input' type='checkbox'{{#supportsAutonomousDst}} checked{{/supportsAutonomousDst}}></div></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_timeZoneOffset'>timeZoneOffset: </label><div class='col-sm-8'><input id='{{id}}_timeZoneOffset' class='form-control' type='text'{{#timeZoneOffset}} value='{{timeZoneOffset}}'{{/timeZoneOffset}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2778,13 +2778,13 @@ define
                 obj.cls = "ReadingType";
                 base.parse_element (/<cim:ReadingType.accumulation>([\s\S]*?)<\/cim:ReadingType.accumulation>/g, obj, "accumulation", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.aggregate>([\s\S]*?)<\/cim:ReadingType.aggregate>/g, obj, "aggregate", base.to_string, sub, context);
-                base.parse_element (/<cim:ReadingType.argument>([\s\S]*?)<\/cim:ReadingType.argument>/g, obj, "argument", base.to_string, sub, context);
+                base.parse_attribute (/<cim:ReadingType.argument\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "argument", sub, context);
                 base.parse_element (/<cim:ReadingType.commodity>([\s\S]*?)<\/cim:ReadingType.commodity>/g, obj, "commodity", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.consumptionTier>([\s\S]*?)<\/cim:ReadingType.consumptionTier>/g, obj, "consumptionTier", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.cpp>([\s\S]*?)<\/cim:ReadingType.cpp>/g, obj, "cpp", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.currency>([\s\S]*?)<\/cim:ReadingType.currency>/g, obj, "currency", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.flowDirection>([\s\S]*?)<\/cim:ReadingType.flowDirection>/g, obj, "flowDirection", base.to_string, sub, context);
-                base.parse_element (/<cim:ReadingType.interharmonic>([\s\S]*?)<\/cim:ReadingType.interharmonic>/g, obj, "interharmonic", base.to_string, sub, context);
+                base.parse_attribute (/<cim:ReadingType.interharmonic\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "interharmonic", sub, context);
                 base.parse_element (/<cim:ReadingType.macroPeriod>([\s\S]*?)<\/cim:ReadingType.macroPeriod>/g, obj, "macroPeriod", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.measurementKind>([\s\S]*?)<\/cim:ReadingType.measurementKind>/g, obj, "measurementKind", base.to_string, sub, context);
                 base.parse_element (/<cim:ReadingType.measuringPeriod>([\s\S]*?)<\/cim:ReadingType.measuringPeriod>/g, obj, "measuringPeriod", base.to_string, sub, context);
@@ -2811,13 +2811,13 @@ define
 
                 base.export_element (obj, "ReadingType", "accumulation", "accumulation",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "aggregate", "aggregate",  base.from_string, fields);
-                base.export_element (obj, "ReadingType", "argument", "argument",  base.from_string, fields);
+                base.export_attribute (obj, "ReadingType", "argument", "argument", fields);
                 base.export_element (obj, "ReadingType", "commodity", "commodity",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "consumptionTier", "consumptionTier",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "cpp", "cpp",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "currency", "currency",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "flowDirection", "flowDirection",  base.from_string, fields);
-                base.export_element (obj, "ReadingType", "interharmonic", "interharmonic",  base.from_string, fields);
+                base.export_attribute (obj, "ReadingType", "interharmonic", "interharmonic", fields);
                 base.export_element (obj, "ReadingType", "macroPeriod", "macroPeriod",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "measurementKind", "measurementKind",  base.from_string, fields);
                 base.export_element (obj, "ReadingType", "measuringPeriod", "measuringPeriod",  base.from_string, fields);
@@ -2848,14 +2848,12 @@ define
                     `
                     {{#accumulation}}<div><b>accumulation</b>: {{accumulation}}</div>{{/accumulation}}
                     {{#aggregate}}<div><b>aggregate</b>: {{aggregate}}</div>{{/aggregate}}
-                    {{#argument}}<div><b>argument</b>: {{argument}}</div>{{/argument}}
-                    {{#commodity}}<div><b>commodity</b>: {{commodity}}</div>{{/commodity}}
+                    {{#argument}}<div><b>argument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{argument}}&quot;);}); return false;'>{{argument}}</a></div>{{/argument}}\n                    {{#commodity}}<div><b>commodity</b>: {{commodity}}</div>{{/commodity}}
                     {{#consumptionTier}}<div><b>consumptionTier</b>: {{consumptionTier}}</div>{{/consumptionTier}}
                     {{#cpp}}<div><b>cpp</b>: {{cpp}}</div>{{/cpp}}
                     {{#currency}}<div><b>currency</b>: {{currency}}</div>{{/currency}}
                     {{#flowDirection}}<div><b>flowDirection</b>: {{flowDirection}}</div>{{/flowDirection}}
-                    {{#interharmonic}}<div><b>interharmonic</b>: {{interharmonic}}</div>{{/interharmonic}}
-                    {{#macroPeriod}}<div><b>macroPeriod</b>: {{macroPeriod}}</div>{{/macroPeriod}}
+                    {{#interharmonic}}<div><b>interharmonic</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{interharmonic}}&quot;);}); return false;'>{{interharmonic}}</a></div>{{/interharmonic}}\n                    {{#macroPeriod}}<div><b>macroPeriod</b>: {{macroPeriod}}</div>{{/macroPeriod}}
                     {{#measurementKind}}<div><b>measurementKind</b>: {{measurementKind}}</div>{{/measurementKind}}
                     {{#measuringPeriod}}<div><b>measuringPeriod</b>: {{measuringPeriod}}</div>{{/measuringPeriod}}
                     {{#multiplier}}<div><b>multiplier</b>: {{multiplier}}</div>{{/multiplier}}
@@ -2868,7 +2866,7 @@ define
                     {{#MetrologyRequirements}}<div><b>MetrologyRequirements</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MetrologyRequirements}}
                     {{#Channel}}<div><b>Channel</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Channel}}&quot;);}); return false;'>{{Channel}}</a></div>{{/Channel}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2917,10 +2915,10 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_tou'>tou: </label><div class='col-sm-8'><input id='{{id}}_tou' class='form-control' type='text'{{#tou}} value='{{tou}}'{{/tou}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_unit'>unit: </label><div class='col-sm-8'><input id='{{id}}_unit' class='form-control' type='text'{{#unit}} value='{{unit}}'{{/unit}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PendingCalculation'>PendingCalculation: </label><div class='col-sm-8'><input id='{{id}}_PendingCalculation' class='form-control' type='text'{{#PendingCalculation}} value='{{PendingCalculation}}'{{/PendingCalculation}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MetrologyRequirements'>MetrologyRequirements: </label><div class='col-sm-8'><input id='{{id}}_MetrologyRequirements' class='form-control' type='text'{{#MetrologyRequirements}} value='{{MetrologyRequirements}}_string'{{/MetrologyRequirements}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MetrologyRequirements'>MetrologyRequirements: </label><div class='col-sm-8'><input id='{{id}}_MetrologyRequirements' class='form-control' type='text'{{#MetrologyRequirements}} value='{{MetrologyRequirements_string}}'{{/MetrologyRequirements}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Channel'>Channel: </label><div class='col-sm-8'><input id='{{id}}_Channel' class='form-control' type='text'{{#Channel}} value='{{Channel}}'{{/Channel}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3040,7 +3038,7 @@ define
                     {{#IntervalReadings}}<div><b>IntervalReadings</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/IntervalReadings}}
                     {{#MeterReading}}<div><b>MeterReading</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MeterReading}}&quot;);}); return false;'>{{MeterReading}}</a></div>{{/MeterReading}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3070,10 +3068,10 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_PendingCalculation'>PendingCalculation: </label><div class='col-sm-8'><input id='{{id}}_PendingCalculation' class='form-control' type='text'{{#PendingCalculation}} value='{{PendingCalculation}}'{{/PendingCalculation}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingType'>ReadingType: </label><div class='col-sm-8'><input id='{{id}}_ReadingType' class='form-control' type='text'{{#ReadingType}} value='{{ReadingType}}'{{/ReadingType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_IntervalReadings'>IntervalReadings: </label><div class='col-sm-8'><input id='{{id}}_IntervalReadings' class='form-control' type='text'{{#IntervalReadings}} value='{{IntervalReadings}}_string'{{/IntervalReadings}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_IntervalReadings'>IntervalReadings: </label><div class='col-sm-8'><input id='{{id}}_IntervalReadings' class='form-control' type='text'{{#IntervalReadings}} value='{{IntervalReadings_string}}'{{/IntervalReadings}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MeterReading'>MeterReading: </label><div class='col-sm-8'><input id='{{id}}_MeterReading' class='form-control' type='text'{{#MeterReading}} value='{{MeterReading}}'{{/MeterReading}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3136,7 +3134,7 @@ define
                 obj.cls = "EndDeviceTiming";
                 base.parse_element (/<cim:EndDeviceTiming.duration>([\s\S]*?)<\/cim:EndDeviceTiming.duration>/g, obj, "duration", base.to_string, sub, context);
                 base.parse_element (/<cim:EndDeviceTiming.durationIndefinite>([\s\S]*?)<\/cim:EndDeviceTiming.durationIndefinite>/g, obj, "durationIndefinite", base.to_boolean, sub, context);
-                base.parse_element (/<cim:EndDeviceTiming.interval>([\s\S]*?)<\/cim:EndDeviceTiming.interval>/g, obj, "interval", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EndDeviceTiming.interval\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "interval", sub, context);
                 base.parse_attribute (/<cim:EndDeviceTiming.randomisation\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "randomisation", sub, context);
                 var bucket = context.parsed.EndDeviceTiming;
                 if (null == bucket)
@@ -3152,7 +3150,7 @@ define
 
                 base.export_element (obj, "EndDeviceTiming", "duration", "duration",  base.from_string, fields);
                 base.export_element (obj, "EndDeviceTiming", "durationIndefinite", "durationIndefinite",  base.from_boolean, fields);
-                base.export_element (obj, "EndDeviceTiming", "interval", "interval",  base.from_string, fields);
+                base.export_attribute (obj, "EndDeviceTiming", "interval", "interval", fields);
                 base.export_attribute (obj, "EndDeviceTiming", "randomisation", "randomisation", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
@@ -3175,7 +3173,7 @@ define
                     {{#interval}}<div><b>interval</b>: {{interval}}</div>{{/interval}}
                     {{#randomisation}}<div><b>randomisation</b>: {{randomisation}}</div>{{/randomisation}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3184,13 +3182,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.RandomisationKind = []; if (!obj.randomisation) obj.RandomisationKind.push ({ id: '', selected: true}); for (var property in RandomisationKind) obj.RandomisationKind.push ({ id: property, selected: obj.randomisation && obj.randomisation.endsWith ('.' + property)});
+                obj.randomisationRandomisationKind = [{ id: '', selected: (!obj.randomisation)}]; for (var property in RandomisationKind) obj.randomisationRandomisationKind.push ({ id: property, selected: obj.randomisation && obj.randomisation.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.RandomisationKind;
+                delete obj.randomisationRandomisationKind;
             }
 
             edit_template ()
@@ -3206,9 +3204,9 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_duration'>duration: </label><div class='col-sm-8'><input id='{{id}}_duration' class='form-control' type='text'{{#duration}} value='{{duration}}'{{/duration}}></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_durationIndefinite'>durationIndefinite: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_durationIndefinite' class='form-check-input' type='checkbox'{{#durationIndefinite}} checked{{/durationIndefinite}}></div></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_interval'>interval: </label><div class='col-sm-8'><input id='{{id}}_interval' class='form-control' type='text'{{#interval}} value='{{interval}}'{{/interval}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_randomisation'>randomisation: </label><div class='col-sm-8'><select id='{{id}}_randomisation' class='form-control'>{{#RandomisationKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/RandomisationKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_randomisation'>randomisation: </label><div class='col-sm-8'><select id='{{id}}_randomisation' class='form-control custom-select'>{{#randomisationRandomisationKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/randomisationRandomisationKind}}</select></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3222,7 +3220,7 @@ define
                 temp = document.getElementById (id + "_duration").value; if ("" != temp) obj.duration = temp;
                 temp = document.getElementById (id + "_durationIndefinite").checked; if (temp) obj.durationIndefinite = true;
                 temp = document.getElementById (id + "_interval").value; if ("" != temp) obj.interval = temp;
-                temp = document.getElementById (id + "_randomisation").value; if ("" != temp) { temp = RandomisationKind[temp]; if ("undefined" != typeof (temp)) obj.randomisation = "http://iec.ch/TC57/2013/CIM-schema-cim16#RandomisationKind." + temp; }
+                temp = RandomisationKind[document.getElementById (id + "_randomisation").value]; if (temp) obj.randomisation = "http://iec.ch/TC57/2013/CIM-schema-cim16#RandomisationKind." + temp; else delete obj.randomisation;
 
                 return (obj);
             }
@@ -3299,7 +3297,7 @@ define
                     {{#startDateTime}}<div><b>startDateTime</b>: {{startDateTime}}</div>{{/startDateTime}}
                     {{#EndDeviceControl}}<div><b>EndDeviceControl</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceControl}}&quot;);}); return false;'>{{EndDeviceControl}}</a></div>{{/EndDeviceControl}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3331,7 +3329,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_startDateTime'>startDateTime: </label><div class='col-sm-8'><input id='{{id}}_startDateTime' class='form-control' type='text'{{#startDateTime}} value='{{startDateTime}}'{{/startDateTime}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControl'>EndDeviceControl: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControl' class='form-control' type='text'{{#EndDeviceControl}} value='{{EndDeviceControl}}'{{/EndDeviceControl}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3394,7 +3392,7 @@ define
                 obj.cls = "BaseReading";
                 base.parse_element (/<cim:BaseReading.reportedDateTime>([\s\S]*?)<\/cim:BaseReading.reportedDateTime>/g, obj, "reportedDateTime", base.to_datetime, sub, context);
                 base.parse_element (/<cim:BaseReading.source>([\s\S]*?)<\/cim:BaseReading.source>/g, obj, "source", base.to_string, sub, context);
-                base.parse_element (/<cim:BaseReading.timePeriod>([\s\S]*?)<\/cim:BaseReading.timePeriod>/g, obj, "timePeriod", base.to_string, sub, context);
+                base.parse_attribute (/<cim:BaseReading.timePeriod\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "timePeriod", sub, context);
                 base.parse_element (/<cim:BaseReading.value>([\s\S]*?)<\/cim:BaseReading.value>/g, obj, "value", base.to_string, sub, context);
                 base.parse_attributes (/<cim:BaseReading.ReadingQualities\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ReadingQualities", sub, context);
                 var bucket = context.parsed.BaseReading;
@@ -3411,7 +3409,7 @@ define
 
                 base.export_element (obj, "BaseReading", "reportedDateTime", "reportedDateTime",  base.from_datetime, fields);
                 base.export_element (obj, "BaseReading", "source", "source",  base.from_string, fields);
-                base.export_element (obj, "BaseReading", "timePeriod", "timePeriod",  base.from_string, fields);
+                base.export_attribute (obj, "BaseReading", "timePeriod", "timePeriod", fields);
                 base.export_element (obj, "BaseReading", "value", "value",  base.from_string, fields);
                 base.export_attributes (obj, "BaseReading", "ReadingQualities", "ReadingQualities", fields);
                 if (full)
@@ -3436,7 +3434,7 @@ define
                     {{#value}}<div><b>value</b>: {{value}}</div>{{/value}}
                     {{#ReadingQualities}}<div><b>ReadingQualities</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ReadingQualities}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3469,7 +3467,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_timePeriod'>timePeriod: </label><div class='col-sm-8'><input id='{{id}}_timePeriod' class='form-control' type='text'{{#timePeriod}} value='{{timePeriod}}'{{/timePeriod}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_value'>value: </label><div class='col-sm-8'><input id='{{id}}_value' class='form-control' type='text'{{#value}} value='{{value}}'{{/value}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3580,7 +3578,7 @@ define
                     {{#MeterReading}}<div><b>MeterReading</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{MeterReading}}&quot;);}); return false;'>{{MeterReading}}</a></div>{{/MeterReading}}
                     {{#EndDeviceEventType}}<div><b>EndDeviceEventType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{EndDeviceEventType}}&quot;);}); return false;'>{{EndDeviceEventType}}</a></div>{{/EndDeviceEventType}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3616,7 +3614,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MeterReading'>MeterReading: </label><div class='col-sm-8'><input id='{{id}}_MeterReading' class='form-control' type='text'{{#MeterReading}} value='{{MeterReading}}'{{/MeterReading}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceEventType'>EndDeviceEventType: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceEventType' class='form-control' type='text'{{#EndDeviceEventType}} value='{{EndDeviceEventType}}'{{/EndDeviceEventType}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3719,7 +3717,7 @@ define
                     {{#value}}<div><b>value</b>: {{value}}</div>{{/value}}
                     {{#UsagePoint}}<div><b>UsagePoint</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{UsagePoint}}&quot;);}); return false;'>{{UsagePoint}}</a></div>{{/UsagePoint}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3728,13 +3726,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.ServiceMultiplierKind = []; if (!obj.kind) obj.ServiceMultiplierKind.push ({ id: '', selected: true}); for (var property in ServiceMultiplierKind) obj.ServiceMultiplierKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                obj.kindServiceMultiplierKind = [{ id: '', selected: (!obj.kind)}]; for (var property in ServiceMultiplierKind) obj.kindServiceMultiplierKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.ServiceMultiplierKind;
+                delete obj.kindServiceMultiplierKind;
             }
 
             edit_template ()
@@ -3747,11 +3745,11 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#ServiceMultiplierKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ServiceMultiplierKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control custom-select'>{{#kindServiceMultiplierKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/kindServiceMultiplierKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_value'>value: </label><div class='col-sm-8'><input id='{{id}}_value' class='form-control' type='text'{{#value}} value='{{value}}'{{/value}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoint'>UsagePoint: </label><div class='col-sm-8'><input id='{{id}}_UsagePoint' class='form-control' type='text'{{#UsagePoint}} value='{{UsagePoint}}'{{/UsagePoint}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3762,7 +3760,7 @@ define
 
                 var obj = obj || { id: id, cls: "ServiceMultiplier" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = ServiceMultiplierKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#ServiceMultiplierKind." + temp; }
+                temp = ServiceMultiplierKind[document.getElementById (id + "_kind").value]; if (temp) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#ServiceMultiplierKind." + temp; else delete obj.kind;
                 temp = document.getElementById (id + "_value").value; if ("" != temp) obj.value = temp;
                 temp = document.getElementById (id + "_UsagePoint").value; if ("" != temp) obj.UsagePoint = temp;
 
@@ -3860,7 +3858,7 @@ define
                     {{#ReadingType}}<div><b>ReadingType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ReadingType}}&quot;);}); return false;'>{{ReadingType}}</a></div>{{/ReadingType}}
                     {{#IntervalBlocks}}<div><b>IntervalBlocks</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/IntervalBlocks}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -3895,7 +3893,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_scalarNumerator'>scalarNumerator: </label><div class='col-sm-8'><input id='{{id}}_scalarNumerator' class='form-control' type='text'{{#scalarNumerator}} value='{{scalarNumerator}}'{{/scalarNumerator}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingType'>ReadingType: </label><div class='col-sm-8'><input id='{{id}}_ReadingType' class='form-control' type='text'{{#ReadingType}} value='{{ReadingType}}'{{/ReadingType}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -3991,7 +3989,7 @@ define
                     {{#denominator}}<div><b>denominator</b>: {{denominator}}</div>{{/denominator}}
                     {{#numerator}}<div><b>numerator</b>: {{numerator}}</div>{{/numerator}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4020,7 +4018,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_denominator'>denominator: </label><div class='col-sm-8'><input id='{{id}}_denominator' class='form-control' type='text'{{#denominator}} value='{{denominator}}'{{/denominator}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_numerator'>numerator: </label><div class='col-sm-8'><input id='{{id}}_numerator' class='form-control' type='text'{{#numerator}} value='{{numerator}}'{{/numerator}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4111,7 +4109,7 @@ define
                     {{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
                     {{#EndDeviceControls}}<div><b>EndDeviceControls</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceControls}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4144,7 +4142,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_subDomain'>subDomain: </label><div class='col-sm-8'><input id='{{id}}_subDomain' class='form-control' type='text'{{#subDomain}} value='{{subDomain}}'{{/subDomain}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4245,7 +4243,7 @@ define
                     {{#EndDeviceControls}}<div><b>EndDeviceControls</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceControls}}
                     {{#DemandResponsePrograms}}<div><b>DemandResponsePrograms</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/DemandResponsePrograms}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4278,11 +4276,11 @@ define
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints}}_string'{{/UsagePoints}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls}}_string'{{/EndDeviceControls}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DemandResponsePrograms'>DemandResponsePrograms: </label><div class='col-sm-8'><input id='{{id}}_DemandResponsePrograms' class='form-control' type='text'{{#DemandResponsePrograms}} value='{{DemandResponsePrograms}}_string'{{/DemandResponsePrograms}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoints'>UsagePoints: </label><div class='col-sm-8'><input id='{{id}}_UsagePoints' class='form-control' type='text'{{#UsagePoints}} value='{{UsagePoints_string}}'{{/UsagePoints}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls_string}}'{{/EndDeviceControls}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DemandResponsePrograms'>DemandResponsePrograms: </label><div class='col-sm-8'><input id='{{id}}_DemandResponsePrograms' class='form-control' type='text'{{#DemandResponsePrograms}} value='{{DemandResponsePrograms_string}}'{{/DemandResponsePrograms}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4380,7 +4378,7 @@ define
                     {{#OldMeter}}<div><b>OldMeter</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{OldMeter}}&quot;);}); return false;'>{{OldMeter}}</a></div>{{/OldMeter}}
                     {{#UsagePoint}}<div><b>UsagePoint</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{UsagePoint}}&quot;);}); return false;'>{{UsagePoint}}</a></div>{{/UsagePoint}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4410,7 +4408,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_OldMeter'>OldMeter: </label><div class='col-sm-8'><input id='{{id}}_OldMeter' class='form-control' type='text'{{#OldMeter}} value='{{OldMeter}}'{{/OldMeter}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoint'>UsagePoint: </label><div class='col-sm-8'><input id='{{id}}_UsagePoint' class='form-control' type='text'{{#UsagePoint}} value='{{UsagePoint}}'{{/UsagePoint}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4512,7 +4510,7 @@ define
                     {{#systemId}}<div><b>systemId</b>: {{systemId}}</div>{{/systemId}}
                     {{#ReadingQualities}}<div><b>ReadingQualities</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ReadingQualities}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4544,7 +4542,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_subCategory'>subCategory: </label><div class='col-sm-8'><input id='{{id}}_subCategory' class='form-control' type='text'{{#subCategory}} value='{{subCategory}}'{{/subCategory}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_systemId'>systemId: </label><div class='col-sm-8'><input id='{{id}}_systemId' class='form-control' type='text'{{#systemId}} value='{{systemId}}'{{/systemId}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4647,7 +4645,7 @@ define
                     {{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
                     {{#EndDeviceEvents}}<div><b>EndDeviceEvents</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceEvents}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4680,7 +4678,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_subDomain'>subDomain: </label><div class='col-sm-8'><input id='{{id}}_subDomain' class='form-control' type='text'{{#subDomain}} value='{{subDomain}}'{{/subDomain}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -4808,7 +4806,7 @@ define
                     {{#EndDeviceGroups}}<div><b>EndDeviceGroups</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceGroups}}
                     {{#EndDeviceControls}}<div><b>EndDeviceControls</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDeviceControls}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -4851,10 +4849,10 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ServiceLocation'>ServiceLocation: </label><div class='col-sm-8'><input id='{{id}}_ServiceLocation' class='form-control' type='text'{{#ServiceLocation}} value='{{ServiceLocation}}'{{/ServiceLocation}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Customer'>Customer: </label><div class='col-sm-8'><input id='{{id}}_Customer' class='form-control' type='text'{{#Customer}} value='{{Customer}}'{{/Customer}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_UsagePoint'>UsagePoint: </label><div class='col-sm-8'><input id='{{id}}_UsagePoint' class='form-control' type='text'{{#UsagePoint}} value='{{UsagePoint}}'{{/UsagePoint}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups}}_string'{{/EndDeviceGroups}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls}}_string'{{/EndDeviceControls}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceGroups'>EndDeviceGroups: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceGroups' class='form-control' type='text'{{#EndDeviceGroups}} value='{{EndDeviceGroups_string}}'{{/EndDeviceGroups}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_EndDeviceControls'>EndDeviceControls: </label><div class='col-sm-8'><input id='{{id}}_EndDeviceControls' class='form-control' type='text'{{#EndDeviceControls}} value='{{EndDeviceControls_string}}'{{/EndDeviceControls}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5009,7 +5007,7 @@ define
                     {{#textMessage}}<div><b>textMessage</b>: {{textMessage}}</div>{{/textMessage}}
                     {{#waterMetering}}<div><b>waterMetering</b>: {{waterMetering}}</div>{{/waterMetering}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5054,7 +5052,7 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_textMessage'>textMessage: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_textMessage' class='form-check-input' type='checkbox'{{#textMessage}} checked{{/textMessage}}></div></div></div>
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_waterMetering'>waterMetering: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_waterMetering' class='form-check-input' type='checkbox'{{#waterMetering}} checked{{/waterMetering}}></div></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5115,7 +5113,7 @@ define
 
                 obj = Assets.AssetInfo.prototype.parse.call (this, context, sub);
                 obj.cls = "EndDeviceInfo";
-                base.parse_element (/<cim:EndDeviceInfo.capability>([\s\S]*?)<\/cim:EndDeviceInfo.capability>/g, obj, "capability", base.to_string, sub, context);
+                base.parse_attribute (/<cim:EndDeviceInfo.capability\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "capability", sub, context);
                 base.parse_element (/<cim:EndDeviceInfo.isSolidState>([\s\S]*?)<\/cim:EndDeviceInfo.isSolidState>/g, obj, "isSolidState", base.to_boolean, sub, context);
                 base.parse_element (/<cim:EndDeviceInfo.phaseCount>([\s\S]*?)<\/cim:EndDeviceInfo.phaseCount>/g, obj, "phaseCount", base.to_string, sub, context);
                 base.parse_element (/<cim:EndDeviceInfo.ratedCurrent>([\s\S]*?)<\/cim:EndDeviceInfo.ratedCurrent>/g, obj, "ratedCurrent", base.to_string, sub, context);
@@ -5133,7 +5131,7 @@ define
             {
                 var fields = Assets.AssetInfo.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "EndDeviceInfo", "capability", "capability",  base.from_string, fields);
+                base.export_attribute (obj, "EndDeviceInfo", "capability", "capability", fields);
                 base.export_element (obj, "EndDeviceInfo", "isSolidState", "isSolidState",  base.from_boolean, fields);
                 base.export_element (obj, "EndDeviceInfo", "phaseCount", "phaseCount",  base.from_string, fields);
                 base.export_element (obj, "EndDeviceInfo", "ratedCurrent", "ratedCurrent",  base.from_string, fields);
@@ -5155,14 +5153,13 @@ define
                     `
                     + Assets.AssetInfo.prototype.template.call (this) +
                     `
-                    {{#capability}}<div><b>capability</b>: {{capability}}</div>{{/capability}}
-                    {{#isSolidState}}<div><b>isSolidState</b>: {{isSolidState}}</div>{{/isSolidState}}
+                    {{#capability}}<div><b>capability</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{capability}}&quot;);}); return false;'>{{capability}}</a></div>{{/capability}}\n                    {{#isSolidState}}<div><b>isSolidState</b>: {{isSolidState}}</div>{{/isSolidState}}
                     {{#phaseCount}}<div><b>phaseCount</b>: {{phaseCount}}</div>{{/phaseCount}}
                     {{#ratedCurrent}}<div><b>ratedCurrent</b>: {{ratedCurrent}}</div>{{/ratedCurrent}}
                     {{#ratedVoltage}}<div><b>ratedVoltage</b>: {{ratedVoltage}}</div>{{/ratedVoltage}}
                     {{#EndDevices}}<div><b>EndDevices</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/EndDevices}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5196,7 +5193,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ratedCurrent'>ratedCurrent: </label><div class='col-sm-8'><input id='{{id}}_ratedCurrent' class='form-control' type='text'{{#ratedCurrent}} value='{{ratedCurrent}}'{{/ratedCurrent}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ratedVoltage'>ratedVoltage: </label><div class='col-sm-8'><input id='{{id}}_ratedVoltage' class='form-control' type='text'{{#ratedVoltage}} value='{{ratedVoltage}}'{{/ratedVoltage}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5289,7 +5286,7 @@ define
                     `
                     {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5298,13 +5295,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.EndDeviceFunctionKind = []; if (!obj.kind) obj.EndDeviceFunctionKind.push ({ id: '', selected: true}); for (var property in EndDeviceFunctionKind) obj.EndDeviceFunctionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                obj.kindEndDeviceFunctionKind = [{ id: '', selected: (!obj.kind)}]; for (var property in EndDeviceFunctionKind) obj.kindEndDeviceFunctionKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.EndDeviceFunctionKind;
+                delete obj.kindEndDeviceFunctionKind;
             }
 
             edit_template ()
@@ -5317,9 +5314,9 @@ define
                     `
                     + EndDeviceFunction.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#EndDeviceFunctionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/EndDeviceFunctionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control custom-select'>{{#kindEndDeviceFunctionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/kindEndDeviceFunctionKind}}</select></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5330,7 +5327,7 @@ define
 
                 var obj = obj || { id: id, cls: "SimpleEndDeviceFunction" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = EndDeviceFunctionKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#EndDeviceFunctionKind." + temp; }
+                temp = EndDeviceFunctionKind[document.getElementById (id + "_kind").value]; if (temp) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#EndDeviceFunctionKind." + temp; else delete obj.kind;
 
                 return (obj);
             }
@@ -5407,7 +5404,7 @@ define
                     {{#technology}}<div><b>technology</b>: {{technology}}</div>{{/technology}}
                     {{#ComModule}}<div><b>ComModule</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ComModule}}&quot;);}); return false;'>{{ComModule}}</a></div>{{/ComModule}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5416,15 +5413,15 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.ComDirectionKind = []; if (!obj.direction) obj.ComDirectionKind.push ({ id: '', selected: true}); for (var property in ComDirectionKind) obj.ComDirectionKind.push ({ id: property, selected: obj.direction && obj.direction.endsWith ('.' + property)});
-                obj.ComTechnologyKind = []; if (!obj.technology) obj.ComTechnologyKind.push ({ id: '', selected: true}); for (var property in ComTechnologyKind) obj.ComTechnologyKind.push ({ id: property, selected: obj.technology && obj.technology.endsWith ('.' + property)});
+                obj.directionComDirectionKind = [{ id: '', selected: (!obj.direction)}]; for (var property in ComDirectionKind) obj.directionComDirectionKind.push ({ id: property, selected: obj.direction && obj.direction.endsWith ('.' + property)});
+                obj.technologyComTechnologyKind = [{ id: '', selected: (!obj.technology)}]; for (var property in ComTechnologyKind) obj.technologyComTechnologyKind.push ({ id: property, selected: obj.technology && obj.technology.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.ComDirectionKind;
-                delete obj.ComTechnologyKind;
+                delete obj.directionComDirectionKind;
+                delete obj.technologyComTechnologyKind;
             }
 
             edit_template ()
@@ -5439,11 +5436,11 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_amrAddress'>amrAddress: </label><div class='col-sm-8'><input id='{{id}}_amrAddress' class='form-control' type='text'{{#amrAddress}} value='{{amrAddress}}'{{/amrAddress}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_amrRouter'>amrRouter: </label><div class='col-sm-8'><input id='{{id}}_amrRouter' class='form-control' type='text'{{#amrRouter}} value='{{amrRouter}}'{{/amrRouter}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_direction'>direction: </label><div class='col-sm-8'><select id='{{id}}_direction' class='form-control'>{{#ComDirectionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ComDirectionKind}}</select></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_technology'>technology: </label><div class='col-sm-8'><select id='{{id}}_technology' class='form-control'>{{#ComTechnologyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ComTechnologyKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_direction'>direction: </label><div class='col-sm-8'><select id='{{id}}_direction' class='form-control custom-select'>{{#directionComDirectionKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/directionComDirectionKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_technology'>technology: </label><div class='col-sm-8'><select id='{{id}}_technology' class='form-control custom-select'>{{#technologyComTechnologyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/technologyComTechnologyKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ComModule'>ComModule: </label><div class='col-sm-8'><input id='{{id}}_ComModule' class='form-control' type='text'{{#ComModule}} value='{{ComModule}}'{{/ComModule}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5456,8 +5453,8 @@ define
                 super.submit (id, obj);
                 temp = document.getElementById (id + "_amrAddress").value; if ("" != temp) obj.amrAddress = temp;
                 temp = document.getElementById (id + "_amrRouter").value; if ("" != temp) obj.amrRouter = temp;
-                temp = document.getElementById (id + "_direction").value; if ("" != temp) { temp = ComDirectionKind[temp]; if ("undefined" != typeof (temp)) obj.direction = "http://iec.ch/TC57/2013/CIM-schema-cim16#ComDirectionKind." + temp; }
-                temp = document.getElementById (id + "_technology").value; if ("" != temp) { temp = ComTechnologyKind[temp]; if ("undefined" != typeof (temp)) obj.technology = "http://iec.ch/TC57/2013/CIM-schema-cim16#ComTechnologyKind." + temp; }
+                temp = ComDirectionKind[document.getElementById (id + "_direction").value]; if (temp) obj.direction = "http://iec.ch/TC57/2013/CIM-schema-cim16#ComDirectionKind." + temp; else delete obj.direction;
+                temp = ComTechnologyKind[document.getElementById (id + "_technology").value]; if (temp) obj.technology = "http://iec.ch/TC57/2013/CIM-schema-cim16#ComTechnologyKind." + temp; else delete obj.technology;
                 temp = document.getElementById (id + "_ComModule").value; if ("" != temp) obj.ComModule = temp;
 
                 return (obj);
@@ -5543,7 +5540,7 @@ define
                     {{#textMessage}}<div><b>textMessage</b>: {{textMessage}}</div>{{/textMessage}}
                     {{#transmissionMode}}<div><b>transmissionMode</b>: {{transmissionMode}}</div>{{/transmissionMode}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5552,13 +5549,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.TransmissionModeKind = []; if (!obj.transmissionMode) obj.TransmissionModeKind.push ({ id: '', selected: true}); for (var property in TransmissionModeKind) obj.TransmissionModeKind.push ({ id: property, selected: obj.transmissionMode && obj.transmissionMode.endsWith ('.' + property)});
+                obj.transmissionModeTransmissionModeKind = [{ id: '', selected: (!obj.transmissionMode)}]; for (var property in TransmissionModeKind) obj.transmissionModeTransmissionModeKind.push ({ id: property, selected: obj.transmissionMode && obj.transmissionMode.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.TransmissionModeKind;
+                delete obj.transmissionModeTransmissionModeKind;
             }
 
             edit_template ()
@@ -5574,9 +5571,9 @@ define
                     <div class='form-group row'><div class='col-sm-4' for='{{id}}_confirmationRequired'>confirmationRequired: </div><div class='col-sm-8'><div class='form-check'><input id='{{id}}_confirmationRequired' class='form-check-input' type='checkbox'{{#confirmationRequired}} checked{{/confirmationRequired}}></div></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_priority'>priority: </label><div class='col-sm-8'><input id='{{id}}_priority' class='form-control' type='text'{{#priority}} value='{{priority}}'{{/priority}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_textMessage'>textMessage: </label><div class='col-sm-8'><input id='{{id}}_textMessage' class='form-control' type='text'{{#textMessage}} value='{{textMessage}}'{{/textMessage}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_transmissionMode'>transmissionMode: </label><div class='col-sm-8'><select id='{{id}}_transmissionMode' class='form-control'>{{#TransmissionModeKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/TransmissionModeKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_transmissionMode'>transmissionMode: </label><div class='col-sm-8'><select id='{{id}}_transmissionMode' class='form-control custom-select'>{{#transmissionModeTransmissionModeKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/transmissionModeTransmissionModeKind}}</select></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5590,7 +5587,7 @@ define
                 temp = document.getElementById (id + "_confirmationRequired").checked; if (temp) obj.confirmationRequired = true;
                 temp = document.getElementById (id + "_priority").value; if ("" != temp) obj.priority = temp;
                 temp = document.getElementById (id + "_textMessage").value; if ("" != temp) obj.textMessage = temp;
-                temp = document.getElementById (id + "_transmissionMode").value; if ("" != temp) { temp = TransmissionModeKind[temp]; if ("undefined" != typeof (temp)) obj.transmissionMode = "http://iec.ch/TC57/2013/CIM-schema-cim16#TransmissionModeKind." + temp; }
+                temp = TransmissionModeKind[document.getElementById (id + "_transmissionMode").value]; if (temp) obj.transmissionMode = "http://iec.ch/TC57/2013/CIM-schema-cim16#TransmissionModeKind." + temp; else delete obj.transmissionMode;
 
                 return (obj);
             }
@@ -5623,7 +5620,7 @@ define
 
                 obj = EndDeviceAction.prototype.parse.call (this, context, sub);
                 obj.cls = "PanDemandResponse";
-                base.parse_element (/<cim:PanDemandResponse.appliance>([\s\S]*?)<\/cim:PanDemandResponse.appliance>/g, obj, "appliance", base.to_string, sub, context);
+                base.parse_attribute (/<cim:PanDemandResponse.appliance\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "appliance", sub, context);
                 base.parse_element (/<cim:PanDemandResponse.avgLoadAdjustment>([\s\S]*?)<\/cim:PanDemandResponse.avgLoadAdjustment>/g, obj, "avgLoadAdjustment", base.to_string, sub, context);
                 base.parse_element (/<cim:PanDemandResponse.cancelControlMode>([\s\S]*?)<\/cim:PanDemandResponse.cancelControlMode>/g, obj, "cancelControlMode", base.to_string, sub, context);
                 base.parse_element (/<cim:PanDemandResponse.cancelDateTime>([\s\S]*?)<\/cim:PanDemandResponse.cancelDateTime>/g, obj, "cancelDateTime", base.to_datetime, sub, context);
@@ -5647,7 +5644,7 @@ define
             {
                 var fields = EndDeviceAction.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "PanDemandResponse", "appliance", "appliance",  base.from_string, fields);
+                base.export_attribute (obj, "PanDemandResponse", "appliance", "appliance", fields);
                 base.export_element (obj, "PanDemandResponse", "avgLoadAdjustment", "avgLoadAdjustment",  base.from_string, fields);
                 base.export_element (obj, "PanDemandResponse", "cancelControlMode", "cancelControlMode",  base.from_string, fields);
                 base.export_element (obj, "PanDemandResponse", "cancelDateTime", "cancelDateTime",  base.from_datetime, fields);
@@ -5675,8 +5672,7 @@ define
                     `
                     + EndDeviceAction.prototype.template.call (this) +
                     `
-                    {{#appliance}}<div><b>appliance</b>: {{appliance}}</div>{{/appliance}}
-                    {{#avgLoadAdjustment}}<div><b>avgLoadAdjustment</b>: {{avgLoadAdjustment}}</div>{{/avgLoadAdjustment}}
+                    {{#appliance}}<div><b>appliance</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{appliance}}&quot;);}); return false;'>{{appliance}}</a></div>{{/appliance}}\n                    {{#avgLoadAdjustment}}<div><b>avgLoadAdjustment</b>: {{avgLoadAdjustment}}</div>{{/avgLoadAdjustment}}
                     {{#cancelControlMode}}<div><b>cancelControlMode</b>: {{cancelControlMode}}</div>{{/cancelControlMode}}
                     {{#cancelDateTime}}<div><b>cancelDateTime</b>: {{cancelDateTime}}</div>{{/cancelDateTime}}
                     {{#cancelNow}}<div><b>cancelNow</b>: {{cancelNow}}</div>{{/cancelNow}}
@@ -5688,7 +5684,7 @@ define
                     {{#heatingOffset}}<div><b>heatingOffset</b>: {{heatingOffset}}</div>{{/heatingOffset}}
                     {{#heatingSetpoint}}<div><b>heatingSetpoint</b>: {{heatingSetpoint}}</div>{{/heatingSetpoint}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5727,7 +5723,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_heatingOffset'>heatingOffset: </label><div class='col-sm-8'><input id='{{id}}_heatingOffset' class='form-control' type='text'{{#heatingOffset}} value='{{heatingOffset}}'{{/heatingOffset}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_heatingSetpoint'>heatingSetpoint: </label><div class='col-sm-8'><input id='{{id}}_heatingSetpoint' class='form-control' type='text'{{#heatingSetpoint}} value='{{heatingSetpoint}}'{{/heatingSetpoint}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5817,7 +5813,7 @@ define
                     {{#providerID}}<div><b>providerID</b>: {{providerID}}</div>{{/providerID}}
                     {{#PanPricingDetails}}<div><b>PanPricingDetails</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/PanPricingDetails}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5847,7 +5843,7 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_providerID'>providerID: </label><div class='col-sm-8'><input id='{{id}}_providerID' class='form-control' type='text'{{#providerID}} value='{{providerID}}'{{/providerID}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -5936,7 +5932,7 @@ define
                     `
                     {{#IntervalBlocks}}<div><b>IntervalBlocks</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/IntervalBlocks}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -5964,9 +5960,9 @@ define
                     `
                     + BaseReading.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_IntervalBlocks'>IntervalBlocks: </label><div class='col-sm-8'><input id='{{id}}_IntervalBlocks' class='form-control' type='text'{{#IntervalBlocks}} value='{{IntervalBlocks}}_string'{{/IntervalBlocks}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_IntervalBlocks'>IntervalBlocks: </label><div class='col-sm-8'><input id='{{id}}_IntervalBlocks' class='form-control' type='text'{{#IntervalBlocks}} value='{{IntervalBlocks_string}}'{{/IntervalBlocks}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -6061,7 +6057,7 @@ define
                     {{#ReadingType}}<div><b>ReadingType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{ReadingType}}&quot;);}); return false;'>{{ReadingType}}</a></div>{{/ReadingType}}
                     {{#MeterReadings}}<div><b>MeterReadings</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MeterReadings}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -6070,14 +6066,14 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.ReadingReasonKind = []; if (!obj.reason) obj.ReadingReasonKind.push ({ id: '', selected: true}); for (var property in ReadingReasonKind) obj.ReadingReasonKind.push ({ id: property, selected: obj.reason && obj.reason.endsWith ('.' + property)});
+                obj.reasonReadingReasonKind = [{ id: '', selected: (!obj.reason)}]; for (var property in ReadingReasonKind) obj.reasonReadingReasonKind.push ({ id: property, selected: obj.reason && obj.reason.endsWith ('.' + property)});
                 if (obj.MeterReadings) obj.MeterReadings_string = obj.MeterReadings.join ();
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.ReadingReasonKind;
+                delete obj.reasonReadingReasonKind;
                 delete obj.MeterReadings_string;
             }
 
@@ -6091,11 +6087,11 @@ define
                     `
                     + BaseReading.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_reason'>reason: </label><div class='col-sm-8'><select id='{{id}}_reason' class='form-control'>{{#ReadingReasonKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ReadingReasonKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_reason'>reason: </label><div class='col-sm-8'><select id='{{id}}_reason' class='form-control custom-select'>{{#reasonReadingReasonKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/reasonReadingReasonKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_ReadingType'>ReadingType: </label><div class='col-sm-8'><input id='{{id}}_ReadingType' class='form-control' type='text'{{#ReadingType}} value='{{ReadingType}}'{{/ReadingType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MeterReadings'>MeterReadings: </label><div class='col-sm-8'><input id='{{id}}_MeterReadings' class='form-control' type='text'{{#MeterReadings}} value='{{MeterReadings}}_string'{{/MeterReadings}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MeterReadings'>MeterReadings: </label><div class='col-sm-8'><input id='{{id}}_MeterReadings' class='form-control' type='text'{{#MeterReadings}} value='{{MeterReadings_string}}'{{/MeterReadings}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -6106,7 +6102,7 @@ define
 
                 var obj = obj || { id: id, cls: "Reading" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_reason").value; if ("" != temp) { temp = ReadingReasonKind[temp]; if ("undefined" != typeof (temp)) obj.reason = "http://iec.ch/TC57/2013/CIM-schema-cim16#ReadingReasonKind." + temp; }
+                temp = ReadingReasonKind[document.getElementById (id + "_reason").value]; if (temp) obj.reason = "http://iec.ch/TC57/2013/CIM-schema-cim16#ReadingReasonKind." + temp; else delete obj.reason;
                 temp = document.getElementById (id + "_ReadingType").value; if ("" != temp) obj.ReadingType = temp;
                 temp = document.getElementById (id + "_MeterReadings").value; if ("" != temp) obj.MeterReadings = temp.split (",");
 
@@ -6202,7 +6198,7 @@ define
                     {{#MeterReplacementWorks}}<div><b>MeterReplacementWorks</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MeterReplacementWorks}}
                     {{#VendingTransactions}}<div><b>VendingTransactions</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/VendingTransactions}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -6240,7 +6236,7 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_formNumber'>formNumber: </label><div class='col-sm-8'><input id='{{id}}_formNumber' class='form-control' type='text'{{#formNumber}} value='{{formNumber}}'{{/formNumber}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -6277,28 +6273,35 @@ define
                 PanPricingDetail: PanPricingDetail,
                 EndDeviceEvent: EndDeviceEvent,
                 EndDevice: EndDevice,
+                EndDeviceTiming: EndDeviceTiming,
+                ServiceMultiplierKind: ServiceMultiplierKind,
                 PanDisplay: PanDisplay,
                 ReadingInterharmonic: ReadingInterharmonic,
                 ComFunction: ComFunction,
-                EndDeviceTiming: EndDeviceTiming,
                 SimpleEndDeviceFunction: SimpleEndDeviceFunction,
                 EndDeviceControlType: EndDeviceControlType,
+                UsagePointConnectedKind: UsagePointConnectedKind,
                 MetrologyRequirement: MetrologyRequirement,
+                ReadingReasonKind: ReadingReasonKind,
+                ComTechnologyKind: ComTechnologyKind,
                 ReadingQuality: ReadingQuality,
-                UsagePoint: UsagePoint,
                 MeterMultiplier: MeterMultiplier,
+                UsagePoint: UsagePoint,
+                AmiBillingReadyKind: AmiBillingReadyKind,
+                TransmissionModeKind: TransmissionModeKind,
+                ComDirectionKind: ComDirectionKind,
                 EndDeviceFunction: EndDeviceFunction,
-                RationalNumber: RationalNumber,
                 BaseReading: BaseReading,
+                RationalNumber: RationalNumber,
                 DemandResponseProgram: DemandResponseProgram,
                 ReadingQualityType: ReadingQualityType,
+                EndDeviceGroup: EndDeviceGroup,
+                IntervalBlock: IntervalBlock,
                 EndDeviceCapability: EndDeviceCapability,
                 EndDeviceInfo: EndDeviceInfo,
-                IntervalBlock: IntervalBlock,
-                EndDeviceGroup: EndDeviceGroup,
                 PanDemandResponse: PanDemandResponse,
-                ComModule: ComModule,
                 EndDeviceEventDetail: EndDeviceEventDetail,
+                ComModule: ComModule,
                 UsagePointGroup: UsagePointGroup,
                 UsagePointLocation: UsagePointLocation,
                 IntervalReading: IntervalReading,
@@ -6306,16 +6309,19 @@ define
                 Register: Register,
                 ControlledAppliance: ControlledAppliance,
                 ServiceMultiplier: ServiceMultiplier,
-                Channel: Channel,
+                PendingCalculation: PendingCalculation,
                 ReadingType: ReadingType,
                 EndDeviceAction: EndDeviceAction,
-                PendingCalculation: PendingCalculation,
+                Channel: Channel,
                 Meter: Meter,
+                RandomisationKind: RandomisationKind,
                 EndDeviceEventType: EndDeviceEventType,
                 PanPricing: PanPricing,
                 MeterReading: MeterReading,
-                Reading: Reading,
-                MeterServiceWork: MeterServiceWork
+                EndDeviceFunctionKind: EndDeviceFunctionKind,
+                MeterMultiplierKind: MeterMultiplierKind,
+                MeterServiceWork: MeterServiceWork,
+                Reading: Reading
             }
         );
     }

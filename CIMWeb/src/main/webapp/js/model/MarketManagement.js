@@ -91,7 +91,7 @@ define
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     {{#Price}}<div><b>Price</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Price}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -129,12 +129,12 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_quality'>quality: </label><div class='col-sm-8'><input id='{{id}}_quality' class='form-control' type='text'{{#quality}} value='{{quality}}'{{/quality}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_quantity'>quantity: </label><div class='col-sm-8'><input id='{{id}}_quantity' class='form-control' type='text'{{#quantity}} value='{{quantity}}'{{/quantity}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_secondaryQuantity'>secondaryQuantity: </label><div class='col-sm-8'><input id='{{id}}_secondaryQuantity' class='form-control' type='text'{{#secondaryQuantity}} value='{{secondaryQuantity}}'{{/secondaryQuantity}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType}}_string'{{/AceTariffType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason}}_string'{{/Reason}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType_string}}'{{/AceTariffType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason_string}}'{{/Reason}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period}}'{{/Period}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -247,7 +247,7 @@ define
                     {{#Period}}<div><b>Period</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Period}}
                     {{#MarketDocument}}<div><b>MarketDocument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketDocument}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -283,12 +283,12 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_code'>code: </label><div class='col-sm-8'><input id='{{id}}_code' class='form-control' type='text'{{#code}} value='{{code}}'{{/code}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_text'>text: </label><div class='col-sm-8'><input id='{{id}}_text' class='form-control' type='text'{{#text}} value='{{text}}'{{/text}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point}}_string'{{/Point}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period}}_string'{{/Period}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point_string}}'{{/Point}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period_string}}'{{/Period}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -389,7 +389,7 @@ define
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     {{#AceTariffType}}<div><b>AceTariffType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/AceTariffType}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -420,10 +420,10 @@ define
                     + base.Element.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_name'>name: </label><div class='col-sm-8'><input id='{{id}}_name' class='form-control' type='text'{{#name}} value='{{name}}'{{/name}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType}}_string'{{/AceTariffType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType_string}}'{{/AceTariffType}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -519,7 +519,7 @@ define
                     {{#time}}<div><b>time</b>: {{time}}</div>{{/time}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -549,9 +549,9 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_date'>date: </label><div class='col-sm-8'><input id='{{id}}_date' class='form-control' type='text'{{#date}} value='{{date}}'{{/date}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_time'>time: </label><div class='col-sm-8'><input id='{{id}}_time' class='form-control' type='text'{{#time}} value='{{time}}'{{/time}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -643,7 +643,7 @@ define
                     {{#psrType}}<div><b>psrType</b>: {{psrType}}</div>{{/psrType}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -672,9 +672,9 @@ define
                     + Core.PSRType.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_psrType'>psrType: </label><div class='col-sm-8'><input id='{{id}}_psrType' class='form-control' type='text'{{#psrType}} value='{{psrType}}'{{/psrType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -771,7 +771,7 @@ define
                     {{#Unit}}<div><b>Unit</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Unit}}
                     {{#MarketDocument}}<div><b>MarketDocument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketDocument}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -804,11 +804,11 @@ define
                     + base.Element.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point}}_string'{{/Point}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Unit'>Unit: </label><div class='col-sm-8'><input id='{{id}}_Unit' class='form-control' type='text'{{#Unit}} value='{{Unit}}_string'{{/Unit}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point_string}}'{{/Point}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Unit'>Unit: </label><div class='col-sm-8'><input id='{{id}}_Unit' class='form-control' type='text'{{#Unit}} value='{{Unit_string}}'{{/Unit}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -927,7 +927,7 @@ define
                     {{#Domain}}<div><b>Domain</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Domain}}
                     {{#MarketParticipant}}<div><b>MarketParticipant</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketParticipant}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -973,18 +973,18 @@ define
                     `
                     + Common.Document.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period}}_string'{{/Period}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AttributeInstanceComponent'>AttributeInstanceComponent: </label><div class='col-sm-8'><input id='{{id}}_AttributeInstanceComponent' class='form-control' type='text'{{#AttributeInstanceComponent}} value='{{AttributeInstanceComponent}}_string'{{/AttributeInstanceComponent}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_selfMarketDocument'>selfMarketDocument: </label><div class='col-sm-8'><input id='{{id}}_selfMarketDocument' class='form-control' type='text'{{#selfMarketDocument}} value='{{selfMarketDocument}}_string'{{/selfMarketDocument}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason}}_string'{{/Reason}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Process'>Process: </label><div class='col-sm-8'><input id='{{id}}_Process' class='form-control' type='text'{{#Process}} value='{{Process}}_string'{{/Process}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType}}_string'{{/AceTariffType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Domain'>Domain: </label><div class='col-sm-8'><input id='{{id}}_Domain' class='form-control' type='text'{{#Domain}} value='{{Domain}}_string'{{/Domain}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketParticipant'>MarketParticipant: </label><div class='col-sm-8'><input id='{{id}}_MarketParticipant' class='form-control' type='text'{{#MarketParticipant}} value='{{MarketParticipant}}_string'{{/MarketParticipant}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period_string}}'{{/Period}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AttributeInstanceComponent'>AttributeInstanceComponent: </label><div class='col-sm-8'><input id='{{id}}_AttributeInstanceComponent' class='form-control' type='text'{{#AttributeInstanceComponent}} value='{{AttributeInstanceComponent_string}}'{{/AttributeInstanceComponent}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_selfMarketDocument'>selfMarketDocument: </label><div class='col-sm-8'><input id='{{id}}_selfMarketDocument' class='form-control' type='text'{{#selfMarketDocument}} value='{{selfMarketDocument_string}}'{{/selfMarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason_string}}'{{/Reason}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Process'>Process: </label><div class='col-sm-8'><input id='{{id}}_Process' class='form-control' type='text'{{#Process}} value='{{Process_string}}'{{/Process}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AceTariffType'>AceTariffType: </label><div class='col-sm-8'><input id='{{id}}_AceTariffType' class='form-control' type='text'{{#AceTariffType}} value='{{AceTariffType_string}}'{{/AceTariffType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Domain'>Domain: </label><div class='col-sm-8'><input id='{{id}}_Domain' class='form-control' type='text'{{#Domain}} value='{{Domain_string}}'{{/Domain}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketParticipant'>MarketParticipant: </label><div class='col-sm-8'><input id='{{id}}_MarketParticipant' class='form-control' type='text'{{#MarketParticipant}} value='{{MarketParticipant_string}}'{{/MarketParticipant}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1034,7 +1034,7 @@ define
          * An area of activity defined within the energy market.
          *
          */
-        class Domain extends Core.IdentifiedObject
+        class Domain_ extends Core.IdentifiedObject
         {
             constructor (template, cim_data)
             {
@@ -1092,7 +1092,7 @@ define
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     {{#MarketDocument}}<div><b>MarketDocument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketDocument}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1122,10 +1122,10 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1214,7 +1214,7 @@ define
                     `
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1242,9 +1242,9 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1300,7 +1300,7 @@ define
                 obj = base.Element.prototype.parse.call (this, context, sub);
                 obj.cls = "Period";
                 base.parse_element (/<cim:Period.resolution>([\s\S]*?)<\/cim:Period.resolution>/g, obj, "resolution", base.to_string, sub, context);
-                base.parse_element (/<cim:Period.timeInterval>([\s\S]*?)<\/cim:Period.timeInterval>/g, obj, "timeInterval", base.to_string, sub, context);
+                base.parse_attribute (/<cim:Period.timeInterval\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "timeInterval", sub, context);
                 base.parse_attributes (/<cim:Period.TimeSeries\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "TimeSeries", sub, context);
                 base.parse_attributes (/<cim:Period.MarketDocument\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "MarketDocument", sub, context);
                 base.parse_attributes (/<cim:Period.Reason\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Reason", sub, context);
@@ -1318,7 +1318,7 @@ define
                 var fields = [];
 
                 base.export_element (obj, "Period", "resolution", "resolution",  base.from_string, fields);
-                base.export_element (obj, "Period", "timeInterval", "timeInterval",  base.from_string, fields);
+                base.export_attribute (obj, "Period", "timeInterval", "timeInterval", fields);
                 base.export_attributes (obj, "Period", "TimeSeries", "TimeSeries", fields);
                 base.export_attributes (obj, "Period", "MarketDocument", "MarketDocument", fields);
                 base.export_attributes (obj, "Period", "Reason", "Reason", fields);
@@ -1346,7 +1346,7 @@ define
                     {{#Reason}}<div><b>Reason</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Reason}}
                     {{#Point}}<div><b>Point</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Point}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1382,11 +1382,11 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_resolution'>resolution: </label><div class='col-sm-8'><input id='{{id}}_resolution' class='form-control' type='text'{{#resolution}} value='{{resolution}}'{{/resolution}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_timeInterval'>timeInterval: </label><div class='col-sm-8'><input id='{{id}}_timeInterval' class='form-control' type='text'{{#timeInterval}} value='{{timeInterval}}'{{/timeInterval}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason}}_string'{{/Reason}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason_string}}'{{/Reason}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1483,7 +1483,7 @@ define
                     {{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1512,9 +1512,9 @@ define
                     + base.Element.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_status'>status: </label><div class='col-sm-8'><input id='{{id}}_status' class='form-control' type='text'{{#status}} value='{{status}}'{{/status}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1614,7 +1614,7 @@ define
                     {{#MarketDocument}}<div><b>MarketDocument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketDocument}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1647,10 +1647,10 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_attribute'>attribute: </label><div class='col-sm-8'><input id='{{id}}_attribute' class='form-control' type='text'{{#attribute}} value='{{attribute}}'{{/attribute}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_attributeValue'>attributeValue: </label><div class='col-sm-8'><input id='{{id}}_attributeValue' class='form-control' type='text'{{#attributeValue}} value='{{attributeValue}}'{{/attributeValue}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_position'>position: </label><div class='col-sm-8'><input id='{{id}}_position' class='form-control' type='text'{{#position}} value='{{position}}'{{/position}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1760,7 +1760,7 @@ define
                     {{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1794,9 +1794,9 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_paymentTerms'>paymentTerms: </label><div class='col-sm-8'><input id='{{id}}_paymentTerms' class='form-control' type='text'{{#paymentTerms}} value='{{paymentTerms}}'{{/paymentTerms}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_rights'>rights: </label><div class='col-sm-8'><input id='{{id}}_rights' class='form-control' type='text'{{#rights}} value='{{rights}}'{{/rights}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -1898,7 +1898,7 @@ define
                     {{#direction}}<div><b>direction</b>: {{direction}}</div>{{/direction}}
                     {{#Point}}<div><b>Point</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{Point}}&quot;);}); return false;'>{{Point}}</a></div>{{/Point}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -1929,7 +1929,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_direction'>direction: </label><div class='col-sm-8'><input id='{{id}}_direction' class='form-control' type='text'{{#direction}} value='{{direction}}'{{/direction}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point}}'{{/Point}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2025,7 +2025,7 @@ define
                     {{#processType}}<div><b>processType</b>: {{processType}}</div>{{/processType}}
                     {{#MarketDocument}}<div><b>MarketDocument</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MarketDocument}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2055,9 +2055,9 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_classificationType'>classificationType: </label><div class='col-sm-8'><input id='{{id}}_classificationType' class='form-control' type='text'{{#classificationType}} value='{{classificationType}}'{{/classificationType}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_processType'>processType: </label><div class='col-sm-8'><input id='{{id}}_processType' class='form-control' type='text'{{#processType}} value='{{processType}}'{{/processType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2206,7 +2206,7 @@ define
                     {{#MktPSRType}}<div><b>MktPSRType</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/MktPSRType}}
                     {{#RegisteredResource}}<div><b>RegisteredResource</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/RegisteredResource}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2268,23 +2268,23 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_objectAggregation'>objectAggregation: </label><div class='col-sm-8'><input id='{{id}}_objectAggregation' class='form-control' type='text'{{#objectAggregation}} value='{{objectAggregation}}'{{/objectAggregation}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_product'>product: </label><div class='col-sm-8'><input id='{{id}}_product' class='form-control' type='text'{{#product}} value='{{product}}'{{/product}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_version'>version: </label><div class='col-sm-8'><input id='{{id}}_version' class='form-control' type='text'{{#version}} value='{{version}}'{{/version}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument}}_string'{{/MarketDocument}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_FlowDirection'>FlowDirection: </label><div class='col-sm-8'><input id='{{id}}_FlowDirection' class='form-control' type='text'{{#FlowDirection}} value='{{FlowDirection}}_string'{{/FlowDirection}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period}}_string'{{/Period}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Auction'>Auction: </label><div class='col-sm-8'><input id='{{id}}_Auction' class='form-control' type='text'{{#Auction}} value='{{Auction}}_string'{{/Auction}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DateAndOrTime'>DateAndOrTime: </label><div class='col-sm-8'><input id='{{id}}_DateAndOrTime' class='form-control' type='text'{{#DateAndOrTime}} value='{{DateAndOrTime}}_string'{{/DateAndOrTime}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AttributeInstanceComponent'>AttributeInstanceComponent: </label><div class='col-sm-8'><input id='{{id}}_AttributeInstanceComponent' class='form-control' type='text'{{#AttributeInstanceComponent}} value='{{AttributeInstanceComponent}}_string'{{/AttributeInstanceComponent}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Domain'>Domain: </label><div class='col-sm-8'><input id='{{id}}_Domain' class='form-control' type='text'{{#Domain}} value='{{Domain}}_string'{{/Domain}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Unit'>Unit: </label><div class='col-sm-8'><input id='{{id}}_Unit' class='form-control' type='text'{{#Unit}} value='{{Unit}}_string'{{/Unit}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason}}_string'{{/Reason}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketParticipant'>MarketParticipant: </label><div class='col-sm-8'><input id='{{id}}_MarketParticipant' class='form-control' type='text'{{#MarketParticipant}} value='{{MarketParticipant}}_string'{{/MarketParticipant}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketEvaluationPoint'>MarketEvaluationPoint: </label><div class='col-sm-8'><input id='{{id}}_MarketEvaluationPoint' class='form-control' type='text'{{#MarketEvaluationPoint}} value='{{MarketEvaluationPoint}}_string'{{/MarketEvaluationPoint}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketObjectStatus'>MarketObjectStatus: </label><div class='col-sm-8'><input id='{{id}}_MarketObjectStatus' class='form-control' type='text'{{#MarketObjectStatus}} value='{{MarketObjectStatus}}_string'{{/MarketObjectStatus}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point}}_string'{{/Point}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MktPSRType'>MktPSRType: </label><div class='col-sm-8'><input id='{{id}}_MktPSRType' class='form-control' type='text'{{#MktPSRType}} value='{{MktPSRType}}_string'{{/MktPSRType}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_RegisteredResource'>RegisteredResource: </label><div class='col-sm-8'><input id='{{id}}_RegisteredResource' class='form-control' type='text'{{#RegisteredResource}} value='{{RegisteredResource}}_string'{{/RegisteredResource}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketDocument'>MarketDocument: </label><div class='col-sm-8'><input id='{{id}}_MarketDocument' class='form-control' type='text'{{#MarketDocument}} value='{{MarketDocument_string}}'{{/MarketDocument}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_FlowDirection'>FlowDirection: </label><div class='col-sm-8'><input id='{{id}}_FlowDirection' class='form-control' type='text'{{#FlowDirection}} value='{{FlowDirection_string}}'{{/FlowDirection}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Period'>Period: </label><div class='col-sm-8'><input id='{{id}}_Period' class='form-control' type='text'{{#Period}} value='{{Period_string}}'{{/Period}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Auction'>Auction: </label><div class='col-sm-8'><input id='{{id}}_Auction' class='form-control' type='text'{{#Auction}} value='{{Auction_string}}'{{/Auction}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_DateAndOrTime'>DateAndOrTime: </label><div class='col-sm-8'><input id='{{id}}_DateAndOrTime' class='form-control' type='text'{{#DateAndOrTime}} value='{{DateAndOrTime_string}}'{{/DateAndOrTime}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AttributeInstanceComponent'>AttributeInstanceComponent: </label><div class='col-sm-8'><input id='{{id}}_AttributeInstanceComponent' class='form-control' type='text'{{#AttributeInstanceComponent}} value='{{AttributeInstanceComponent_string}}'{{/AttributeInstanceComponent}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Domain'>Domain: </label><div class='col-sm-8'><input id='{{id}}_Domain' class='form-control' type='text'{{#Domain}} value='{{Domain_string}}'{{/Domain}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Unit'>Unit: </label><div class='col-sm-8'><input id='{{id}}_Unit' class='form-control' type='text'{{#Unit}} value='{{Unit_string}}'{{/Unit}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Reason'>Reason: </label><div class='col-sm-8'><input id='{{id}}_Reason' class='form-control' type='text'{{#Reason}} value='{{Reason_string}}'{{/Reason}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketParticipant'>MarketParticipant: </label><div class='col-sm-8'><input id='{{id}}_MarketParticipant' class='form-control' type='text'{{#MarketParticipant}} value='{{MarketParticipant_string}}'{{/MarketParticipant}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketEvaluationPoint'>MarketEvaluationPoint: </label><div class='col-sm-8'><input id='{{id}}_MarketEvaluationPoint' class='form-control' type='text'{{#MarketEvaluationPoint}} value='{{MarketEvaluationPoint_string}}'{{/MarketEvaluationPoint}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MarketObjectStatus'>MarketObjectStatus: </label><div class='col-sm-8'><input id='{{id}}_MarketObjectStatus' class='form-control' type='text'{{#MarketObjectStatus}} value='{{MarketObjectStatus_string}}'{{/MarketObjectStatus}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Point'>Point: </label><div class='col-sm-8'><input id='{{id}}_Point' class='form-control' type='text'{{#Point}} value='{{Point_string}}'{{/Point}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_MktPSRType'>MktPSRType: </label><div class='col-sm-8'><input id='{{id}}_MktPSRType' class='form-control' type='text'{{#MktPSRType}} value='{{MktPSRType_string}}'{{/MktPSRType}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_RegisteredResource'>RegisteredResource: </label><div class='col-sm-8'><input id='{{id}}_RegisteredResource' class='form-control' type='text'{{#RegisteredResource}} value='{{RegisteredResource_string}}'{{/RegisteredResource}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2408,7 +2408,7 @@ define
                     {{#direction}}<div><b>direction</b>: {{direction}}</div>{{/direction}}
                     {{#TimeSeries}}<div><b>TimeSeries</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/TimeSeries}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2437,9 +2437,9 @@ define
                     + base.Element.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_direction'>direction: </label><div class='col-sm-8'><input id='{{id}}_direction' class='form-control' type='text'{{#direction}} value='{{direction}}'{{/direction}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries}}_string'{{/TimeSeries}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_TimeSeries'>TimeSeries: </label><div class='col-sm-8'><input id='{{id}}_TimeSeries' class='form-control' type='text'{{#TimeSeries}} value='{{TimeSeries_string}}'{{/TimeSeries}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2524,7 +2524,7 @@ define
                     + MarketDocument.prototype.template.call (this) +
                     `
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2551,7 +2551,7 @@ define
                     + MarketDocument.prototype.edit_template.call (this) +
                     `
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2639,7 +2639,7 @@ define
                     {{#minimumActivationQuantity}}<div><b>minimumActivationQuantity</b>: {{minimumActivationQuantity}}</div>{{/minimumActivationQuantity}}
                     {{#stepIncrementQuantity}}<div><b>stepIncrementQuantity</b>: {{stepIncrementQuantity}}</div>{{/stepIncrementQuantity}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -2672,7 +2672,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_minimumActivationQuantity'>minimumActivationQuantity: </label><div class='col-sm-8'><input id='{{id}}_minimumActivationQuantity' class='form-control' type='text'{{#minimumActivationQuantity}} value='{{minimumActivationQuantity}}'{{/minimumActivationQuantity}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_stepIncrementQuantity'>stepIncrementQuantity: </label><div class='col-sm-8'><input id='{{id}}_stepIncrementQuantity' class='form-control' type='text'{{#stepIncrementQuantity}} value='{{stepIncrementQuantity}}'{{/stepIncrementQuantity}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -2701,16 +2701,16 @@ define
                 Reason: Reason,
                 TimeSeries: TimeSeries,
                 MarketObjectStatus: MarketObjectStatus,
+                Domain: Domain_,
                 MarketAgreement: MarketAgreement,
                 AceTariffType: AceTariffType,
-                Domain: Domain,
                 MarketEvaluationPoint: MarketEvaluationPoint,
                 MktPSRType: MktPSRType,
                 Unit: Unit,
                 Point: Point,
                 Process: Process,
-                Price: Price,
                 Auction: Auction,
+                Price: Price,
                 BidTimeSeries: BidTimeSeries,
                 Period: Period,
                 DateAndOrTime: DateAndOrTime,

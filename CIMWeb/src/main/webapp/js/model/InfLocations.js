@@ -74,7 +74,7 @@ define
 
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "RedLine";
-                base.parse_element (/<cim:RedLine.status>([\s\S]*?)<\/cim:RedLine.status>/g, obj, "status", base.to_string, sub, context);
+                base.parse_attribute (/<cim:RedLine.status\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "status", sub, context);
                 var bucket = context.parsed.RedLine;
                 if (null == bucket)
                    context.parsed.RedLine = bucket = {};
@@ -87,7 +87,7 @@ define
             {
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "RedLine", "status", "status",  base.from_string, fields);
+                base.export_attribute (obj, "RedLine", "status", "status", fields);
                 if (full)
                     base.Element.prototype.export.call (this, obj, fields)
 
@@ -104,9 +104,8 @@ define
                     `
                     + Core.IdentifiedObject.prototype.template.call (this) +
                     `
-                    {{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
-                    </div>
-                    <fieldset>
+                    {{#status}}<div><b>status</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{status}}&quot;);}); return false;'>{{status}}</a></div>{{/status}}\n                    </div>
+                    </fieldset>
 
                     `
                 );
@@ -134,7 +133,7 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_status'>status: </label><div class='col-sm-8'><input id='{{id}}_status' class='form-control' type='text'{{#status}} value='{{status}}'{{/status}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -212,7 +211,7 @@ define
                     `
                     {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -221,13 +220,13 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.ZoneKind = []; if (!obj.kind) obj.ZoneKind.push ({ id: '', selected: true}); for (var property in ZoneKind) obj.ZoneKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                obj.kindZoneKind = [{ id: '', selected: (!obj.kind)}]; for (var property in ZoneKind) obj.kindZoneKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
             }
 
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.ZoneKind;
+                delete obj.kindZoneKind;
             }
 
             edit_template ()
@@ -240,9 +239,9 @@ define
                     `
                     + Common.Location.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#ZoneKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/ZoneKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control custom-select'>{{#kindZoneKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/kindZoneKind}}</select></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -253,7 +252,7 @@ define
 
                 var obj = obj || { id: id, cls: "Zone" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = ZoneKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#ZoneKind." + temp; }
+                temp = ZoneKind[document.getElementById (id + "_kind").value]; if (temp) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#ZoneKind." + temp; else delete obj.kind;
 
                 return (obj);
             }
@@ -323,7 +322,7 @@ define
                     {{#propertyData}}<div><b>propertyData</b>: {{propertyData}}</div>{{/propertyData}}
                     {{#LandProperty}}<div><b>LandProperty</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{LandProperty}}&quot;);}); return false;'>{{LandProperty}}</a></div>{{/LandProperty}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -352,7 +351,7 @@ define
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_propertyData'>propertyData: </label><div class='col-sm-8'><input id='{{id}}_propertyData' class='form-control' type='text'{{#propertyData}} value='{{propertyData}}'{{/propertyData}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_LandProperty'>LandProperty: </label><div class='col-sm-8'><input id='{{id}}_LandProperty' class='form-control' type='text'{{#LandProperty}} value='{{LandProperty}}'{{/LandProperty}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -408,7 +407,7 @@ define
 
                 obj = Core.IdentifiedObject.prototype.parse.call (this, context, sub);
                 obj.cls = "Route";
-                base.parse_element (/<cim:Route.status>([\s\S]*?)<\/cim:Route.status>/g, obj, "status", base.to_string, sub, context);
+                base.parse_attribute (/<cim:Route.status\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "status", sub, context);
                 base.parse_element (/<cim:Route.type>([\s\S]*?)<\/cim:Route.type>/g, obj, "type", base.to_string, sub, context);
                 base.parse_attributes (/<cim:Route.Locations\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Locations", sub, context);
                 base.parse_attributes (/<cim:Route.Crews\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "Crews", sub, context);
@@ -424,7 +423,7 @@ define
             {
                 var fields = Core.IdentifiedObject.prototype.export.call (this, obj, false);
 
-                base.export_element (obj, "Route", "status", "status",  base.from_string, fields);
+                base.export_attribute (obj, "Route", "status", "status", fields);
                 base.export_element (obj, "Route", "type", "type",  base.from_string, fields);
                 base.export_attributes (obj, "Route", "Locations", "Locations", fields);
                 base.export_attributes (obj, "Route", "Crews", "Crews", fields);
@@ -444,12 +443,11 @@ define
                     `
                     + Core.IdentifiedObject.prototype.template.call (this) +
                     `
-                    {{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
-                    {{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
+                    {{#status}}<div><b>status</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{status}}&quot;);}); return false;'>{{status}}</a></div>{{/status}}\n                    {{#type}}<div><b>type</b>: {{type}}</div>{{/type}}
                     {{#Locations}}<div><b>Locations</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Locations}}
                     {{#Crews}}<div><b>Crews</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Crews}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -481,9 +479,9 @@ define
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_status'>status: </label><div class='col-sm-8'><input id='{{id}}_status' class='form-control' type='text'{{#status}} value='{{status}}'{{/status}}></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_type'>type: </label><div class='col-sm-8'><input id='{{id}}_type' class='form-control' type='text'{{#type}} value='{{type}}'{{/type}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Locations'>Locations: </label><div class='col-sm-8'><input id='{{id}}_Locations' class='form-control' type='text'{{#Locations}} value='{{Locations}}_string'{{/Locations}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Locations'>Locations: </label><div class='col-sm-8'><input id='{{id}}_Locations' class='form-control' type='text'{{#Locations}} value='{{Locations_string}}'{{/Locations}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -546,7 +544,7 @@ define
                 base.parse_attribute (/<cim:LandProperty.demographicKind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "demographicKind", sub, context);
                 base.parse_element (/<cim:LandProperty.externalRecordReference>([\s\S]*?)<\/cim:LandProperty.externalRecordReference>/g, obj, "externalRecordReference", base.to_string, sub, context);
                 base.parse_attribute (/<cim:LandProperty.kind\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "kind", sub, context);
-                base.parse_element (/<cim:LandProperty.status>([\s\S]*?)<\/cim:LandProperty.status>/g, obj, "status", base.to_string, sub, context);
+                base.parse_attribute (/<cim:LandProperty.status\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "status", sub, context);
                 base.parse_attributes (/<cim:LandProperty.ErpOrganisationRoles\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "ErpOrganisationRoles", sub, context);
                 base.parse_attributes (/<cim:LandProperty.LocationGrants\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "LocationGrants", sub, context);
                 base.parse_attributes (/<cim:LandProperty.RightOfWays\s+rdf:resource\s*?=\s*?("|')([\s\S]*?)\1\s*?\/>/g, obj, "RightOfWays", sub, context);
@@ -569,7 +567,7 @@ define
                 base.export_attribute (obj, "LandProperty", "demographicKind", "demographicKind", fields);
                 base.export_element (obj, "LandProperty", "externalRecordReference", "externalRecordReference",  base.from_string, fields);
                 base.export_attribute (obj, "LandProperty", "kind", "kind", fields);
-                base.export_element (obj, "LandProperty", "status", "status",  base.from_string, fields);
+                base.export_attribute (obj, "LandProperty", "status", "status", fields);
                 base.export_attributes (obj, "LandProperty", "ErpOrganisationRoles", "ErpOrganisationRoles", fields);
                 base.export_attributes (obj, "LandProperty", "LocationGrants", "LocationGrants", fields);
                 base.export_attributes (obj, "LandProperty", "RightOfWays", "RightOfWays", fields);
@@ -596,8 +594,7 @@ define
                     {{#demographicKind}}<div><b>demographicKind</b>: {{demographicKind}}</div>{{/demographicKind}}
                     {{#externalRecordReference}}<div><b>externalRecordReference</b>: {{externalRecordReference}}</div>{{/externalRecordReference}}
                     {{#kind}}<div><b>kind</b>: {{kind}}</div>{{/kind}}
-                    {{#status}}<div><b>status</b>: {{status}}</div>{{/status}}
-                    {{#ErpOrganisationRoles}}<div><b>ErpOrganisationRoles</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ErpOrganisationRoles}}
+                    {{#status}}<div><b>status</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{status}}&quot;);}); return false;'>{{status}}</a></div>{{/status}}\n                    {{#ErpOrganisationRoles}}<div><b>ErpOrganisationRoles</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ErpOrganisationRoles}}
                     {{#LocationGrants}}<div><b>LocationGrants</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/LocationGrants}}
                     {{#RightOfWays}}<div><b>RightOfWays</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/RightOfWays}}
                     {{#Locations}}<div><b>Locations</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/Locations}}
@@ -605,7 +602,7 @@ define
                     {{#ErpSiteLevelDatas}}<div><b>ErpSiteLevelDatas</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ErpSiteLevelDatas}}
                     {{#ErpPersonRoles}}<div><b>ErpPersonRoles</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/ErpPersonRoles}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -614,8 +611,8 @@ define
             condition (obj)
             {
                 super.condition (obj);
-                obj.DemographicKind = []; if (!obj.demographicKind) obj.DemographicKind.push ({ id: '', selected: true}); for (var property in DemographicKind) obj.DemographicKind.push ({ id: property, selected: obj.demographicKind && obj.demographicKind.endsWith ('.' + property)});
-                obj.LandPropertyKind = []; if (!obj.kind) obj.LandPropertyKind.push ({ id: '', selected: true}); for (var property in LandPropertyKind) obj.LandPropertyKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
+                obj.demographicKindDemographicKind = [{ id: '', selected: (!obj.demographicKind)}]; for (var property in DemographicKind) obj.demographicKindDemographicKind.push ({ id: property, selected: obj.demographicKind && obj.demographicKind.endsWith ('.' + property)});
+                obj.kindLandPropertyKind = [{ id: '', selected: (!obj.kind)}]; for (var property in LandPropertyKind) obj.kindLandPropertyKind.push ({ id: property, selected: obj.kind && obj.kind.endsWith ('.' + property)});
                 if (obj.ErpOrganisationRoles) obj.ErpOrganisationRoles_string = obj.ErpOrganisationRoles.join ();
                 if (obj.LocationGrants) obj.LocationGrants_string = obj.LocationGrants.join ();
                 if (obj.RightOfWays) obj.RightOfWays_string = obj.RightOfWays.join ();
@@ -628,8 +625,8 @@ define
             uncondition (obj)
             {
                 super.uncondition (obj);
-                delete obj.DemographicKind;
-                delete obj.LandPropertyKind;
+                delete obj.demographicKindDemographicKind;
+                delete obj.kindLandPropertyKind;
                 delete obj.ErpOrganisationRoles_string;
                 delete obj.LocationGrants_string;
                 delete obj.RightOfWays_string;
@@ -649,15 +646,15 @@ define
                     `
                     + Core.IdentifiedObject.prototype.edit_template.call (this) +
                     `
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_demographicKind'>demographicKind: </label><div class='col-sm-8'><select id='{{id}}_demographicKind' class='form-control'>{{#DemographicKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/DemographicKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_demographicKind'>demographicKind: </label><div class='col-sm-8'><select id='{{id}}_demographicKind' class='form-control custom-select'>{{#demographicKindDemographicKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/demographicKindDemographicKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_externalRecordReference'>externalRecordReference: </label><div class='col-sm-8'><input id='{{id}}_externalRecordReference' class='form-control' type='text'{{#externalRecordReference}} value='{{externalRecordReference}}'{{/externalRecordReference}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control'>{{#LandPropertyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/LandPropertyKind}}</select></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_kind'>kind: </label><div class='col-sm-8'><select id='{{id}}_kind' class='form-control custom-select'>{{#kindLandPropertyKind}}<option value='{{id}}'{{#selected}} selected{{/selected}}>{{id}}</option>{{/kindLandPropertyKind}}</select></div></div>
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_status'>status: </label><div class='col-sm-8'><input id='{{id}}_status' class='form-control' type='text'{{#status}} value='{{status}}'{{/status}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_RightOfWays'>RightOfWays: </label><div class='col-sm-8'><input id='{{id}}_RightOfWays' class='form-control' type='text'{{#RightOfWays}} value='{{RightOfWays}}_string'{{/RightOfWays}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Locations'>Locations: </label><div class='col-sm-8'><input id='{{id}}_Locations' class='form-control' type='text'{{#Locations}} value='{{Locations}}_string'{{/Locations}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AssetContainers'>AssetContainers: </label><div class='col-sm-8'><input id='{{id}}_AssetContainers' class='form-control' type='text'{{#AssetContainers}} value='{{AssetContainers}}_string'{{/AssetContainers}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_RightOfWays'>RightOfWays: </label><div class='col-sm-8'><input id='{{id}}_RightOfWays' class='form-control' type='text'{{#RightOfWays}} value='{{RightOfWays_string}}'{{/RightOfWays}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_Locations'>Locations: </label><div class='col-sm-8'><input id='{{id}}_Locations' class='form-control' type='text'{{#Locations}} value='{{Locations_string}}'{{/Locations}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_AssetContainers'>AssetContainers: </label><div class='col-sm-8'><input id='{{id}}_AssetContainers' class='form-control' type='text'{{#AssetContainers}} value='{{AssetContainers_string}}'{{/AssetContainers}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -668,9 +665,9 @@ define
 
                 var obj = obj || { id: id, cls: "LandProperty" };
                 super.submit (id, obj);
-                temp = document.getElementById (id + "_demographicKind").value; if ("" != temp) { temp = DemographicKind[temp]; if ("undefined" != typeof (temp)) obj.demographicKind = "http://iec.ch/TC57/2013/CIM-schema-cim16#DemographicKind." + temp; }
+                temp = DemographicKind[document.getElementById (id + "_demographicKind").value]; if (temp) obj.demographicKind = "http://iec.ch/TC57/2013/CIM-schema-cim16#DemographicKind." + temp; else delete obj.demographicKind;
                 temp = document.getElementById (id + "_externalRecordReference").value; if ("" != temp) obj.externalRecordReference = temp;
-                temp = document.getElementById (id + "_kind").value; if ("" != temp) { temp = LandPropertyKind[temp]; if ("undefined" != typeof (temp)) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#LandPropertyKind." + temp; }
+                temp = LandPropertyKind[document.getElementById (id + "_kind").value]; if (temp) obj.kind = "http://iec.ch/TC57/2013/CIM-schema-cim16#LandPropertyKind." + temp; else delete obj.kind;
                 temp = document.getElementById (id + "_status").value; if ("" != temp) obj.status = temp;
                 temp = document.getElementById (id + "_RightOfWays").value; if ("" != temp) obj.RightOfWays = temp.split (",");
                 temp = document.getElementById (id + "_Locations").value; if ("" != temp) obj.Locations = temp.split (",");
@@ -761,7 +758,7 @@ define
                     {{#propertyData}}<div><b>propertyData</b>: {{propertyData}}</div>{{/propertyData}}
                     {{#LandProperties}}<div><b>LandProperties</b>: <a href='#' onclick='require([&quot;cimmap&quot;], function(cimmap) {cimmap.select (&quot;{{.}}&quot;);}); return false;'>{{.}}</a></div>{{/LandProperties}}
                     </div>
-                    <fieldset>
+                    </fieldset>
 
                     `
                 );
@@ -790,9 +787,9 @@ define
                     + Common.Agreement.prototype.edit_template.call (this) +
                     `
                     <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_propertyData'>propertyData: </label><div class='col-sm-8'><input id='{{id}}_propertyData' class='form-control' type='text'{{#propertyData}} value='{{propertyData}}'{{/propertyData}}></div></div>
-                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_LandProperties'>LandProperties: </label><div class='col-sm-8'><input id='{{id}}_LandProperties' class='form-control' type='text'{{#LandProperties}} value='{{LandProperties}}_string'{{/LandProperties}}></div></div>
+                    <div class='form-group row'><label class='col-sm-4 col-form-label' for='{{id}}_LandProperties'>LandProperties: </label><div class='col-sm-8'><input id='{{id}}_LandProperties' class='form-control' type='text'{{#LandProperties}} value='{{LandProperties_string}}'{{/LandProperties}}></div></div>
                     </div>
-                    <fieldset>
+                    </fieldset>
                     `
                 );
             }
@@ -824,8 +821,11 @@ define
         return (
             {
                 RightOfWay: RightOfWay,
+                DemographicKind: DemographicKind,
+                ZoneKind: ZoneKind,
                 Zone: Zone,
                 LandProperty: LandProperty,
+                LandPropertyKind: LandPropertyKind,
                 RedLine: RedLine,
                 LocationGrant: LocationGrant,
                 Route: Route
