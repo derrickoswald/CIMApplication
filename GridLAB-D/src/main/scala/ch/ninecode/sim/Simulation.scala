@@ -331,6 +331,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val df = session.sql (sql)
         import session.implicits._
         val trafo_islands = df.map (row ⇒ (row.getString (0), row.getString (1))).collect.toMap
+        log.info ("""%d transformer islands found""".format (trafo_islands.size))
 
         // process the list of transformers
         val transformers = if (0 != job.transformers.size) job.transformers else all_transformers (trafo_islands)
@@ -499,10 +500,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions, storage)
-        val tasks: Seq[SimulationTask] = batch.flatMap (make_tasks)
+        val tasks = batch.flatMap (make_tasks)
+        log.info ("""%d tasks to do""".format (tasks.size))
 
         val transformers = new Transformers (session, storage)
-        val tdata: RDD[TData] = transformers.getTransformerData (topological_nodes = true, null)
+        val tdata = transformers.getTransformerData (topological_nodes = true, null)
         val trafokreise = tasks.map (
             task ⇒
             {

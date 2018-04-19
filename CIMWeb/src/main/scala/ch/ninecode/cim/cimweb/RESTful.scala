@@ -143,7 +143,6 @@ object RESTful
                         case ne: NamingException ⇒
                             System.out.println ("fuck this JNDI shit: " + ne.getMessage)
                     }
-
                 }
                 catch
                 {

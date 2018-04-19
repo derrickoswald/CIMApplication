@@ -49,7 +49,8 @@ class ApplicationConfig extends Application
             classOf[GridLAB],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
-            classOf[TimeSeries]))
+            classOf[TimeSeries],
+            classOf[Estimation]))
     }
 }
 

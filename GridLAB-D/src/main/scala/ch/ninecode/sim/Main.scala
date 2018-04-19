@@ -18,6 +18,7 @@ import ch.ninecode.cim.DefaultSource
 
 object Main
 {
+    val log = LoggerFactory.getLogger (getClass)
     val properties: Properties =
     {
         val in = this.getClass.getResourceAsStream ("/application.properties")
@@ -91,7 +92,22 @@ object Main
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
         arg[String]("<JSON> <JSON>...").optional ().unbounded ().
-            action ((x, c) ⇒ c.copy (simulation = c.simulation :+ x)).
+            action ((x, c) ⇒
+            {
+                try
+                {
+                    val sep = System.getProperty ("file.separator")
+                    val file = new java.io.File(".").getCanonicalPath + (if (x.startsWith (sep)) x else sep + x)
+                    val text = scala.io.Source.fromFile (file, "UTF-8").mkString
+                    c.copy (simulation = c.simulation :+ text)
+                }
+                catch
+                {
+                    case e: Exception =>
+                        log.error (e.getMessage)
+                        throw new Exception ("bad input file name")
+                }
+            }).
             text ("simulation files to process")
 
         help ("help").text ("prints this usage text")
@@ -141,7 +157,6 @@ object Main
             case Some (options) =>
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-                val log = LoggerFactory.getLogger (getClass)
 
                 if (0 != options.simulation.size)
                 {

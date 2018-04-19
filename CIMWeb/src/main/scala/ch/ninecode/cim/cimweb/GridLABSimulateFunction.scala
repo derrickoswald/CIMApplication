@@ -437,7 +437,7 @@ case class GridLABSimulateFunction (simulation: String) extends CIMWebFunction
     override def toString: String =
     {
         val sb = new StringBuilder (super.toString)
-        sb.append (" is GridLABExportFunction (simulation = %s)".format (simulation))
+        sb.append (" is GridLABSimulateFunction (simulation = %s)".format (simulation))
         sb.toString
     }
 }

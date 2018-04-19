@@ -89,38 +89,36 @@ define
              * @memberOf Chooser#
              */
             this.template =
-                 "{{#items}}" +
-                    "<label class='col-sm-3 control-label chooser-label' for='" + this.list_name + "_{{index}}' " + this.data_source + "='{{index}}'>" +
-                    "{{#first}}" +
-                        this.input_label +
-                    "{{/first}}" +
-                    "</label>" +
-                    "<div class='col-sm-9' " + this.data_source + "='{{index}}'>" +
-                        "<div class='input-group'>" +
-                            "{{#hasvalues}}" +
-                                "<span class='dropdown'>" +
-                                    "<input id='" + this.list_name + "_{{index}}' type='text' class='form-control dropdown-toggle' " + this.data_source + "='{{index}}' data-toggle='dropdown' placeholder='" + this.prompt + "' aria-label='" + this.input_label + "' value='{{value}}'{{#last}} aria-describedby='" + this.list_name + "_help'{{/last}}>" +
-                                    "<ul class='dropdown-menu' " + this.data_target + "='" + this.list_name + "_{{index}}' role='menu' aria-labelledby='" + this.list_name + "_{{index}}' >" +
-                                        "{{#values}}" +
-                                        "<li role='presentation'>" +
-                                            "<a class='dropdown-item' role='menuitem' tabindex='-1' href='#'>{{.}}</a>" +
-                                        "</li>" +
-                                        "{{/values}}" +
-                                    "</ul>" +
-                                "</span>" +
-                            "{{/hasvalues}}" +
-                            "{{^values}}" +
-                                "<input type='text' class='form-control' " + this.data_source + "='{{index}}' placeholder='" + this.prompt + "' aria-label='" + this.input_label + "' value='{{value}}'{{#last}} aria-describedby='" + this.list_name + "_help'{{/last}}>" +
-                            "{{/values}}" +
-                            "<span class='input-group-addon btn btn-default' " + this.data_source + "='{{index}}'>" +
-                                "<i class='fa {{glyph}}'></i>" +
-                            "</span>" +
-                        "</div>" +
-                        "{{#last}}" +
-                            "{{{help}}}" +
-                        "{{/last}}" +
-                    "</div>" +
-                "{{/items}}";
+                `
+                 {{#items}}
+                    <label for="${this.list_name}_{{index}}" ${this.data_source}="{{index}}">
+                    {{#first}}${this.input_label}{{/first}}
+                    </label>
+                    <div class="input-group" ${this.data_source}="{{index}}">
+                        {{#hasvalues}}
+                            <span class="dropdown" style="flex: 1 1 auto;">
+                                <input id="${this.list_name}_{{index}}" type="text" class="form-control dropdown-toggle" ${this.data_source}="{{index}}" data-toggle="dropdown" placeholder="${this.prompt}" aria-label="${this.input_label}" value="{{value}}"{{#last}} aria-describedby="${this.list_name}_help"{{/last}}>
+                                <ul class="dropdown-menu" ${this.data_target}="${this.list_name}_{{index}}" role="menu" aria-labelledby="${this.list_name}_{{index}}" >
+                                    {{#values}}
+                                    <li role="presentation">
+                                        <a class="dropdown-item" role="menuitem" tabindex="-1" href="#">{{.}}</a>
+                                    </li>
+                                    {{/values}}
+                                </ul>
+                            </span>
+                        {{/hasvalues}}
+                        {{^values}}
+                            <input type="text" class="form-control" ${this.data_source}="{{index}}" placeholder="${this.prompt}" aria-label="${this.input_label}" value="{{value}}"{{#last}} aria-describedby="${this.list_name}_help"{{/last}}>
+                        {{/values}}
+                        <span class="input-group-addon btn btn-default" ${this.data_source}="{{index}}">
+                            <i class="fa {{glyph}}"></i>
+                        </span>
+                    </div>
+                    {{#last}}
+                        {{{help}}}
+                    {{/last}}
+                {{/items}}
+                `;
 
             /**
              * Context for mustache rendering.

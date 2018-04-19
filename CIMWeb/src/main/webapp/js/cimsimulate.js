@@ -8,7 +8,7 @@ define
 (
     ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme"],
     /**
-     * @summary Functions to simulate using CIM data in memory.
+     * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -259,18 +259,102 @@ define
         }
 
         /**
-         * @summary Run the simulation using GridLAB-D to generate the output files.
-         * @description Execute gridlabd for the current simulation.
+         * @summary Run the simulation using GridLAB-D to populate simmulated_value_by_day Cassandra table.
+         * @description Execute gridlabd for the simulation parameters provided by the user.
          * @function do_simulate
          * @memberOf module:cimsimulate
          */
         function do_simulate ()
         {
-            if (null != TheSimulation)
+
+//            if (null != TheSimulation)
+//            {
+//                var name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + ".json";
+//                runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
+//            }
+            var url;
+            var xmlhttp;
+
+            url = util.home () + "cim/estimation";
+            xmlhttp = util.createCORSRequest ("POST", url);
+            xmlhttp.onreadystatechange = function ()
             {
-                var name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + ".json";
-                runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
-            }
+                var resp;
+
+                if (4 == xmlhttp.readyState)
+                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                    {
+                        resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status == "OK")
+                        {
+                            alert (resp.message);
+                        }
+                        else
+                            alert (resp.message);
+                    }
+                    else
+                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+            };
+            var json =
+                {
+                    "name": "Sample",
+                    "description": "sample simulation file for illustrative purposes",
+                    "cim": "hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf",
+                    "cimreaderoptions": {
+                        "ch.ninecode.cim.do_about": false,
+                        "ch.ninecode.cim.do_normalize": false,
+                        "ch.ninecode.cim.do_deduplication": false,
+                        "ch.ninecode.cim.make_edges": false,
+                        "ch.ninecode.cim.do_join": false,
+                        "ch.ninecode.cim.do_topo_islands": false,
+                        "ch.ninecode.cim.do_topo": false,
+                        "ch.ninecode.cim.split_maxsize": 67108864
+                    },
+                    "interval": {
+                         "start": "2017-07-18T00:00:00.000+0100",
+                         "end": "2017-07-19T00:00:00.000+0100"
+                    },
+                    "transformers": [
+                         "TRA2755"
+                    ],
+                    "players": [
+                         {
+                             "title": "house services",
+                             "rdfquery": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
+                             "cassandraquery": "select cimapplication.subtract_offset (time, interval) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
+                             "bind": [
+                                 "mrid",
+                                 "type"
+                             ]
+                         }
+                    ],
+                    "recorders": [
+                        {
+                            "title": "cable currents",
+                            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where Conductor.len != 0 and (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID and n.TopologicalIsland = '%s') and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s')",
+                            "interval": 900,
+                            "aggregations": [
+                                {
+                                    "intervals": 1,
+                                    "ttl": 1800
+                                },
+                                {
+                                    "intervals": 4,
+                                    "ttl": 3600
+                                },
+                                {
+                                    "intervals": 12,
+                                    "ttl": 7200
+                                },
+                                {
+                                    "intervals": 96,
+                                    "ttl": null
+                                }
+                            ]
+                        }
+                    ]
+                };
+            xmlhttp.send (JSON.stringify (json, null, 4));
         }
 
         function htmlify (str)
@@ -812,45 +896,47 @@ define
         function render (data)
         {
             var simulate_template =
-                "<div class='container'>\n" +
-                "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-12'>\n" +
-                "      <h1>Simulate using GridLAB-D</h1>\n" +
-                "      <h2 id='title'>{{name}}</h2>\n" +
-                "      <form>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='simulation_name'>Name</label>\n" +
-                "          <input  id='simulation_name' type='text' class='form-control'aria-describedby='nameHelp' placeholder='Enter a name for the simulation' value='{{name}}'>\n" +
-                "          <small id='nameHelp' class='form-text text-muted'>Enter a unique name for the simulation - used as a file name for the details.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='simulation_description'>Description</label>\n" +
-                "          <input id='simulation_description' type='text' class='form-control'aria-describedby='descriptionHelp' placeholder='Enter a description for the simulation' value='{{description}}'>\n" +
-                "          <small id='descriptionHelp' class='form-text text-muted'>Enter a user facing description for the simulation - used for drop down choice title.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='simulation_island'>Island</label>\n" +
-                "          <select id='simulation_island' class='form-control' name='island'>\n" +
-                "{{#data}}\n" +
-                "            <option value='{{island}}/{{station}}'{{is_selected}}>{{station}} ({{island}})</option>\n" +
-                "{{/data}}\n" +
-                "          </select>\n" +
-                "          <small id='islandHelp' class='form-text text-muted'>Choose the topoogical island (Trafokreis) - usually associated with a transformer secondary terminal.</small>\n" +
-                "        </div>\n" +
-                "        <div id='players' class='form-group'>\n" +
-                "        </div>\n" +
-                "        <div id='recorders' class='form-group'>\n" +
-                "        </div>\n" +
-                "        <button id='do_refresh' name='do_refresh' type='button' class='btn btn-primary'>Refresh</button>\n" +
-                "        <button id='do_save' name='do_save' type='button' class='btn btn-primary'>Save</button>\n" +
-                "        <button id='do_simulate' name='do_simulate' type='button' class='btn btn-primary'>Simulate</button>\n" +
-                "        <button id='simulation_to_map' name='simulation_to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
-                "      </form>\n" +
-                "      <div id='cim'>\n" +
-                "      </div>\n" +
-                "    </div>\n" +
-                "  </div>\n" +
-                "</div>\n";
+                `
+                <div class="container">
+                  <div class="row justify-content-center">
+                    <div class="col-12">
+                      <h1>Simulate using GridLAB-D</h1>
+                      <h2 id="title">{{name}}</h2>
+                      <form>
+                        <div class="form-group">
+                          <label for="simulation_name">Name</label>
+                          <input  id="simulation_name" type="text" class="form-control"aria-describedby="nameHelp" placeholder="Enter a name for the simulation" value="{{name}}">
+                          <small id="nameHelp" class="form-text text-muted">Enter a unique name for the simulation - used as a file name for the details.</small>
+                        </div>
+                        <div class="form-group">
+                          <label for="simulation_description">Description</label>
+                          <input id="simulation_description" type="text" class="form-control"aria-describedby="descriptionHelp" placeholder="Enter a description for the simulation" value="{{description}}">
+                          <small id="descriptionHelp" class="form-text text-muted">Enter a user facing description for the simulation - used for drop down choice title.</small>
+                        </div>
+                        <div class="form-group">
+                          <label for="simulation_island">Island</label>
+                          <select id="simulation_island" class="form-control custom-select" name="island">
+                {{#data}}
+                            <option value="{{island}}/{{station}}"{{is_selected}}>{{station}} ({{island}})</option>
+                {{/data}}
+                          </select>
+                          <small id="islandHelp" class="form-text text-muted">Choose the topoogical island (Trafokreis) - usually associated with a transformer secondary terminal.</small>
+                        </div>
+                        <div id="players" class="form-group">
+                        </div>
+                        <div id="recorders" class="form-group">
+                        </div>
+                        <button id="do_refresh" name="do_refresh" type="button" class="btn btn-primary">Refresh</button>
+                        <button id="do_save" name="do_save" type="button" class="btn btn-primary">Save</button>
+                        <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
+                        <button id="simulation_to_map" name="simulation_to_map" type="button" class="btn btn-primary">Send to map</button>
+                      </form>
+                      <div id="cim">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `;
 
             var text = mustache.render
             (
@@ -871,9 +957,11 @@ define
             if (null == PlayerChooser)
             {
                 var help =
-                    "<span id='players_help' class='help-block'>" +
-                        "The queries to use to pick player (load) elements." +
-                    "</span>";
+                    `
+                    <small id="players_help" class="form-text text-muted">
+                        The queries to use to pick player (load) elements.
+                    </small>
+                    `;
                 PlayerChooser = new chooser.Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
             }
             if ((0 < data.length) && (null != data[0].player_choices))
@@ -882,9 +970,11 @@ define
             if (null == RecorderChooser)
             {
                 var help =
-                    "<span id='recorders_help' class='help-block'>" +
-                        "The queries to use to pick recorder elements." +
-                    "</span>";
+                    `
+                    <small id="recorders_help" class="form-text text-muted">
+                        The queries to use to pick recorder elements.
+                    </small>
+                    `;
                 RecorderChooser = new chooser.Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
             }
             if ((0 < data.length) && (null != data[0].recorder_choices))
@@ -977,32 +1067,33 @@ define
         function initialize ()
         {
             document.getElementById ("simulate").innerHTML = "";
-            if (null == TheSimulation)
-                getStations (function (stations) {
-                    if (0 == stations.length)
-                        query_islands ();
-                    else
-                        getSimulations (stations[0], function (simulations) {
-                            // choose the first one for now
-                            if (0 < simulations.length)
-                            {
-                                var simulation = "/" + stations[0] +  "/" + simulations[0];
-                                // get the simulation json
-                                cimfiles.get (simulation,
-                                    function (data)
-                                    {
-                                        TheSimulation = JSON.parse (data);
-                                        render ([ TheSimulation ]);
-                                    },
-                                    function (response) { alert (jsonify (response)); }
-                                );
-                            }
-                            else
-                                query_islands ();
-                        });
-                });
-            else
-                render ([ TheSimulation ]);
+            render ([]);
+//            if (null == TheSimulation)
+//                getStations (function (stations) {
+//                    if (0 == stations.length)
+//                        query_islands ();
+//                    else
+//                        getSimulations (stations[0], function (simulations) {
+//                            // choose the first one for now
+//                            if (0 < simulations.length)
+//                            {
+//                                var simulation = "/" + stations[0] +  "/" + simulations[0];
+//                                // get the simulation json
+//                                cimfiles.get (simulation,
+//                                    function (data)
+//                                    {
+//                                        TheSimulation = JSON.parse (data);
+//                                        render ([ TheSimulation ]);
+//                                    },
+//                                    function (response) { alert (jsonify (response)); }
+//                                );
+//                            }
+//                            else
+//                                query_islands ();
+//                        });
+//                });
+//            else
+//                render ([ TheSimulation ]);
         }
 
         function query_results ()
