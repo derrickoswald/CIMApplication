@@ -14,7 +14,7 @@ create table if not exists cimapplication.measured_value_by_day (
     imag_c double,
     units text,
     primary key ((mrid,type,date),time)
-) with clustering order by (time asc);
+) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readingss';
 
 create table if not exists cimapplication.simulated_value_by_day (
    mrid text,
@@ -30,7 +30,20 @@ create table if not exists cimapplication.simulated_value_by_day (
    imag_c double,
    units text,
    primary key ((mrid,type,date, interval),time)
-) with clustering order by (time asc);
+) with clustering order by (time asc) and comment = 'Simulation results';
+
+create table if not exists cimapplication.simulation (
+    run text,
+    name text,
+    description text,
+    cim text,
+    cimreaderoptions map<text,text>,
+    interval map<text,timestamp>,
+    transformers list<text>,
+    players list<frozen <map<text,text>>>,
+    recorders list<frozen <map<text,text>>>,
+    primary key (run)
+) with comment = 'Details about a simulation execution';
 
 /*
  * Requires adjustment of cassandra.yaml to enable user defined functions

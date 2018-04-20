@@ -38,7 +38,6 @@ import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -494,7 +493,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
     }
 
-    def process (batch: Seq[SimulationJob]): Unit =
+    def process (batch: Seq[SimulationJob]): String =
     {
         val storage = StorageLevel.fromString (options.storage)
 
@@ -551,14 +550,74 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 named._2.name = null
             }
         )
+
+        // insert into simulation table and return the UUID
+        val record = Json.createObjectBuilder
+        val id = java.util.UUID.randomUUID.toString
+        record.add ("run", id)
+        record.add ("name", ajob.name)
+        record.add ("description", ajob.description)
+        record.add ("cim", ajob.cim)
+        val cimreaderoptions = Json.createObjectBuilder
+        for (x ← ajob.cimreaderoptions) cimreaderoptions.add (x._1, x._2)
+        record.add ("cimreaderoptions", cimreaderoptions)
+        val interval = Json.createObjectBuilder
+        for (x ← ajob.interval) interval.add (x._1, x._2)
+        record.add ("interval", interval)
+        val players = Json.createArrayBuilder
+        for (x ← tasks.head.players)
+        {
+            val player = Json.createObjectBuilder
+            player.add ("name", x.name)
+            player.add ("parent", x.parent)
+            player.add ("typ", x.typ)
+            player.add ("property", x.property)
+            player.add ("file", x.file)
+            player.add ("sql", x.sql)
+            player.add ("start", iso_date_format.format (new Date (x.start)))
+            player.add ("end", iso_date_format.format (new Date (x.end)))
+            players.add (player)
+        }
+        record.add ("players", players)
+        val recorders = Json.createArrayBuilder
+        for (x ← tasks.head.recorders)
+        {
+            val recorder = Json.createObjectBuilder
+            recorder.add ("name", x.name)
+            recorder.add ("parent", x.parent)
+            recorder.add ("typ", x.typ)
+            recorder.add ("property", x.property)
+            recorder.add ("unit", x.unit)
+            recorder.add ("file", x.file)
+            recorder.add ("interval", x.interval.toString)
+            recorder.add ("aggregations", x.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (","))
+            recorders.add (recorder)
+        }
+        record.add ("recorders", recorders)
+
+        val string = new StringWriter
+        val properties = new util.HashMap[String, AnyRef](1)
+        properties.put (JsonGenerator.PRETTY_PRINTING, "true")
+        val writer = Json.createWriterFactory (properties).createWriter (string)
+        writer.write (record.build)
+        writer.close ()
+
+        val cluster = Cluster.builder.addContactPoint (options.host).build
+        val c = cluster.connect
+        val prepared = c.prepare ("""insert into cimapplication.simulation json ?""")
+        val bound = prepared.bind ()
+        bound.setString (0, string.toString)
+        c.execute (bound)
+
+        id
     }
 
-    def run (): Unit =
+    def run (): Seq[String] =
     {
         val jobs = SimulationJob.getAll (options)
         // organize by same RDF and same options
         val batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
-        batches.values.foreach (process)
+        batches.values.map (process).toSeq
     }
 }
 
