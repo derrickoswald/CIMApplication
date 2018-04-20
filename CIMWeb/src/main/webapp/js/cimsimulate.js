@@ -13,7 +13,7 @@ define
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, chooser, SimulationTheme)
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme)
     {
         // The island RDF export.
         var TheRDF;
@@ -962,7 +962,7 @@ define
                         The queries to use to pick player (load) elements.
                     </small>
                     `;
-                PlayerChooser = new chooser.Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
+                PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
             }
             if ((0 < data.length) && (null != data[0].player_choices))
                 PlayerChooser.context.items = data[0].player_choices.map (function (item) { return ( { value: item }); });
@@ -975,7 +975,7 @@ define
                         The queries to use to pick recorder elements.
                     </small>
                     `;
-                RecorderChooser = new chooser.Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
+                RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
             }
             if ((0 < data.length) && (null != data[0].recorder_choices))
                 RecorderChooser.context.items = data[0].recorder_choices.map (function (item) { return ( { value: item } ); });
