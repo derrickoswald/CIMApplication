@@ -34,7 +34,7 @@ create table if not exists cimapplication.simulated_value_by_day (
 ) with clustering order by (time asc) and comment = 'Simulation results';
 
 create table if not exists cimapplication.simulation (
-    run text,
+    id text,
     name text,
     description text,
     cim text,
@@ -43,7 +43,7 @@ create table if not exists cimapplication.simulation (
     transformers list<text>,
     players list<frozen <map<text,text>>>,
     recorders list<frozen <map<text,text>>>,
-    primary key (run)
+    primary key (id)
 ) with comment = 'Details about a simulation execution';
 
 /*

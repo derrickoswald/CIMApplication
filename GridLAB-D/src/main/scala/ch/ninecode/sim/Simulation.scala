@@ -564,7 +564,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // insert into simulation table and return the UUID
         val record = Json.createObjectBuilder
-        record.add ("run", id)
+        record.add ("id", id)
         record.add ("name", ajob.name)
         record.add ("description", ajob.description)
         record.add ("cim", ajob.cim)
