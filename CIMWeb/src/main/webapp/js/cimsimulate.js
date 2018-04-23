@@ -266,16 +266,10 @@ define
          */
         function do_simulate ()
         {
-
-//            if (null != TheSimulation)
-//            {
-//                var name = "/" + getStation () + "/" + encodeURIComponent (getName ()) + ".json";
-//                runSimulation (name, function (result) { alert (JSON.stringify (result, null, 4)); })
-//            }
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation";
+            url = util.home () + "cim/estimation;verbose=true;keep=true";
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -287,7 +281,19 @@ define
                         resp = JSON.parse (xmlhttp.responseText);
                         if (resp.status == "OK")
                         {
-                            alert (resp.message);
+                            var simulation_id = resp.result.simulations[0];
+                            cimquery.query (
+                                "select json * from cimapplication.simulation where run='" + simulation_id + "'",
+                                true,
+                                "",
+                                "",
+                                function (data)
+                                {
+                                    document.getElementById ("cim").innerHTML = "<pre>\n" +  data[0]["[json]"] + "\n</pre>";
+                                    var json = JSON.parse (data[0]["[json]"]);
+                                    document.getElementById ("cim").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
+                                }
+                            );
                         }
                         else
                             alert (resp.message);
@@ -295,10 +301,12 @@ define
                     else
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
             };
+            var name = document.getElementById ("simulation_name").value;
+            var description = document.getElementById ("simulation_description").value;
             var json =
                 {
-                    "name": "Sample",
-                    "description": "sample simulation file for illustrative purposes",
+                    "name": (name == "") ? "Sample" : name,
+                    "description": (description == "") ? "sample simulation file for illustrative purposes" : description,
                     "cim": "hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf",
                     "cimreaderoptions": {
                         "ch.ninecode.cim.do_about": false,

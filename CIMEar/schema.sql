@@ -29,6 +29,7 @@ create table if not exists cimapplication.simulated_value_by_day (
    real_c double,
    imag_c double,
    units text,
+   simulation text,
    primary key ((mrid,type,date, interval),time)
 ) with clustering order by (time asc) and comment = 'Simulation results';
 

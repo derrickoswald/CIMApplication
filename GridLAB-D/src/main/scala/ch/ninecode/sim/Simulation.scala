@@ -22,7 +22,6 @@ import javax.json.stream.JsonGenerator
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.sys.process._
-
 import com.datastax.driver.core.Cluster
 import org.apache.commons.io.FileUtils
 import org.apache.spark.rdd.RDD
@@ -37,7 +36,6 @@ import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -45,6 +43,8 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+
+import scala.collection.mutable.ListBuffer
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -425,11 +425,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def gridlabd (trafo: SimulationTrafoKreis): Boolean =
     {
         val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
+        var lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
         def check (line: String): Unit =
         {
-            log.info (line)
+            lines += line
             if (line.contains ("WARNING")) warningLines += 1
             if (line.contains ("ERROR")) errorLines += 1
         }
@@ -438,9 +439,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         // wait for the process to finish
         val exit_code = p.exitValue
         if (0 != errorLines)
-            log.error ("%d warnings, %d errors".format (warningLines, errorLines))
+            log.error ("%d warnings, %d errors: %s".format (warningLines, errorLines, lines.mkString ("\n\n", "\n", "\n\n")))
         else if (0 != warningLines)
-            log.warn ("%d warnings, %d errors".format (warningLines, errorLines))
+            log.warn ("%d warnings, %d errors: %s".format (warningLines, errorLines, lines.mkString ("\n\n", "\n", "\n\n")))
 
         (0 == exit_code) && (0 == errorLines)
     }
@@ -472,21 +473,37 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, file_prefix: String): Unit =
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
-        val count = insert.execute (data, recorder.typ, recorder.interval, recorder.aggregations)
+        val count = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
+    }
+
+    def write_glm (trafo: SimulationTrafoKreis): Unit =
+    {
+        log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
+        val generator = SimulationGLMGenerator (one_phase = true, date_format = glm_date_format, trafo)
+        val text = generator.make_glm ()
+        val file = new File (options.workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
+        file.getParentFile.mkdirs
+        using (new PrintWriter (file, "UTF-8"))
+        {
+            writer =>
+                writer.write (text)
+        }
     }
 
     def execute (trafo: SimulationTrafoKreis): Unit =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
+        write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
+        new File (options.workdir + trafo.directory + "output_data/").mkdirs
         if (gridlabd (trafo))
-            trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.directory))
+            trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.simulation, trafo.directory))
         else
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
         if (!options.keep)
@@ -500,7 +517,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions, storage)
         val tasks = batch.flatMap (make_tasks)
-        log.info ("""%d tasks to do""".format (tasks.size))
+        val id = java.util.UUID.randomUUID.toString
+        log.info ("""%d tasks to do for simulation %s""".format (tasks.size, id))
 
         val transformers = new Transformers (session, storage)
         val tdata = transformers.getTransformerData (topological_nodes = true, null)
@@ -518,6 +536,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
                 val date = just_date.format (task.start.getTime)
                 SimulationTrafoKreis (
+                    id,
                     task.island,
                     transformers(0),
                     nodes,
@@ -531,14 +550,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
         )
 
-        val gridlabd = new GridLABD (session = session, topological_nodes = true, one_phase = true, storage_level = storage, workdir = options.workdir)
-        trafokreise.foreach (
-            trafo ⇒
-            {
-                val generator = SimulationGLMGenerator (one_phase = true, date_format = glm_date_format, trafo)
-                gridlabd.export (generator)
-            }
-        )
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (trafokreise, executors)
         simulations.foreach (execute)
@@ -553,7 +564,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // insert into simulation table and return the UUID
         val record = Json.createObjectBuilder
-        val id = java.util.UUID.randomUUID.toString
         record.add ("run", id)
         record.add ("name", ajob.name)
         record.add ("description", ajob.description)
@@ -594,6 +604,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             recorders.add (recorder)
         }
         record.add ("recorders", recorders)
+        val trans = Json.createArrayBuilder
+        for (x ← ajob.transformers) trans.add (x)
+        record.add ("transformers", trans)
 
         val string = new StringWriter
         val properties = new util.HashMap[String, AnyRef](1)

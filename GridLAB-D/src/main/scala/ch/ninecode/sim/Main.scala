@@ -202,7 +202,8 @@ object Main
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
                     val sim = Simulation (session, options)
-                    sim.run ()
+                    val runs = sim.run ()
+                    log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
 
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")

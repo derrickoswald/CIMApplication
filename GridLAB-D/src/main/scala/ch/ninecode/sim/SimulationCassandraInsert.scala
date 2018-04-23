@@ -49,7 +49,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
         }
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, aggregates: List[SimulationAggregate]): Int =
+    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
     {
         var ret = 0
         val session = cluster.connect
@@ -59,8 +59,8 @@ case class SimulationCassandraInsert (cluster: Cluster)
                 val sql = pack (
                     """
                     | insert into cimapplication.simulated_value_by_day
-                    | (mrid, type, date, interval, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units)
-                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    | (mrid, type, date, interval, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
+                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin) + aggregate.time_to_live
                 val prepared = session.prepare (sql)
                 val bound = prepared.bind ()
@@ -112,6 +112,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                                 accumulator.statement.setDouble    (10, accumulator.value_c_im)
                             }
                             accumulator.statement.setString        (11, entry.units)
+                            accumulator.statement.setString        (12, simulation)
 
                             session.execute (accumulator.statement)
                             ret = ret + 1

@@ -7,7 +7,24 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerSet
 
+/**
+ * A container for a simulation piece of work.
+ *
+ * Includes the information necessary to perform a simulation (of a transformer service area - a trafokreis).
+ *
+ * @param simulation the primary key for the simulation as stored in the simulation table.
+ * @param island the name of the TopologicalIsland for the low voltage side of the transformer
+ * @param transformer the transformer (or set of ganged transformers) servicing the area
+ * @param raw_nodes topological nodes for the simulation
+ * @param raw_edges topological edges for the simulation
+ * @param start_time the simulatuon starting time
+ * @param finish_time the simulation ending time
+ * @param players list of the GridLAB-D players - these are queried from Cassandra measured_value_by_day and written to .csv player files
+ * @param recorders list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simuated_value_by_day
+ * @param directory the directory to write the .glm, players and recorders
+ */
 case class SimulationTrafoKreis (
+    simulation: String,
     island: String,
     transformer: TransformerSet,
     raw_nodes: Iterable[GLMNode],
