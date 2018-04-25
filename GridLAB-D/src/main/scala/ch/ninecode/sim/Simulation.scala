@@ -29,7 +29,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -41,6 +40,7 @@ import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
+import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -139,6 +139,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""executing "%s" as %s""".format (player.title, sql))
         val query = SimulationSparkQuery (session, sql)
         val resultset = query.execute ()
+        log.info ("""%d rows returned""".format (resultset.size))
         player.copy (jsons = stringify (resultset))
     }
 
@@ -155,6 +156,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""executing "%s" as %s""".format (recorder.title, sql))
         val query = SimulationSparkQuery (session, sql)
         val resultset = query.execute ()
+        log.info ("""%d rows returned""".format (resultset.size))
         recorder.copy (jsons = stringify (resultset))
     }
 
@@ -277,31 +279,65 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
+    def toCoordinates (points: Option[Iterable[PositionPoint]]): Array[(Double, Double)] =
+    {
+        points match
+        {
+            case Some (positions) ⇒
+                positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p ⇒ (p.xPosition.toDouble, p.yPosition.toDouble))
+            case _ ⇒
+                null
+        }
+    }
+
+    def toCoordinate (terminal: Int, points: Option[Iterable[PositionPoint]]): (Double, Double) =
+    {
+        val coordinates = toCoordinates (points)
+        if (null != coordinates)
+        {
+            if (terminal == 1)
+                coordinates(0)
+            else
+                coordinates(coordinates.length - 1)
+        }
+        else
+            null
+    }
+
+    def pickone (nodes: Iterable[ch.ninecode.sim.SimulationNode]): SimulationNode =
+    {
+        nodes.head
+    }
+
     def queryNetwork (island: String): (Iterable[GLMNode], Iterable[Iterable[GLMEdge]]) =
     {
         val toponodes = get[TopologicalNode]
         val members = toponodes.filter (_.TopologicalIsland == island)
-        val terminals: RDD[Terminal] = get[Terminal].keyBy (_.TopologicalNode).join (members.keyBy (_.id)).values.map (_._1)
-        val equipment: RDD[(ConductingEquipment, Terminal)] = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_.ConductingEquipment)).values
-        // get all nodes with a voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
+        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members.keyBy (_.id)).values.map (_._1)
+        val equipment = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_.ConductingEquipment)).values
+            .keyBy (_._1.Equipment.PowerSystemResource.Location).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2)).distinct
+        // get all nodes with their voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
         // but this doesn't include the transformer primary node - it's not part of the topology
         // ToDo: fix this 1kV multiplier on the voltages
         val nodes = equipment.keyBy (_._1.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
-            node ⇒ SimulationNode (node._1._2.TopologicalNode, node._2.nominalVoltage * 1000.0, null, null)
-        ).collect.distinct
+            node ⇒ SimulationNode (node._1._2.TopologicalNode, node._1._1.id, toCoordinate (node._1._2.ACDCTerminal.sequenceNumber, node._1._3), node._2.nominalVoltage * 1000.0)
+        ).groupBy (_.id_seq).values.map (pickone).collect
         // get all equipment with two nodes in the topology that separate different TopologicalNode
-        val eq: RDD[(String, Iterable[(ConductingEquipment, Terminal)])] = equipment.keyBy (_._1.id).groupByKey.filter (
+        val two_terminal_equipment = equipment.keyBy (_._1.id).groupByKey.filter (
             edge ⇒ edge._2.size > 1 && edge._2.head._2.TopologicalNode != edge._2.tail.head._2.TopologicalNode
         )
-        // convert ConductingEquipment to Element
-        val eq2: RDD[(Element, Iterable[Terminal])] = get[Element]("Elements").keyBy (_.id).join (eq).values.map (x ⇒ (x._1, x._2.map (_._2)))
+        // convert ConductingEquipment to Element with Terminal(s) and PositionPoints
+        // all copies of the PositionPoints will be the same or just parallel conductors, so we arbitrarily take the head
+        val elements = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
+            .values.map (x ⇒ (x._1, x._2.map (_._2), x._2.head._3))
         // combine parallel equipment
-        val eq3: RDD[Iterable[(Element, Iterable[Terminal])]] = eq2.keyBy (_._2.map (_.id).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        val eq3 = elements.keyBy (_._2.map (_.id).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
         val edges = eq3.map (
             _.map (
-                e ⇒ SimulationEdge (e._1.id, e._2.head.TopologicalNode, e._2.tail.head.TopologicalNode, e._1, null, null)
+                edge ⇒ SimulationEdge (edge._1.id, edge._2.head.TopologicalNode, edge._2.tail.head.TopologicalNode, edge._1, toCoordinates (edge._3))
             )
         ).collect
+        log.info ("""island "%s: %d nodes, %d edges"""".format (island, nodes.length, edges.length))
         (nodes, edges)
     }
 

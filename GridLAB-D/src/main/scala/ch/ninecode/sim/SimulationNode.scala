@@ -6,16 +6,20 @@ import ch.ninecode.gl.Graphable
 /**
  * Vertex data.
  *
- * @param id_seq ConnectivityNode or TopologicalNode mRID.
- * @param voltage Node voltage.
+ * @param id_seq TopologicalNode mRID.
+ * @param equipment ConductingEquipment mRID.
+ * @param position The (x,y) coordinates of the PositionPoint of the ConductingEquipment, or <code>null</code> if none.
+ * @param voltage Node voltage (V).
  * @param players Players attached to this node - if any.
  * @param recorders Recorders attached to this node - if any.
  */
 case class SimulationNode (
    id_seq: String,
+   equipment: String,
+   position: (Double, Double),
    voltage: Double,
-   players: Array[SimulationPlayer],
-   recorders: Array[SimulationRecorder]
+   players: Array[SimulationPlayer] = null,
+   recorders: Array[SimulationRecorder] = null
 ) extends GLMNode with Graphable
 {
     override def id: String = id_seq

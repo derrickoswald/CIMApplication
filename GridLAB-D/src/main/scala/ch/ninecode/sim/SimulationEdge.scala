@@ -11,6 +11,7 @@ import ch.ninecode.model.Element
  * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
  * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
  * @param element Element object for the edge.
+ * @param position The array of (x,y) coordinates of the PositionPoints of the ConductingEquipment, or <code>null</code> if none.
  * @param players Players attached to this edge - if any.
  * @param recorders Recorders attached to this edge - if any.
  */
@@ -19,8 +20,9 @@ case class SimulationEdge (
     id_cn_1: String,
     id_cn_2: String,
     element: Element,
-    players: Array[SimulationPlayer],
-    recorders: Array[SimulationRecorder]
+    position: Array[(Double, Double)],
+    players: Array[SimulationPlayer] = null,
+    recorders: Array[SimulationRecorder] = null
 ) extends GLMEdge with Graphable
 {
     /**

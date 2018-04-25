@@ -42,12 +42,17 @@ case class SimulationTrafoKreis (
     val nodes: Iterable[SimulationNode] =
         raw_nodes.map (
             raw ⇒
+            {
+                val node = raw.asInstanceOf[SimulationNode]
                 SimulationNode (
-                    raw.id,
-                    raw.nominal_voltage,
+                    node.id_seq,
+                    node.equipment,
+                    node.position,
+                    node.voltage,
                     players.filter (_.parent == raw.id),
                     recorders.filter (_.parent == raw.id)
                 )
+            }
         )
 
     // add players and recorders to the raw edges
@@ -57,14 +62,18 @@ case class SimulationTrafoKreis (
             raw ⇒
                 raw.map (
                     r ⇒
+                    {
+                        val edge = r.asInstanceOf[SimulationEdge]
                         SimulationEdge (
-                            r.id,
-                            r.cn1,
-                            r.cn2,
-                            r.el,
+                            edge.id_equ,
+                            edge.id_cn_1,
+                            edge.id_cn_2,
+                            edge.element,
+                            edge.position,
                             players.filter (_.parent == r.id),
                             recorders.filter (_.parent == r.id)
                         )
+                    }
                 )
         )
 }

@@ -124,8 +124,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                     // ToDo: need an error mechanism
                     println ("Cassandra format error: RDD has rows of %d columns, not 8, or 12 (\"mrid\", \"type\", \"time\", \"real_a\", \"imag_a\", ... \"units\")".format (rows.first.length))
             }
-            for (row ← df.toLocalIterator)
-                response.add (packRow (row))
+            df.foreach (row ⇒ response.add (packRow (row)))
         }
         response.build
     }

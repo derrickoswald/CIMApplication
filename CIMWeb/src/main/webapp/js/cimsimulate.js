@@ -323,7 +323,7 @@ define
                           <small id="descriptionHelp" class="form-text text-muted">Enter a user facing description for the simulation - used for drop down choice title.</small>
                         </div>
                         <div class="form-group">
-                          <label for="simulation_timerange">Time</label>
+                          <label for="simulation_timerange">Time range</label>
                           <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="{{description}}">
                           <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
                         </div>
