@@ -74,6 +74,44 @@ define
             xmlhttp.send ();
         }
 
+        function queryPromise (options)
+        {
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        var target = (options.cassandra) ? "cassandra=true&": "";
+                        var table = ("" != options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
+                        var cassandra_table = ("" != options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
+                        var url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
+                        var xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onload = function ()
+                        {
+                            if (xmlhttp.status >= 200 && xmlhttp.status < 300)
+                                resolve (JSON.parse (xmlhttp.responseText));
+                            else
+                                reject (
+                                    {
+                                        status: xmlhttp.status,
+                                        statusText: xmlhttp.statusText
+                                    }
+                                );
+                        };
+                        xmlhttp.onerror = function ()
+                        {
+                            reject (
+                                {
+                                    status: xmlhttp.status,
+                                    statusText: xmlhttp.statusText
+                                }
+                            );
+                        };
+                        xmlhttp.send ();
+                    }
+                )
+            );
+        }
+
         function create_from (proto)
         {
             proto.EditDisposition = "new";
@@ -205,7 +243,8 @@ define
         return (
             {
                 initialize: initialize,
-                query: query
+                query: query,
+                queryPromise: queryPromise
             }
         );
     }

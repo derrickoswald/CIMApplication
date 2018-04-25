@@ -16,7 +16,29 @@ define
     function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme)
     {
         // The simulation details.
-        var TheSimulation;
+        var TheSimulation =
+            {
+                name: "Sample",
+                description: "sample simulation",
+                cim: "hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf",
+                cimreaderoptions: {
+                    "ch.ninecode.cim.do_about": false,
+                    "ch.ninecode.cim.do_normalize": false,
+                    "ch.ninecode.cim.do_deduplication": false,
+                    "ch.ninecode.cim.make_edges": false,
+                    "ch.ninecode.cim.do_join": false,
+                    "ch.ninecode.cim.do_topo_islands": false,
+                    "ch.ninecode.cim.do_topo": false,
+                    "ch.ninecode.cim.split_maxsize": 67108864
+                },
+                interval: {
+                    "start": "2017-07-18T00:00:00.000+0100",
+                    "end": "2017-07-19T00:00:00.000+0100"
+                },
+                players: [],
+                recorders: [],
+                transformers: []
+            };
         // provisional schema:
         //    {
         //        "name": <the name of the simulation and this JSON file>,
@@ -190,31 +212,13 @@ define
         {
             var name = document.getElementById ("simulation_name").value;
             var description = document.getElementById ("simulation_description").value;
-            TheSimulation =
-            {
-                name: (name == "") ? "Sample" : name,
-                description: (description == "") ? "sample simulation file" : description,
-                cim: "hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf",
-                cimreaderoptions: {
-                    "ch.ninecode.cim.do_about": false,
-                    "ch.ninecode.cim.do_normalize": false,
-                    "ch.ninecode.cim.do_deduplication": false,
-                    "ch.ninecode.cim.make_edges": false,
-                    "ch.ninecode.cim.do_join": false,
-                    "ch.ninecode.cim.do_topo_islands": false,
-                    "ch.ninecode.cim.do_topo": false,
-                    "ch.ninecode.cim.split_maxsize": 67108864
-                },
-                interval: {
-                    "start": "2017-07-18T00:00:00.000+0100",
-                    "end": "2017-07-19T00:00:00.000+0100"
-                },
-                players: query_players (),
-                recorders: query_recorders (),
-                transformers: ["TRA2755"]
-            };
-            if (null != TheSimulation)
-                document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+            if (name != "")
+                TheSimulation.name = name;
+            if (description != "")
+                TheSimulation.description = description;
+            TheSimulation.players = query_players ();
+            TheSimulation.recorders = query_recorders ();
+            document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
 
             var url;
             var xmlhttp;
@@ -318,6 +322,11 @@ define
                           <input id="simulation_description" type="text" class="form-control"aria-describedby="descriptionHelp" placeholder="Enter a description for the simulation" value="{{description}}">
                           <small id="descriptionHelp" class="form-text text-muted">Enter a user facing description for the simulation - used for drop down choice title.</small>
                         </div>
+                        <div class="form-group">
+                          <label for="simulation_timerange">Time</label>
+                          <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="{{description}}">
+                          <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
+                        </div>
                         <div id="players" class="form-group">
                         </div>
                         <div id="recorders" class="form-group">
@@ -341,6 +350,27 @@ define
             );
             document.getElementById ("simulate").innerHTML = text;
             document.getElementById ("do_simulate").onclick = do_simulate;
+            // see https://wireddots.com/products/datetimepicker
+            var start = new Date (TheSimulation.interval.start);
+            var end = new Date (TheSimulation.interval.end);
+            $('#simulation_timerange').daterangepicker (
+                {
+                    timePicker: true,
+                    timePickerIncrement: 15,
+                    locale: {
+                        format: 'YYYY.MM.DD HH:mm'
+                    },
+                    timePicker24Hour: true,
+                    linkedCalendars: false,
+                    startDate: start,
+                    endDate: end,
+                    minDate: start,
+                    maxDate: end,
+                    showDropdowns: true
+                    //showISOWeekNumbers: true
+                },
+                setDateRange
+            );
             if (null == PlayerChooser)
             {
                 var help =
@@ -365,6 +395,56 @@ define
             RecorderChooser.render ();
         }
 
+        function setDateRange (start, end, label)
+        {
+            TheSimulation.interval =
+            {
+                start: start.toISOString ().replace ("Z", "+0000"), // "2018-04-24T19:24:27.884Z"
+                end: end.toISOString ().replace ("Z", "+0000")
+            }
+        }
+
+        function getDateRange ()
+        {
+//            var sql = "select distimct mrid, type, date from cimapplication.measured_value_by_day limit 20";
+//            var nex = "select distinct mrid, type, date from cimapplication.measured_value_by_day where date<'2017-07-17' allow filtering";
+//            var lim = "select min(time) as low, max(time) as high from cimapplication.measured_value_by_day";
+//            val low = "select * from cimapplication.measured_value_by_day where time='2017-07-17T23:00:00.00' allow filtering";
+            cimquery.queryPromise (
+                {
+                    cassandra: true,
+                    sql: "select min(time) as low, max(time) as high from cimapplication.measured_value_by_day"
+                }
+            ).then (
+                function (resultset)
+                {
+                    var start = new Date (resultset.result[0].low);
+                    var end = new Date (resultset.result[0].high);
+                    $('#simulation_timerange').daterangepicker (
+                        {
+                            timePicker: true,
+                            timePickerIncrement: 15,
+                            locale: {
+                                format: 'YYYY.MM.DD HH:mm'
+                            },
+                            timePicker24Hour: true,
+                            linkedCalendars: false,
+                            startDate: start,
+                            endDate: end,
+                            minDate: start,
+                            maxDate: end,
+                            showDropdowns: true
+                            //showISOWeekNumbers: true
+                        },
+                        setDateRange
+                    );
+                    // unfortunately you can't set the min and max date as well, so this doesn't work:
+//                    $('#simulation_timerange').data('daterangepicker').setEndDate (end);
+//                    $('#simulation_timerange').data('daterangepicker').setStartDate (start);
+                }
+            );
+        }
+
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
@@ -375,6 +455,7 @@ define
         {
             document.getElementById ("simulate").innerHTML = "";
             render ();
+            getDateRange ();
         }
 
         function query_results ()
