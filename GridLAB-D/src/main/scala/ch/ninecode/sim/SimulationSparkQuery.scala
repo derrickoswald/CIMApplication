@@ -40,6 +40,8 @@ case class SimulationSparkQuery (session: SparkSession, sql: String)
     def execute (): Seq[JsonObject] =
     {
         val df: DataFrame = session.sql (sql)
-        df.toLocalIterator.map (row ⇒ packRow (row)).toSeq
+        val results = df.collectAsList
+        for (row ← results)
+            yield packRow (row)
     }
 }

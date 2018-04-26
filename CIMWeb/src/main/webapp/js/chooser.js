@@ -196,7 +196,6 @@ define
 
                 // stop the normal link action
                 event.preventDefault ();
-                event.stopPropagation ();
 
                 link = event.target;
                 value = link.innerHTML;
@@ -210,6 +209,8 @@ define
                 // update the value list
                 index = Number (target.getAttribute (this.data_source));
                 this.context.items[index].value = value;
+
+                return (true);
             };
 
             /**

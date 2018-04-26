@@ -41,7 +41,7 @@ define
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='station_directory'>Station</label>\n" +
                 "          <div class='col-sm-10'>\n" +
-                "            <select id='station_directory' class='form-control' name='station_directory'>\n" +
+                "            <select id='station_directory' class='form-control custom-select' name='station_directory'>\n" +
                 "{{#stations}}\n" +
                 "              <option value='{{.}}'>{{.}}</option>\n" +
                 "{{/stations}}\n" +
@@ -51,7 +51,7 @@ define
                 "        <div class='form-group row'>\n" +
                 "          <label class='col-sm-2 col-form-label' for='simulation_file'>Simulation</label>\n" +
                 "          <div class='col-sm-10'>\n" +
-                "            <select id='simulation_file' class='form-control' name='simulation_file'>\n" +
+                "            <select id='simulation_file' class='form-control custom-select' name='simulation_file'>\n" +
                 "{{#simulations}}\n" +
                 "              <option value='{{.}}'>{{.}}</option>\n" +
                 "{{/simulations}}\n" +

@@ -20,15 +20,19 @@ import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
+
 import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.Session
+
 import org.apache.commons.io.FileUtils
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -43,9 +47,7 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import com.datastax.driver.core.Session
 
-import scala.collection.mutable.ListBuffer
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -316,9 +318,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def queryNetwork (island: String): (Iterable[GLMNode], Iterable[Iterable[GLMEdge]]) =
     {
-        val toponodes = get[TopologicalNode]
         // get nodes in the TopologicalIsland
-        val members = toponodes.filter (_.TopologicalIsland == island)
+        val members = get[TopologicalNode].filter (_.TopologicalIsland == island)
         // get terminals in the TopologicalIsland
         val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members.keyBy (_.id)).values.map (_._1)
         // get equipment in the TopologicalIsland and associated Terminal
@@ -378,7 +379,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val df = session.sql (sql)
         import session.implicits._
         val trafo_islands = df.map (row ⇒ (row.getString (0), row.getString (1))).collect.toMap
-        log.info ("""%d transformer islands found""".format (trafo_islands.size))
+        log.info ("""%d transformer island%s found""".format (trafo_islands.size, if (1 == trafo_islands.size) "" else "s"))
 
         // process the list of transformers
         val transformers = if (0 != job.transformers.size) job.transformers else all_transformers (trafo_islands)
@@ -621,9 +622,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions, storage)
+
         val tasks = batch.flatMap (make_tasks)
         val id = java.util.UUID.randomUUID.toString
-        log.info ("""%d tasks to do for simulation %s""".format (tasks.size, id))
+        log.info ("""%d task%s to do for simulation %s""".format (tasks.size, if (1 == tasks.size) "" else "s", id))
 
         val transformers = new Transformers (session, storage)
         val tdata = transformers.getTransformerData (topological_nodes = true, null)

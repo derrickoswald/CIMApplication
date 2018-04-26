@@ -201,7 +201,7 @@ define
                 "        </div>\n" +
                 "        <div class='form-group'>\n" +
                 "          <label for='create_elements'>Create CIM elements in browser memory</label>\n" +
-                "          <select id='create_class_name' class='form-control' aria-describedby='createElementsHelp'>\n" +
+                "          <select id='create_class_name' class='form-control custom-select' aria-describedby='createElementsHelp'>\n" +
                 "{{#classes}}\n" +
                 "              <option value='{{.}}'>{{.}}</option>\n" +
                 "{{/classes}}\n" +
