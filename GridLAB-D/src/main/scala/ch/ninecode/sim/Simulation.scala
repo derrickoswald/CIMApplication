@@ -43,6 +43,7 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import com.datastax.driver.core.Session
 
 import scala.collection.mutable.ListBuffer
 
@@ -304,24 +305,35 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             null
     }
 
-    def pickone (nodes: Iterable[ch.ninecode.sim.SimulationNode]): SimulationNode =
+    def pickone (singles: Array[String]) (nodes: Iterable[ch.ninecode.sim.SimulationNode]): SimulationNode =
     {
-        nodes.head
+        nodes.find (node ⇒ singles.contains (node.equipment)) match
+        {
+            case Some (node) ⇒ node
+            case _ ⇒ nodes.head // just take the first
+        }
     }
 
     def queryNetwork (island: String): (Iterable[GLMNode], Iterable[Iterable[GLMEdge]]) =
     {
         val toponodes = get[TopologicalNode]
+        // get nodes in the TopologicalIsland
         val members = toponodes.filter (_.TopologicalIsland == island)
+        // get terminals in the TopologicalIsland
         val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members.keyBy (_.id)).values.map (_._1)
-        val equipment = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_.ConductingEquipment)).values
-            .keyBy (_._1.Equipment.PowerSystemResource.Location).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2)).distinct
+        // get equipment in the TopologicalIsland and associated Terminal
+        val equipment_terminals = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_.ConductingEquipment)).values
+        // make a list of all single terminal equipment as the preferred association to the node
+        val singles = equipment_terminals.groupBy (_._2.ConductingEquipment).filter (1 == _._2.size).map (_._2.head._1.id).collect
+        // compose ConductingEquipment, Terminal, and PositionPoint(s)
+        val equipment = equipment_terminals.keyBy (_._1.Equipment.PowerSystemResource.Location).leftOuterJoin (get[PositionPoint].groupBy (_.Location))
+            .map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2)).distinct
         // get all nodes with their voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
         // but this doesn't include the transformer primary node - it's not part of the topology
         // ToDo: fix this 1kV multiplier on the voltages
         val nodes = equipment.keyBy (_._1.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
             node ⇒ SimulationNode (node._1._2.TopologicalNode, node._1._1.id, toCoordinate (node._1._2.ACDCTerminal.sequenceNumber, node._1._3), node._2.nominalVoltage * 1000.0)
-        ).groupBy (_.id_seq).values.map (pickone).collect
+        ).groupBy (_.id_seq).values.map (pickone (singles)).collect
         // get all equipment with two nodes in the topology that separate different TopologicalNode
         val two_terminal_equipment = equipment.keyBy (_._1.id).groupByKey.filter (
             edge ⇒ edge._2.size > 1 && edge._2.head._2.TopologicalNode != edge._2.tail.head._2.TopologicalNode
@@ -531,6 +543,60 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
+    def store_geojson_points (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    {
+        val session: Session = cluster.connect
+        val sql = """insert into cimapplication.geojson_points json ?"""
+        val prepared = session.prepare (sql)
+        val statement = prepared.bind ()
+        for (n <- trafo.nodes)
+        {
+            val node = n.asInstanceOf[SimulationNode]
+            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %g, %g ] } }"""
+                .format (trafo.simulation, node.equipment, node.position._1, node.position._2)
+            statement.setString (0, json)
+            session.execute (statement)
+        }
+        log.info ("""%d geojson point features stored for "%s"""".format (trafo.nodes.size, trafo.name))
+    }
+
+    def store_geojson_lines (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    {
+        val session: Session = cluster.connect
+        val sql = """insert into cimapplication.geojson_lines json ?"""
+        val prepared = session.prepare (sql)
+        val statement = prepared.bind ()
+        for (raw <- trafo.edges)
+        {
+            val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
+            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] } }"""
+                .format (trafo.simulation, edge.element.id, edge.position.map (p ⇒ """[%g,%g]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
+            statement.setString (0, json)
+            session.execute (statement)
+        }
+        log.info ("""%d geojson line features stored for "%s"""".format (trafo.edges.size, trafo.name))
+    }
+
+    def get_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
+    {
+        for (raw <- trafo.nodes)
+            yield raw.asInstanceOf[SimulationNode].position
+    }
+
+    def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    {
+        val session: Session = cluster.connect
+        val sql = """insert into cimapplication.geojson_polygons json ?"""
+        val prepared = session.prepare (sql)
+        val statement = prepared.bind ()
+        val hull = Hull.scan (get_points (trafo).toList)
+        val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] } }"""
+            .format (trafo.simulation, trafo.transformer.transformer_name, hull.map (p ⇒ """[%g,%g]""".format (p._1, p._2)).mkString (","))
+        statement.setString (0, json)
+        session.execute (statement)
+        log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
+    }
+
     def execute (trafo: SimulationTrafoKreis): Unit =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
@@ -544,6 +610,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
         if (!options.keep)
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
+        store_geojson_points (cluster, trafo)
+        store_geojson_lines (cluster, trafo)
+        store_geojson_polygons (cluster, trafo)
     }
 
     def process (batch: Seq[SimulationJob]): String =

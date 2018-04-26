@@ -1,4 +1,4 @@
-create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
+create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 2 };
 
 create table if not exists cimapplication.measured_value_by_day (
     mrid text,
@@ -45,6 +45,34 @@ create table if not exists cimapplication.simulation (
     recorders list<frozen <map<text,text>>>,
     primary key (id)
 ) with comment = 'Details about a simulation execution';
+
+create type if not exists cimapplication.point_data (type text, coordinates list<double>);
+create type if not exists cimapplication.line_data (type text, coordinates list<frozen <list<double>>>);
+create type if not exists cimapplication.polygon_data (type text, coordinates list<frozen <list<frozen <list<double>>>>>);
+
+create table if not exists cimapplication.geojson_points (
+    simulation text,
+    mrid text,
+    type text,
+    geometry frozen<cimapplication.point_data>,
+    primary key (simulation, mrid)
+) with comment = 'GeoJSON for simulated point elements';
+
+create table if not exists cimapplication.geojson_lines (
+    simulation text,
+    mrid text,
+    type text,
+    geometry frozen<cimapplication.line_data>,
+    primary key (simulation, mrid)
+) with comment = 'GeoJSON for simulated line elements';
+
+create table if not exists cimapplication.geojson_polygons (
+    simulation text,
+    mrid text,
+    type text,
+    geometry frozen<cimapplication.polygon_data>,
+    primary key (simulation, mrid)
+) with comment = 'GeoJSON for simulated polygon elements';
 
 /*
  * Requires adjustment of cassandra.yaml to enable user defined functions
