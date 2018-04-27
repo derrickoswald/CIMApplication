@@ -104,7 +104,26 @@ define
         var PlayerChoices = [
             {
                 "title": "Measured power for all EnergyConsumer with PSRType == 'PSRType_HouseService'",
-                "rdfquery": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
+                "rdfquery":
+                    `
+                    select
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        'energy' type,
+                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        t.TopologicalNode parent,
+                        'energy' type,
+                        'constant_power' property,
+                        'Watt' unit,
+                        n.TopologicalIsland island
+                    from
+                        EnergyConsumer c,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
                 "cassandraquery": "select cimapplication.subtract_offset (time, interval) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
                 "bind": [
                     "mrid",
@@ -146,7 +165,33 @@ define
 //            },
             {
                 "title": "All cable currents",
-                "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where Conductor.len != 0 and (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID and n.TopologicalIsland = '%s') and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s')",
+                "query":
+                    `
+                    select
+                        concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'current' type,
+                        'current_in' property,
+                        'Amperes' unit,
+                        n.TopologicalIsland island
+                    from
+                        ACLineSegment a,
+                        Terminal t1,
+                        Terminal t2,
+                        TopologicalNode n
+                    where
+                        (
+                            t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                            t1.ACDCTerminal.sequenceNumber = 1 and
+                            t1.TopologicalNode != n.IdentifiedObject.mRID
+                        )
+                        and
+                        (
+                            t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                            t2.ACDCTerminal.sequenceNumber = 2 and
+                            t2.TopologicalNode = n.IdentifiedObject.mRID
+                        )
+                    `,
                 "interval": 900,
                 "aggregations": [
                     {
@@ -169,7 +214,33 @@ define
             },
             {
                 "title": "All cable losses",
-                "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'energy' type, 'power_losses' property, 'Wh' unit from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where Conductor.len != 0 and (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID and n.TopologicalIsland = '%s') and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s')",
+                "query":
+                    `
+                    select
+                        concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'energy' type,
+                        'power_losses' property,
+                        'Wh' unit,
+                        n.TopologicalIsland island
+                    from
+                        ACLineSegment a,
+                        Terminal t1,
+                        Terminal t2,
+                        TopologicalNode n
+                    where
+                        (
+                            t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                            t1.ACDCTerminal.sequenceNumber = 1 and
+                            t1.TopologicalNode != n.IdentifiedObject.mRID
+                        )
+                        and
+                        (
+                            t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                            t2.ACDCTerminal.sequenceNumber = 2 and
+                            t2.TopologicalNode = n.IdentifiedObject.mRID
+                        )
+                    `,
                 "interval": 900,
                 "aggregations": [
                     {

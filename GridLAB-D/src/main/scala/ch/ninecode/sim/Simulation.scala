@@ -23,16 +23,13 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
-
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
-
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -47,6 +44,7 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import org.apache.spark.sql.DataFrame
 
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
@@ -127,40 +125,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 log.error (""" string could not be parsed as JSON (%s)""".format (je.getMessage))
                 Seq()
         }
-    }
-
-    def queryplayers (island: String) (player: SimulationPlayerQuery): SimulationPlayerQuery =
-    {
-        val numbind = player.rdfquery.split ("%s").length - 1
-        val sql = if (0 < numbind)
-        {
-            val ss = (for (i <- 1 to 2) yield island).toArray
-            player.rdfquery.format (ss: _*)
-        }
-        else
-            player.rdfquery
-        log.info ("""executing "%s" as %s""".format (player.title, sql))
-        val query = SimulationSparkQuery (session, sql)
-        val resultset = query.execute ()
-        log.info ("""%d rows returned""".format (resultset.size))
-        player.copy (jsons = stringify (resultset))
-    }
-
-    def queryrecorders (island: String) (recorder: SimulationRecorderQuery): SimulationRecorderQuery =
-    {
-        val numbind = recorder.query.split ("%s").length - 1
-        val sql = if (0 < numbind)
-        {
-            val ss = (for (i <- 1 to 2) yield island).toArray
-            recorder.query.format (ss: _*)
-        }
-        else
-            recorder.query
-        log.info ("""executing "%s" as %s""".format (recorder.title, sql))
-        val query = SimulationSparkQuery (session, sql)
-        val resultset = query.execute ()
-        log.info ("""%d rows returned""".format (resultset.size))
-        recorder.copy (jsons = stringify (resultset))
     }
 
     def using[T <: Closeable, R](resource: T)(block: T => R): R =
@@ -381,8 +345,30 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val trafo_islands = df.map (row ⇒ (row.getString (0), row.getString (1))).collect.toMap
         log.info ("""%d transformer island%s found""".format (trafo_islands.size, if (1 == trafo_islands.size) "" else "s"))
 
+        // query the players
+        val playersets = job.players.map (
+            player ⇒
+            {
+                log.info ("""executing "%s" as %s""".format (player.title, player.rdfquery))
+                val resultset = session.sql (player.rdfquery)
+                val index = resultset.head.schema.fieldIndex ("island")
+                (player, resultset, index)
+            }
+        )
+        // query the recorders
+        val recordersets = job.recorders.map (
+            recorder ⇒
+            {
+                log.info ("""executing "%s" as %s""".format (recorder.title, recorder.query))
+                val resultset = session.sql (recorder.query)
+                val index = resultset.head.schema.fieldIndex ("island")
+                (recorder, resultset, index)
+            }
+        )
+
         // process the list of transformers
         val transformers = if (0 != job.transformers.size) job.transformers else all_transformers (trafo_islands)
+        val query = SimulationSparkQuery ()
         transformers.foreach (
             transformer ⇒
             {
@@ -397,9 +383,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         log.error ("""transformer "%s" has different topological islands (%s) on its secondary connections, using %s""".format (transformer, names.mkString (", "), island))
 
                     val (nodes, edges) = queryNetwork (island)
-
-                    val players = job.players.map (queryplayers (island))
-                    val recorders = job.recorders.map (queryrecorders (island))
+                    val players = playersets.map (df ⇒ df._1.copy (jsons = stringify (query.pack (df._2.filter (row ⇒ row.getString (df._3) == island)))))
+                    val recorders = recordersets.map (df ⇒ df._1.copy (jsons = stringify (query.pack (df._2.filter (row ⇒ row.getString (df._3) == island)))))
                     val start = iso_parse (job.interval("start"))
                     val end = iso_parse (job.interval("end"))
                     val task = SimulationTask (
@@ -632,7 +617,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val trafokreise = tasks.map (
             task ⇒
             {
-                val (nodes, edges) = queryNetwork (task.island)
                 // get the transformer(s)
                 val transformers: Array[TransformerSet] = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
                     .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
@@ -646,8 +630,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     id,
                     task.island,
                     transformers(0),
-                    nodes,
-                    edges,
+                    task.nodes,
+                    task.edges,
                     task.start,
                     task.end,
                     task.players,

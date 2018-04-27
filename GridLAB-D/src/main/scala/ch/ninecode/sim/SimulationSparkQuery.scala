@@ -9,7 +9,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 
-case class SimulationSparkQuery (session: SparkSession, sql: String)
+case class SimulationSparkQuery ()
 {
     def packRow (row: Row): JsonObject =
     {
@@ -37,9 +37,8 @@ case class SimulationSparkQuery (session: SparkSession, sql: String)
         ret.build
     }
 
-    def execute (): Seq[JsonObject] =
+    def pack (df: DataFrame): Seq[JsonObject] =
     {
-        val df: DataFrame = session.sql (sql)
         val results = df.collectAsList
         for (row ← results)
             yield packRow (row)
