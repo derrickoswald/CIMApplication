@@ -23,6 +23,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
+
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
 import org.apache.commons.io.FileUtils
@@ -30,6 +31,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -44,8 +46,6 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import org.apache.spark.sql.DataFrame
-
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -383,8 +383,24 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         log.error ("""transformer "%s" has different topological islands (%s) on its secondary connections, using %s""".format (transformer, names.mkString (", "), island))
 
                     val (nodes, edges) = queryNetwork (island)
-                    val players = playersets.map (df ⇒ df._1.copy (jsons = stringify (query.pack (df._2.filter (row ⇒ row.getString (df._3) == island)))))
-                    val recorders = recordersets.map (df ⇒ df._1.copy (jsons = stringify (query.pack (df._2.filter (row ⇒ row.getString (df._3) == island)))))
+                    val players = playersets.map (
+                        set ⇒
+                        {
+                            val rows = set._2.filter (row ⇒ row.getString (set._3) == island)
+                            val jsons = query.pack (rows)
+                            log.info ("""%s returned %d rows for island %s""".format (set._1.title, jsons.size, island))
+                            set._1.copy (jsons = stringify (jsons))
+                        }
+                    )
+                    val recorders = recordersets.map (
+                        set ⇒
+                        {
+                            val rows = set._2.filter (row ⇒ row.getString (set._3) == island)
+                            val jsons = query.pack (rows)
+                            log.info ("""%s returned %d rows for island %s""".format (set._1.title, jsons.size, island))
+                            set._1.copy (jsons = stringify (jsons))
+                        }
+                    )
                     val start = iso_parse (job.interval("start"))
                     val end = iso_parse (job.interval("end"))
                     val task = SimulationTask (
@@ -483,28 +499,36 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def read_recorder_csv (file: String, element: String, one_phase: Boolean, units: String): Iterator[ThreePhaseComplexDataElement] =
     {
         val name = new File (options.workdir + file)
-        val text: Iterator[String] = Source.fromFile (name, "UTF-8").getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
-        val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
-        def toTimeStamp (string: String): Long =
+        if (!name.exists)
         {
-            date_format.parse (string).getTime
+            log.error ("""recorder file %s does not exist""".format (name.getCanonicalPath))
+            Iterator.empty
         }
-        text.map (
-            line ⇒
+        else
+        {
+            val text: Iterator[String] = Source.fromFile (name, "UTF-8").getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
+            val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+            def toTimeStamp (string: String): Long =
             {
-                val fields = line.split(",")
-                if (one_phase)
-                    if (fields.length == 2)
-                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex(0.0), Complex(0.0), units)
-                    else
-                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
-                else
-                    if (fields.length == 4)
-                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex.fromString (fields(2)), Complex.fromString (fields(3)), units)
-                    else
-                        ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
+                date_format.parse (string).getTime
             }
-        )
+            text.map (
+                line ⇒
+                {
+                    val fields = line.split(",")
+                    if (one_phase)
+                        if (fields.length == 2)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex(0.0), Complex(0.0), units)
+                        else
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
+                    else
+                        if (fields.length == 4)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex.fromString (fields(2)), Complex.fromString (fields(3)), units)
+                        else
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
+                }
+            )
+        }
     }
 
     def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =

@@ -9,7 +9,7 @@ case class SimulationPlayerQuery
 
     /**
      * The Spark query to determine what nodes or edges are played.
-     * Must return mrid, name, parent, type, property, and unit.
+     * Must return mrid, name, parent, type, property, unit and island.
      */
     rdfquery: String,
 
@@ -20,13 +20,14 @@ case class SimulationPlayerQuery
     cassandraquery: String,
 
     /**
-     * Bind variables for placeholders in the cassandraquery.
-     * Can be any value returned from the rdfquery.
+     * Bind variables for placeholders (%s) in the cassandraquery.
+     * Can be any value returned from the Spark query.
+     * Placeholders are bound 1:1 with variables in this array.
      */
     bind: Array[String],
 
     /**
-     * Results of the rdfquery as a Json array.
+     * Results of the Spark query as a Json array.
      */
     jsons: String = null,
 

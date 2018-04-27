@@ -103,7 +103,7 @@ define
         var PlayerChooser;
         var PlayerChoices = [
             {
-                "title": "Measured power for all EnergyConsumer with PSRType == 'PSRType_HouseService'",
+                "title": "Measured power for all house services",
                 "rdfquery":
                     `
                     select
@@ -138,31 +138,159 @@ define
         // see http://gridlabd.me.uvic.ca/wiki/index.php/Power_Flow_User_Guide#Link_Parameters
         var RecorderChooser;
         var RecorderChoices = [
-//            {
-//                title: "All node voltages",
-//                sql: "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' property, 'Volts' unit, Double(900.0) interval, concat ('output_data/', n.IdentifiedObject.mRID, '_voltage.csv') file from TopologicalNode n where n.TopologicalIsland = '%1'",
-//                binder: function (match) { return (TheSimulation.island); },
-//                target_directory: "output_data/",
-//                execute: outfile
-//            },
-//            {
-//                title: "All transformer power flows",
-//                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_power_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power_out' property, 'Volt-Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_power.csv') file  from PowerTransformer p",
-//                target_directory: "output_data/",
-//                execute: outfile
-//            },
-//            {
-//                title: "All transformer output currents",
-//                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current_out' property, 'Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_current.csv') file  from PowerTransformer p",
-//                target_directory: "output_data/",
-//                execute: outfile
-//            },
-//            {
-//                title: "All transformer power losses",
-//                sql: "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power_losses' property, 'Volt-Amperes' unit, Double(900.0) interval, concat ('output_data/', p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID ,  '_losses.csv') file  from PowerTransformer p",
-//                target_directory: "output_data/",
-//                execute: outfile
-//            },
+            {
+                "title": "All node voltages",
+                "query":
+                    `
+                    select
+                        concat (n.IdentifiedObject.mRID, '_voltage_recorder') name,
+                        n.IdentifiedObject.mRID parent,
+                        'voltage' type,
+                        'voltage' property,
+                        'Volts' unit,
+                        n.TopologicalIsland island
+                    from
+                        TopologicalNode n
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": 1800
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": 3600
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": 7200
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All transformer power flows",
+                "query":
+                    `
+                    select
+                        concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'power' type,
+                        'power_out' property,
+                        'Volt-Amperes' unit,
+                        n.TopologicalIsland island
+                    from
+                        PowerTransformer p,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ACDCTerminal.sequenceNumber > 1 and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": 1800
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": 3600
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": 7200
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All transformer output currents",
+                "query":
+                    `
+                    select
+                        concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'current' type,
+                        'current_out' property,
+                        'Amperes' unit,
+                        n.TopologicalIsland island
+                    from
+                        PowerTransformer p,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ACDCTerminal.sequenceNumber > 1 and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": 1800
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": 3600
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": 7200
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All transformer power losses",
+                "query":
+                    `
+                    select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'energy' type,
+                        'power_losses' property,
+                        'Volt-Amperes' unit,
+                        n.TopologicalIsland island
+                    from
+                        PowerTransformer p,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ACDCTerminal.sequenceNumber > 1 and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": 1800
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": 3600
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": 7200
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
             {
                 "title": "All cable currents",
                 "query":

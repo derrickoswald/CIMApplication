@@ -115,4 +115,9 @@ case class SimulationGLMGenerator (
         val players = n.players.map (emit_node_player (n)).mkString ("")
         super.emit_node (node) + recorders + players
     }
+
+    override def emit_transformer (transformer: TransformerSet): String =
+    {
+        super.emit_transformer (transformer)
+    }
 }

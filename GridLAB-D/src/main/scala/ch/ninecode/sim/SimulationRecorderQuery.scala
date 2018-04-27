@@ -8,7 +8,7 @@ case class SimulationRecorderQuery (
 
     /**
      * The query to determine what nodes or edges are recorded.
-     * Must return mrid, name, parent, property, and unit.
+     * Must return mrid, name, parent, property, unit and island.
      */
     query: String,
 
