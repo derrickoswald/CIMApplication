@@ -89,8 +89,8 @@ object SimulationJob
     def parsePlayer (name: String, player: JsonObject): List[SimulationPlayerQuery] =
     {
         val title = player.getString ("title", "")
-        val rdfquery = player.getString ("rdfquery", null)
-        if (null == rdfquery)
+        val query = player.getString ("query", null)
+        if (null == query)
         {
             log.error (""""%s" does not specify an RDF query for player "%s""".format (name, title))
             List()
@@ -109,7 +109,7 @@ object SimulationJob
                 val array = Array.ofDim[String](binds.size)
                 for (i <- 0 until binds.size)
                     array(i) = binds.getJsonString (i).getString
-                List (SimulationPlayerQuery (title, rdfquery, cassandraquery, array))
+                List (SimulationPlayerQuery (title, query, cassandraquery, array))
             }
         }
     }
@@ -180,7 +180,7 @@ object SimulationJob
             org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
         val jsons = options.simulation.map (readJSON)
         if (!jsons.forall ({ case Some (_) ⇒ true case None ⇒ false }))
-            log.info ("""not all simulations will be processed""")
+            log.warn ("""not all simulations will be processed""")
 
         jsons.flatMap ({ case Some (json) ⇒ parseJob (options, json) case None ⇒ List () })
     }

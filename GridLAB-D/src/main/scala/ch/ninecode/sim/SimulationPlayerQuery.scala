@@ -11,7 +11,7 @@ case class SimulationPlayerQuery
      * The Spark query to determine what nodes or edges are played.
      * Must return mrid, name, parent, type, property, unit and island.
      */
-    rdfquery: String,
+    query: String,
 
     /**
      * The Cassandra query to determine the player file contents.
@@ -41,3 +41,4 @@ case class SimulationPlayerQuery
      */
     count: Int = 0
 )
+extends SimulationQuery

@@ -94,6 +94,11 @@ define
                 this._map.removeControl (this);
             }
 
+            /**
+             * Adds a theme to the theme user interface.
+             * @param theme the theme to add
+             * @return the given theme or the existing theme of the same name
+             */
             addTheme (theme)
             {
                 var name = theme.getName ();
@@ -108,6 +113,7 @@ define
                     this._themes.push (theme);
                 if ("undefined" == typeof (this._theme))
                     this._theme = this._themes[0];
+                return ((-1 == index) ? theme : this._themes[index]);
             }
 
             removeTheme (theme)
@@ -156,10 +162,10 @@ define
                 this._theme_listener = fn;
             }
 
-            theme (map, data, options)
+            theme (cimmap, options)
             {
                 this._theme.remove_theme ();
-                this._theme.make_theme (map, data, options);
+                this._theme.make_theme (cimmap, options);
             }
 
             getExtents ()

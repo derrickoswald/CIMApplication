@@ -64,7 +64,7 @@ define
         //        "players": [
         //            {
         //                "title": "house services",
-        //                "rdfquery": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
+        //                "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
         //                "cassandraquery": "select cimapplication.subtract_offset (time, interval) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
         //                "bind": [
         //                    "mrid",
@@ -104,7 +104,7 @@ define
         var PlayerChoices = [
             {
                 "title": "Measured power for all house services",
-                "rdfquery":
+                "query":
                     `
                     select
                         c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
@@ -417,7 +417,10 @@ define
                 TheSimulation.description = description;
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
-            document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>"
+            document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+            // flip to the map while simulating
+            if (document.getElementById ("to_map").value)
+                window.location.hash = "map";
 
             var url;
             var xmlhttp;
@@ -435,17 +438,28 @@ define
                         if (resp.status == "OK")
                         {
                             var simulation_id = resp.result.simulations[0];
-                            cimquery.query (
-                                "select json * from cimapplication.simulation where id='" + simulation_id + "'",
-                                true,
-                                "",
-                                "",
-                                function (data)
-                                {
-                                    var json = JSON.parse (data[0]["[json]"]);
-                                    document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
-                                }
-                            );
+                            document.getElementById ("results").innerHTML = "";
+                            if (document.getElementById ("to_map").value)
+                            {
+                                var theme = new SimulationTheme ();
+                                cimmap.get_themer ().removeTheme (theme);
+                                theme = cimmap.get_themer ().addTheme (theme);
+                                theme.setSimulation (simulation_id);
+                            }
+                            else
+                            {
+                                cimquery.query (
+                                    "select json * from cimapplication.simulation where id='" + simulation_id + "'",
+                                    true,
+                                    "",
+                                    "",
+                                    function (data)
+                                    {
+                                        var json = JSON.parse (data[0]["[json]"]);
+                                        document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
+                                    }
+                                );
+                            }
                         }
                         else
                             alert (resp.message);
@@ -529,6 +543,13 @@ define
                         <div id="players" class="form-group">
                         </div>
                         <div id="recorders" class="form-group">
+                        </div>
+                        <div class="form-group">
+                          <label for="to_map">View on map</label>
+                            <div class='form-check'>
+                              <input id="to_map" class="form-check-input" type="checkbox" name="to_map" aria-describedby="toMapHelp" checked>
+                              <small id="toMapHelp" class="form-text text-muted">Add a theme to the map tab for simulation results.</small>
+                            </div>
                         </div>
                         <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
                       </form>
@@ -655,55 +676,6 @@ define
             document.getElementById ("simulate").innerHTML = "";
             render ();
             getDateRange ();
-        }
-
-        function query_results ()
-        {
-            var data = cimmap.get_data ();
-            return (
-                new Promise (
-                    function (resolve, reject)
-                    {
-                        // ToDo: where simulation = blah
-                        // ToDo: is there a sqrt function in Cassandra
-                        // ToDo: make a relative value with cable max current: select Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, w.ratedCurrent from ACLineSegment a, WireInfo w where a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet = w.AssetInfo.IdentifiedObject.mRID
-                        cimquery.query ("select mrid, time, real_a, imag_a  from cimapplication.simulated_value_by_day where type = 'current_in' allow filtering",
-                            true,
-                            "",
-                            "",
-                            function (records)
-                            {
-                                var start = 2000000000000;
-                                var finish = 0;
-                                records.forEach (
-                                    function (record)
-                                    {
-                                        //    {
-                                        //        "mrid": "KLE2827",
-                                        //        "time": 1500336000000,
-                                        //        "imag_a": 0.263108,
-                                        //        "real_a": -8.94582,
-                                        //    },
-                                        var time = record.time;
-                                        if (time < start)
-                                            start = time;
-                                        if (time > finish)
-                                            finish = time;
-                                        var magnitude = Math.sqrt (record.real_a * record.real_a + record.imag_a * record.imag_a);
-                                        data.Element[record.mrid]["T" + time] = magnitude;
-                                    }
-                                );
-                                resolve ({ start: start, finish: finish });
-                            },
-                            function (message)
-                            {
-                                reject (message);
-                            }
-
-                        );
-                    }
-                )
-            );
         }
 
 // placeholders until Export is fixed:

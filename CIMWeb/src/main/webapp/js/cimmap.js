@@ -106,22 +106,6 @@ define
             return (TheMap);
         }
 
-        /*
-         * Predicate for an empty object.
-         * @parm the object to check for emptiness
-         * @return <code>true</code> if the object has no properties.
-         */
-        function empty (obj)
-        {
-            var ret = true;
-            for (var property in CIM_Data)
-            {
-                ret = false;
-                break;
-            }
-            return (ret);
-        }
-
         /**
          * Set the CIM data for the map to draw.
          * @param {JSON} Data parsed from the cim module.
@@ -131,8 +115,7 @@ define
         function set_data (data)
         {
             CIM_Data = data;
-            if (null != CIM_Data && !empty (CIM_Data))
-                make_map (function () { zoom_extents (); });
+            make_map (function () { zoom_extents (); });
         }
 
         /**
@@ -325,8 +308,6 @@ define
          */
         async function make_map (callback)
         {
-            var start = new Date ().getTime ();
-            console.log ("rendering CIM data");
             select (null);
 
             function sleep(ms)
@@ -340,7 +321,7 @@ define
             if (TheThemer.getTheme ())
                 if (TheThemer.getTheme ().getLegend ().visible ())
                     TheMap.removeControl (TheThemer.getTheme ().getLegend ());
-            TheThemer.theme (TheMap, CIM_Data,
+            TheThemer.theme (getInterface (),
                 {
                     show_internal_features: show_internal_features ()
                 });
@@ -348,8 +329,6 @@ define
 
             buildings_3d ();
 
-            var end = new Date ().getTime ();
-            console.log ("finished rendering CIM data (" + (Math.round (end - start) / 1000) + " seconds)");
             if (callback)
                 callback ();
         }
@@ -1078,8 +1057,7 @@ define
          */
         function redraw (event)
         {
-            if (null != CIM_Data)
-                make_map ();
+            make_map ();
         }
 
         /**

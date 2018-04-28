@@ -17,11 +17,10 @@ define
     {
         class SimulationLegend
         {
-            constructor (theme, times)
+            constructor (theme)
             {
                 this._onMap = false;
                 this._theme = theme;
-                this._times = times; // { start: start, finish: finish }
                 this._template =
                 "<div class='card'>\n" +
                 "  <div class='card-body'>\n" +
@@ -47,7 +46,7 @@ define
                     {
                         step: 1000 * 60 * 15, // 15 minutes in milliseconds
                         min: this._times.start,
-                        max: this._times.finish,
+                        max: this._times.end,
                         formatter: function (value)
                         {
                             var t = new Date (value);
@@ -87,6 +86,11 @@ define
             legend_change_listener (fn)
             {
                 this._legend_listener = fn;
+            }
+
+            setTimes (times) // { start: start, end: end }
+            {
+                 this._times = times;
             }
         }
 

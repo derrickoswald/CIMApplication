@@ -250,17 +250,16 @@ define
 
             /**
              * Add sources and layers to the map.
-             * @param {Object} map - the Mapbox map object
-             * @param {Object} data - the hash table object of CIM classes by class name
+             * @param {Object} cimmap - the CIM map object
              * @param {Object} options - object with rendering options, e.g.
              *   show_internal_features flag - render internal features
              * @function make_theme
              * @memberOf module:analysis_theme
              */
-            make_theme (map, data, options)
+            make_theme (cimmap, options)
             {
-                super.make_theme (map, data, options);
-                this._map = map;
+                super.make_theme (cimmap, options);
+                this._map = cimmap.get_map ();
                 this._popon = this.popon.bind (this);
                 this._popoff = this.popoff.bind (this);
                 this._map.on ("mouseenter", "symbol", this._popon);

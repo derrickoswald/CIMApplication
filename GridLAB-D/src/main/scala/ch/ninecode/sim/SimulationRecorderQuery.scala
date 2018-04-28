@@ -30,4 +30,6 @@ case class SimulationRecorderQuery (
     /**
      * The file name for recording.
      */
-    file: String = null)
+    file: String = null
+)
+extends SimulationQuery

@@ -346,29 +346,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""%d transformer island%s found""".format (trafo_islands.size, if (1 == trafo_islands.size) "" else "s"))
 
         // query the players
-        val playersets = job.players.map (
-            player ⇒
-            {
-                log.info ("""executing "%s" as %s""".format (player.title, player.rdfquery))
-                val resultset = session.sql (player.rdfquery)
-                val index = resultset.head.schema.fieldIndex ("island")
-                (player, resultset, index)
-            }
-        )
+        val playersets = job.players.map (SimulationSparkQuery (session, _, options.verbose).execute)
+
         // query the recorders
-        val recordersets = job.recorders.map (
-            recorder ⇒
-            {
-                log.info ("""executing "%s" as %s""".format (recorder.title, recorder.query))
-                val resultset = session.sql (recorder.query)
-                val index = resultset.head.schema.fieldIndex ("island")
-                (recorder, resultset, index)
-            }
-        )
+        val recordersets = job.recorders.map (SimulationSparkQuery (session, _, options.verbose).execute)
 
         // process the list of transformers
         val transformers = if (0 != job.transformers.size) job.transformers else all_transformers (trafo_islands)
-        val query = SimulationSparkQuery ()
         transformers.foreach (
             transformer ⇒
             {
@@ -384,21 +368,17 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                     val (nodes, edges) = queryNetwork (island)
                     val players = playersets.map (
-                        set ⇒
+                        player ⇒
                         {
-                            val rows = set._2.filter (row ⇒ row.getString (set._3) == island)
-                            val jsons = query.pack (rows)
-                            log.info ("""%s returned %d rows for island %s""".format (set._1.title, jsons.size, island))
-                            set._1.copy (jsons = stringify (jsons))
+                            val jsons = player.filter (island)
+                            player.query.asInstanceOf[SimulationPlayerQuery].copy (jsons = stringify (jsons))
                         }
                     )
                     val recorders = recordersets.map (
-                        set ⇒
+                        recorder ⇒
                         {
-                            val rows = set._2.filter (row ⇒ row.getString (set._3) == island)
-                            val jsons = query.pack (rows)
-                            log.info ("""%s returned %d rows for island %s""".format (set._1.title, jsons.size, island))
-                            set._1.copy (jsons = stringify (jsons))
+                            val jsons = recorder.filter (island)
+                            recorder.query.asInstanceOf[SimulationRecorderQuery].copy (jsons = stringify (jsons))
                         }
                     )
                     val start = iso_parse (job.interval("start"))
@@ -562,7 +542,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (n <- trafo.nodes)
         {
             val node = n.asInstanceOf[SimulationNode]
-            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %g, %g ] } }"""
+            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] } }"""
                 .format (trafo.simulation, node.equipment, node.position._1, node.position._2)
             statement.setString (0, json)
             session.execute (statement)
@@ -580,7 +560,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         {
             val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
             val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] } }"""
-                .format (trafo.simulation, edge.element.id, edge.position.map (p ⇒ """[%g,%g]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
+                .format (trafo.simulation, edge.element.id, edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
             statement.setString (0, json)
             session.execute (statement)
         }
@@ -589,8 +569,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def get_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
     {
-        for (raw <- trafo.nodes)
-            yield raw.asInstanceOf[SimulationNode].position
+        var points =
+            for (raw <- trafo.nodes)
+                yield raw.asInstanceOf[SimulationNode].position
+        for (raw <- trafo.edges)
+            points = points ++ raw.asInstanceOf[Iterable[SimulationEdge]].head.position.toIterable
+        points
     }
 
     def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
@@ -601,7 +585,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val statement = prepared.bind ()
         val hull = Hull.scan (get_points (trafo).toList)
         val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] } }"""
-            .format (trafo.simulation, trafo.transformer.transformer_name, hull.map (p ⇒ """[%g,%g]""".format (p._1, p._2)).mkString (","))
+            .format (trafo.simulation, trafo.transformer.transformer_name, hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (","))
         statement.setString (0, json)
         session.execute (statement)
         log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
