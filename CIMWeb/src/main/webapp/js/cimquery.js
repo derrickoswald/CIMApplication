@@ -88,7 +88,13 @@ define
                         xmlhttp.onload = function ()
                         {
                             if (xmlhttp.status >= 200 && xmlhttp.status < 300)
-                                resolve (JSON.parse (xmlhttp.responseText));
+                            {
+                                var resp = JSON.parse (xmlhttp.responseText);
+                                if (resp.status == "OK")
+                                    resolve (resp.result);
+                                else
+                                    reject (resp.message);
+                            }
                             else
                                 reject (
                                     {

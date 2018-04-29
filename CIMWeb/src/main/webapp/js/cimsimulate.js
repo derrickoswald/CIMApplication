@@ -444,7 +444,7 @@ define
                                 var theme = new SimulationTheme ();
                                 cimmap.get_themer ().removeTheme (theme);
                                 theme = cimmap.get_themer ().addTheme (theme);
-                                theme.setSimulation (simulation_id);
+                                theme.setSimulation (simulation_id).then (function () { cimmap.zoom_extents (); });
                             }
                             else
                             {
@@ -469,6 +469,21 @@ define
             };
 
             xmlhttp.send (JSON.stringify (TheSimulation, null, 4));
+        }
+
+        function do_show ()
+        {
+            var simulation_id = document.getElementById ("simulation_id").value;
+            if (document.getElementById ("to_map").value)
+            {
+                window.location.hash = "map";
+                var theme = new SimulationTheme ();
+                cimmap.get_themer ().removeTheme (theme);
+                theme = cimmap.get_themer ().addTheme (theme);
+                theme.setSimulation (simulation_id).then (function () { cimmap.zoom_extents (); });
+            }
+            else
+                alert ("check the 'View on map' checkbox to make this work");
         }
 
         function jsonify (data)
@@ -517,6 +532,7 @@ define
 
         function render ()
         {
+            document.getElementById ("simulate").innerHTML = "";
             var simulate_template =
                 `
                 <div class="container">
@@ -551,7 +567,21 @@ define
                               <small id="toMapHelp" class="form-text text-muted">Add a theme to the map tab for simulation results.</small>
                             </div>
                         </div>
-                        <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
+                        <div class='form-group'>
+                          <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
+                        </div>
+                        <div class='form-group'>
+                          <label for='simulation_id'>Prior simulations</label>
+                          <select id='simulation_id' class='form-control custom-select' aria-describedby='simulationIDHelp'>
+                            {{#simulations}}
+                              <option value='{{id}}'>{{name}}</option>
+                            {{/simulations}}
+                          </select>
+                          <small id='simulationIDHelp' class='form-text text-muted'>Select the simulation to view on the map.</small>
+                        </div>
+                        <div class='form-group'>
+                          <button id="show_simulation" name="show_simulation" type="button" class="btn btn-primary">Show simulation</button>
+                        </div>
                       </form>
                       <div id="results">
                       </div>
@@ -560,59 +590,74 @@ define
                 </div>
                 `;
 
-            var text = mustache.render
-            (
-                simulate_template,
+            cimquery.queryPromise (
                 {
-                    name: getName,
-                    description: getDescription
+                    cassandra: true,
+                    sql: "select JSON id, name, description, cim, cimreaderoptions, interval, transformers from cimapplication.simulation"
+                }
+            ).then (
+                function (resultset)
+                {
+                    var text = mustache.render
+                    (
+                        simulate_template,
+                        {
+                            name: getName,
+                            description: getDescription,
+                            simulations: resultset.map (row => JSON.parse (row["[json]"]))
+                        }
+                    );
+                    document.getElementById ("simulate").innerHTML = text;
+
+                    // see https://wireddots.com/products/datetimepicker
+                    var start = new Date (TheSimulation.interval.start);
+                    var end = new Date (TheSimulation.interval.end);
+                    $('#simulation_timerange').daterangepicker (
+                        {
+                            timePicker: true,
+                            timePickerIncrement: 15,
+                            locale: {
+                                format: 'YYYY.MM.DD HH:mm'
+                            },
+                            timePicker24Hour: true,
+                            linkedCalendars: false,
+                            startDate: start,
+                            endDate: end,
+                            minDate: start,
+                            maxDate: end,
+                            showDropdowns: true
+                            //showISOWeekNumbers: true
+                        },
+                        setDateRange
+                    );
+                    if (null == PlayerChooser)
+                    {
+                        var help =
+                            `
+                            <small id="players_help" class="form-text text-muted">
+                                The queries to use to pick player (load) elements.
+                            </small>
+                            `;
+                        PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
+                    }
+                    PlayerChooser.render ();
+                    if (null == RecorderChooser)
+                    {
+                        var help =
+                            `
+                            <small id="recorders_help" class="form-text text-muted">
+                                The queries to use to pick recorder elements.
+                            </small>
+                            `;
+                        RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
+                    }
+                    RecorderChooser.render ();
+
+                    document.getElementById ("simulate").innerHTML = text;
+                    document.getElementById ("do_simulate").onclick = do_simulate;
+                    document.getElementById ("show_simulation").onclick = do_show;
                 }
             );
-            document.getElementById ("simulate").innerHTML = text;
-            document.getElementById ("do_simulate").onclick = do_simulate;
-            // see https://wireddots.com/products/datetimepicker
-            var start = new Date (TheSimulation.interval.start);
-            var end = new Date (TheSimulation.interval.end);
-            $('#simulation_timerange').daterangepicker (
-                {
-                    timePicker: true,
-                    timePickerIncrement: 15,
-                    locale: {
-                        format: 'YYYY.MM.DD HH:mm'
-                    },
-                    timePicker24Hour: true,
-                    linkedCalendars: false,
-                    startDate: start,
-                    endDate: end,
-                    minDate: start,
-                    maxDate: end,
-                    showDropdowns: true
-                    //showISOWeekNumbers: true
-                },
-                setDateRange
-            );
-            if (null == PlayerChooser)
-            {
-                var help =
-                    `
-                    <small id="players_help" class="form-text text-muted">
-                        The queries to use to pick player (load) elements.
-                    </small>
-                    `;
-                PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
-            }
-            PlayerChooser.render ();
-            if (null == RecorderChooser)
-            {
-                var help =
-                    `
-                    <small id="recorders_help" class="form-text text-muted">
-                        The queries to use to pick recorder elements.
-                    </small>
-                    `;
-                RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
-            }
-            RecorderChooser.render ();
         }
 
         function setDateRange (start, end, label)
@@ -638,8 +683,8 @@ define
             ).then (
                 function (resultset)
                 {
-                    var start = new Date (resultset.result[0].low);
-                    var end = new Date (resultset.result[0].high);
+                    var start = new Date (resultset[0].low);
+                    var end = new Date (resultset[0].high);
                     $('#simulation_timerange').daterangepicker (
                         {
                             timePicker: true,

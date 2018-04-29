@@ -87,6 +87,9 @@ define
              */
             make_theme (cimmap, options)
             {
+                var start = new Date ().getTime ();
+                console.log ("rendering simulatuion data");
+
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
 
@@ -132,6 +135,9 @@ define
 
                 // set the current filter
                 this.legend_changed ();
+
+                var end = new Date ().getTime ();
+                console.log ("finished rendering simulation data (" + (Math.round (end - start) / 1000) + " seconds)");
             }
 
             fixup (raw)
@@ -147,7 +153,7 @@ define
             setSimulationGeoJSON_Points (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "MUI200057", "geometry": {"type": "Point", "coordinates": [9.50617, 47.0154]}, "type": "Feature"}, ...
-                var features = data.result.map (this.fixup);
+                var features = data.map (this.fixup);
                 // the points GeoJSON
                 this._simulation_points =
                 {
@@ -180,7 +186,7 @@ define
             setSimulationGeoJSON_Lines (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "KLE2632", "geometry": {"type": "LineString", "coordinates": [[9.491, 47.0138], [9.491, 47.0138], [9.49105, 47.0139], [9.49109, 47.0139], [9.49107, 47.0139], [9.49108, 47.014]]}, "type": "Feature"}, ...
-                var features = data.result.map (this.fixup);
+                var features = data.map (this.fixup);
                 // the lines GeoJSON
                 this._simulation_lines =
                 {
@@ -196,7 +202,7 @@ define
             setSimulationGeoJSON_Polygons (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "TRA3215", "geometry": {"type": "Polygon", "coordinates": [[[9.50617, 47.0154], [9.50617, 47.0154]]]}, "type": "Feature"}, ...
-                var features = data.result.map (this.fixup);
+                var features = data.map (this.fixup);
                 // the lines GeoJSON
                 this._simulation_polygons =
                 {
@@ -207,7 +213,7 @@ define
 
             setSimulationJSON (data)
             {
-                this._simulation_json = JSON.parse (data.result[0]["[json]"]);
+                this._simulation_json = JSON.parse (data[0]["[json]"]);
                 this._simulation = this._simulation_json.id;
                 // "interval": {"end": "2017-07-18 23:00:00.000Z", "start": "2017-07-17 23:00:00.000Z"}
                 this._legend.setTimes (
@@ -225,9 +231,10 @@ define
             setSimulation (id)
             {
                 this._simulation = id;
-                cimquery.queryPromise (
+                var promise = cimquery.queryPromise (
                     { sql: "select json * from cimapplication.simulation where id='" + id + "'", cassandra: true }
                 ).then (this.setSimulationJSON.bind (this));
+                return (promise);
             }
 
         }
