@@ -20,7 +20,7 @@ define
             {
                 name: "Sample",
                 description: "sample simulation",
-                cim: "hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf",
+                cim: "hdfs://sandbox:8020/SAK_sta117_sta206.rdf",
                 cimreaderoptions: {
                     "ch.ninecode.cim.do_about": false,
                     "ch.ninecode.cim.do_normalize": false,
@@ -98,6 +98,8 @@ define
         //            }
         //        ]
         //    }
+
+        var TransformerChooser;
 
         // User specified player object queries
         var PlayerChooser;
@@ -415,6 +417,7 @@ define
                 TheSimulation.name = name;
             if (description != "")
                 TheSimulation.description = description;
+            TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
@@ -442,24 +445,28 @@ define
                             if (document.getElementById ("to_map").value)
                             {
                                 var theme = new SimulationTheme ();
-                                cimmap.get_themer ().removeTheme (theme);
-                                theme = cimmap.get_themer ().addTheme (theme);
-                                theme.setSimulation (simulation_id).then (function () { cimmap.zoom_extents (); });
-                            }
-                            else
-                            {
-                                cimquery.query (
-                                    "select json * from cimapplication.simulation where id='" + simulation_id + "'",
-                                    true,
-                                    "",
-                                    "",
-                                    function (data)
+                                theme.setSimulation (simulation_id).then (
+                                    function ()
                                     {
-                                        var json = JSON.parse (data[0]["[json]"]);
-                                        document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
+                                        cimmap.get_themer ().removeTheme (theme);
+                                        cimmap.get_themer ().addTheme (theme, true);
+                                        theme.setRenderListener (() => { cimmap.set_extents (theme.getExtents ()); cimmap.zoom_extents (); theme.setRenderListener = null; });
                                     }
                                 );
                             }
+                            else
+                                cimquery.queryPromise (
+                                    {
+                                        cassandra: true,
+                                        sql: "select json * from cimapplication.simulation where id='" + simulation_id + "'"
+                                    }
+                                ).then (
+                                    function (resultset)
+                                    {
+                                        var json = JSON.parse (resultset[0]["[json]"]);
+                                        document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
+                                    }
+                                );
                         }
                         else
                             alert (resp.message);
@@ -476,11 +483,18 @@ define
             var simulation_id = document.getElementById ("simulation_id").value;
             if (document.getElementById ("to_map").value)
             {
-                window.location.hash = "map";
                 var theme = new SimulationTheme ();
-                cimmap.get_themer ().removeTheme (theme);
-                theme = cimmap.get_themer ().addTheme (theme);
-                theme.setSimulation (simulation_id).then (function () { cimmap.zoom_extents (); });
+                theme.setSimulation (simulation_id).then (
+                    function ()
+                    {
+                        cimmap.get_themer ().removeTheme (theme);
+                        cimmap.get_themer ().addTheme (theme, true);
+                        window.location.hash = "map";
+                        // this causes two renders: cimmap.make_map ().then (cimmap.zoom_extents);
+                        // so use a kludge:
+                        theme.setRenderListener (() => { cimmap.set_extents (theme.getExtents ()); cimmap.zoom_extents (); theme.setRenderListener = null; });
+                    }
+                );
             }
             else
                 alert ("check the 'View on map' checkbox to make this work");
@@ -489,6 +503,12 @@ define
         function jsonify (data)
         {
             return (JSON.stringify (data, null, 4))
+        }
+
+        function query_transformers ()
+        {
+            var ret = TransformerChooser.context.items.map (item => item.value);
+            return (ret);
         }
 
         function query_players ()
@@ -555,6 +575,8 @@ define
                           <label for="simulation_timerange">Time range</label>
                           <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="{{description}}">
                           <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
+                        </div>
+                        <div id="transformers" class="form-group">
                         </div>
                         <div id="players" class="form-group">
                         </div>
@@ -630,6 +652,17 @@ define
                         },
                         setDateRange
                     );
+                    if (null == TransformerChooser)
+                    {
+                        var help =
+                            `
+                            <small id="transformers_help" class="form-text text-muted">
+                                The transformers to process - if none are provided, all are processed.
+                            </small>
+                            `;
+                        TransformerChooser = new Chooser ("transformers", "Transformers", "Transformer", null, help);
+                    }
+                    TransformerChooser.render ();
                     if (null == PlayerChooser)
                     {
                         var help =
@@ -653,7 +686,6 @@ define
                     }
                     RecorderChooser.render ();
 
-                    document.getElementById ("simulate").innerHTML = text;
                     document.getElementById ("do_simulate").onclick = do_simulate;
                     document.getElementById ("show_simulation").onclick = do_show;
                 }

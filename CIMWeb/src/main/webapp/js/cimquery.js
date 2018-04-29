@@ -81,8 +81,8 @@ define
                     function (resolve, reject)
                     {
                         var target = (options.cassandra) ? "cassandra=true&": "";
-                        var table = ("" != options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
-                        var cassandra_table = ("" != options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
+                        var table = (options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
+                        var cassandra_table = (options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
                         var url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
                         var xmlhttp = util.createCORSRequest ("GET", url);
                         xmlhttp.onload = function ()

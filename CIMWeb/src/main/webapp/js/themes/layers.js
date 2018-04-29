@@ -161,7 +161,7 @@ define
             return (ret);
         }
 
-        function polygon_layer (id, source, color, filter)
+        function polygon_layer (id, source, color, edge_color, filter)
         {
             var ret =
                 {
@@ -173,7 +173,7 @@ define
                     {
                         "fill-opacity": 0.25,
                         "fill-color": color,
-                        "fill-outline-color": color
+                        "fill-outline-color": edge_color
                     }
                 };
             if ("undefined" != typeof (filter) && (null != filter))

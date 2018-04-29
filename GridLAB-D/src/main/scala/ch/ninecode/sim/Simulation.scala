@@ -542,8 +542,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (n <- trafo.nodes)
         {
             val node = n.asInstanceOf[SimulationNode]
-            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] } }"""
-                .format (trafo.simulation, node.equipment, node.position._1, node.position._2)
+            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] } }"""
+                .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2)
             statement.setString (0, json)
             session.execute (statement)
         }
@@ -559,8 +559,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (raw <- trafo.edges)
         {
             val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
-            val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] } }"""
-                .format (trafo.simulation, edge.element.id, edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
+            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] } }"""
+                .format (trafo.simulation, edge.element.id, trafo.transformer.transformer_name, edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
             statement.setString (0, json)
             session.execute (statement)
         }

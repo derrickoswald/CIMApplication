@@ -53,6 +53,7 @@ create type if not exists cimapplication.polygon_data (type text, coordinates li
 create table if not exists cimapplication.geojson_points (
     simulation text,
     mrid text,
+    transformer text,
     type text,
     geometry frozen<cimapplication.point_data>,
     primary key (simulation, mrid)
@@ -61,6 +62,7 @@ create table if not exists cimapplication.geojson_points (
 create table if not exists cimapplication.geojson_lines (
     simulation text,
     mrid text,
+    transformer text,
     type text,
     geometry frozen<cimapplication.line_data>,
     primary key (simulation, mrid)

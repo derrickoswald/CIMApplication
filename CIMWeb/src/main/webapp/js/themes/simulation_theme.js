@@ -26,6 +26,7 @@ define
                 this._simulation_lines = null;
                 this._simulation_polygons = null;
                 this._extents = { xmin: 0.0, ymin: 0.0, xmax: 0.0, ymax: 0.0 };
+                this._render_listener = null;
             }
 
             getName ()
@@ -88,7 +89,7 @@ define
             make_theme (cimmap, options)
             {
                 var start = new Date ().getTime ();
-                console.log ("rendering simulatuion data");
+                console.log ("rendering simulation data");
 
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
@@ -131,13 +132,16 @@ define
                 map.addLayer (layers.line_layer ("lines", "edges", "#000000"));
 
                 // blue with border
-                map.addLayer (layers.polygon_layer ("polygons", "areas", "#0000ff"))
+                map.addLayer (layers.polygon_layer ("polygons", "areas", "#0000ff", "#000000"))
 
                 // set the current filter
                 this.legend_changed ();
 
                 var end = new Date ().getTime ();
                 console.log ("finished rendering simulation data (" + (Math.round (end - start) / 1000) + " seconds)");
+
+                if (this._render_listener)
+                    this._render_listener ();
             }
 
             fixup (raw)
@@ -146,7 +150,11 @@ define
                 delete feature.simulation;
                 var mrid = feature.mrid;
                 delete feature.mrid;
-                feature.properties = { "mrid": mrid };
+                var transformer = feature.transformer;
+                if (transformer)
+                    feature.properties = { "mrid": mrid, "transformer": transformer };
+                else
+                    feature.properties = { "mrid": mrid };
                 return (feature);
             }
 
@@ -237,6 +245,10 @@ define
                 return (promise);
             }
 
+            setRenderListener (fn)
+            {
+                this._render_listener = fn;
+            }
         }
 
         return (SimulationTheme);

@@ -97,9 +97,10 @@ define
             /**
              * Adds a theme to the theme user interface.
              * @param theme the theme to add
+             * @param set if <code>true</code> make the new theme the current theme
              * @return the given theme or the existing theme of the same name
              */
-            addTheme (theme)
+            addTheme (theme, set)
             {
                 var name = theme.getName ();
                 var index = -1;
@@ -111,9 +112,17 @@ define
                     }
                 if (-1 == index)
                     this._themes.push (theme);
-                if ("undefined" == typeof (this._theme))
-                    this._theme = this._themes[0];
-                return ((-1 == index) ? theme : this._themes[index]);
+                else
+                    theme = this._themes[index];
+                if (set || !this._theme)
+                {
+                    if (this._theme)
+                        this._theme.remove_theme ();
+                    this._theme = theme;
+                    if (this._theme_listener)
+                        this._theme_listener ();
+                }
+                return (theme);
             }
 
             removeTheme (theme)
