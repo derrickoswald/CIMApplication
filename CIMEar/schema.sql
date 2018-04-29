@@ -76,6 +76,14 @@ create table if not exists cimapplication.geojson_polygons (
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated polygon elements';
 
+create table if not exists cimapplication.key_value (
+    simulation text,
+    query text,
+    key text,
+    value text,
+    primary key (simulation, query, key)
+) with comment = 'Key-value pairs for extra data';
+
 /*
  * Requires adjustment of cassandra.yaml to enable user defined functions
  * and scripted user defined functions:

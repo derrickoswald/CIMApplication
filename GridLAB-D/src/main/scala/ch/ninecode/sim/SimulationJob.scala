@@ -24,7 +24,8 @@ case class SimulationJob
     interval: Map[String,String],
     transformers: Seq[String],
     players: Seq[SimulationPlayerQuery],
-    recorders: Seq[SimulationRecorderQuery]
+    recorders: Seq[SimulationRecorderQuery],
+    extras: Seq[SimulationExtraQuery]
 )
 {
     def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString(",")
@@ -152,6 +153,25 @@ object SimulationJob
         recorders.flatMap (parseRecorder (name, _))
     }
 
+    def parseExtra (name: String, extra: JsonObject): List[SimulationExtraQuery] =
+    {
+        val title = extra.getString ("title", "")
+        val query = extra.getString ("query", null)
+        if (null == query)
+        {
+            log.error (""""%s" does not specify a query for extra "%s""".format (name, title))
+            List()
+        }
+        else
+            List (SimulationExtraQuery (title, query))
+    }
+
+    def parseExtras (name: String, json: JsonObject): Seq[SimulationExtraQuery] =
+    {
+        val extra: Seq[JsonObject] = json.getJsonArray ("extra").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
+        extra.flatMap (parseExtra (name, _))
+    }
+
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
     {
 
@@ -170,7 +190,8 @@ object SimulationJob
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
-            List (SimulationJob (name, description, cim, cimreaderoptions, interval, transformers, players, recorders))
+            val extras = parseExtras (name, json)
+            List (SimulationJob (name, description, cim, cimreaderoptions, interval, transformers, players, recorders, extras))
         }
     }
 

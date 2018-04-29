@@ -23,10 +23,14 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
-
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
+import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.commons.io.FileUtils
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
@@ -613,11 +617,28 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     {
         val storage = StorageLevel.fromString (options.storage)
 
+        val id = java.util.UUID.randomUUID.toString
+
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         read (ajob.cim, ajob.cimreaderoptions, storage)
 
+        // perform the extra queries and insert into the key_value table
+        ajob.extras.foreach (
+            extra ⇒
+            {
+                val df = session.sql (extra.query)
+                val rows: RDD[Row] = df.rdd
+                val len = rows.first.length
+                if (len == 2)
+                {
+                    val keyindex = df.head.schema.fieldIndex ("key")
+                    val valueindex = df.head.schema.fieldIndex ("value")
+                    rows.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra ("cimapplication", "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                }
+            }
+        )
+
         val tasks = batch.flatMap (make_tasks)
-        val id = java.util.UUID.randomUUID.toString
         log.info ("""%d task%s to do for simulation %s""".format (tasks.size, if (1 == tasks.size) "" else "s", id))
 
         val transformers = new Transformers (session, storage)
@@ -661,7 +682,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
         )
 
-        // insert into simulation table and return the UUID
+        // insert the simulation json into simulation table
         val record = Json.createObjectBuilder
         record.add ("id", id)
         record.add ("name", ajob.name)
