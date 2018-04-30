@@ -37,7 +37,13 @@ define
                 },
                 players: [],
                 recorders: [],
-                transformers: []
+                transformers: [],
+                extra: [
+                    {
+                        "title": "ratedCurrent",
+                        "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                    }
+                ]
             };
         // provisional schema:
         //    {

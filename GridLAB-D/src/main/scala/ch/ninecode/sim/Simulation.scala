@@ -19,15 +19,17 @@ import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.stream.JsonGenerator
 
+import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
+
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
+import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.commons.io.FileUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
@@ -537,7 +539,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def store_geojson_points (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    def store_geojson_points (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
         val sql = """insert into cimapplication.geojson_points json ?"""
@@ -546,15 +548,24 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (n <- trafo.nodes)
         {
             val node = n.asInstanceOf[SimulationNode]
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] } }"""
-                .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2)
+            val properties = extra.collect (
+                {
+                    case (query, id, value) if id == node.equipment =>
+                        (query, value)
+                }
+            ).map (
+                pair ⇒
+                    """"%s": "%s"""".format (pair._1, pair._2)
+            ).mkString ("{", ",", "}")
+            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] }, "properties": %s }"""
+                .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2, properties)
             statement.setString (0, json)
             session.execute (statement)
         }
         log.info ("""%d geojson point features stored for "%s"""".format (trafo.nodes.size, trafo.name))
     }
 
-    def store_geojson_lines (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    def store_geojson_lines (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
         val sql = """insert into cimapplication.geojson_lines json ?"""
@@ -563,8 +574,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (raw <- trafo.edges)
         {
             val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] } }"""
-                .format (trafo.simulation, edge.element.id, trafo.transformer.transformer_name, edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")) // [75.68, 42.72], [75.35, 42.75]
+            val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
+            val properties = extra.collect (
+                {
+                    case (query, id, value) if id == edge.id_equ =>
+                        (query, value)
+                }
+            ).map (
+                pair ⇒
+                    """"%s": "%s"""".format (pair._1, pair._2)
+            ).mkString ("{", ",", "}")
+            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
+                .format (trafo.simulation, edge.element.id, trafo.transformer.transformer_name, coordinates, properties)
             statement.setString (0, json)
             session.execute (statement)
         }
@@ -581,18 +602,40 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         points
     }
 
-    def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis): Unit =
+    def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
         val sql = """insert into cimapplication.geojson_polygons json ?"""
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
         val hull = Hull.scan (get_points (trafo).toList)
-        val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] } }"""
-            .format (trafo.simulation, trafo.transformer.transformer_name, hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (","))
+        val coordinates = hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")
+        val properties = extra.collect (
+            {
+                case (query, id, value) if id == trafo.transformer.transformer_name =>
+                    (query, value)
+            }
+        ).map (
+            pair ⇒
+                """"%s": "%s"""".format (pair._1, pair._2)
+        ).mkString ("{", ",", "}")
+        val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] }, "properties": %s }"""
+            .format (trafo.simulation, trafo.transformer.transformer_name, coordinates, properties)
         statement.setString (0, json)
         session.execute (statement)
         log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
+    }
+
+    def query_extra (cluster: Cluster, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
+    {
+        val session: Session = cluster.connect
+        val sql = """select * from cimapplication.key_value where simulation='%s'""".format (trafo.simulation)
+        val resultset: ResultSet = session.execute (sql)
+        val definitions = resultset.one.getColumnDefinitions
+        val index_q = definitions.getIndexOf ("query")
+        val index_k = definitions.getIndexOf ("key")
+        val index_v = definitions.getIndexOf ("value")
+        resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
     }
 
     def execute (trafo: SimulationTrafoKreis): Unit =
@@ -608,9 +651,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
         if (!options.keep)
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
-        store_geojson_points (cluster, trafo)
-        store_geojson_lines (cluster, trafo)
-        store_geojson_polygons (cluster, trafo)
+
+        val extra = query_extra (cluster, trafo)
+        store_geojson_points (cluster, trafo, extra)
+        store_geojson_lines (cluster, trafo, extra)
+        store_geojson_polygons (cluster, trafo, extra)
     }
 
     def process (batch: Seq[SimulationJob]): String =

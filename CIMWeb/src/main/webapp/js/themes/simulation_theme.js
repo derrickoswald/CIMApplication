@@ -150,11 +150,12 @@ define
                 delete feature.simulation;
                 var mrid = feature.mrid;
                 delete feature.mrid;
+                if (!feature.properties)
+                    feature.properties = {};
+                feature.properties.mRID = mrid;
                 var transformer = feature.transformer;
                 if (transformer)
-                    feature.properties = { "mrid": mrid, "transformer": transformer };
-                else
-                    feature.properties = { "mrid": mrid };
+                    feature.properties.transformer = transformer;
                 return (feature);
             }
 

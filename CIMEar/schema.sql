@@ -56,6 +56,7 @@ create table if not exists cimapplication.geojson_points (
     transformer text,
     type text,
     geometry frozen<cimapplication.point_data>,
+    properties map<text,text>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated point elements';
 
@@ -65,6 +66,7 @@ create table if not exists cimapplication.geojson_lines (
     transformer text,
     type text,
     geometry frozen<cimapplication.line_data>,
+    properties map<text,text>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated line elements';
 
@@ -73,6 +75,7 @@ create table if not exists cimapplication.geojson_polygons (
     mrid text,
     type text,
     geometry frozen<cimapplication.polygon_data>,
+    properties map<text,text>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated polygon elements';
 
