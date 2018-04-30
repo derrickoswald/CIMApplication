@@ -513,7 +513,7 @@ define
 
         function query_transformers ()
         {
-            var ret = TransformerChooser.context.items.map (item => item.value);
+            var ret = TransformerChooser.context.items.map (item => item.value).filter (x => "" != x);
             return (ret);
         }
 
