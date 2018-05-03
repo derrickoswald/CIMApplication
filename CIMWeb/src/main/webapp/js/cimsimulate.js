@@ -9,6 +9,13 @@ define
     ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
+     * Clean up with script:
+     truncate table cimapplication.simulated_value_by_day;
+     truncate table cimapplication.simulation;
+     truncate table cimapplication.key_value;
+     truncate table cimapplication.geojson_points;
+     truncate table cimapplication.geojson_lines;
+     truncate table cimapplication.geojson_polygons;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -164,15 +171,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,
@@ -204,15 +211,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,
@@ -244,15 +251,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,
@@ -283,15 +290,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,
@@ -332,15 +339,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,
@@ -381,15 +388,15 @@ define
                 "aggregations": [
                     {
                         "intervals": 1,
-                        "ttl": 1800
+                        "ttl": null
                     },
                     {
                         "intervals": 4,
-                        "ttl": 3600
+                        "ttl": null
                     },
                     {
                         "intervals": 12,
-                        "ttl": 7200
+                        "ttl": null
                     },
                     {
                         "intervals": 96,

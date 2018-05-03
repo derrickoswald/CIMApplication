@@ -401,13 +401,12 @@ define
 
             /**
              * Create the GeoJSON for the data with the given options.
-             * @param {Object} cimmap - the CIM map object
+             * @param {Object} data - the hash table object of CIM classes by class name
              * @function remove_theme
              * @memberOf module:default_theme
              */
-            make_geojson (cimmap, options)
+            make_geojson (data, options)
             {
-                var data = cimmap.get_data (); // the hash table object of CIM classes by class name
                 // the lines GeoJSON
                 var lines =
                 {
@@ -465,7 +464,7 @@ define
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
 
-                var geo = this.make_geojson (cimmap, options);
+                var geo = this.make_geojson (cimmap.get_data (), options);
 
                 // update the map
                 map.addSource
