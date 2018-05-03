@@ -13,7 +13,7 @@ create table if not exists cimapplication.measured_value_by_day (
     real_c double,
     imag_c double,
     units text,
-    primary key ((mrid,type,date),time)
+    primary key ((mrid, type, date), time)
 ) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readingss';
 
 create table if not exists cimapplication.simulated_value_by_day (
@@ -30,7 +30,7 @@ create table if not exists cimapplication.simulated_value_by_day (
    imag_c double,
    units text,
    simulation text,
-   primary key ((mrid,type,date, interval),time)
+   primary key ((mrid, type, date, interval), time)
 ) with clustering order by (time asc) and comment = 'Simulation results';
 
 create table if not exists cimapplication.simulation (
@@ -142,3 +142,26 @@ create or replace function cimapplication.divide (value double, amount double)
     returns double
     language java
     as $$ return (value / amount); $$;
+
+create table if not exists cimapplication.utilization_by_day (
+   mrid text,
+   type text,
+   date date,
+   interval int,
+   time timestamp,
+   percent double,
+   units text,
+   simulation text,
+   transformer text,
+   primary key ((mrid, type, date, interval), time)
+) with clustering order by (time asc) and comment = 'Utilization percentage';
+
+create table if not exists cimapplication.utilization_summary_by_day (
+   transformer text,
+   date date,
+   min double,
+   avg double,
+   max double,
+   primary key (transformer, date)
+) with comment = 'Utilization summary percentage';
+
