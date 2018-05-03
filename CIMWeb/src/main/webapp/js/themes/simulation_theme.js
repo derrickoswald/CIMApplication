@@ -155,7 +155,10 @@ define
                 feature.properties.mRID = mrid;
                 var transformer = feature.transformer;
                 if (transformer)
+                {
                     feature.properties.transformer = transformer;
+                    delete feature.transformer;
+                }
                 return (feature);
             }
 
