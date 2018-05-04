@@ -6,19 +6,17 @@ import java.util.Properties
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import org.slf4j.Logger
 
 object Main
 {
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
     val properties: Properties =
     {
         val in = this.getClass.getResourceAsStream ("/application.properties")
@@ -91,6 +89,10 @@ object Main
             action ((_, c) ⇒ c.copy (keep = true)).
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
+        opt[Unit]("summarize").
+            action ((_, c) ⇒ c.copy (summarize = true)).
+            text ("perform sammary operations [%s]".format (default.summarize))
+
         arg[String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒
             {
@@ -158,7 +160,7 @@ object Main
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
 
-                if (0 != options.simulation.size)
+                if (options.summarize || (0 != options.simulation.size))
                 {
                     val begin = System.nanoTime ()
 
@@ -167,6 +169,8 @@ object Main
                     configuration.setAppName (APPLICATION_NAME)
                     if ("" != options.master)
                         configuration.setMaster (options.master)
+                    if (options.options.nonEmpty)
+                        options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
                     if ("" != options.host)
                         configuration.set ("spark.cassandra.connection.host", options.host)
 
@@ -201,9 +205,18 @@ object Main
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    val sim = Simulation (session, options)
-                    val runs = sim.run ()
-                    log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
+                    if (0 != options.simulation.size)
+                    {
+                        val sim = Simulation (session, options)
+                        val runs = sim.run ()
+                        log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
+                    }
+
+                    if (options.summarize)
+                    {
+                        val sum = Summarize (session, options)
+                        sum.run ()
+                    }
 
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")

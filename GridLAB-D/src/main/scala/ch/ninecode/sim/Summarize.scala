@@ -4,15 +4,16 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import org.apache.spark.rdd.RDD
-
-case class Summarize (spark: SparkSession)
+case class Summarize (spark: SparkSession, options: SimulationOptions)
 {
+    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def main (): Unit =
+    def run (): Unit =
     {
         val simulated_value_by_day = spark
             .read
@@ -25,8 +26,8 @@ case class Summarize (spark: SparkSession)
             .drop ("imag_c")
             .filter ("type = 'current'")
             .cache
-        println (simulated_value_by_day.count)
-        simulated_value_by_day.show (5)
+        log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
+        //simulated_value_by_day.show (5)
 
         val lines = spark
             .read
@@ -36,15 +37,15 @@ case class Summarize (spark: SparkSession)
             .drop ("type")
             .drop ("geometry")
             .cache
-        println (lines.count)
-        lines.show (5)
+        log.info ("""%d GeoJSON lines to process""".format (lines.count))
+        // lines.show (5)
 
         val join = simulated_value_by_day
             .join (
                 lines,
                 Seq ("simulation", "mrid"))
 
-        join.show (5)
+        //join.show (5)
 
         val mrid = join.schema.fieldIndex ("mrid")
         val typ = join.schema.fieldIndex ("type")
@@ -80,12 +81,13 @@ case class Summarize (spark: SparkSession)
                 (row.getString (mrid), row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), percent, row.getString (units), row.getString (simulation), row.getString (transformer))
             }
         )
-        println (work.count)
-        println (work.take (5).mkString("\n"))
+        log.info ("""%d utilization records""".format (work.count))
+        // println (work.take (5).mkString("\n"))
 
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "utilization_by_day",
             SomeColumns ("mrid", "type", "date", "interval", "time", "percent", "units", "simulation", "transformer"))
+        log.info ("""utilization records saved to cimapplication.utilization_by_day""")
 
         // reduce by day to get min, avg and max
         type Aggregate = (Int, Double, Double, Double)
@@ -112,11 +114,12 @@ case class Summarize (spark: SparkSession)
         // make a multiple key of transformer and date separated by |
         val summary = fifteen_minute.keyBy (record ⇒ record._9 + "|" + record._3).aggregateByKey (initial) (seqOp, combOp)
             .map (day ⇒ (day._1.substring (0, day._1.indexOf ("|")), day._1.substring (day._1.indexOf ("|") + 1), day._2._2, day._2._3 / day._2._1, day._2._4))
-        println (summary.count)
-        println (summary.take (5).mkString("\n"))
+        log.info ("""%d daily utilization records""".format (summary.count))
+        // println (summary.take (5).mkString("\n"))
 
         // save to Cassandra
         summary.saveToCassandra ("cimapplication", "utilization_summary_by_day",
             SomeColumns ("transformer", "date", "min", "avg", "max"))
+        log.info ("""daily utilization records saved to cimapplication.utilization_summary_by_day""")
     }
 }

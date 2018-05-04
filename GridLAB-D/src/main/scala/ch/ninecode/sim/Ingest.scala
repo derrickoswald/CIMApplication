@@ -160,6 +160,6 @@ case class Ingest (spark: SparkSession)
         val ch_number = dataframe.schema.fieldIndex ("Messpunktbezeichnung")
         val nis_number = dataframe.schema.fieldIndex ("nis_number")
         val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).collect.toMap
-        sub ("hdfs://sandbox:8020/20180419_115102_Belvis_manuell_Bad_Ragaz2.csv", join_table)
+        sub ("hdfs://sandbox:8020/20180412_122100_Belvis_manuell_TS_Ara_BadRagaz.csv", join_table)
     }
 }

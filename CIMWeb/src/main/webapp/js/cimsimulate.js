@@ -419,6 +419,7 @@ define
         /**
          * @summary Run the simulation using GridLAB-D to populate simmulated_value_by_day Cassandra table.
          * @description Execute gridlabd for the simulation parameters provided by the user.
+         * Typical command line call: wget --output-document=simulation.log --post-file=sak.json "http://localhost:9080/cimweb/cim/estimation;verbose=true;keep=true"
          * @function do_simulate
          * @memberOf module:cimsimulate
          */

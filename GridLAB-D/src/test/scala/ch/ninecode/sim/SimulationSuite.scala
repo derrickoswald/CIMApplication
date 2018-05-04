@@ -328,4 +328,9 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         val sep = System.getProperty ("file.separator")
         main (Array ("--unittest", "--verbose", "--host", "sandbox", json))
     }
+
+    test ("Summarize")
+    {
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--summarize"))
+    }
 }
