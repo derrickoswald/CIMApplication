@@ -16,6 +16,8 @@ define
      truncate table cimapplication.geojson_points;
      truncate table cimapplication.geojson_lines;
      truncate table cimapplication.geojson_polygons;
+     truncate table cimapplication.utilization_by_day;
+     truncate table cimapplication.utilization_summary_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -435,6 +437,7 @@ define
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+            var summarize = document.getElementById ("summarize").value;
             // flip to the map while simulating
             if (document.getElementById ("to_map").value)
                 window.location.hash = "map";
@@ -442,7 +445,7 @@ define
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation;verbose=true;keep=true";
+            url = util.home () + "cim/estimation;verbose=true;keep=true" + (summarize ? ";summarize=true" : "");
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -595,6 +598,13 @@ define
                         <div id="players" class="form-group">
                         </div>
                         <div id="recorders" class="form-group">
+                        </div>
+                        <div class="form-group">
+                          <label for="summarize">Summarize</label>
+                            <div class='form-check'>
+                              <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp" checked>
+                              <small id="summarizeHelp" class="form-text text-muted">Perform summarization (utilization, load factor, coincidence factor) after simulation.</small>
+                            </div>
                         </div>
                         <div class="form-group">
                           <label for="to_map">View on map</label>

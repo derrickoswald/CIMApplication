@@ -27,7 +27,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .filter ("type = 'current'")
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
-        //simulated_value_by_day.show (5)
+        // simulated_value_by_day.show (5)
 
         val lines = spark
             .read
@@ -44,8 +44,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .join (
                 lines,
                 Seq ("simulation", "mrid"))
-
-        //join.show (5)
+        log.info ("""%d joined lines to process""".format (join.count))
+        // join.show (5)
 
         val mrid = join.schema.fieldIndex ("mrid")
         val typ = join.schema.fieldIndex ("type")
@@ -78,7 +78,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 val ratedCurrent = map.getOrElse ("ratedCurrent", "1.0").toDouble
                 val utilization = Math.sqrt (real * real + imag * imag) / ratedCurrent
                 val percent = if (utilization < 1e-4) 0.0 else utilization * 100.0 // just filter out the stupid ones
-                (row.getString (mrid), row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), percent, row.getString (units), row.getString (simulation), row.getString (transformer))
+                val tx = row.getString (transformer)
+                (row.getString (mrid), row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), percent, row.getString (units), row.getString (simulation), tx)
             }
         )
         log.info ("""%d utilization records""".format (work.count))

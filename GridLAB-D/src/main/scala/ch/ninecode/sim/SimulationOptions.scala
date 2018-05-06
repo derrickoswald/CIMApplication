@@ -56,6 +56,11 @@ case class SimulationOptions
     keep: Boolean = false,
 
     /**
+     * Ingest mode.
+     */
+    ingest: Boolean = false,
+
+    /**
      * Summarize mode.
      */
     summarize: Boolean = false,

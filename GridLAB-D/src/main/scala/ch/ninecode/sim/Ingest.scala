@@ -10,11 +10,16 @@ import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.collection._
 
-case class Ingest (spark: SparkSession)
+case class Ingest (spark: SparkSession, options: SimulationOptions)
 {
+    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger (getClass)
+
     val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone ("Europe/Berlin")
     val MeasurementCalendar: Calendar = Calendar.getInstance ()
     MeasurementCalendar.setTimeZone (MeasurementTimeZone)
@@ -113,10 +118,12 @@ case class Ingest (spark: SparkSession)
         val rdd = spark.sqlContext.read.format ("csv").options (options).csv (filename).rdd
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
-        readings.saveToCassandra ("cimapplication", "measured_value_by_day", SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
+        val garbage = readings.filter (_._1 == null)
+        val ok = readings.filter (_._1 != null)
+        ok.saveToCassandra ("cimapplication", "measured_value_by_day", SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
     }
 
-    def main (): Unit =
+    def run (): Unit =
     {
         val header = "true"
         val ignoreLeadingWhiteSpace = "false"
@@ -159,7 +166,7 @@ case class Ingest (spark: SparkSession)
 
         val ch_number = dataframe.schema.fieldIndex ("Messpunktbezeichnung")
         val nis_number = dataframe.schema.fieldIndex ("nis_number")
-        val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).collect.toMap
+        val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
         sub ("hdfs://sandbox:8020/20180412_122100_Belvis_manuell_TS_Ara_BadRagaz.csv", join_table)
     }
 }

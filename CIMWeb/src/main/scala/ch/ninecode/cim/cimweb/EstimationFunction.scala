@@ -12,6 +12,7 @@ import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.sim.Simulation
 import ch.ninecode.sim.SimulationOptions
+import ch.ninecode.sim.Summarize
 
 /**
  * Simulate a glm file and the associated input_data.
@@ -46,6 +47,12 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         for (run ← runs)
             simulations.add (run)
         result.add ("simulations", simulations)
+        if (options.summarize)
+        {
+            val sum = Summarize (spark, options)
+            sum.run ()
+        }
+        result.add ("summary", options.summarize)
         RESTfulJSONResult (OK, """GridLAB-D simulation%s successful""".format (if (runs.size > 1) "s" else ""), result.build).getJSON
     }
 

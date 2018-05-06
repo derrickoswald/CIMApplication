@@ -458,7 +458,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         write_player_csv (file_prefix + player.file, text)
     }
 
-    def gridlabd (trafo: SimulationTrafoKreis): Boolean =
+    def gridlabd (trafo: SimulationTrafoKreis): (Boolean, String)=
     {
         val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
         var lines = new ListBuffer[String]()
@@ -479,7 +479,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         else if (0 != warningLines)
             log.warn ("%d warnings, %d errors: %s".format (warningLines, errorLines, lines.mkString ("\n\n", "\n", "\n\n")))
 
-        (0 == exit_code) && (0 == errorLines)
+        ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
     }
 
     def read_recorder_csv (file: String, element: String, one_phase: Boolean, units: String): Iterator[ThreePhaseComplexDataElement] =
@@ -638,14 +638,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
     }
 
-    def execute (trafo: SimulationTrafoKreis): Unit =
+    def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
-        if (gridlabd (trafo))
+        val result = gridlabd (trafo)
+        if (result._1)
             trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.simulation, trafo.directory))
         else
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
@@ -656,6 +657,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         store_geojson_points (cluster, trafo, extra)
         store_geojson_lines (cluster, trafo, extra)
         store_geojson_polygons (cluster, trafo, extra)
+
+        result
     }
 
     def process (batch: Seq[SimulationJob]): String =
@@ -717,7 +720,17 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (trafokreise, executors)
-        simulations.foreach (execute)
+        val results = simulations.map (execute)
+        val stats = results.keys.countByValue
+        val failed: Long = stats.getOrElse (false, 0)
+        if (failed > 0L)
+        {
+            log.error ("%s %s not successful:\n\n".format (failed, if (failed > 1L) "tasks were" else "task was"))
+            log.error (results.filter (!_._1).map (_._2).collect.mkString ("\n"))
+        }
+        else
+            log.info ("all tasks were successful")
+
         // clean up
         session.sparkContext.getPersistentRDDs.foreach (
             named ⇒
@@ -748,8 +761,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 player.add ("parent", x.parent)
                 player.add ("typ", x.typ)
                 player.add ("property", x.property)
-                player.add ("file", x.file)
-                player.add ("sql", x.sql)
+                // player.add ("file", x.file)
+                // player.add ("sql", x.sql)
                 player.add ("start", iso_date_format.format (new Date (x.start)))
                 player.add ("end", iso_date_format.format (new Date (x.end)))
                 players.add (player)
@@ -765,7 +778,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 recorder.add ("typ", x.typ)
                 recorder.add ("property", x.property)
                 recorder.add ("unit", x.unit)
-                recorder.add ("file", x.file)
+                // recorder.add ("file", x.file)
                 recorder.add ("interval", x.interval.toString)
                 recorder.add ("aggregations", x.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (","))
                 recorders.add (recorder)
