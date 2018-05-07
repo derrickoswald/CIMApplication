@@ -13,11 +13,12 @@ import java.net.NetworkInterface
 import java.util
 import java.util.zip.ZipInputStream
 
-import ch.ninecode.sim.Main.main
+import scala.collection.JavaConverters._
+
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FunSuite
 
-import scala.collection.JavaConverters._
+import ch.ninecode.sim.Main.main
 
 class SimulationSuite extends FunSuite with BeforeAndAfterAll
 {

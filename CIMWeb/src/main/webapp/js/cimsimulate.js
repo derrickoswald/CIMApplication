@@ -18,6 +18,7 @@ define
      truncate table cimapplication.geojson_polygons;
      truncate table cimapplication.utilization_by_day;
      truncate table cimapplication.utilization_summary_by_day;
+     truncate table cimapplication.load_factor_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0

@@ -170,7 +170,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""resolving "%s" [%s, %s)""".format (player.title, from, to))
         var ret = List[SimulationPlayer]()
         val day1 = just_date.format (begin)
-        val  day2 = just_date.format (end)
+        val day2 = just_date.format (end)
         val range =
             if (day1 == day2)
                 "date = '%s'".format (day1)
@@ -178,12 +178,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val start = iso_parse (from)
                 val stop = iso_parse (to)
-                var dates = List[String]()
-                while (0 >= start.compareTo (stop))
+                var dates = List[String](day1)
+                do
                 {
-                    dates = dates :+ just_date.format (start.getTimeInMillis)
                     start.add (Calendar.DAY_OF_MONTH, 1)
+                    dates = dates :+ just_date.format (start.getTimeInMillis)
                 }
+                while (0 >= start.compareTo (stop))
                 dates.mkString("date in ('", "','", "')")
             }
         val jsons = destringify (player.jsons)

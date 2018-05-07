@@ -4,6 +4,7 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import com.datastax.spark.connector._
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -13,7 +14,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def run (): Unit =
+    def utilization (): Unit =
     {
         val simulated_value_by_day = spark
             .read
@@ -54,7 +55,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val time = join.schema.fieldIndex ("time")
         val real_a = join.schema.fieldIndex ("real_a")
         val imag_a = join.schema.fieldIndex ("imag_a")
-        val units = join.schema.fieldIndex ("units")
         val simulation = join.schema.fieldIndex ("simulation")
         val properties = join.schema.fieldIndex ("properties")
         val transformer = join.schema.fieldIndex ("transformer")
@@ -79,7 +79,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 val utilization = Math.sqrt (real * real + imag * imag) / ratedCurrent
                 val percent = if (utilization < 1e-4) 0.0 else utilization * 100.0 // just filter out the stupid ones
                 val tx = row.getString (transformer)
-                (row.getString (mrid), row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), percent, row.getString (units), row.getString (simulation), tx)
+                (row.getString (mrid), row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), percent, "percent", row.getString (simulation), tx)
             }
         )
         log.info ("""%d utilization records""".format (work.count))
@@ -122,5 +122,88 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         summary.saveToCassandra ("cimapplication", "utilization_summary_by_day",
             SomeColumns ("transformer", "date", "min", "avg", "max"))
         log.info ("""daily utilization records saved to cimapplication.utilization_summary_by_day""")
+    }
+
+    def load_factor (): Unit =
+    {
+        val simulated_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .filter ("type = 'power'")
+            .cache
+        log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
+        // simulated_value_by_day.show (5)
+
+        val trafos = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type")
+            .drop ("geometry")
+            .cache
+        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
+        // trafos.show (5)
+
+        val join = simulated_value_by_day
+            .join (
+                trafos,
+                Seq ("simulation", "mrid"))
+        log.info ("""%d joined polygons to process""".format (join.count))
+        // join.show (5)
+
+        val mrid = join.schema.fieldIndex ("mrid")
+        val typ = join.schema.fieldIndex ("type")
+        val date = join.schema.fieldIndex ("date")
+        val interval = join.schema.fieldIndex ("interval")
+        val time = join.schema.fieldIndex ("time")
+        val real_a = join.schema.fieldIndex ("real_a")
+        val imag_a = join.schema.fieldIndex ("imag_a")
+        val simulation = join.schema.fieldIndex ("simulation")
+
+        // get the peak value per day
+        def power (item: (String, Row)): (String, Double) =
+        {
+            val real = item._2.getDouble (real_a)
+            val imag = item._2.getDouble (imag_a)
+            val p = Math.sqrt (real * real + imag * imag)
+            (item._1, p)
+        }
+        def greatest (left: Double, right: Double): Double = if (left > right) left else right
+        val peak = join.rdd.keyBy (row ⇒ row.getString (mrid) + "|" + row.getDate (date).toString).map (power).reduceByKey (greatest).collect.toMap
+        // println (peak.mkString ("\n"))
+
+        val work = join.rdd.map (
+            row ⇒
+            {
+                val id = row.getString (mrid)
+                val day = row.getDate (date)
+                val key =  id + "|" + day.toString
+                val max = peak.getOrElse (key, 1.0)
+                val real = row.getDouble (real_a)
+                val imag = row.getDouble (imag_a)
+                val power = Math.sqrt (real * real + imag * imag)
+                val load_factor = power / max
+                (id, row.getString (typ), day, row.getInt (interval), row.getTimestamp (time), load_factor, "", row.getString (simulation))
+            }
+        )
+        // save to Cassandra
+        work.saveToCassandra ("cimapplication", "load_factor_by_day",
+            SomeColumns ("mrid", "type", "date", "interval", "time", "load_factor", "units", "simulation"))
+        log.info ("""load factor records saved to cimapplication.load_factor_by_day""")
+    }
+
+    def run (): Unit =
+    {
+        log.info ("Utilization")
+        utilization ()
+        log.info ("Load Factor")
+        load_factor ()
     }
 }
