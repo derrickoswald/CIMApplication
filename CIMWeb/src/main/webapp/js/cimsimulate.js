@@ -437,15 +437,18 @@ define
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
-            var summarize = document.getElementById ("summarize").value;
+            var summarize = document.getElementById ("summarize").value ? ";summarize=true" : "";
+            var keep = document.getElementById ("keep").value ? ";keep=true" : "";
+            var verbose = document.getElementById ("verbose").value ? ";verbose=true" : "";
             // flip to the map while simulating
-            if (document.getElementById ("to_map").value)
+            var to_map = document.getElementById ("to_map").value;
+            if (to_map)
                 window.location.hash = "map";
 
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation;verbose=true;keep=true" + (summarize ? ";summarize=true" : "");
+            url = util.home () + "cim/estimation" + summarize + keep + verbose;
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -459,7 +462,7 @@ define
                         {
                             var simulation_id = resp.result.simulations[0];
                             document.getElementById ("results").innerHTML = "";
-                            if (document.getElementById ("to_map").value)
+                            if (to_map)
                             {
                                 var theme = new SimulationTheme ();
                                 theme.setSimulation (simulation_id).then (
@@ -599,19 +602,37 @@ define
                         </div>
                         <div id="recorders" class="form-group">
                         </div>
-                        <div class="form-group">
-                          <label for="summarize">Summarize</label>
-                            <div class='form-check'>
-                              <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp" checked>
-                              <small id="summarizeHelp" class="form-text text-muted">Perform summarization (utilization, load factor, coincidence factor) after simulation.</small>
-                            </div>
+                        <div class="form-row">
+                          <div class="col form-group">
+                            <label for="summarize">Summarize</label>
+                              <div class='form-check'>
+                                <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp" checked>
+                                <small id="summarizeHelp" class="form-text text-muted">Perform summarization (utilization, load & coincidence factor) after simulation.</small>
+                              </div>
+                          </div>
+                          <div class="col form-group">
+                            <label for="keep">Keep GridLAB-D intermediate files</label>
+                              <div class='form-check'>
+                                <input id="keep" class="form-check-input" type="checkbox" name="keep" aria-describedby="keepHelp" checked>
+                                <small id="keepHelp" class="form-text text-muted">Do not delete intermediate gridlabd calculation files (usually in /tmp on worker nodes)..</small>
+                              </div>
+                          </div>
                         </div>
-                        <div class="form-group">
-                          <label for="to_map">View on map</label>
-                            <div class='form-check'>
-                              <input id="to_map" class="form-check-input" type="checkbox" name="to_map" aria-describedby="toMapHelp" checked>
-                              <small id="toMapHelp" class="form-text text-muted">Add a theme to the map tab for simulation results.</small>
-                            </div>
+                        <div class="form-row">
+                          <div class="col form-group">
+                            <label for="to_map">View on map</label>
+                              <div class='form-check'>
+                                <input id="to_map" class="form-check-input" type="checkbox" name="to_map" aria-describedby="toMapHelp" checked>
+                                <small id="toMapHelp" class="form-text text-muted">Add a theme to the map tab for simulation results.</small>
+                              </div>
+                          </div>
+                          <div class="col form-group">
+                            <label for="verbose">Verbose</label>
+                              <div class='form-check'>
+                                <input id="verbose" class="form-check-input" type="checkbox" name="verbose" aria-describedby="verboseHelp" checked>
+                                <small id="verboseHelp" class="form-text text-muted">Output messages to console as the simulation progresses.</small>
+                              </div>
+                          </div>
                         </div>
                         <div class='form-group'>
                           <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>

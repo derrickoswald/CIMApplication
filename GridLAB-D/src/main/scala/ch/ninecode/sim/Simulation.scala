@@ -314,7 +314,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val elements = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
             .values.map (x ⇒ (x._1, x._2.map (_._2), x._2.head._3))
         // combine parallel equipment
-        val eq3 = elements.keyBy (_._2.map (_.id).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        val eq3 = elements.keyBy (_._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
         val edges = eq3.map (
             _.map (
                 edge ⇒ SimulationEdge (edge._1.id, edge._2.head.TopologicalNode, edge._2.tail.head.TopologicalNode, edge._1, toCoordinates (edge._3))
@@ -631,11 +631,16 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val session: Session = cluster.connect
         val sql = """select * from cimapplication.key_value where simulation='%s'""".format (trafo.simulation)
         val resultset: ResultSet = session.execute (sql)
-        val definitions = resultset.one.getColumnDefinitions
-        val index_q = definitions.getIndexOf ("query")
-        val index_k = definitions.getIndexOf ("key")
-        val index_v = definitions.getIndexOf ("value")
-        resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
+        if (resultset.nonEmpty)
+        {
+            val definitions = resultset.one.getColumnDefinitions
+            val index_q = definitions.getIndexOf ("query")
+            val index_k = definitions.getIndexOf ("key")
+            val index_v = definitions.getIndexOf ("value")
+            resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
+        }
+        else
+            Array()
     }
 
     def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
