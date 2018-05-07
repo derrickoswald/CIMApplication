@@ -674,6 +674,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val id = java.util.UUID.randomUUID.toString
 
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
+        // clean up in case there was a file already loaded
+        session.sparkContext.getPersistentRDDs.foreach (
+            named ⇒
+            {
+                named._2.unpersist (false)
+                named._2.name = null
+            }
+        )
         read (ajob.cim, ajob.cimreaderoptions, storage)
 
         // perform the extra queries and insert into the key_value table

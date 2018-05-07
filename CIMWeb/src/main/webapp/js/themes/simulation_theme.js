@@ -56,8 +56,11 @@ define
 
             slider_changed (value)
             {
-//                var val = "T" + value;
-//                this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(102, 255, 0)"], [10.0, "RGB(355,0,127)"] ],});
+                var date = new Date (value).toISOString ();
+                date = date.substring (0, date.indexOf ("T"));
+                var val = "T" + date + "max";
+                var mapping = { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                this._TheMap.setPaintProperty ("polygons", "fill-color", mapping);
             }
 
             /**
@@ -76,6 +79,75 @@ define
                     this._TheMap.removeSource ("edges");
                     this._TheMap.removeSource ("areas");
                 }
+                if (this._TheMap)
+                {
+                    this._TheMap.off ("mousedown", this._mousedown_listener);
+                    this._cimmap.add_listeners ();
+                }
+            }
+
+            // load trafokreis
+            load_trafo (trafo)
+            {
+                var self = this;
+                self._Trafo = trafo;
+                cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (data => self.setSimulationGeoJSON_Points.call (self, data))
+                .then (() =>
+                    {
+                        self._TheMap.getSource ("nodes").setData (self._simulation_points);
+                        self._TheMap.getSource ("edges").setData (self._simulation_lines);
+                    }
+                );
+            }
+
+            click (x, y)
+            {
+                var width = 4;
+                var height = 4;
+                var features = this._TheMap.queryRenderedFeatures
+                (
+                    [
+                      [x - width / 2, y - height / 2],
+                      [x + width / 2, y + height / 2]
+                    ],
+                    {}
+                );
+                if ((null != features) && (0 != features.length))
+                {
+                    var trafo = null;
+                    for (var i = 0; i < features.length; i++)
+                        if (features[i].layer.id == "polygons")
+                            trafo = features[i].properties.mRID;
+                    if (!this._Trafo || (trafo != this._Trafo))
+                        this.load_trafo (trafo)
+                    else
+                    {
+                        for (var i = 0; i < features.length; i++)
+                            if ((features[i].layer.id != "polygons") && features[i].properties.mRID)
+                                console.log (features[i].properties.mRID);
+                    }
+                }
+            }
+
+            // handle mouse click
+            mousedown_listener (event)
+            {
+                // only do something if no key is pressed
+                var key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
+                if (!key)
+                {
+                    var buttons = event.originalEvent.buttons;
+                    //    0  : No button or un-initialized
+                    //    1  : Primary button (usually left)
+                    //    2  : Secondary button (usually right)
+                    var leftbutton = 0 != (buttons & 1);
+                    var rightbutton = 0 != (buttons & 2);
+                    if (leftbutton)
+                        this.click (event.point.x, event.point.y);
+                }
             }
 
             /**
@@ -91,6 +163,7 @@ define
                 var start = new Date ().getTime ();
                 console.log ("rendering simulation data");
 
+                this._cimmap = cimmap;
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
 
@@ -142,6 +215,10 @@ define
 
                 if (this._render_listener)
                     this._render_listener ();
+
+                this._cimmap.remove_listeners ();
+                this._mousedown_listener = this.mousedown_listener.bind (this);
+                this._TheMap.on ("mousedown", this._mousedown_listener);
             }
 
             fixup (raw)
@@ -184,25 +261,47 @@ define
                     "type" : "FeatureCollection",
                     "features" : features
                 };
-                var geojson = cimquery.queryPromise (
-                    { sql: "select json * from cimapplication.geojson_points where simulation='" + this._simulation + "'", cassandra: true }
-                ).then (this.setSimulationGeoJSON_Points.bind (this));
-                return (geojson);
             }
 
             setSimulationSummary_for_Polygons (data)
             {
-                //    {
-                //        avg: 10.277724814899273
-                //        date: "2017-07-17"
-                //        max: 66.69010587510391
-                //        min: 0
-                //        transformer: "TRA2755"
-                //    }
-                var geojson = cimquery.queryPromise (
-                    { sql: "select json * from cimapplication.geojson_lines where simulation='" + this._simulation + "'", cassandra: true }
-                ).then (this.setSimulationGeoJSON_Lines.bind (this));
-                return (geojson);
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var utilizations = JSON.parse (row["[json]"]);
+                        //    {
+                        //        avg: 10.277724814899273
+                        //        date: "2017-07-17"
+                        //        max: 66.69010587510391
+                        //        min: 0
+                        //        transformer: "TRA2755"
+                        //    }
+                        var polygon = this._simulation_polygons.features.filter (polygon => polygon.properties.mRID == utilizations.transformer);
+                        if (polygon.length > 0)
+                        {
+                            polygon = polygon[0].properties;
+                            var date = utilizations.date;
+                            var item = "T" + date + "min";
+                            polygon[item] = utilizations.min;
+                            default_data[item] = 0.0;
+                            var item = "T" + date + "avg";
+                            polygon[item] = utilizations.avg;
+                            default_data[item] = 0.0;
+                            var item = "T" + date + "max";
+                            polygon[item] = utilizations.max;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_polygons.features.forEach (
+                    polygon =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (polygon.properties[x]))
+                                polygon.properties[x] = default_data[x];
+                    }
+                );
             }
 
             setSimulationGeoJSON_Polygons (data)
@@ -219,6 +318,16 @@ define
                 {
                     "type" : "FeatureCollection",
                     "features" : features
+                };
+                this._simulation_points =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                this._simulation_lines =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
                 };
                 var extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
                 features.forEach (
@@ -247,11 +356,6 @@ define
                     }
                 );
                 this._extents = extents;
-                // query the summary results
-                var summary = cimquery.queryPromise (
-                    { sql: "select json * from cimapplication.utilization_summary_by_day", cassandra: true }
-                ).then (this.setSimulationSummary_for_Polygons.bind (this));
-                return (summary);
             }
 
             setSimulationJSON (data)
@@ -271,22 +375,24 @@ define
                 this._simulation = this._simulation_json.id;
                 this._legend.setTimes (
                     {
-                        start: new Date (this._simulation_json.interval.start),
-                        end: new Date (this._simulation_json.interval.end)
+                        start: new Date (this._simulation_json.interval.start).getTime (),
+                        end: new Date (this._simulation_json.interval.end).getTime ()
                     }
                 );
-                var geojson = cimquery.queryPromise (
-                    { sql: "select json * from cimapplication.geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }
-                ).then (this.setSimulationGeoJSON_Polygons.bind (this));
-                return (geojson);
             }
 
             setSimulation (id)
             {
                 this._simulation = id;
-                var promise = cimquery.queryPromise (
-                    { sql: "select json * from cimapplication.simulation where id='" + id + "'", cassandra: true }
-                ).then (this.setSimulationJSON.bind (this));
+                var self = this;
+                var promise = cimquery.queryPromise ({ sql: "select json * from cimapplication.simulation where id='" + id + "'", cassandra: true })
+                .then (data => self.setSimulationJSON.call (self, data))
+                // query the polygons
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
+                .then (data => self.setSimulationGeoJSON_Polygons.call (self, data))
+                // query the summary results
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day", cassandra: true }))
+                .then (data => self.setSimulationSummary_for_Polygons.call (self, data));
                 return (promise);
             }
 

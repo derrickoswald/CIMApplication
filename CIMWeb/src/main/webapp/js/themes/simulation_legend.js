@@ -22,15 +22,25 @@ define
                 this._onMap = false;
                 this._theme = theme;
                 this._template =
-                "<div class='card'>\n" +
-                "  <div class='card-body'>\n" +
-                "    <h5 class='card-title'>Legend\n" +
-                "    <label for='simulation_slider'>\n" +
-                "      <input id='simulation_slider' type='text'/>\n" +
-                "      Time\n" +
-                "    </label>\n" +
-                "  </div>\n" +
-                "</div>\n";
+                    `
+                    <div class="card">
+                      <div class="card-body" style="min-width:200px;">
+                        <h5 class="card-title">
+                          <span class="info_title">Legend</span>
+                          <button class="close" type="button" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </h5>
+                        <h6 class="card-subtitle mb-2"></h6>
+                        <div class="card-text">
+                        <label for="simulation_slider">
+                          <input id="simulation_slider" type="text"/>
+                          Time
+                        </label>
+                        </div>
+                      </div>
+                    </div>
+                    `;
             }
 
             onAdd (map)
@@ -56,6 +66,7 @@ define
                     }
                 );
                 this._slider.on ("slide", this.legend_change.bind (this));
+                this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
                 this._onMap = true;
                 return (this._container);
             }
@@ -65,6 +76,11 @@ define
                 this._container.parentNode.removeChild (this._container);
                 this._map = undefined;
                 this._onMap = false;
+            }
+
+            close (event)
+            {
+                this._map.removeControl (this);
             }
 
             getDefaultPosition ()
