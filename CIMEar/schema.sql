@@ -143,6 +143,12 @@ create or replace function cimapplication.divide (value double, amount double)
     language java
     as $$ return (value / amount); $$;
 
+create or replace function cimapplication.magnitude (real double, imag double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (Math.sqrt (real * real + imag * imag)); $$;
+
 create table if not exists cimapplication.utilization_by_day (
    mrid text,
    type text,
@@ -176,4 +182,11 @@ create table if not exists cimapplication.load_factor_by_day (
    simulation text,
    primary key ((mrid, type, date, interval), time)
 ) with clustering order by (time asc) and comment = 'Load factor';
+
+create table if not exists cimapplication.coincidence_factor_by_day (
+   transformer text,
+   date date,
+   coincidence_factor double,
+   primary key (transformer, date)
+) with comment = 'Coincidence factor';
 

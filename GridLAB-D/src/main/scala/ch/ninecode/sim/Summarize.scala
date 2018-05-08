@@ -3,7 +3,12 @@ package ch.ninecode.sim
 import java.sql.Date
 import java.sql.Timestamp
 
+import scala.collection.JavaConversions._
+
+import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -199,11 +204,121 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""load factor records saved to cimapplication.load_factor_by_day""")
     }
 
+    def coincidence_factor (): Unit =
+    {
+        // Coincidence factor is the peak of a system divided by the sum of peak loads of its individual components.
+        // It tells how likely the individual components are peaking at the same time.
+        // The highest possible coincidence factor is 1, when all of the individual components are peaking at the same time.
+        val simulated_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .filter ("type = 'power'")
+            .cache
+        log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
+        // simulated_value_by_day.show (5)
+
+        val trafos = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type")
+            .drop ("geometry")
+            .cache
+        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
+        // trafos.show (5)
+
+        val join = simulated_value_by_day
+            .join (
+                trafos,
+                Seq ("simulation", "mrid"))
+        log.info ("""%d joined polygons to process""".format (join.count))
+        // join.show (5)
+
+        val mrid = join.schema.fieldIndex ("mrid")
+        val date = join.schema.fieldIndex ("date")
+        val real_a = join.schema.fieldIndex ("real_a")
+        val imag_a = join.schema.fieldIndex ("imag_a")
+
+        // get the peak value per day
+        def power (item: (String, Row)): (String, Double) =
+        {
+            val real = item._2.getDouble (real_a)
+            val imag = item._2.getDouble (imag_a)
+            val p = Math.sqrt (real * real + imag * imag)
+            (item._1, p)
+        }
+        def greatest (left: Double, right: Double): Double = if (left > right) left else right
+        val peak = join.rdd.keyBy (row ⇒ row.getString (mrid) + "|" + row.getDate (date).toString).map (power).reduceByKey (greatest).collect.toMap
+        // println (peak.mkString ("\n"))
+
+        // ToDo: make this parallelized
+
+        // there is a simple cassandra query to get the maximum values for each EnergyConsumer for each day (GMT):
+        val maxsql = "select mrid, type, date, interval, max(cimapplication.magnitude (real_a, imag_a)) as magnitude from cimapplication.measured_value_by_day where type = 'energy' group by mrid, type, date allow filtering"
+        type Maximum = (String, String, Double)
+        val maximums: Iterator[Maximum] = CassandraConnector (spark.sparkContext.getConf).withSessionDo
+        {
+            session =>
+                val resultset: ResultSet = session.execute (maxsql)
+                for (row: com.datastax.driver.core.Row ← resultset.iterator)
+                    yield (row.getString (0), row.getDate (2).toString, row.getDouble (4) * (60.0 * 60.0 * 1000.0 / row.getInt (3)))
+        }
+        // println (maximums.mkString ("\n"))
+
+        // and another simple query to get the correspondence between EnergyConsumer and transformer
+        val trasql = "select mrid, transformer from cimapplication.geojson_points"
+        type TransformerMap = (String, String)
+        val tra: Iterator[TransformerMap] = CassandraConnector (spark.sparkContext.getConf).withSessionDo
+        {
+            session =>
+                val resultset: ResultSet = session.execute (trasql)
+                for (row: com.datastax.driver.core.Row ← resultset.iterator)
+                    yield (row.getString (0), row.getString (1))
+        }
+        // println (tra.mkString ("\n"))
+
+        // but then the join is a bitch client-side, and won't scale because everything is collected on the driver
+        val mapping = tra.toMap
+        // make ("TRAxxx|2017.03.05", max) pairs for each EnergyConsumer (we don't actually care which EnergyConumer, so drop that)
+        val consumer_max: RDD[(String, Double)] = spark.sparkContext.parallelize (
+            (
+                for {
+                    max: (String, String, Double) ← maximums
+                    tx: String ← mapping.get (max._1)
+                }
+                    yield (tx + "|" + max._2, max._3)
+                ).toSeq
+        )
+        // println (consumer_max.take (5).mkString ("\n"))
+
+        // sum up the individual peaks for each transformer|date combination
+        val sum: RDD[(String, Double)] = consumer_max.reduceByKey (_ + _)
+        // map to the TRAxxx peak
+        val work: RDD[(String, String, Double)] = sum.flatMap (x ⇒ peak.get (x._1) match { case Some (tx_and_date) ⇒ List ((x._1, tx_and_date / x._2)) case None ⇒ List() })
+            .map (x ⇒ { val i = x._1.indexOf ("|"); (x._1.substring (0, i), x._1.substring (i + 1), x._2) })
+        log.info ("""%d coincidence factors found""".format (work.count))
+        // println (work.take (5).mkString("\n"))
+
+        // save to Cassandra
+        work.saveToCassandra ("cimapplication", "coincidence_factor_by_day",
+            SomeColumns ("transformer", "date", "coincidence_factor"))
+        log.info ("""coincidence factor records saved to cimapplication.coincidence_factor_by_day""")
+    }
+
     def run (): Unit =
     {
         log.info ("Utilization")
         utilization ()
         log.info ("Load Factor")
         load_factor ()
+        log.info ("Coincidence Factor")
+        coincidence_factor ()
     }
 }
