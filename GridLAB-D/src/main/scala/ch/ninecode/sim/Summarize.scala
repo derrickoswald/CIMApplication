@@ -4,6 +4,7 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import scala.collection.JavaConversions._
+import scala.reflect.runtime.universe.TypeTag
 
 import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
@@ -11,14 +12,31 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+/**
+ * Summarize the simulation.
+ *
+ * Comupte various quality factors for the network after running a simulation.
+ *
+ * @param spark The Spark session
+ * @param options The simulation options. Note: Currently only the verbose option is used.
+ */
 case class Summarize (spark: SparkSession, options: SimulationOptions)
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
+    /**
+     * Utilization
+     *
+     * Utilization is the value (power of voltage) of a component
+     * divided by the maximum rated value.
+     * For cables, this is the current divided by the ratedCurrent (A).
+     * For transformers, this is the power output divided by the rated power (VA).
+     */
     def utilization (): Unit =
     {
         val simulated_value_by_day = spark
@@ -129,6 +147,14 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""daily utilization records saved to cimapplication.utilization_summary_by_day""")
     }
 
+    /**
+     * Load factor
+     *
+     * Load factor is average load of a system divided by its peak load.
+     * The higher the load factor is, the smoother the load profile is,
+     * and the more the infrastructure is being utilized.
+     * The highest possible load factor is 1, which indicates a flat load profile.
+     */
     def load_factor (): Unit =
     {
         val simulated_value_by_day = spark
@@ -195,7 +221,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 val imag = row.getDouble (imag_a)
                 val power = Math.sqrt (real * real + imag * imag)
                 val load_factor = power / max
-                (id, row.getString (typ), day, row.getInt (interval), row.getTimestamp (time), load_factor, "", row.getString (simulation))
+                (id, row.getString (typ), day, row.getInt (interval), row.getTimestamp (time), load_factor, "VA/VA", row.getString (simulation))
             }
         )
         // save to Cassandra
@@ -204,11 +230,16 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""load factor records saved to cimapplication.load_factor_by_day""")
     }
 
+    /**
+     * Coincidence factor
+     *
+     * Coincidence factor is the peak of a system divided by the sum of peak loads of its individual components.
+     * It tells how likely the individual components are peaking at the same time.
+     * The highest possible coincidence factor is 1, when all of the individual components are peaking at the same time.
+     */
     def coincidence_factor (): Unit =
     {
-        // Coincidence factor is the peak of a system divided by the sum of peak loads of its individual components.
-        // It tells how likely the individual components are peaking at the same time.
-        // The highest possible coincidence factor is 1, when all of the individual components are peaking at the same time.
+
         val simulated_value_by_day = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
@@ -312,6 +343,147 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""coincidence factor records saved to cimapplication.coincidence_factor_by_day""")
     }
 
+    /**
+     * Responsibility factor
+     *
+     * Responsibility factor is the load of an individual component at the time of system peak divided by
+     * the peak load of this individual component.
+     * Responsibility factor tells how much of the component is contributing to the system peak.
+     * When a component peaks at the same time as the system, its responsibility factor is 100%.
+     */
+    def responsibility_factor (): Unit =
+    {
+        val simulated_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("interval")
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .drop ("units")
+            .filter ("type = 'power'")
+            .drop ("type")
+            .cache
+        log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
+        // simulated_value_by_day.show (5)
+
+        val trafos = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type")
+            .drop ("geometry")
+            .drop ("properties")
+            .cache
+        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
+        // trafos.show (5)
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        val simulated_value_by_day_trafos = simulated_value_by_day
+            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
+            .withColumnRenamed ("max(magnitude)", "magnitude")
+            .join (
+                trafos,
+                Seq ("simulation", "mrid"))
+
+        log.info ("""%d transformers to process""".format (simulated_value_by_day_trafos.count))
+        // simulated_value_by_day_trafos.show (5)
+
+        val peaks = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+            .agg ("magnitude" → "max")
+            .withColumnRenamed ("max(magnitude)", "magnitude")
+        log.info ("peak")
+        // peaks.show (5)
+
+        val info = peaks.join (simulated_value_by_day_trafos, Seq ("mrid", "date", "magnitude"))
+            .withColumnRenamed ("mrid", "transformer")
+            .drop ("real_a")
+            .drop ("imag_a")
+        log.info ("info")
+        // info.show (5)
+
+        val _measured_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .drop ("units")
+            .filter ("type = 'energy'")
+        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+        val measured_value_by_day = _measured_value_by_day.withColumn ("power", power[Double, Double, Int].apply (_measured_value_by_day ("real_a"), _measured_value_by_day ("imag_a"), _measured_value_by_day ("interval")))
+            .drop ("real_a")
+            .drop ("imag_a")
+            .cache
+        log.info ("""%d measured values to process""".format (measured_value_by_day.count))
+        // measured_value_by_day.show (5)
+
+        val geojson_points = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("simulation")
+            .drop ("geometry")
+            .drop ("properties")
+            .drop ("type")
+            .distinct // could choose by simulation id
+            .cache
+        log.info ("""%d energy consumers to process""".format (geojson_points.count))
+        // geojson_points.show (5)
+
+        val measured_value_by_day_and_trafo = measured_value_by_day
+            .join (
+                geojson_points,
+                Seq ("mrid"))
+        log.info ("""%d joined energy consumers to process""".format (measured_value_by_day_and_trafo.count))
+        // measured_value_by_day_and_trafo.show (5)
+
+        val maximums = measured_value_by_day_and_trafo.groupBy ("mrid", "date").agg ("power" → "max").withColumnRenamed ("max(power)", "peak")
+        log.info ("""%d maximums found""".format (maximums.count))
+        // maximums.show (5)
+
+        val peak_times = measured_value_by_day_and_trafo.join (info, Seq ("date", "time", "transformer"))
+            .drop ("magnitude")
+        log.info ("""%d peak times found""".format (peak_times.count))
+        // peak_times.show (5)
+
+        val responsibilities = peak_times.join (maximums, Seq ("mrid", "date"))
+            .withColumn ("responsibility", measured_value_by_day_and_trafo ("power") / maximums ("peak"))
+        log.info ("""%d responsibility factors evaluated""".format (responsibilities.count))
+        // responsibilities.show (5)
+
+        val mrid = responsibilities.schema.fieldIndex ("mrid")
+        val date = responsibilities.schema.fieldIndex ("date")
+        val interval = responsibilities.schema.fieldIndex ("interval")
+        val time = responsibilities.schema.fieldIndex ("time")
+        val transformer = responsibilities.schema.fieldIndex ("transformer")
+        val p = responsibilities.schema.fieldIndex ("power")
+        val peak = responsibilities.schema.fieldIndex ("peak")
+        val responsibility = responsibilities.schema.fieldIndex ("responsibility")
+        val simulation = responsibilities.schema.fieldIndex ("simulation")
+
+        val work = responsibilities.rdd.map (
+            row ⇒
+            {
+                val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
+                (row.getString (mrid), "power", row.getDate (date), row.getInt (interval), row.getTimestamp (time), row.getString (transformer), row.getDouble (p), row.getDouble (peak), resp, "VA/VA", row.getString (simulation))
+            }
+        )
+        // save to Cassandra
+        work.saveToCassandra ("cimapplication", "responsibility_by_day",
+            SomeColumns ("mrid", "type", "date", "interval", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
+        log.info ("""responsibility records saved to cimapplication.responsibility_by_day""")
+    }
+
     def run (): Unit =
     {
         log.info ("Utilization")
@@ -320,5 +492,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         load_factor ()
         log.info ("Coincidence Factor")
         coincidence_factor ()
+        log.info ("Responsibility Factor")
+        responsibility_factor ()
     }
 }

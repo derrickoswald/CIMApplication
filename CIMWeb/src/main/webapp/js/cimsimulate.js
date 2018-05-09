@@ -19,6 +19,7 @@ define
      truncate table cimapplication.utilization_by_day;
      truncate table cimapplication.utilization_summary_by_day;
      truncate table cimapplication.load_factor_by_day;
+     truncate table cimapplication.responsibility_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -199,7 +200,7 @@ define
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'power' type,
                         'power_out' property,
-                        'Volt-Amperes' unit,
+                        'VA' unit,
                         n.TopologicalIsland island
                     from
                         PowerTransformer p,
@@ -278,7 +279,7 @@ define
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'energy' type,
                         'power_losses' property,
-                        'Volt-Amperes' unit,
+                        'VA' unit,
                         n.TopologicalIsland island
                     from
                         PowerTransformer p,

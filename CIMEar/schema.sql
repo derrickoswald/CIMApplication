@@ -190,3 +190,18 @@ create table if not exists cimapplication.coincidence_factor_by_day (
    primary key (transformer, date)
 ) with comment = 'Coincidence factor';
 
+create table if not exists cimapplication.responsibility_by_day (
+   mrid text,
+   type text,
+   date date,
+   interval int,
+   time timestamp,
+   transformer text,
+   power double,
+   peak double,
+   responsibility double,
+   units text,
+   simulation text,
+   primary key ((mrid, type, date, interval), time)
+) with clustering order by (time asc) and comment = 'Responsibility';
+

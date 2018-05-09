@@ -83,6 +83,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                         accumulator.value_c_im = accumulator.value_c_im + entry.value_c.im
                         if (accumulator.count >= accumulator.intervals)
                         {
+                            // Java and Cassandra timestamps are in milliseconds, but Spark is in seconds not milliseconds
                             val timepoint = entry.millis - 1000L * (interval * (accumulator.intervals - 1))
                             val date = LocalDate.fromMillisSinceEpoch (timepoint)
                             timestamp.setTime (timepoint)
@@ -90,7 +91,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                             accumulator.statement.setString        ( 0, entry.element)
                             accumulator.statement.setString        ( 1, typ)
                             accumulator.statement.setDate          ( 2, date)
-                            accumulator.statement.setInt           ( 3, interval * accumulator.intervals)
+                            accumulator.statement.setInt           ( 3, interval * accumulator.intervals * 1000)
                             accumulator.statement.setTimestamp     ( 4, timestamp)
                             if (accumulator.average)
                             {
