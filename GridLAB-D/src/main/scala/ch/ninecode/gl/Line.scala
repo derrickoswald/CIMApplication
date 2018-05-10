@@ -82,8 +82,17 @@ class Line (one_phase: Boolean) extends Serializable
     // get the configuration name (of the parallel lines)
     def configurationName (iter: Iterable[GLMEdge]): String =
     {
-        val n = iter.map (_.el.asInstanceOf[ACLineSegment].Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)
-        .map (valid_config_name).toArray.sortWith (_ < _).mkString ("||")
+        val n = iter.map (
+            x ⇒
+            {
+                val psr = x.el.asInstanceOf[ACLineSegment].Conductor.ConductingEquipment.Equipment.PowerSystemResource
+                if (null != psr.AssetDatasheet)
+                    psr.AssetDatasheet
+                else
+                    psr.IdentifiedObject.name
+            }
+        )
+        .map (valid_config_name).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -154,6 +163,7 @@ class Line (one_phase: Boolean) extends Serializable
     {
         val edge = edges.head
         val line = edge.el.asInstanceOf[ACLineSegment]
+        // ToDo: use ProductAssetModel.usageKind (from AssetInfo.AssetModel)
         val typ = if (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
             "underground_line"
         else

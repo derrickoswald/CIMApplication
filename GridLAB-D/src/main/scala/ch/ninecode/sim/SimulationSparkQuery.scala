@@ -53,7 +53,7 @@ case class SimulationSparkQuery (session: SparkSession, query: SimulationQuery, 
     {
         log.info ("""executing "%s" as %s""".format (query.title, query.query))
         resultset = session.sql (query.query).cache
-        index = resultset.head.schema.fieldIndex (keyfield)
+        index = resultset.schema.fieldIndex (keyfield)
         this
     }
 

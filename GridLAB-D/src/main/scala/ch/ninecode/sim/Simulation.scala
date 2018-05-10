@@ -24,7 +24,6 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
-
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
 import com.datastax.driver.core.ResultSet
@@ -37,7 +36,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -50,6 +48,7 @@ import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
+import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -334,22 +333,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         var ret = List[SimulationTask]()
 
         // get all transformer secondary TopologicalIsland names
-        val sql =
-            pack (
-                """select
-                  |    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, n.TopologicalIsland
-                  |from
-                  |    Terminal t,
-                  |    PowerTransformer p,
-                  |    TopologicalNode n
-                  |where
-                  |    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
-                  |and t.ACDCTerminal.sequenceNumber = 2
-                  |and t.TopologicalNode = n.IdentifiedObject.mRID""".stripMargin)
-        log.info ("""executing "%s"""".format (sql))
-        val df = session.sql (sql)
-        import session.implicits._
-        val trafo_islands = df.map (row ⇒ (row.getString (0), row.getString (1))).collect.toMap
+        val trafo_islands = get[PowerTransformer]
+            .keyBy (_.id)
+            .join (
+                get[Terminal]
+                .filter (_.ACDCTerminal.sequenceNumber == 2)
+                .keyBy (_.ConductingEquipment))
+            .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
+            .join (
+                get[TopologicalNode]
+                .keyBy (_.id))
+            .map (x ⇒ (x._2._1, x._2._2.TopologicalIsland)) // (trafoid, islandid)
+            .collect
+            .toMap
         log.info ("""%d transformer island%s found""".format (trafo_islands.size, if (1 == trafo_islands.size) "" else "s"))
 
         // query the players
@@ -634,7 +630,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val resultset: ResultSet = session.execute (sql)
         if (resultset.nonEmpty)
         {
-            val definitions = resultset.one.getColumnDefinitions
+            val definitions = resultset.getColumnDefinitions
             val index_q = definitions.getIndexOf ("query")
             val index_k = definitions.getIndexOf ("key")
             val index_v = definitions.getIndexOf ("value")
@@ -705,7 +701,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val transformers = new Transformers (session, storage)
         val tdata = transformers.getTransformerData (topological_nodes = true, null)
-        val trafokreise = tasks.map (
+        val trafokreise = tasks.flatMap (
             task ⇒
             {
                 // get the transformer(s)
@@ -714,21 +710,31 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .filter (_._2._2.TopologicalIsland == task.island) // ... for this Trafokreis
                     .map (x ⇒ (x._1, x._2._1)) // (low_voltage_node_name, TData)
                     .groupByKey.values.map (_.toArray).map (TransformerSet).collect
-                if (transformers.length > 1)
-                    log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
-                val date = just_date.format (task.start.getTime)
-                SimulationTrafoKreis (
-                    id,
-                    task.island,
-                    transformers(0),
-                    task.nodes,
-                    task.edges,
-                    task.start,
-                    task.end,
-                    task.players,
-                    task.recorders,
-                    transformers(0).transformer_name + "_" + date + System.getProperty ("file.separator")
-                )
+                if (transformers.length == 0)
+                {
+                    log.error ("""no transformer sets for island %s""".format (task.island))
+                    List ()
+                }
+                else
+                {
+                    if (transformers.length > 1)
+                        log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
+                    val date = just_date.format (task.start.getTime)
+                    List (
+                        SimulationTrafoKreis (
+                            id,
+                            task.island,
+                            transformers(0),
+                            task.nodes,
+                            task.edges,
+                            task.start,
+                            task.end,
+                            task.players,
+                            task.recorders,
+                            transformers(0).transformer_name + "_" + date + System.getProperty ("file.separator")
+                        )
+                    )
+                }
             }
         )
 

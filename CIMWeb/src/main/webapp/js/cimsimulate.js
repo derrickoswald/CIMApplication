@@ -19,6 +19,7 @@ define
      truncate table cimapplication.utilization_by_day;
      truncate table cimapplication.utilization_summary_by_day;
      truncate table cimapplication.load_factor_by_day;
+     truncate table cimapplication.coincidence_factor_by_day;
      truncate table cimapplication.responsibility_by_day;
      * @name cimsimulate
      * @exports cimsimulate
@@ -31,7 +32,7 @@ define
             {
                 name: "Sample",
                 description: "sample simulation",
-                cim: "hdfs://sandbox:8020/SAK_sta117_sta206.rdf",
+                cim: "hdfs://sandbox:8020/DemoData.rdf",
                 cimreaderoptions: {
                     "ch.ninecode.cim.do_about": false,
                     "ch.ninecode.cim.do_normalize": false,
@@ -439,9 +440,9 @@ define
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
-            var summarize = document.getElementById ("summarize").value ? ";summarize=true" : "";
-            var keep = document.getElementById ("keep").value ? ";keep=true" : "";
-            var verbose = document.getElementById ("verbose").value ? ";verbose=true" : "";
+            var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
+            var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
+            var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             // flip to the map while simulating
             var to_map = document.getElementById ("to_map").value;
             if (to_map)
