@@ -31,7 +31,7 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone ("Europe/Berlin")
+    val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
     val MeasurementCalendar: Calendar = Calendar.getInstance ()
     MeasurementCalendar.setTimeZone (MeasurementTimeZone)
     val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS")
@@ -63,6 +63,16 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         Reading (a.mRID, a.time, a.interval, (for (i <- 0 until 96) yield a.values(i) + b.values(i)).toArray)
     }
 
+    def inrange (reading: Reading, timestamp: Date, i: Int): Boolean =
+    {
+        val offset = (reading.interval * i) * 1000
+        val half_interval = reading.interval * 1000 / 2
+        val date_time = new Date (timestamp.getTime + offset - half_interval)
+        val date = ZuluDateFormat.format (date_time)
+        val measurement_time = new Date (timestamp.getTime + offset).getTime
+        (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
+    }
+
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units")
@@ -75,7 +85,10 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-        for (i <- 0 until 96) yield
+        for (
+            i <- 0 until 96
+            if inrange (reading, timestamp, i)
+        ) yield
         {
             val offset = (reading.interval * i) * 1000
             val half_interval = reading.interval * 1000 / 2
@@ -241,7 +254,6 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         val rdd = spark.sqlContext.read.format ("csv").options (options).csv (filename).rdd
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
-        val garbage = readings.filter (_._1 == null)
         val ok = readings.filter (_._1 != null)
         ok.saveToCassandra ("cimapplication", "measured_value_by_day", SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
     }

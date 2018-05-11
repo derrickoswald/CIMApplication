@@ -2,7 +2,10 @@ package ch.ninecode.ingest
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Properties
+import java.util.TimeZone
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
@@ -51,6 +54,26 @@ object Main
                     case Right(_) => sys.exit(0)
                 }
 
+        def parseTime (options: IngestOptions, time: String): Long =
+        {
+            val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
+            val MeasurementCalendar: Calendar = Calendar.getInstance ()
+            MeasurementCalendar.setTimeZone (MeasurementTimeZone)
+            val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
+            MeasurementTimestampFormat.setCalendar (MeasurementCalendar)
+            MeasurementTimestampFormat.parse (time).getTime
+        }
+
+        def formatTime (options: IngestOptions, time: Long): String =
+        {
+            val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
+            val MeasurementCalendar: Calendar = Calendar.getInstance ()
+            MeasurementCalendar.setTimeZone (MeasurementTimeZone)
+            val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
+            MeasurementTimestampFormat.setCalendar (MeasurementCalendar)
+            MeasurementTimestampFormat.format (time)
+        }
+
         opt[Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
@@ -88,7 +111,19 @@ object Main
             action ((x, c) ⇒ c.copy (mridcol = x)).
             text ("column name of CIM mRID in mapping CSV [%s]".format (default.mridcol))
 
-        arg[String]("<CSV> <CSV>...").optional ().unbounded ().
+        opt[String]("timezone").
+            action ((x, c) ⇒ c.copy (timezone = x)).
+            text ("measurement time zone for measurements [%s]".format (default.timezone))
+
+        opt[String]("mintime").
+            action ((x, c) ⇒ c.copy (mintime = parseTime (c, x))).
+            text ("minimum time for ingestion timespan [%s]".format (formatTime (default, default.mintime)))
+
+        opt[String]("maxtime").
+            action ((x, c) ⇒ c.copy (maxtime = parseTime (c, x))).
+            text ("maximum time for ingestion timespan [%s]".format (formatTime (default, default.maxtime)))
+
+        arg[String]("<ZIP> or <CSV>...").optional ().unbounded ().
             action ((x, c) ⇒
             {
                 try

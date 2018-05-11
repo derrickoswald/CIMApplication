@@ -6,7 +6,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.PrintWriter
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -186,6 +185,6 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
 
     test ("Ingest")
     {
-        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--mapping", FILE_DEPOT + FILENAME1, FILE_DEPOT + FILENAME2, FILE_DEPOT + FILENAME3))
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--mapping", FILE_DEPOT + FILENAME1, "--mintime", "2017-10-22 00:00:00", "--maxtime", "2018-02-14 00:00:00", FILE_DEPOT + FILENAME2, FILE_DEPOT + FILENAME3))
     }
 }

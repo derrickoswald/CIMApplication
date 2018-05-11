@@ -56,6 +56,23 @@ case class IngestOptions
     mridcol: String = "NISNr",
 
     /**
+     * Time zone for the measurement files.
+     */
+    timezone: String = "Europe/Berlin",
+
+    /**
+     * Minimum time for ingestion timespan.
+     * The default is the minimum representable time in the Linux epoc.
+     */
+    mintime: Long = 0L, // "1970-01-01 00:00:00.000+0000"
+
+    /**
+     * Maximum time for ingestion timespan.
+     * The default is the maximum representable time in the Linux epoc.
+     */
+    maxtime: Long = Long.MaxValue, // "292278994-08-17 07:12:55.807+0000"
+
+    /**
      * Source Belvis files.
      */
     belvis: Seq[String] = Seq ()
