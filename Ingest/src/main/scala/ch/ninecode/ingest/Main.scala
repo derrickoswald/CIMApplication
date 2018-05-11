@@ -76,6 +76,10 @@ object Main
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
+        opt[String]("mapping").
+            action ((x, c) ⇒ c.copy (mapping = x)).
+            text ("file name of mapping CSV [%s] (required)".format (default.mapping))
+
         opt[String]("metercol").
             action ((x, c) ⇒ c.copy (metercol = x)).
             text ("column name of meter id in mapping CSV [%s]".format (default.metercol))
@@ -91,8 +95,7 @@ object Main
                 {
                     val sep = System.getProperty ("file.separator")
                     val file = new java.io.File(".").getCanonicalPath + (if (x.startsWith (sep)) x else sep + x)
-                    val text = scala.io.Source.fromFile (file, "UTF-8").mkString
-                    c.copy (belvis = c.belvis :+ text)
+                    c.copy (belvis = c.belvis :+ file.toString)
                 }
                 catch
                 {
@@ -150,43 +153,48 @@ object Main
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
 
-                val begin = System.nanoTime ()
-
-                // create the configuration
-                val configuration = new SparkConf (false)
-                configuration.setAppName (APPLICATION_NAME)
-                if ("" != options.master)
-                    configuration.setMaster (options.master)
-                if (options.options.nonEmpty)
-                    options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                if ("" != options.host)
-                    configuration.set ("spark.cassandra.connection.host", options.host)
-
-                // get the necessary jar files to send to the cluster
-                if ("" != options.master)
+                if ("" != options.mapping)
                 {
-                    val s1 = jarForObject (IngestOptions ())
-                    configuration.setJars (Array (s1))
+                    val begin = System.nanoTime ()
+
+                    // create the configuration
+                    val configuration = new SparkConf (false)
+                    configuration.setAppName (APPLICATION_NAME)
+                    if ("" != options.master)
+                        configuration.setMaster (options.master)
+                    if (options.options.nonEmpty)
+                        options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+                    if ("" != options.host)
+                        configuration.set ("spark.cassandra.connection.host", options.host)
+
+                    // get the necessary jar files to send to the cluster
+                    if ("" != options.master)
+                    {
+                        val s1 = jarForObject (IngestOptions ())
+                        configuration.setJars (Array (s1))
+                    }
+
+                    configuration.set ("spark.ui.showConsoleProgress", "false")
+
+                    // make a Spark session
+                    val session = SparkSession.builder ().config (configuration).getOrCreate ()
+                    session.sparkContext.setLogLevel (options.log_level.toString)
+                    val version = session.version
+                    log.info (s"Spark $version session established")
+                    if (version.take (SPARK.length) != SPARK.take (version.length))
+                        log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+
+                    val setup = System.nanoTime ()
+                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+
+                    val ingest = Ingest (session, options)
+                    ingest.run ()
+
+                    val calculate = System.nanoTime ()
+                    log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
                 }
-
-                configuration.set ("spark.ui.showConsoleProgress", "false")
-
-                // make a Spark session
-                val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (options.log_level.toString)
-                val version = session.version
-                log.info (s"Spark $version session established")
-                if (version.take (SPARK.length) != SPARK.take (version.length))
-                    log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
-                val setup = System.nanoTime ()
-                log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-
-                val ingest = Ingest (session, options)
-                ingest.run ()
-
-                val calculate = System.nanoTime ()
-                log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
+                else
+                    log.error ("""mapping file not specified""")
 
                 if (do_exit)
                     sys.exit (0)

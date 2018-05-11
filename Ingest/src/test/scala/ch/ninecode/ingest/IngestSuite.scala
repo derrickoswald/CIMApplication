@@ -22,6 +22,11 @@ import ch.ninecode.ingest.Main.main
 
 class IngestSuite extends FunSuite with BeforeAndAfterAll
 {
+    val FILE_DEPOT = "private_data/"
+    val FILENAME1 = "Stoerung_Messstellen2.csv"
+    val FILENAME2 = "20180412_080258_Belvis_manuell_TS Amalerven.zip"
+    val FILENAME3 = "20180412_122100_Belvis_manuell_TS Ara_BadRagaz .zip"
+
     /**
      * Add to the process environment.
      *
@@ -88,6 +93,16 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
                     }
                 }
             }
+        }
+    }
+
+    def setHadoopConfigurationDirectory (path: String): Unit =
+    {
+        if (null == System.getenv ("HADOOP_CONF_DIR"))
+        {
+            val newenv = new java.util.HashMap[String, String] ()
+            newenv.put ("HADOOP_CONF_DIR", path)
+            setEnv (newenv)
         }
     }
 
@@ -161,10 +176,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     override def beforeAll ()
     {
         setLocalIP ()
-//        if (!new File (FILE_DEPOT + FILENAME1 + ".rdf").exists)
-//            new Unzip ().unzip (FILE_DEPOT + FILENAME1 + ".zip", FILE_DEPOT)
-//        if (!new File (FILE_DEPOT + FILENAME2 + ".rdf").exists)
-//            new Unzip ().unzip (FILE_DEPOT + FILENAME2 + ".zip", FILE_DEPOT)
+        setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.3/etc/hadoop")
     }
 
     test ("Help")
@@ -174,6 +186,6 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
 
     test ("Ingest")
     {
-        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--ingest"))
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--mapping", FILE_DEPOT + FILENAME1, FILE_DEPOT + FILENAME2, FILE_DEPOT + FILENAME3))
     }
 }

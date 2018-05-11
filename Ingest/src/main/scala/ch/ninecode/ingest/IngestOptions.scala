@@ -41,6 +41,11 @@ case class IngestOptions
     log_level: LogLevels = LogLevels.OFF,
 
     /**
+     * Mapping CSV file name.
+     */
+    mapping: String = "",
+
+    /**
      * Mapping CSV measurement identifier column name (column containing CH############################### values).
      */
     metercol: String = "Messpunktbezeichnung",
@@ -48,7 +53,7 @@ case class IngestOptions
     /**
      * Mapping CSV mRID column name (column containing HAS##### values).
      */
-    mridcol: String = "nis_number",
+    mridcol: String = "NISNr",
 
     /**
      * Source Belvis files.

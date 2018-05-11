@@ -1,19 +1,30 @@
 package ch.ninecode.ingest
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
+import java.util.zip.ZipInputStream
+
+import scala.collection._
 
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.collection._
 
 case class Ingest (spark: SparkSession, options: IngestOptions)
 {
@@ -74,6 +85,118 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
             val time = ZuluTimestampFormat.format (measurement_time)
             (reading.mRID, "energy", date, time, reading.interval.toString, reading.values (i), 0.0, "kWh")
         }
+    }
+
+    // build a file system configuration, including core-site.xml
+    def hdfs_configuration: Configuration =
+    {
+        val configuration = new Configuration ()
+        if (null == configuration.getResource ("core-site.xml"))
+        {
+            val hadoop_conf: String = System.getenv ("HADOOP_CONF_DIR")
+            if (null != hadoop_conf)
+            {
+                val site: Path = new Path (hadoop_conf, "core-site.xml")
+                val f: File = new File (site.toString)
+                if (f.exists && !f.isDirectory)
+                    configuration.addResource (site)
+            }
+        }
+        configuration
+    }
+
+    // get the file system
+    def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+    // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
+
+    def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
+
+    def base_name (path: String): String =
+    {
+        val sep = System.getProperty ("file.separator")
+        val index = path.lastIndexOf (sep)
+        if (-1 != index)
+            path.substring (index + 1)
+        else
+            path
+    }
+
+    def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
+    {
+        var ret = Seq[String]()
+
+        val file: Path = new Path (hdfs.getUri.toString, path)
+        // write the file
+        try
+        {
+            val parent = if (path.endsWith ("/")) file else file.getParent
+            hdfs.mkdirs (parent, new FsPermission("ugoa-rwx"))
+            hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
+
+            if (0 != data.length && !path.endsWith ("/"))
+            {
+                if (unzip)
+                {
+                    val zip = new ZipInputStream (new ByteArrayInputStream (data))
+                    val buffer = new Array[Byte](1024)
+                    var more = true
+                    do
+                    {
+                        val entry = zip.getNextEntry
+                        if (null != entry)
+                        {
+                            if (entry.isDirectory)
+                            {
+                                val path = new Path (parent, entry.getName)
+                                hdfs.mkdirs (path, new FsPermission("ugoa-rwx"))
+                                hdfs.setPermission (path, new FsPermission("ugoa-rwx"))
+                            }
+                            else
+                            {
+                                val baos = new ByteArrayOutputStream ()
+                                var eof = false
+                                do
+                                {
+                                    val len = zip.read (buffer, 0, buffer.length)
+                                    if (-1 == len)
+                                        eof = true
+                                    else
+                                        baos.write (buffer, 0, len)
+                                }
+                                while (!eof)
+                                baos.close ()
+                                val f = new Path (parent, entry.getName)
+                                val out = hdfs.create (f)
+                                out.write (baos.toByteArray)
+                                out.close ()
+                                ret = ret :+ f.toString
+                            }
+                            zip.closeEntry ()
+                        }
+                        else
+                            more = false
+                    }
+                    while (more)
+                    zip.close ()
+                }
+                else
+                {
+                    val out = hdfs.create (file)
+                    out.write (data)
+                    out.close ()
+                    ret = ret :+ file.toString
+                }
+            }
+            else
+                log.error ("""putFile could not store %d bytes for path "%s"""".format (data.length, path))
+        }
+        catch
+        {
+            case e: Exception =>
+                log.error ("""putFile failed for path "%s" with unzip=%s""".format (path, unzip), e)
+        }
+
+        ret
     }
 
     def sub (filename: String, join_table: Map[String, String]): Unit =
@@ -161,12 +284,31 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         mapping_options.put ("mode", mode)
         mapping_options.put ("inferSchema", inferSchema)
 
-        val filename = "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
+        val bytes = Files.readAllBytes (Paths.get (options.mapping))
+        val mapping_files = putFile (spark, "/" + base_name (options.mapping), bytes, options.mapping.toLowerCase.endsWith (".zip"))
+        val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
         val dataframe = spark.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
 
         val ch_number = dataframe.schema.fieldIndex (options.metercol)
         val nis_number = dataframe.schema.fieldIndex (options.mridcol)
         val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
-        sub ("hdfs://sandbox:8020/20180412_122100_Belvis_manuell_TS_Ara_BadRagaz.csv", join_table)
+
+        for (file ← options.belvis)
+        {
+            try
+            {
+                val bytes = Files.readAllBytes (Paths.get (file))
+                val belvis_files = putFile (spark, "/" + base_name (file), bytes, file.toLowerCase.endsWith (".zip"))
+                val filename = belvis_files.head // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
+                sub (filename, join_table)
+                hdfs.delete (new Path (filename), false)
+            }
+            catch
+            {
+                case e: Exception =>
+                    log.error ("""ingest failed for file "%s"""".format (file), e)
+            }
+        }
+        hdfs.delete (new Path (filename), false)
     }
 }
