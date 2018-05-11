@@ -1,9 +1,9 @@
-package ch.ninecode.sim
+package ch.ninecode.ingest
 
-import ch.ninecode.sim.Main.LogLevels
-import ch.ninecode.sim.Main.LogLevels.LogLevels
+import ch.ninecode.ingest.Main.LogLevels
+import ch.ninecode.ingest.Main.LogLevels.LogLevels
 
-case class SimulationOptions
+case class IngestOptions
 (
     /**
      * If <code>true</code>, don't call sys.exit().
@@ -41,28 +41,18 @@ case class SimulationOptions
     log_level: LogLevels = LogLevels.OFF,
 
     /**
-     * Session RDD checkpoint directory.
+     * Mapping CSV measurement identifier column name (column containing CH############################### values).
      */
-    checkpoint: String = "",
+    metercol: String = "Messpunktbezeichnung",
 
     /**
-     * Working directory for executors.
+     * Mapping CSV mRID column name (column containing HAS##### values).
      */
-    workdir: String = "/tmp/",
+    mridcol: String = "nis_number",
 
     /**
-     * If <code>true</code>, keep glm and input/output files in workdir.
+     * Source Belvis files.
      */
-    keep: Boolean = false,
+    belvis: Seq[String] = Seq ()
 
-    /**
-     * Summarize mode.
-     */
-    summarize: Boolean = false,
-
-    /**
-     * Simulation JSON files.
-     */
-    simulation: Seq[String] = Seq ()
 )
-

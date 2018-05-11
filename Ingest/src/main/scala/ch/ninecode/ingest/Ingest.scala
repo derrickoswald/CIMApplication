@@ -1,4 +1,4 @@
-package ch.ninecode.sim
+package ch.ninecode.ingest
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection._
 
-case class Ingest (spark: SparkSession, options: SimulationOptions)
+case class Ingest (spark: SparkSession, options: IngestOptions)
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -142,30 +142,30 @@ case class Ingest (spark: SparkSession, options: SimulationOptions)
         val mode = "PERMISSIVE"
         val inferSchema = "true"
 
-        val options = new mutable.HashMap[String, String] ()
+        val mapping_options = new mutable.HashMap[String, String] ()
 
-        options.put ("header", header)
-        options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
-        options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
-        options.put ("sep", sep)
-        options.put ("quote", quote)
-        options.put ("escape", escape)
-        options.put ("encoding", encoding)
-        options.put ("comment", comment)
-        options.put ("nullValue", nullValue)
-        options.put ("nanValue", nanValue)
-        options.put ("positiveInf", positiveInf)
-        options.put ("negativeInf", negativeInf)
-        options.put ("dateFormat", dateFormat)
-        options.put ("timestampFormat", timestampFormat)
-        options.put ("mode", mode)
-        options.put ("inferSchema", inferSchema)
+        mapping_options.put ("header", header)
+        mapping_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
+        mapping_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
+        mapping_options.put ("sep", sep)
+        mapping_options.put ("quote", quote)
+        mapping_options.put ("escape", escape)
+        mapping_options.put ("encoding", encoding)
+        mapping_options.put ("comment", comment)
+        mapping_options.put ("nullValue", nullValue)
+        mapping_options.put ("nanValue", nanValue)
+        mapping_options.put ("positiveInf", positiveInf)
+        mapping_options.put ("negativeInf", negativeInf)
+        mapping_options.put ("dateFormat", dateFormat)
+        mapping_options.put ("timestampFormat", timestampFormat)
+        mapping_options.put ("mode", mode)
+        mapping_options.put ("inferSchema", inferSchema)
 
         val filename = "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-        val dataframe = spark.sqlContext.read.format ("csv").options (options).csv (filename)
+        val dataframe = spark.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
 
-        val ch_number = dataframe.schema.fieldIndex ("Messpunktbezeichnung")
-        val nis_number = dataframe.schema.fieldIndex ("nis_number")
+        val ch_number = dataframe.schema.fieldIndex (options.metercol)
+        val nis_number = dataframe.schema.fieldIndex (options.mridcol)
         val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
         sub ("hdfs://sandbox:8020/20180412_122100_Belvis_manuell_TS_Ara_BadRagaz.csv", join_table)
     }

@@ -375,11 +375,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         main (Array ("--unittest", "--verbose", "--keep", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
-    test ("Ingest")
-    {
-        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--ingest"))
-    }
-
     test ("Typical")
     {
         val json = FILE_DEPOT + "typical.json"

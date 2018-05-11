@@ -89,10 +89,6 @@ object Main
             action ((_, c) ⇒ c.copy (keep = true)).
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
-        opt[Unit]("ingest").
-            action ((_, c) ⇒ c.copy (ingest = true)).
-            text ("perform injest operations [%s]".format (default.ingest))
-
         opt[Unit]("summarize").
             action ((_, c) ⇒ c.copy (summarize = true)).
             text ("perform summary operations [%s]".format (default.summarize))
@@ -164,7 +160,7 @@ object Main
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
 
-                if (options.ingest || options.summarize || (0 != options.simulation.size))
+                if (options.summarize || (0 != options.simulation.size))
                 {
                     val begin = System.nanoTime ()
 
@@ -208,12 +204,6 @@ object Main
 
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-
-                    if (options.ingest)
-                    {
-                        val ingest = Ingest (session, options)
-                        ingest.run ()
-                    }
 
                     if (0 != options.simulation.size)
                     {
