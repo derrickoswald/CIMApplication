@@ -175,54 +175,56 @@ define
         {
             document.getElementById ("query").innerHTML = "";
             var query_template =
-                "<div class='container'>\n" +
-                "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-12' style='margin-top: 40px;'>\n" +
-                "      <form id='query_form' role='form' style='width: 100%'>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='sql'>SQL query</label>\n" +
-                "          <textarea id='sql' class='form-control' aria-describedby='sqlHelp' name='sql' rows='8' placeholder='select * from ACLineSegment' style='width: 80%'>{{sql}}</textarea>\n" +
-                "          <small id='sqlHelp' class='form-text text-muted'>A Spark SQL query against the <a href='https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package' target='_blank'>CIMReader schema</a>.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <div class='col-sm-2 col-form-label'>Cassandra</div>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <div class='form-check'>\n" +
-                "              <label class='form-check-label'>\n" +
-                "                <input id='query_cassandra' class='form-check-input' type='checkbox' value=''{{cassandra}}>\n" +
-                "                Query Cassandra rather than Spark.\n" +
-                "              </label>\n" +
-                "            </div>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='table_name'>Save as table</label>\n" +
-                "          <input id='table_name' type='text' class='form-control' aria-describedby='nameHelp' placeholder='table name' value='{{table}}'>\n" +
-                "          <small id='nameHelp' class='form-text text-muted'>Enter a name for a temporary view to hold the results of the query.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='cassandra_table_name'>Save in Cassandra</label>\n" +
-                "          <input id='cassandra_table_name' type='text' class='form-control' aria-describedby='cassandraHelp' placeholder='cassandra table name, e.g. measured_value_by_day' value='{{ctable}}'>\n" +
-                "          <small id='cassandraHelp' class='form-text text-muted'>Enter the name of the Cassandra table to store the results of the query.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <label for='create_elements'>Create CIM elements in browser memory</label>\n" +
-                "          <select id='create_class_name' class='form-control custom-select' aria-describedby='createElementsHelp'>\n" +
-                "{{#classes}}\n" +
-                "              <option value='{{.}}'>{{.}}</option>\n" +
-                "{{/classes}}\n" +
-                "          </select>\n" +
-                "          <small id='createElementsHelp' class='form-text text-muted'>Select the CIM class for an object to be created (in browser memory) for each row of query results.</small>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <button id='do_query' type='button' class='btn btn-primary'>Query</button>\n" +
-                "        </div>\n" +
-                "      </form>\n" +
-                "      <div id='results_table'>\n" +
-                "      </div>\n" +
-                "    </div>\n" +
-                "  </div>\n" +
-                "</div>\n";
+                `
+                <div class="container">
+                  <div class="row justify-content-center">
+                    <div class="col-12" style="margin-top: 40px;">
+                      <form id="query_form" role="form" style="width: 100%">
+                        <div class="form-group">
+                          <label for="sql">SQL query</label>
+                          <textarea id="sql" class="form-control" aria-describedby="sqlHelp" name="sql" rows="8" placeholder="select * from ACLineSegment" style="width: 80%">{{sql}}</textarea>
+                          <small id="sqlHelp" class="form-text text-muted">A Spark SQL query against the <a href="https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package" target="_blank">CIMReader schema</a>.</small>
+                        </div>
+                        <div class="form-group row">
+                          <div class="col-sm-2 col-form-label">Cassandra</div>
+                          <div class="col-sm-10">
+                            <div class="form-check">
+                              <label class="form-check-label">
+                                <input id="query_cassandra" class="form-check-input" type="checkbox" value=""{{cassandra}}>
+                                Query Cassandra rather than Spark.
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="form-group">
+                          <label for="table_name">Save as table</label>
+                          <input id="table_name" type="text" class="form-control" aria-describedby="nameHelp" placeholder="table name" value="{{table}}">
+                          <small id="nameHelp" class="form-text text-muted">Enter a name for a temporary view to hold the results of the query.</small>
+                        </div>
+                        <div class="form-group">
+                          <label for="cassandra_table_name">Save in Cassandra</label>
+                          <input id="cassandra_table_name" type="text" class="form-control" aria-describedby="cassandraHelp" placeholder="cassandra table name, e.g. measured_value_by_day" value="{{ctable}}">
+                          <small id="cassandraHelp" class="form-text text-muted">Enter the name of the Cassandra table to store the results of the query.</small>
+                        </div>
+                        <div class="form-group">
+                          <label for="create_elements">Create CIM elements in browser memory</label>
+                          <select id="create_class_name" class="form-control custom-select" aria-describedby="createElementsHelp">
+                {{#classes}}
+                              <option value="{{.}}">{{.}}</option>
+                {{/classes}}
+                          </select>
+                          <small id="createElementsHelp" class="form-text text-muted">Select the CIM class for an object to be created (in browser memory) for each row of query results.</small>
+                        </div>
+                        <div class="form-group">
+                          <button id="do_query" type="button" class="btn btn-primary">Query</button>
+                        </div>
+                      </form>
+                      <div id="results_table">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `;
 
             var cls_map = cim.classes ();
             var classes = [];

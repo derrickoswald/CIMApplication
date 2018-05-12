@@ -436,6 +436,12 @@ define
                 TheSimulation.name = name;
             if (description != "")
                 TheSimulation.description = description;
+            TheSimulation.cim = document.getElementById ("cim_file").value;
+            if ("" == TheSimulation.cim)
+            {
+                alert ("A CIM file must be specified");
+                return;
+            }
             TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
@@ -573,9 +579,8 @@ define
             return (ret);
         }
 
-        function render ()
+        function formFill (resultset)
         {
-            document.getElementById ("simulate").innerHTML = "";
             var simulate_template =
                 `
                 <div class="container">
@@ -595,6 +600,12 @@ define
                           <small id="descriptionHelp" class="form-text text-muted">Enter a user facing description for the simulation - used for drop down choice title.</small>
                         </div>
                         <div class="form-group">
+                          <label for="cim_file">CIM file</label>
+                          <select id="cim_file" class="form-control custom-select" aria-describedby="cimFileHelp">
+                          </select>
+                          <small id="cimFileHelp" class="form-text text-muted">Select the CIM file to use in the simulation.</small>
+                        </div>
+                        <div class="form-group">
                           <label for="simulation_timerange">Time range</label>
                           <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="{{description}}">
                           <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
@@ -608,14 +619,14 @@ define
                         <div class="form-row">
                           <div class="col form-group">
                             <label for="summarize">Summarize</label>
-                              <div class='form-check'>
+                              <div class="form-check">
                                 <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp" checked>
                                 <small id="summarizeHelp" class="form-text text-muted">Perform summarization (utilization, load & coincidence factor) after simulation.</small>
                               </div>
                           </div>
                           <div class="col form-group">
                             <label for="keep">Keep GridLAB-D intermediate files</label>
-                              <div class='form-check'>
+                              <div class="form-check">
                                 <input id="keep" class="form-check-input" type="checkbox" name="keep" aria-describedby="keepHelp" checked>
                                 <small id="keepHelp" class="form-text text-muted">Do not delete intermediate gridlabd calculation files (usually in /tmp on worker nodes)..</small>
                               </div>
@@ -624,32 +635,32 @@ define
                         <div class="form-row">
                           <div class="col form-group">
                             <label for="to_map">View on map</label>
-                              <div class='form-check'>
+                              <div class="form-check">
                                 <input id="to_map" class="form-check-input" type="checkbox" name="to_map" aria-describedby="toMapHelp" checked>
                                 <small id="toMapHelp" class="form-text text-muted">Add a theme to the map tab for simulation results.</small>
                               </div>
                           </div>
                           <div class="col form-group">
                             <label for="verbose">Verbose</label>
-                              <div class='form-check'>
+                              <div class="form-check">
                                 <input id="verbose" class="form-check-input" type="checkbox" name="verbose" aria-describedby="verboseHelp" checked>
                                 <small id="verboseHelp" class="form-text text-muted">Output messages to console as the simulation progresses.</small>
                               </div>
                           </div>
                         </div>
-                        <div class='form-group'>
+                        <div class="form-group">
                           <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
                         </div>
-                        <div class='form-group'>
-                          <label for='simulation_id'>Prior simulations</label>
-                          <select id='simulation_id' class='form-control custom-select' aria-describedby='simulationIDHelp'>
+                        <div class="form-group">
+                          <label for="simulation_id">Prior simulations</label>
+                          <select id="simulation_id" class="form-control custom-select" aria-describedby="simulationIDHelp">
                             {{#simulations}}
-                              <option value='{{id}}'>{{name}}</option>
+                              <option value="{{id}}">{{name}}</option>
                             {{/simulations}}
                           </select>
-                          <small id='simulationIDHelp' class='form-text text-muted'>Select the simulation to view on the map.</small>
+                          <small id="simulationIDHelp" class="form-text text-muted">Select the simulation to view on the map.</small>
                         </div>
-                        <div class='form-group'>
+                        <div class="form-group">
                           <button id="show_simulation" name="show_simulation" type="button" class="btn btn-primary">Show simulation</button>
                         </div>
                       </form>
@@ -660,83 +671,115 @@ define
                 </div>
                 `;
 
-            cimquery.queryPromise (
+            var text = mustache.render
+            (
+                simulate_template,
                 {
-                    cassandra: true,
-                    sql: "select JSON id, name, description, cim, cimreaderoptions, interval, transformers from cimapplication.simulation"
+                    name: getName,
+                    description: getDescription,
+                    simulations: resultset.map (row => JSON.parse (row["[json]"]))
                 }
-            ).then (
-                function (resultset)
+            );
+            document.getElementById ("simulate").innerHTML = text;
+
+            // see https://wireddots.com/products/datetimepicker
+            var start = new Date (TheSimulation.interval.start);
+            var end = new Date (TheSimulation.interval.end);
+            $('#simulation_timerange').daterangepicker (
                 {
-                    var text = mustache.render
-                    (
-                        simulate_template,
+                    timePicker: true,
+                    timePickerIncrement: 15,
+                    locale: {
+                        format: 'YYYY.MM.DD HH:mm'
+                    },
+                    timePicker24Hour: true,
+                    linkedCalendars: false,
+                    startDate: start,
+                    endDate: end,
+                    showDropdowns: true
+                    //showISOWeekNumbers: true
+                },
+                setDateRange
+            );
+            if (null == TransformerChooser)
+            {
+                var help =
+                    `
+                    <small id="transformers_help" class="form-text text-muted">
+                        The transformers to process - if none are provided, all are processed.
+                    </small>
+                    `;
+                TransformerChooser = new Chooser ("transformers", "Transformers", "Transformer", null, help);
+            }
+            TransformerChooser.render ();
+            if (null == PlayerChooser)
+            {
+                var help =
+                    `
+                    <small id="players_help" class="form-text text-muted">
+                        The queries to use to pick player (load) elements.
+                    </small>
+                    `;
+                PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
+            }
+            PlayerChooser.render ();
+            if (null == RecorderChooser)
+            {
+                var help =
+                    `
+                    <small id="recorders_help" class="form-text text-muted">
+                        The queries to use to pick recorder elements.
+                    </small>
+                    `;
+                RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
+            }
+            RecorderChooser.render ();
+
+            document.getElementById ("do_simulate").onclick = do_simulate;
+            document.getElementById ("show_simulation").onclick = do_show;
+        }
+
+        function render ()
+        {
+            document.getElementById ("simulate").innerHTML = "";
+            return (
+                cimquery.queryPromise (
+                    {
+                        cassandra: true,
+                        sql: "select JSON id, name, description, cim, cimreaderoptions, interval, transformers from cimapplication.simulation"
+                    }
+                ).then (formFill).then (getDateRange).then (getFiles)
+            );
+        }
+
+        function getFiles ()
+        {
+            return (
+                cimfiles.fetchPromise ("\\").then (
+                    function (response)
+                    {
+                        if (response.status == "OK")
                         {
-                            name: getName,
-                            description: getDescription,
-                            simulations: resultset.map (row => JSON.parse (row["[json]"]))
+                            response.result.files = response.result.files.filter (
+                                x =>
+                                {
+                                    var name = x.path.toLowerCase ();
+                                    return (name.endsWith (".rdf") || name.endsWith (".xml"));
+                                }
+                            );
+                            var file_template =
+                                `
+                                {{#files}}
+                                    <option value="{{root}}{{path}}">{{path}}</option>
+                                {{/files}}
+                                `;
+                            var text = mustache.render (file_template, response.result);
+                            document.getElementById ("cim_file").innerHTML = text;
                         }
-                    );
-                    document.getElementById ("simulate").innerHTML = text;
-
-                    // see https://wireddots.com/products/datetimepicker
-                    var start = new Date (TheSimulation.interval.start);
-                    var end = new Date (TheSimulation.interval.end);
-                    $('#simulation_timerange').daterangepicker (
-                        {
-                            timePicker: true,
-                            timePickerIncrement: 15,
-                            locale: {
-                                format: 'YYYY.MM.DD HH:mm'
-                            },
-                            timePicker24Hour: true,
-                            linkedCalendars: false,
-                            startDate: start,
-                            endDate: end,
-                            minDate: start,
-                            maxDate: end,
-                            showDropdowns: true
-                            //showISOWeekNumbers: true
-                        },
-                        setDateRange
-                    );
-                    if (null == TransformerChooser)
-                    {
-                        var help =
-                            `
-                            <small id="transformers_help" class="form-text text-muted">
-                                The transformers to process - if none are provided, all are processed.
-                            </small>
-                            `;
-                        TransformerChooser = new Chooser ("transformers", "Transformers", "Transformer", null, help);
+                        else
+                            alert (response.message);
                     }
-                    TransformerChooser.render ();
-                    if (null == PlayerChooser)
-                    {
-                        var help =
-                            `
-                            <small id="players_help" class="form-text text-muted">
-                                The queries to use to pick player (load) elements.
-                            </small>
-                            `;
-                        PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
-                    }
-                    PlayerChooser.render ();
-                    if (null == RecorderChooser)
-                    {
-                        var help =
-                            `
-                            <small id="recorders_help" class="form-text text-muted">
-                                The queries to use to pick recorder elements.
-                            </small>
-                            `;
-                        RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
-                    }
-                    RecorderChooser.render ();
-
-                    document.getElementById ("do_simulate").onclick = do_simulate;
-                    document.getElementById ("show_simulation").onclick = do_show;
-                }
+                )
             );
         }
 
@@ -755,38 +798,41 @@ define
 //            var nex = "select distinct mrid, type, date from cimapplication.measured_value_by_day where date<'2017-07-17' allow filtering";
 //            var lim = "select min(time) as low, max(time) as high from cimapplication.measured_value_by_day";
 //            val low = "select * from cimapplication.measured_value_by_day where time='2017-07-17T23:00:00.00' allow filtering";
-            cimquery.queryPromise (
-                {
-                    cassandra: true,
-                    sql: "select min(time) as low, max(time) as high from cimapplication.measured_value_by_day"
-                }
-            ).then (
-                function (resultset)
-                {
-                    var start = new Date (resultset[0].low);
-                    var end = new Date (resultset[0].high);
-                    $('#simulation_timerange').daterangepicker (
-                        {
-                            timePicker: true,
-                            timePickerIncrement: 15,
-                            locale: {
-                                format: 'YYYY.MM.DD HH:mm'
+            return (
+                cimquery.queryPromise (
+                    {
+                        cassandra: true,
+                        sql: "select min(date) as low, max(date) as high from cimapplication.measured_value_by_day"
+                    }
+                ).then (
+                    function (resultset)
+                    {
+                        var start = new Date (resultset[0].low);
+                        var end = new Date (resultset[0].high);
+                        setDateRange (start, end);
+                        $('#simulation_timerange').daterangepicker (
+                            {
+                                timePicker: true,
+                                timePickerIncrement: 15,
+                                locale: {
+                                    format: 'YYYY.MM.DD HH:mm'
+                                },
+                                timePicker24Hour: true,
+                                linkedCalendars: false,
+                                startDate: start,
+                                endDate: end,
+                                minDate: start,
+                                maxDate: end,
+                                showDropdowns: true
+                                //showISOWeekNumbers: true
                             },
-                            timePicker24Hour: true,
-                            linkedCalendars: false,
-                            startDate: start,
-                            endDate: end,
-                            minDate: start,
-                            maxDate: end,
-                            showDropdowns: true
-                            //showISOWeekNumbers: true
-                        },
-                        setDateRange
-                    );
-                    // unfortunately you can't set the min and max date as well, so this doesn't work:
-//                    $('#simulation_timerange').data('daterangepicker').setEndDate (end);
-//                    $('#simulation_timerange').data('daterangepicker').setStartDate (start);
-                }
+                            setDateRange
+                        );
+                        // unfortunately you can't set the min and max date as well, so this doesn't work:
+                        // $('#simulation_timerange').data('daterangepicker').setEndDate (end);
+                        // $('#simulation_timerange').data('daterangepicker').setStartDate (start);
+                    }
+                )
             );
         }
 
@@ -800,7 +846,6 @@ define
         {
             document.getElementById ("simulate").innerHTML = "";
             render ();
-            getDateRange ();
         }
 
 // placeholders until Export is fixed:

@@ -129,7 +129,7 @@ object Main
                 try
                 {
                     val sep = System.getProperty ("file.separator")
-                    val file = new java.io.File(".").getCanonicalPath + (if (x.startsWith (sep)) x else sep + x)
+                    val file = if (x.startsWith (sep)) x else new java.io.File(".").getCanonicalPath + sep + x
                     c.copy (belvis = c.belvis :+ file.toString)
                 }
                 catch

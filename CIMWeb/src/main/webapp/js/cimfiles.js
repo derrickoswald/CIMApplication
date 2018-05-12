@@ -181,6 +181,7 @@ define
             var url;
             var xmlhttp;
 
+            path = path || "";
             path = path.startsWith ("/") ? path : "/" + path;
             url = util.home () + "cim/file" + path;
             xmlhttp = util.createCORSRequest ("GET", url);
@@ -223,6 +224,34 @@ define
                         fn ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
             };
             xmlhttp.send ();
+        }
+
+        function fetchPromise (path)
+        {
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        var url;
+                        var xmlhttp;
+
+                        path = path || "";
+                        path = path.startsWith ("/") ? path : "/" + path;
+                        path = path.endsWith ("/") ? path : path + "/";
+                        url = util.home () + "cim/file" + path;
+                        xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            if (4 == xmlhttp.readyState)
+                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                                    resolve (JSON.parse (xmlhttp.responseText));
+                                else
+                                    reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
+                        };
+                        xmlhttp.send ();
+                    }
+                )
+            );
         }
 
         /**
@@ -765,6 +794,7 @@ define
                 initialize: initialize,
                 get: get,
                 fetch: fetch,
+                fetchPromise: fetchPromise,
                 do_fetch: do_fetch,
                 put: put,
                 do_put: do_put,

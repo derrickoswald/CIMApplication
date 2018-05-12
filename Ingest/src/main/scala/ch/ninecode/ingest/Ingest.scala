@@ -63,16 +63,6 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         Reading (a.mRID, a.time, a.interval, (for (i <- 0 until 96) yield a.values(i) + b.values(i)).toArray)
     }
 
-    def inrange (reading: Reading, timestamp: Date, i: Int): Boolean =
-    {
-        val offset = (reading.interval * i) * 1000
-        val half_interval = reading.interval * 1000 / 2
-        val date_time = new Date (timestamp.getTime + offset - half_interval)
-        val date = ZuluDateFormat.format (date_time)
-        val measurement_time = new Date (timestamp.getTime + offset).getTime
-        (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
-    }
-
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units")
@@ -85,13 +75,22 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-        for (
-            i <- 0 until 96
-            if inrange (reading, timestamp, i)
-        ) yield
+        val half_interval = reading.interval * 1000 / 2
+        def inrange (i: Int): Boolean =
         {
             val offset = (reading.interval * i) * 1000
-            val half_interval = reading.interval * 1000 / 2
+            val date_time = new Date (timestamp.getTime + offset - half_interval)
+            val date = ZuluDateFormat.format (date_time)
+            val measurement_time = new Date (timestamp.getTime + offset).getTime
+            (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
+        }
+        for (
+            i <- 0 until 96
+            if inrange (i)
+        )
+        yield
+        {
+            val offset = (reading.interval * i) * 1000
             val date_time = new Date (timestamp.getTime + offset - half_interval)
             val date = ZuluDateFormat.format (date_time)
             val measurement_time = new Date (timestamp.getTime + offset)
@@ -260,6 +259,8 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
 
     def run (): Unit =
     {
+        val begin = System.nanoTime ()
+
         val header = "true"
         val ignoreLeadingWhiteSpace = "false"
         val ignoreTrailingWhiteSpace = "false"
@@ -301,19 +302,31 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
         val dataframe = spark.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
 
+        val read = System.nanoTime ()
+        log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
+
         val ch_number = dataframe.schema.fieldIndex (options.metercol)
         val nis_number = dataframe.schema.fieldIndex (options.mridcol)
         val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+
+        val map = System.nanoTime ()
+        log.info ("map: %s seconds".format ((map - read) / 1e9))
 
         for (file ← options.belvis)
         {
             try
             {
+                var start = System.nanoTime ()
                 val bytes = Files.readAllBytes (Paths.get (file))
                 val belvis_files = putFile (spark, "/" + base_name (file), bytes, file.toLowerCase.endsWith (".zip"))
-                val filename = belvis_files.head // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
-                sub (filename, join_table)
-                hdfs.delete (new Path (filename), false)
+                for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
+                {
+                    sub (filename, join_table)
+                    hdfs.delete (new Path (filename), false)
+                    val end = System.nanoTime ()
+                    log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
+                    start = end
+                }
             }
             catch
             {
