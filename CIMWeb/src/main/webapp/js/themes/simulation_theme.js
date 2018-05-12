@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "./default_theme", "./simulation_legend", "./layers", "../cimquery"],
+    ["../mustache", "./default_theme", "./simulation_legend", "./layers", "../cimquery", "../cimchart"],
     /**
      * @summary Theme on simulation output.
      * @description Theme class for colorizing by (eventually percent maximum) cable current and (eventually) deviation from nominal voltage.
@@ -13,7 +13,7 @@ define
      * @exports simulation_theme
      * @version 1.0
      */
-    function (mustache, DefaultTheme, SimulationLegend, layers, cimquery)
+    function (mustache, DefaultTheme, SimulationLegend, layers, cimquery, CIMChart)
     {
         class SimulationTheme extends DefaultTheme
         {
@@ -60,7 +60,9 @@ define
                 date = date.substring (0, date.indexOf ("T"));
                 var val = "T" + date + "max";
                 var mapping = { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
-                this._TheMap.setPaintProperty ("polygons", "fill-color", mapping);
+                var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
+                if (mapping.property != current.property)
+                    this._TheMap.setPaintProperty ("polygons", "fill-color", mapping);
             }
 
             /**
@@ -100,7 +102,17 @@ define
                         self._TheMap.getSource ("nodes").setData (self._simulation_points);
                         self._TheMap.getSource ("edges").setData (self._simulation_lines);
                     }
-                );
+                )
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (data => self.setSimulationSummary_for_Polygon.call (self, data));
+            }
+
+            // load cable data
+            load_cable (cable)
+            {
+                var self = this;
+                cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
+                .then (data => self.setCableUtilization.call (self, data));
             }
 
             click (x, y)
@@ -125,9 +137,12 @@ define
                         this.load_trafo (trafo)
                     else
                     {
+                        var cable = null
                         for (var i = 0; i < features.length; i++)
-                            if ((features[i].layer.id != "polygons") && features[i].properties.mRID)
-                                console.log (features[i].properties.mRID);
+                            if ((features[i].layer.id != "polygons") && features[i].properties.mRID && features[i].properties.ratedCurrent)
+                                cable = features[i].properties.mRID;
+                        if (cable)
+                            this.load_cable (cable);
                     }
                 }
             }
@@ -269,7 +284,7 @@ define
                 data.forEach (
                     row =>
                     {
-                        var utilizations = JSON.parse (row["[json]"]);
+                        var utilization = JSON.parse (row["[json]"]);
                         //    {
                         //        avg: 10.277724814899273
                         //        date: "2017-07-17"
@@ -277,19 +292,19 @@ define
                         //        min: 0
                         //        transformer: "TRA2755"
                         //    }
-                        var polygon = this._simulation_polygons.features.filter (polygon => polygon.properties.mRID == utilizations.transformer);
+                        var polygon = this._simulation_polygons.features.filter (polygon => polygon.properties.mRID == utilization.transformer);
                         if (polygon.length > 0)
                         {
                             polygon = polygon[0].properties;
-                            var date = utilizations.date;
+                            var date = utilization.date;
                             var item = "T" + date + "min";
-                            polygon[item] = utilizations.min;
+                            polygon[item] = utilization.min;
                             default_data[item] = 0.0;
                             var item = "T" + date + "avg";
-                            polygon[item] = utilizations.avg;
+                            polygon[item] = utilization.avg;
                             default_data[item] = 0.0;
                             var item = "T" + date + "max";
-                            polygon[item] = utilizations.max;
+                            polygon[item] = utilization.max;
                             default_data[item] = 0.0;
                         }
                     }
@@ -302,6 +317,52 @@ define
                                 polygon.properties[x] = default_data[x];
                     }
                 );
+            }
+
+            setSimulationSummary_for_Polygon (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var transformer = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var utilization = JSON.parse (row["[json]"]);
+                        transformer = utilization.transformer;
+                        return ([(new Date (utilization.date)).getTime (), utilization.max]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]);
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart ("Utilization", transformer, values)
+            }
+
+            setCableUtilization (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var cable = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var utilization = JSON.parse (row["[json]"]);
+                        cable = utilization.mrid;
+                        return ([(new Date (utilization.date)).getTime (), utilization.percent]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart ("Cable Utilization", cable, values)
             }
 
             setSimulationGeoJSON_Polygons (data)
