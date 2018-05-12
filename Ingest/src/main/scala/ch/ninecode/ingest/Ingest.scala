@@ -95,7 +95,7 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
             val date = ZuluDateFormat.format (date_time)
             val measurement_time = new Date (timestamp.getTime + offset)
             val time = ZuluTimestampFormat.format (measurement_time)
-            (reading.mRID, "energy", date, time, reading.interval.toString, reading.values (i), 0.0, "kWh")
+            (reading.mRID, "energy", date, time, reading.interval.toString, 1000.0 * reading.values (i), 0.0, "Wh")
         }
     }
 
