@@ -134,7 +134,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         }
         // apparently interval is a keyword, so we can't use it in the SQL clauses of Dataset[Row].filter(), so we filter here
         // and my brain exploded trying to figure out what the min and max of an average really means
-        val fifteen_minute = work.filter (_._4 == 900)
+        val fifteen_minute = work.filter (_._4 == 900000)
         // make a multiple key of transformer and date separated by |
         val summary = fifteen_minute.keyBy (record ⇒ record._9 + "|" + record._3).aggregateByKey (initial) (seqOp, combOp)
             .map (day ⇒ (day._1.substring (0, day._1.indexOf ("|")), day._1.substring (day._1.indexOf ("|") + 1), day._2._2, day._2._3 / day._2._1, day._2._4))
@@ -186,7 +186,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-        log.info ("""%d joined polygons to process""".format (join.count))
+        log.info ("""%d simulation values with polygons to process""".format (join.count))
         // join.show (5)
 
         val mrid = join.schema.fieldIndex ("mrid")
@@ -269,7 +269,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-        log.info ("""%d joined polygons to process""".format (join.count))
+        log.info ("""%d simulation values with polygons to process""".format (join.count))
         // join.show (5)
 
         val mrid = join.schema.fieldIndex ("mrid")
@@ -391,20 +391,20 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 trafos,
                 Seq ("simulation", "mrid"))
 
-        log.info ("""%d transformers to process""".format (simulated_value_by_day_trafos.count))
+        log.info ("""%d simulation values with transformers to process""".format (simulated_value_by_day_trafos.count))
         // simulated_value_by_day_trafos.show (5)
 
         val peaks = simulated_value_by_day_trafos.groupBy ("mrid", "date")
             .agg ("magnitude" → "max")
             .withColumnRenamed ("max(magnitude)", "magnitude")
-        log.info ("peak")
+        log.info ("%d peaks found".format (peaks.count))
         // peaks.show (5)
 
         val info = peaks.join (simulated_value_by_day_trafos, Seq ("mrid", "date", "magnitude"))
             .withColumnRenamed ("mrid", "transformer")
             .drop ("real_a")
             .drop ("imag_a")
-        log.info ("info")
+        log.info ("%d peaks joined with simulation values".format (info.count))
         // info.show (5)
 
         val _measured_value_by_day = spark
@@ -444,7 +444,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .join (
                 geojson_points,
                 Seq ("mrid"))
-        log.info ("""%d joined energy consumers to process""".format (measured_value_by_day_and_trafo.count))
+        log.info ("""%d measurements with energy consumers to process""".format (measured_value_by_day_and_trafo.count))
         // measured_value_by_day_and_trafo.show (5)
 
         val maximums = measured_value_by_day_and_trafo.groupBy ("mrid", "date").agg ("power" → "max").withColumnRenamed ("max(power)", "peak")

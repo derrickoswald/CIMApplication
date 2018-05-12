@@ -19,7 +19,6 @@ define
         {
             constructor (theme)
             {
-                this._onMap = false;
                 this._theme = theme;
                 this._template =
                     `
@@ -46,7 +45,6 @@ define
             onAdd (map)
             {
                 this._map = map;
-                this._items = this._theme.getItems ();
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
                 this._container.innerHTML = mustache.render (this._template);
@@ -67,15 +65,15 @@ define
                 );
                 this._slider.on ("slide", this.legend_change.bind (this));
                 this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
-                this._onMap = true;
                 return (this._container);
             }
 
             onRemove ()
             {
                 this._container.parentNode.removeChild (this._container);
-                this._map = undefined;
-                this._onMap = false;
+                delete this._slider;
+                delete this._container;
+                delete this._map;
             }
 
             close (event)
@@ -90,7 +88,7 @@ define
 
             visible ()
             {
-                return (this._onMap);
+                return ("undefined" != typeof (this._container));
             }
 
             legend_change (value)
@@ -107,6 +105,11 @@ define
             setTimes (times) // { start: start, end: end }
             {
                  this._times = times;
+            }
+
+            getTimes ()
+            {
+                 return (this._times);
             }
         }
 

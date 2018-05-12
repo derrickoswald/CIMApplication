@@ -21,12 +21,12 @@ define
             {
                 super ();
                 this._legend = new SimulationLegend (this);
-                this._legend.legend_change_listener (this.slider_changed.bind (this));
                 this._simulation_points = null;
                 this._simulation_lines = null;
                 this._simulation_polygons = null;
                 this._extents = { xmin: 0.0, ymin: 0.0, xmax: 0.0, ymax: 0.0 };
                 this._render_listener = null;
+                this.getLegend ().legend_change_listener (this.legend_changed.bind (this));
             }
 
             getName ()
@@ -54,7 +54,7 @@ define
                 return (this._legend);
             }
 
-            slider_changed (value)
+            legend_changed (value)
             {
                 var date = new Date (value).toISOString ();
                 date = date.substring (0, date.indexOf ("T"));
@@ -156,7 +156,7 @@ define
              * @param {Object} options - object with rendering options, e.g.
              *   show_internal_features flag - render internal features
              * @function make_theme
-             * @memberOf module:default_theme
+             * @memberOf module:simulation_theme
              */
             make_theme (cimmap, options)
             {
@@ -207,14 +207,14 @@ define
                 // blue with border
                 map.addLayer (layers.polygon_layer ("polygons", "areas", "#0000ff", "#000000"))
 
-                // set the current filter
-                this.legend_changed ();
-
                 var end = new Date ().getTime ();
                 console.log ("finished rendering simulation data (" + (Math.round (end - start) / 1000) + " seconds)");
 
                 if (this._render_listener)
                     this._render_listener ();
+
+                // set the current filter
+                this.legend_changed (new Date (this.getLegend ().getTimes ().start));
 
                 this._cimmap.remove_listeners ();
                 this._mousedown_listener = this.mousedown_listener.bind (this);
@@ -373,12 +373,12 @@ define
                 //        transformers: [ "TRA2755", "TRA2769" ]
                 //    }
                 this._simulation = this._simulation_json.id;
-                this._legend.setTimes (
+                var times =
                     {
                         start: new Date (this._simulation_json.interval.start).getTime (),
                         end: new Date (this._simulation_json.interval.end).getTime ()
-                    }
-                );
+                    };
+                this.getLegend ().setTimes (times);
             }
 
             setSimulation (id)
