@@ -37,6 +37,7 @@ define
                           <span>{{{clock}}}</span>
                         </div>
                         <div class="card-footer">
+                          <span id="player_action">{{{play}}}</span>
                           <label for="simulation_slider">
                             <input id="simulation_slider" type="text"/>
                             Time
@@ -53,7 +54,13 @@ define
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
                 var self = this;
-                this._container.innerHTML = mustache.render (this._template, { "clock": (text, render) => self._clock.getSVG () });
+                this._container.innerHTML = mustache.render (
+                    this._template,
+                    {
+                        "clock": (text, render) => self._clock.getSVG (),
+                        "play":  (text, render) => self.play ()
+                    }
+                );
                 this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
                 return (this._container);
             }
@@ -79,6 +86,93 @@ define
             visible ()
             {
                 return ("undefined" != typeof (this._container));
+            }
+
+            play ()
+            {
+                return (
+                    `
+<svg
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:cc="http://creativecommons.org/ns#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     xmlns="http://www.w3.org/2000/svg"
+     id="svg8"
+     version="1.1"
+     viewBox="0 0 6.5391078 7.3986402"
+     height="5mm"
+     width="5mm">
+    <defs
+         id="defs2" />
+    <metadata
+         id="metadata5">
+        <rdf:RDF>
+            <cc:Work
+                 rdf:about="">
+                <dc:format>image/svg+xml</dc:format>
+                <dc:type
+                     rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+                <dc:title></dc:title>
+            </cc:Work>
+        </rdf:RDF>
+    </metadata>
+    <g
+         transform="translate(-13.359356,-215.3175)"
+         id="layer1">
+        <path
+             d="m 19.407059,219.01682 -2.778125,1.60395 -2.778125,1.60395 0,-3.2079 0,-3.20791 2.778125,1.60395 z"
+             id="path817"
+             style="fill:#00ff00;fill-opacity:1;stroke:#00ff00;stroke-width:0.9829067;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    </g>
+</svg>
+                    `
+                );
+            }
+
+            pause ()
+            {
+                return (
+                    `
+<svg
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:cc="http://creativecommons.org/ns#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     xmlns="http://www.w3.org/2000/svg"
+     id="svg8"
+     version="1.1"
+     viewBox="0 0 6.6831808 6.6831813"
+     height="5mm"
+     width="5mm">
+    <defs
+         id="defs2" />
+    <metadata
+         id="metadata5">
+        <rdf:RDF>
+            <cc:Work
+                 rdf:about="">
+                <dc:format>image/svg+xml</dc:format>
+                <dc:type
+                     rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+                <dc:title></dc:title>
+            </cc:Work>
+        </rdf:RDF>
+    </metadata>
+    <g
+         transform="translate(-13.419634,-215.68969)"
+         id="layer1">
+        <rect
+             y="216.12086"
+             x="13.850807"
+             height="5.8208351"
+             width="5.8208351"
+             id="rect893"
+             style="fill:#ff0000;fill-opacity:1;stroke:#ff0000;stroke-width:0.86234593;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    </g>
+</svg>
+                    `
+                );
             }
 
             initialize ()
@@ -136,6 +230,8 @@ define
 //                    },
 //                    (start, end, label) => false
 //                );
+
+                document.getElementById ("player_action").onclick = this.play_pause.bind (this);
             }
 
             legend_change (obj)
@@ -173,6 +269,31 @@ define
             getTimes ()
             {
                  return (this._times);
+            }
+
+            advance ()
+            {
+                var now = this._slider.getValue ();
+                now += 900000; // 15 minutes
+                if (now > this._times.end)
+                    this.play_pause ();
+                else
+                    this._slider.setValue (now, undefined, true);
+            }
+
+            play_pause ()
+            {
+                if (this.playing)
+                {
+                    window.clearInterval (this.playing);
+                    delete this.playing;
+                    document.getElementById ("player_action").innerHTML = this.play ();
+                }
+                else
+                {
+                    this.playing = window.setInterval (this.advance.bind (this), 250); // a quarter second
+                    document.getElementById ("player_action").innerHTML = this.pause ();
+                }
             }
         }
 
