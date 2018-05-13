@@ -57,12 +57,12 @@ define
             legend_changed (value)
             {
                 var date = new Date (value).toISOString ();
-                date = date.substring (0, date.indexOf ("T"));
-                var val = "T" + date + "max";
-                var mapping = { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
                 var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
-                if (mapping.property != current.property)
-                    this._TheMap.setPaintProperty ("polygons", "fill-color", mapping);
+                if (current.val != val)
+                    this._TheMap.setPaintProperty ("polygons", "fill-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                val = "T" + date.replace ("T", " ");
+                this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
             }
 
             /**
@@ -72,6 +72,11 @@ define
              */
             remove_theme ()
             {
+                if (this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
                 if ((null != this._TheMap) && this._TheMap.getSource ("nodes"))
                 {
                     this._TheMap.removeLayer ("points");
@@ -104,14 +109,21 @@ define
                     }
                 )
                 .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                .then (data => self.setSimulationSummary_for_Polygon.call (self, data));
+                .then (data => self.setSimulationSummary_for_Polygon.call (self, data))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (data => self.setUtilization_for_Lines.call (self, data))
+                .then (() =>
+                    {
+                        self._TheMap.getSource ("edges").setData (self._simulation_lines);
+                    }
+                );
             }
 
             // load cable data
             load_cable (cable)
             {
                 var self = this;
-                cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
+                cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
                 .then (data => self.setCableUtilization.call (self, data));
             }
 
@@ -130,20 +142,17 @@ define
                 if ((null != features) && (0 != features.length))
                 {
                     var trafo = null;
+                    var cable = null;
                     for (var i = 0; i < features.length; i++)
                         if (features[i].layer.id == "polygons")
                             trafo = features[i].properties.mRID;
-                    if (!this._Trafo || (trafo != this._Trafo))
-                        this.load_trafo (trafo)
-                    else
-                    {
-                        var cable = null
-                        for (var i = 0; i < features.length; i++)
-                            if ((features[i].layer.id != "polygons") && features[i].properties.mRID && features[i].properties.ratedCurrent)
+                        else
+                            if (features[i].properties.mRID && features[i].properties.ratedCurrent)
                                 cable = features[i].properties.mRID;
-                        if (cable)
-                            this.load_cable (cable);
-                    }
+                    if (!this._Trafo || (trafo != this._Trafo) || (trafo && !cable))
+                        this.load_trafo (trafo)
+                    else if (cable)
+                        this.load_cable (cable);
                 }
             }
 
@@ -342,6 +351,35 @@ define
                 this._TheChart.addChart ("Utilization", transformer, values)
             }
 
+            setUtilization_for_Lines (data)
+            {
+                var index = {};
+                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = line);
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var utilization = JSON.parse (row["[json]"]);
+                        var line = index[utilization.mrid];
+                        if (line)
+                        {
+                            var time = utilization.time;
+                            var item = "T" + time;
+                            line.properties[item] = utilization.percent;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_lines.features.forEach (
+                    line =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (line.properties[x]))
+                                line.properties[x] = default_data[x];
+                    }
+                );
+            }
+
             setCableUtilization (data)
             {
                 if (null != this._TheChart)
@@ -356,13 +394,13 @@ define
                     {
                         var utilization = JSON.parse (row["[json]"]);
                         cable = utilization.mrid;
-                        return ([(new Date (utilization.date)).getTime (), utilization.percent]);
+                        return ([(new Date (utilization.time)).getTime (), utilization.percent]);
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Cable Utilization", cable, values)
+                this._TheChart.addChart (cable + " Cable Utilization", cable, values)
             }
 
             setSimulationGeoJSON_Polygons (data)

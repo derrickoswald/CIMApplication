@@ -51,24 +51,39 @@ define
             addChart (title, name, data)
             {
                 // Create the chart
-                window.Highcharts.stockChart ('chart', {
+                window.Highcharts.stockChart
+                (
+                    'chart',
+                    {
 
-                    rangeSelector: {
-                        selected: 1
-                    },
+                        title:
+                        {
+                            text: title
+                        },
 
-                    title: {
-                        text: title
-                    },
+                        xAxis:
+                        {
+                            minRange: 10800 * 1000 // 3 hours
+                        },
 
-                    series: [{
-                        name: name,
-                        data: data,
-                        tooltip: {
-                            valueDecimals: 2
-                        }
-                    }]
-                });
+                        dataGrouping:
+                        {
+                            enabled: false
+                        },
+
+                        series:
+                        [
+                            {
+                                name: name,
+                                data: data,
+                                tooltip:
+                                {
+                                    valueDecimals: 2
+                                }
+                            }
+                        ]
+                    }
+                );
             }
         }
 

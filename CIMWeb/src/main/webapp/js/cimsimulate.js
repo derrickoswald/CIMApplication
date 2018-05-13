@@ -6,7 +6,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "daterangepicker", "themes/simulation_theme"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
@@ -25,7 +25,7 @@ define
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme)
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, DateRangePicker, SimulationTheme)
     {
         // The simulation details.
         var TheSimulation =
@@ -607,7 +607,7 @@ define
                         </div>
                         <div class="form-group">
                           <label for="simulation_timerange">Time range</label>
-                          <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="{{description}}">
+                          <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="">
                           <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
                         </div>
                         <div id="transformers" class="form-group">
@@ -685,7 +685,8 @@ define
             // see https://wireddots.com/products/datetimepicker
             var start = new Date (TheSimulation.interval.start);
             var end = new Date (TheSimulation.interval.end);
-            $('#simulation_timerange').daterangepicker (
+            var dater = new DateRangePicker (
+                "#simulation_timerange",
                 {
                     timePicker: true,
                     timePickerIncrement: 15,
@@ -810,7 +811,8 @@ define
                         var start = new Date (resultset[0].low);
                         var end = new Date (resultset[0].high);
                         setDateRange (start, end);
-                        $('#simulation_timerange').daterangepicker (
+                        var dater = new DateRangePicker (
+                            "#simulation_timerange",
                             {
                                 timePicker: true,
                                 timePickerIncrement: 15,
