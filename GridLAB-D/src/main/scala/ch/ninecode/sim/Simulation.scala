@@ -741,12 +741,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (trafokreise, executors)
         val results = simulations.map (execute)
-        val stats = results.keys.countByValue
-        val failed: Long = stats.getOrElse (false, 0)
-        if (failed > 0L)
+        val failures = results.filter (!_._1)
+        if (!failures.isEmpty)
         {
+            val failed = failures.count
             log.error ("%s %s not successful:\n\n".format (failed, if (failed > 1L) "tasks were" else "task was"))
-            log.error (results.filter (!_._1).map (_._2).collect.mkString ("\n"))
+            log.error (failures.map (_._2).collect.mkString ("\n"))
         }
         else
             log.info ("all tasks were successful")
