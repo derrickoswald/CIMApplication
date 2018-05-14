@@ -185,8 +185,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 writer.write (
                     """
                     |{
-                    |    "name": "Sample",
-                    |    "description": "sample simulation file for illustrative purposes",
+                    |    "name": "Basic",
+                    |    "description": "basic simulation file for illustrative purposes",
                     |    "cim": "data/TRA2755_terminal_2_island.rdf",
                     |    "cimreaderoptions": {
                     |        "ch.ninecode.cim.do_about": false,
@@ -199,8 +199,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |        "ch.ninecode.cim.split_maxsize": 67108864
                     |    },
                     |    "interval": {
-                    |         "start": "2017-07-18T00:00:00.000+0100",
-                    |         "end": "2017-07-19T00:00:00.000+0100"
+                    |         "start": "2018-01-30T00:00:00.000+0100",
+                    |         "end": "2018-03-01T00:00:00.000+0100"
                     |    },
                     |    "transformers": [
                     |        "TRA2755"

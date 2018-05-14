@@ -5,11 +5,11 @@ import java.sql.Timestamp
 
 import scala.collection.JavaConversions._
 import scala.reflect.runtime.universe.TypeTag
-
 import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -239,7 +239,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      */
     def coincidence_factor (): Unit =
     {
-
         val simulated_value_by_day = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
@@ -261,82 +260,105 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .load
             .drop ("type")
             .drop ("geometry")
+            .drop ("properties")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
         // trafos.show (5)
 
-        val join = simulated_value_by_day
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        val simulated_value_by_day_trafos = simulated_value_by_day
+            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
+            .withColumnRenamed ("max(magnitude)", "magnitude")
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-        log.info ("""%d simulation values with polygons to process""".format (join.count))
-        // join.show (5)
+        log.info ("""%d simulation values with transformers to process""".format (simulated_value_by_day_trafos.count))
+        // simulated_value_by_day_trafos.show (5)
 
-        val mrid = join.schema.fieldIndex ("mrid")
-        val date = join.schema.fieldIndex ("date")
-        val real_a = join.schema.fieldIndex ("real_a")
-        val imag_a = join.schema.fieldIndex ("imag_a")
+        val peaks_trafos = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+            .agg ("magnitude" → "max")
+            .withColumnRenamed ("mrid", "transformer")
+            .withColumnRenamed ("max(magnitude)", "magnitude")
+        log.info ("%d peaks found".format (peaks_trafos.count))
+        // peaks_trafos.show (5)
 
-        // get the peak value per day
-        def power (item: (String, Row)): (String, Double) =
-        {
-            val real = item._2.getDouble (real_a)
-            val imag = item._2.getDouble (imag_a)
-            val p = Math.sqrt (real * real + imag * imag)
-            (item._1, p)
-        }
-        def greatest (left: Double, right: Double): Double = if (left > right) left else right
-        val peak = join.rdd.keyBy (row ⇒ row.getString (mrid) + "|" + row.getDate (date).toString).map (power).reduceByKey (greatest).collect.toMap
-        // println (peak.mkString ("\n"))
+        // now do the peaks for the energy consumers
 
-        // ToDo: make this parallelized
+        val _measured_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .filter ("type = 'energy'")
+            .cache
+        log.info ("""%d measured values to process""".format (_measured_value_by_day.count))
+        // _measured_value_by_day.show (5)
 
-        // there is a simple cassandra query to get the maximum values for each EnergyConsumer for each day (GMT):
-        val maxsql = "select mrid, type, date, interval, max(cimapplication.magnitude (real_a, imag_a)) as magnitude from cimapplication.measured_value_by_day where type = 'energy' group by mrid, type, date allow filtering"
-        type Maximum = (String, String, Double)
-        val maximums: Iterator[Maximum] = CassandraConnector (spark.sparkContext.getConf).withSessionDo
-        {
-            session =>
-                val resultset: ResultSet = session.execute (maxsql)
-                for (row: com.datastax.driver.core.Row ← resultset.iterator)
-                    yield (row.getString (0), row.getDate (2).toString, row.getDouble (4) * (60.0 * 60.0 * 1000.0 / row.getInt (3)))
-        }
-        // println (maximums.mkString ("\n"))
+        val houses = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type")
+            .drop ("geometry")
+            .drop ("simulation")
+            .drop ("properties")
+            .cache
+        log.info ("""%d GeoJSON points to process""".format (houses.count))
+        // houses.show (5)
 
-        // and another simple query to get the correspondence between EnergyConsumer and transformer
-        val trasql = "select mrid, transformer from cimapplication.geojson_points"
-        type TransformerMap = (String, String)
-        val tra: Iterator[TransformerMap] = CassandraConnector (spark.sparkContext.getConf).withSessionDo
-        {
-            session =>
-                val resultset: ResultSet = session.execute (trasql)
-                for (row: com.datastax.driver.core.Row ← resultset.iterator)
-                    yield (row.getString (0), row.getString (1))
-        }
-        // println (tra.mkString ("\n"))
+        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+        val measured_value_by_day = _measured_value_by_day.withColumn ("power", power[Double, Double, Int].apply (_measured_value_by_day ("real_a"), _measured_value_by_day ("imag_a"), _measured_value_by_day ("interval")))
+            .drop ("real_a")
+            .drop ("imag_a")
+            .cache
+        log.info ("""%d measured values to process""".format (measured_value_by_day.count))
+        // measured_value_by_day.show (5)
 
-        // but then the join is a bitch client-side, and won't scale because everything is collected on the driver
-        val mapping = tra.toMap
-        // make ("TRAxxx|2017.03.05", max) pairs for each EnergyConsumer (we don't actually care which EnergyConumer, so drop that)
-        val consumer_max: RDD[(String, Double)] = spark.sparkContext.parallelize (
-            (
-                for {
-                    max: (String, String, Double) ← maximums
-                    tx: String ← mapping.get (max._1)
-                }
-                    yield (tx + "|" + max._2, max._3)
-                ).toSeq
-        )
-        // println (consumer_max.take (5).mkString ("\n"))
+        val peaks_houses = measured_value_by_day.groupBy ("mrid", "date")
+            .agg ("power" → "max")
+            .withColumnRenamed ("max(power)", "power")
+        log.info ("%d peaks found".format (peaks_houses.count))
+        // peaks_houses.show (5)
+
+        val measured_value_by_day_houses = peaks_houses
+            .join (
+                houses,
+                Seq ("mrid"))
+        log.info ("""%d measured peaks with transformers to process""".format (measured_value_by_day_houses.count))
+        // measured_value_by_day_houses.show (5)
 
         // sum up the individual peaks for each transformer|date combination
-        val sum: RDD[(String, Double)] = consumer_max.reduceByKey (_ + _)
-        // map to the TRAxxx peak
-        val work: RDD[(String, String, Double)] = sum.flatMap (x ⇒ peak.get (x._1) match { case Some (tx_and_date) ⇒ List ((x._1, tx_and_date / x._2)) case None ⇒ List() })
-            .map (x ⇒ { val i = x._1.indexOf ("|"); (x._1.substring (0, i), x._1.substring (i + 1), x._2) })
-        log.info ("""%d coincidence factors found""".format (work.count))
-        // println (work.take (5).mkString("\n"))
+        val sums_houses = measured_value_by_day_houses.groupBy ("transformer", "date")
+            .agg ("power" → "sum")
+            .withColumnRenamed ("sum(power)", "power")
+        log.info ("""%d summed peaks with transformers to process""".format (sums_houses.count))
+        // sums_houses.show (5)
 
+        def ratio[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => x / y)
+        val _coincidences = peaks_trafos
+            .join (sums_houses, Seq ("transformer", "date"))
+        val coincidences = _coincidences
+            .withColumn ("coincidence", ratio[Double, Double].apply (_coincidences ("magnitude"), _coincidences ("power")))
+        log.info ("""%d coincidence factors calculated""".format (coincidences.count))
+        // coincidences.show (5)
+
+        val transformer = coincidences.schema.fieldIndex ("transformer")
+        val date = coincidences.schema.fieldIndex ("date")
+        val coincidence = coincidences.schema.fieldIndex ("coincidence")
+
+        val work = coincidences.rdd.map (
+            row ⇒
+            {
+                val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
+                (row.getString (transformer), row.getDate (date), factor)
+            }
+        )
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "coincidence_factor_by_day",
             SomeColumns ("transformer", "date", "coincidence_factor"))

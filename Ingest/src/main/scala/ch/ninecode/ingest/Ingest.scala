@@ -72,6 +72,8 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
      */
     def to_timeseries (reading: Reading): IndexedSeq[(String, String, String, String, String, Double, Double, String)] =
     {
+        // Note: reading.interval is in seconds and we need milliseconds for Cassandra
+
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
@@ -95,7 +97,7 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
             val date = ZuluDateFormat.format (date_time)
             val measurement_time = new Date (timestamp.getTime + offset)
             val time = ZuluTimestampFormat.format (measurement_time)
-            (reading.mRID, "energy", date, time, reading.interval.toString, 1000.0 * reading.values (i), 0.0, "Wh")
+            (reading.mRID, "energy", date, time, (reading.interval * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
         }
     }
 
