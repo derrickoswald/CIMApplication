@@ -21,6 +21,30 @@ define
             {
                 this._theme = theme;
                 this._clock = new Clock ();
+                this._quality_factors =
+                [
+                    {
+                        title: "Utilization (%)",
+                        id: "utilization",
+                        selected: true
+                    },
+                    {
+                        title: "Load factor (0 &rarr; 1)",
+                        id: "load_factor",
+                        selected: false
+                    },
+                    {
+                        title: "Coincidence factor (0 &rarr; 1)",
+                        id: "coincidence_factor",
+                        selected: false
+                    },
+                    {
+                        title: "Responsibility factor (0 &rarr; 1)",
+                        id: "responsibility_factor",
+                        selected: false
+                    },
+                ];
+                this._quality_factor = "utilization";
                 this._template =
                     `
                     <div class="card">
@@ -31,7 +55,13 @@ define
                             <span aria-hidden="true">&times;</span>
                           </button>
                         </h5>
-                        <h6 class="card-subtitle mb-2"></h6>
+                        <h6 class="card-subtitle mb-2">
+                          <select id="quality_factor" class="form-control custom-select">
+                            {{#quality_factors}}
+                            <option value="{{id}}"{{#selected}} selected{{/selected}}>{{{title}}}</option>
+                            {{/quality_factors}}
+                          </select>
+                        </h6>
                         <div class="card-text">
                           <input id="simulation_date" class="form-control" type="date" name="simulation_date" max="3000-12-31" min="1000-01-01">
                           <span>{{{clock}}}</span>
@@ -57,6 +87,7 @@ define
                 this._container.innerHTML = mustache.render (
                     this._template,
                     {
+                        "quality_factors": self._quality_factors,
                         "clock": (text, render) => self._clock.getSVG (),
                         "play":  (text, render) => self.play ()
                     }
@@ -175,8 +206,24 @@ define
                 );
             }
 
+            currentQualityFactor ()
+            {
+                return (this._quality_factors.filter (x => x.selected)[0].id);
+            }
+
+            changeQualityFactor (event)
+            {
+                var selection = event.target.value;
+                this._quality_factors.forEach (x => x.selected = false);
+                this._quality_factors.filter (x => x.id == selection)[0].selected = true;
+                if (this._legend_listener)
+                    this._legend_listener (selection);
+            }
+
             initialize ()
             {
+                document.getElementById ("quality_factor").onchange = this.changeQualityFactor.bind (this);
+
                 // https://github.com/seiyria/bootstrap-slider v10.0.0
                 this._slider = new Slider (
                     document.getElementById ("simulation_slider"),

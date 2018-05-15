@@ -27,6 +27,7 @@ define
                 this._extents = { xmin: 0.0, ymin: 0.0, xmax: 0.0, ymax: 0.0 };
                 this._render_listener = null;
                 this.getLegend ().legend_change_listener (this.legend_changed.bind (this));
+                this._Trafo = null;
             }
 
             getName ()
@@ -41,7 +42,7 @@ define
 
             getDescription ()
             {
-                return ("Nodes and edges colored by simulation values.");
+                return ("Nodes and edges colored by simulation results.");
             }
 
             getExtents ()
@@ -56,13 +57,20 @@ define
 
             legend_changed (value)
             {
-                var date = new Date (value).toISOString ();
-                var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
-                var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
-                if (current.val != val)
-                    this._TheMap.setPaintProperty ("polygons", "fill-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
-                val = "T" + date.replace ("T", " ");
-                this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                if ("string" == typeof (value))
+                {
+                    alert (value);
+                }
+                else
+                {
+                    var date = new Date (value).toISOString ();
+                    var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
+                    var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
+                    if (current.val != val)
+                        this._TheMap.setPaintProperty ("polygons", "fill-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                    val = "T" + date.replace ("T", " ");
+                    this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                }
             }
 
             /**
@@ -149,7 +157,7 @@ define
                         else
                             if (features[i].properties.mRID && features[i].properties.ratedCurrent)
                                 cable = features[i].properties.mRID;
-                    if (!this._Trafo || (trafo != this._Trafo) || (trafo && !cable))
+                    if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo) || (trafo && !cable))
                         this.load_trafo (trafo)
                     else if (cable)
                         this.load_cable (cable);

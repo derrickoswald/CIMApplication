@@ -27,10 +27,10 @@
     </metadata>
     <defs id="defs80"></defs>
     <circle
+         id="iconic-clock-face"
          r="188"
          cy="192"
          cx="192"
-         id="path5324"
          style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-opacity:1" />
     <g id="g4268">
         <g id="g4254">
@@ -498,12 +498,14 @@
         var seconds = date.getSeconds ();
         var minutes = date.getMinutes ();
         var hours = date.getHours ();
+        var pm = hours >= 12;
         minutes = (minutes * 60) + seconds;
         hours = (hours > 12) ? hours - 12 : hours;
         hours = (hours * 3600) + minutes;
         document.querySelector ('#iconic-clock-second-hand').setAttribute ('transform', 'rotate ('+360*(seconds/60)+', 192, 192)');
         document.querySelector ('#iconic-clock-minute-hand').setAttribute('transform', 'rotate ('+360*(minutes/3600)+', 192, 192)');
         document.querySelector ('#iconic-clock-hour-hand').setAttribute('transform', 'rotate ('+360*(hours/43200)+', 192, 192)');
+        document.querySelector ('#iconic-clock-face').setAttribute('style', pm ? 'fill:#888488;fill-opacity:1;stroke:#000000;stroke-opacity:1' : 'fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-opacity:1');
         ]]>
     </script>
 </svg>

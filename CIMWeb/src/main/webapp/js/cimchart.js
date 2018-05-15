@@ -51,7 +51,7 @@ define
             addChart (title, name, data)
             {
                 // Create the chart
-                window.Highcharts.stockChart
+                this._theChart = window.Highcharts.stockChart
                 (
                     'chart',
                     {
@@ -76,6 +76,7 @@ define
                             {
                                 name: name,
                                 data: data,
+                                step: true,
                                 tooltip:
                                 {
                                     valueDecimals: 2
