@@ -63,6 +63,8 @@ define
                 }
                 else
                 {
+                    if (this._TheChart)
+                        this._TheChart.drawChartCursor (value);
                     var date = new Date (value).toISOString ();
                     var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
                     var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
