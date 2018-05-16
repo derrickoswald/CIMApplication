@@ -68,10 +68,18 @@ define
                     var date = new Date (value).toISOString ();
                     var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
                     var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
-                    if (current.val != val)
+                    if (current.property != val)
+                    {
+                        console.log ("paint polygons");
                         this._TheMap.setPaintProperty ("polygons", "fill-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
-                    val = "T" + date.replace ("T", " ");
-                    this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                    }
+                    var has_lines = this._TheMap.getSource ("edges")._data.features.length > 0;
+                    if (has_lines)
+                    {
+                        val = "T" + date.replace ("T", " ");
+                        console.log ("paint lines");
+                        this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                    }
                 }
             }
 
@@ -200,6 +208,7 @@ define
                 this._cimmap = cimmap;
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
+                map.on ("render", () => { console.log ("render " + (new Date ()).toISOString ()); });
 
                 // update the map
                 map.addSource

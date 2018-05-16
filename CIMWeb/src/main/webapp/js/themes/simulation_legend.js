@@ -39,10 +39,25 @@ define
                         selected: false
                     },
                     {
+                        title: "Diversity factor (1 &rarr; &infin;)",
+                        id: "diversity_factor",
+                        selected: false
+                    },
+                    {
                         title: "Responsibility factor (0 &rarr; 1)",
                         id: "responsibility_factor",
                         selected: false
                     },
+                    {
+                        title: "Voltage deviation (%)",
+                        id: "voltage_deviation",
+                        selected: false
+                    },
+                    {
+                        title: "Losses (Wh)",
+                        id: "losses",
+                        selected: false
+                    }
                 ];
                 this._quality_factor = "utilization";
                 this._template =

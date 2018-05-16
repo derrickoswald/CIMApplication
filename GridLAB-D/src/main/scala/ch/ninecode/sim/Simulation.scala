@@ -51,6 +51,7 @@ import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import org.apache.spark.sql.DataFrame
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -687,15 +688,26 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         ajob.extras.foreach (
             extra ⇒
             {
-                val df = session.sql (extra.query)
-                val rows: RDD[Row] = df.rdd
-                val len = rows.first.length
-                if (len == 2)
+                val df: DataFrame = session.sql (extra.query)
+                if (df.count > 0)
                 {
-                    val keyindex = df.head.schema.fieldIndex ("key")
-                    val valueindex = df.head.schema.fieldIndex ("value")
-                    rows.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra ("cimapplication", "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                    val fields = df.schema.fieldNames
+                    if (!fields.contains ("key") || !fields.contains ("value"))
+                        log.error ("""extra query "%s" schema does not contain either a "key" or a "value" field: %s""".format (extra.title, fields.mkString))
+                    else
+                    {
+                        val keyindex = df.schema.fieldIndex ("key")
+                        val valueindex = df.schema.fieldIndex ("value")
+                        val keytype = df.schema.fields(keyindex).dataType.simpleString
+                        val valuetype = df.schema.fields(valueindex).dataType.simpleString
+                        if ((keytype != "string") || (valuetype != "string"))
+                            log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
+                        else
+                            df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra ("cimapplication", "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                    }
                 }
+                else
+                    log.warn ("""extra query "%s" returned no rows""".format (extra.title))
             }
         )
 
