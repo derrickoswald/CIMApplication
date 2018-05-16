@@ -264,8 +264,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 writer.write (
                     """
                       |{
-                      |    "name": "Sample",
-                      |    "description": "sample simulation file for illustrative purposes",
+                      |    "name": "Transformers",
+                      |    "description": "test transformer players",
                       |    "cim": "data/SAK_sta117_sta206.rdf",
                       |    "cimreaderoptions": {
                       |        "ch.ninecode.cim.do_about": false,
@@ -398,10 +398,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        "ch.ninecode.cim.split_maxsize": 67108864
                       |    },
                       |    "interval": {
-                      |         "start": "2017-07-18T00:00:00.000+0100",
-                      |         "end": "2017-07-19T00:00:00.000+0100"
+                      |        "start": "2018-01-30T00:00:00.000+0000",
+                      |        "end": "2018-03-01T00:00:00.000+0000"
                       |    },
                       |    "transformers": [
+                      |        "TRA2755",
+                      |        "TRA2769"
                       |    ],
                       |    "players": [
                       |         {
@@ -416,21 +418,21 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |    ],
                       |    "recorders": [
                       |        {
-                      |            "title": "All cable losses",
-                      |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'energy' type, 'power_losses' property, 'Wh' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where ( t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
+                      |            "title": "cable currents",
+                      |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
                       |            "interval": 900,
                       |            "aggregations": [
                       |                {
                       |                    "intervals": 1,
-                      |                    "ttl": 1800
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 4,
-                      |                    "ttl": 3600
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 12,
-                      |                    "ttl": 7200
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 96,
@@ -439,21 +441,21 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |            ]
                       |        },
                       |        {
-                      |            "title": "All node votages",
+                      |            "title": "All node voltages",
                       |            "query": "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n",
                       |            "interval": 900,
                       |            "aggregations": [
                       |                {
                       |                    "intervals": 1,
-                      |                    "ttl": 1800
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 4,
-                      |                    "ttl": 3600
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 12,
-                      |                    "ttl": 7200
+                      |                    "ttl": null
                       |                },
                       |                {
                       |                    "intervals": 96,
@@ -463,6 +465,10 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        }
                       |    ],
                       |    "extra": [
+                      |        {
+                      |            "title": "ratedCurrent",
+                      |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                      |        }
                       |    ]
                       |}
                     """.stripMargin
@@ -486,8 +492,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 writer.write (
                     """
                       |{
-                      |    "name": "Sample",
-                      |    "description": "sample simulation file for illustrative purposes",
+                      |    "name": "Demo",
+                      |    "description": "demo data simulation",
                       |    "cim": "data/DemoData.rdf",
                       |    "cimreaderoptions": {
                       |        "ch.ninecode.cim.do_about": false,

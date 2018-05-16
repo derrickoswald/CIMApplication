@@ -143,8 +143,22 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         // save to Cassandra
         summary.saveToCassandra ("cimapplication", "utilization_summary_by_day",
-            SomeColumns ("transformer", "date", "min", "avg", "max"))
+            SomeColumns ("mrid", "date", "min", "avg", "max"))
         log.info ("""daily utilization records saved to cimapplication.utilization_summary_by_day""")
+
+        // do the same for cables
+
+        // make a multiple key of cable and date separated by |
+        val cable_summary = fifteen_minute.keyBy (record ⇒ record._1 + "|" + record._3).aggregateByKey (initial) (seqOp, combOp)
+            .map (day ⇒ (day._1.substring (0, day._1.indexOf ("|")), day._1.substring (day._1.indexOf ("|") + 1), day._2._2, day._2._3 / day._2._1, day._2._4))
+        log.info ("""%d daily cable utilization records""".format (cable_summary.count))
+        // println (cable_summary.take (5).mkString("\n"))
+
+        // save to Cassandra
+        cable_summary.saveToCassandra ("cimapplication", "utilization_summary_by_day",
+            SomeColumns ("mrid", "date", "min", "avg", "max"))
+        log.info ("""daily utilization records saved to cimapplication.utilization_summary_by_day""")
+
     }
 
     /**

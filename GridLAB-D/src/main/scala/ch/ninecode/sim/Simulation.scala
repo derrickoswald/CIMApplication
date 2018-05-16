@@ -466,6 +466,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             lines += line
             if (line.contains ("WARNING")) warningLines += 1
             if (line.contains ("ERROR")) errorLines += 1
+            if (line.contains ("FATAL")) errorLines += 1
         }
         val countLogger = ProcessLogger (check, check)
         val p: Process = Process (command).run (countLogger)
@@ -645,6 +646,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
+        // reset cached prepared statements
+        SimulationCassandraInsert.bounds = SimulationCassandraInsert.bounds.empty
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
@@ -740,7 +743,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
         val simulations = session.sparkContext.parallelize (trafokreise, executors)
-        val results = simulations.map (execute)
+        val results = simulations.map (execute).cache
         val failures = results.filter (!_._1)
         if (!failures.isEmpty)
         {

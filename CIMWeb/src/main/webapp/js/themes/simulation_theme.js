@@ -116,7 +116,7 @@ define
                         self._TheMap.getSource ("edges").setData (self._simulation_lines);
                     }
                 )
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setSimulationSummary_for_Polygon.call (self, data))
                 .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setUtilization_for_Lines.call (self, data))
@@ -297,6 +297,8 @@ define
 
             setSimulationSummary_for_Polygons (data)
             {
+                var index = {};
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = polygon);
                 var default_data = {};
                 data.forEach (
                     row =>
@@ -309,10 +311,10 @@ define
                         //        min: 0
                         //        transformer: "TRA2755"
                         //    }
-                        var polygon = this._simulation_polygons.features.filter (polygon => polygon.properties.mRID == utilization.transformer);
-                        if (polygon.length > 0)
+                        var polygon = index[utilization.mrid];
+                        if (polygon)
                         {
-                            polygon = polygon[0].properties;
+                            polygon = polygon.properties;
                             var date = utilization.date;
                             var item = "T" + date + "min";
                             polygon[item] = utilization.min;
@@ -349,7 +351,7 @@ define
                     row =>
                     {
                         var utilization = JSON.parse (row["[json]"]);
-                        transformer = utilization.transformer;
+                        transformer = utilization.mrid;
                         return ([(new Date (utilization.date)).getTime (), utilization.max]);
                     }
                 )

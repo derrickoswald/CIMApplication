@@ -56,24 +56,34 @@ case class SimulationTrafoKreis (
         )
 
     // add players and recorders to the raw edges
-    // ToDo: this is not right
     val edges: Iterable[Iterable[SimulationEdge]] =
         raw_edges.map (
             raw ⇒
-                raw.map (
-                    r ⇒
+            {
+                val edges: Iterable[SimulationEdge] = raw.asInstanceOf[Iterable[SimulationEdge]]
+                // eliminate duplicate recorders by grouping by property - no two recorders for one gridlabd edge should record the same property, right?
+                val ids = edges.map (_.id).toArray
+                var these_recorders = recorders.filter (r ⇒ ids.contains (r.parent)).groupBy (_.property).values.map (_.find (_.parent == ids(0)).get).toArray
+                // I'm not sure if we should also group for players - the use case of attaching multiple PV installations says no
+                // var these_players = players.filter (r ⇒ ids.contains (r.parent)).groupBy (_.property).values.map (_.find (_.parent == ids(0)).get).toArray
+                edges.map (
+                    edge ⇒
                     {
-                        val edge = r.asInstanceOf[SimulationEdge]
-                        SimulationEdge (
+                        val ret = SimulationEdge (
                             edge.id_equ,
                             edge.id_cn_1,
                             edge.id_cn_2,
                             edge.element,
                             edge.position,
-                            players.filter (_.parent == r.id),
-                            recorders.filter (_.parent == r.id)
+                            players.filter (_.parent == edge.id), // these_players,
+                            these_recorders
                         )
+                        // only add the recorders and players to the first edge
+                        these_recorders = Array()
+                        // these_players = Array ()
+                        ret
                     }
                 )
+            }
         )
 }

@@ -9,6 +9,7 @@ import ch.ninecode.gl.ThreePhaseComplexDataElement
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.LocalDate
+import com.datastax.driver.core.PreparedStatement
 
 case class SimulationCassandraInsert (cluster: Cluster)
 {
@@ -56,14 +57,23 @@ case class SimulationCassandraInsert (cluster: Cluster)
         val accumulators = aggregates.map (
             aggregate ⇒
             {
+                import SimulationCassandraInsert._
+
                 val sql = pack (
                     """
                     | insert into cimapplication.simulated_value_by_day
                     | (mrid, type, date, interval, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
                     | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin) + aggregate.time_to_live
-                val prepared = session.prepare (sql)
-                val bound = prepared.bind ()
+                val bound = if (bounds.contains (sql))
+                    bounds (sql)
+                else
+                {
+                    val prepared: PreparedStatement = session.prepare (sql)
+                    val statement: BoundStatement = prepared.bind ()
+                    bounds = bounds + (sql → statement)
+                    statement
+                }
                 Accumulator (sql, bound, aggregate.intervals, typ != "energy")
             }
         )
@@ -115,7 +125,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                             accumulator.statement.setString        (11, entry.units)
                             accumulator.statement.setString        (12, simulation)
 
-                            session.execute (accumulator.statement)
+                            session.executeAsync (accumulator.statement)
                             ret = ret + 1
                             accumulator.reset ()
                         }
@@ -125,4 +135,9 @@ case class SimulationCassandraInsert (cluster: Cluster)
         )
         ret
     }
+}
+
+object SimulationCassandraInsert
+{
+    var bounds: Map[String, BoundStatement] = Map()
 }

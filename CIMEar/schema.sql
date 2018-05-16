@@ -163,12 +163,12 @@ create table if not exists cimapplication.utilization_by_day (
 ) with clustering order by (time asc) and comment = 'Utilization percentage';
 
 create table if not exists cimapplication.utilization_summary_by_day (
-   transformer text,
+   mrid text,
    date date,
    min double,
    avg double,
    max double,
-   primary key (transformer, date)
+   primary key (mrid, date)
 ) with comment = 'Utilization summary percentage';
 
 create table if not exists cimapplication.load_factor_by_day (
