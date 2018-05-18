@@ -58,6 +58,10 @@ define
                     {
                         "title": "ratedS",
                         "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
+                    },
+                    {
+                        "title": "nominalVoltage",
+                        "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
                     }
                 ]
             };
@@ -753,7 +757,7 @@ define
                         cassandra: true,
                         sql: "select JSON id, name, description, cim, cimreaderoptions, interval, transformers from cimapplication.simulation"
                     }
-                ).then (formFill).then (getDateRange).then (getFiles)
+                ).then (formFill).then (getFiles).then (getDateRange)
             );
         }
 

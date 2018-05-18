@@ -14,7 +14,7 @@ create table if not exists cimapplication.measured_value_by_day (
     imag_c double,
     units text,
     primary key ((mrid, type, date), time)
-) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readingss';
+) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readings';
 
 create table if not exists cimapplication.simulated_value_by_day (
    mrid text,
