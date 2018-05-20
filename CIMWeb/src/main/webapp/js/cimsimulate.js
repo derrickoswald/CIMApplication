@@ -69,7 +69,7 @@ define
         //    {
         //        "name": <the name of the simulation and this JSON file>,
         //        "description": <textual description suitable for GUI display>,
-        //        "cim": <CIM RDF file, e.g. hdfs://sandbox:8020/NIS_CIM_Export_SAK_sias_current_20171023_fake-Neplan-library_fake-Trafo_with_topology.rdf>,
+        //        "cim": <CIM RDF file, e.g. hdfs://sandbox:8020/some.rdf>,
         //        "cimreaderoptions": {
         //            "ch.ninecode.cim.do_about": false,
         //            "ch.ninecode.cim.do_normalize": false,
@@ -172,6 +172,7 @@ define
                     `
                     select
                         concat (n.IdentifiedObject.mRID, '_voltage_recorder') name,
+                        ifnull (t.ConductingEquipment, n.IdentifiedObject.mRID) mrid,
                         n.IdentifiedObject.mRID parent,
                         'voltage' type,
                         'voltage' property,
@@ -179,6 +180,26 @@ define
                         n.TopologicalIsland island
                     from
                         TopologicalNode n
+                    left outer join
+                        (
+                            select
+                                distinct (t1.TopologicalNode) TopologicalNode, first (t1.ConductingEquipment) ConductingEquipment
+                            from
+                                Terminal t1
+                            where
+                                t1.ConductingEquipment not in
+                                (
+                                    select
+                                        t2.ConductingEquipment
+                                    from
+                                        Terminal t2
+                                    where
+                                        ACDCTerminal.sequenceNumber > 1
+                                )
+                            group by t1.TopologicalNode
+                        ) t
+                    on
+                        n.IdentifiedObject.mRID = t.TopologicalNode
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -206,6 +227,7 @@ define
                     `
                     select
                         concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'power' type,
                         'power_out' property,
@@ -246,6 +268,7 @@ define
                     `
                     select
                         concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'current' type,
                         'current_out' property,
@@ -285,6 +308,7 @@ define
                 "query":
                     `
                     select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'energy' type,
                         'power_losses' property,
@@ -325,6 +349,7 @@ define
                     `
                     select
                         concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'current' type,
                         'current_in' property,
@@ -373,7 +398,8 @@ define
                 "query":
                     `
                     select
-                        concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID , '_losses_recorder') name,
+                        concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'energy' type,
                         'power_losses' property,

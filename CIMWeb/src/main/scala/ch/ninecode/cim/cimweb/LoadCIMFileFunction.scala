@@ -81,7 +81,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             var count = elements.count
             if (topo)
             {
-                val ntp = new CIMNetworkTopologyProcessor (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, true, true)
+                val ntp = new CIMNetworkTopologyProcessor (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER)
                 val elements2 = ntp.process (isld)
                 count = elements2.count
             }

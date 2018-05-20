@@ -9,6 +9,12 @@ case class SimulationRecorder
     name: String,
 
     /**
+     * The mRID of the element to associate with the recorder.
+     * For edges, this is the same as parent, but for nodes there are usually more than one choice (many mrid : one topological node).
+     */
+    mrid: String,
+
+    /**
      * The parent object (node or edge).
      */
     parent: String,

@@ -229,6 +229,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val file = "output_data/" + name + "_" + just_date.format (start) + ".csv"
                 ret = ret :+ SimulationRecorder (
                     name,
+                    json("mrid").asInstanceOf[JsonString].getString,
                     json("parent").asInstanceOf[JsonString].getString,
                     json("type").asInstanceOf[JsonString].getString,
                     json("property").asInstanceOf[JsonString].getString,
@@ -518,7 +519,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =
     {
-        val data = read_recorder_csv (file_prefix + recorder.file, recorder.parent, one_phase = true, recorder.unit)
+        val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
         val count = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
