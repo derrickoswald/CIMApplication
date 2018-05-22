@@ -10,6 +10,7 @@ import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.LocalDate
 import com.datastax.driver.core.PreparedStatement
+import com.datastax.driver.core.ResultSetFuture
 
 case class SimulationCassandraInsert (cluster: Cluster)
 {
@@ -50,9 +51,10 @@ case class SimulationCassandraInsert (cluster: Cluster)
         }
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
+    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[ResultSetFuture]) =
     {
         var ret = 0
+        var resultsets = List[ResultSetFuture] ()
         val session = cluster.connect
         val accumulators = aggregates.map (
             aggregate ⇒
@@ -125,7 +127,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                             accumulator.statement.setString        (11, entry.units)
                             accumulator.statement.setString        (12, simulation)
 
-                            session.executeAsync (accumulator.statement)
+                            resultsets = resultsets.filter (!_.isDone) :+ session.executeAsync (accumulator.statement)
                             ret = ret + 1
                             accumulator.reset ()
                         }
@@ -133,7 +135,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                 )
             }
         )
-        ret
+        (ret, resultsets)
     }
 }
 

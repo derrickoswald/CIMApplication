@@ -485,7 +485,7 @@ define
             var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
             var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             // flip to the map while simulating
-            var to_map = document.getElementById ("to_map").value;
+            var to_map = document.getElementById ("to_map").checked;
             if (to_map)
                 window.location.hash = "map";
 

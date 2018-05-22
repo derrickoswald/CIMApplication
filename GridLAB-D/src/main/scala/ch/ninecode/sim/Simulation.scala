@@ -1,5 +1,6 @@
 package ch.ninecode.sim
 
+import java.io
 import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
@@ -51,6 +52,7 @@ import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import com.datastax.driver.core.ResultSetFuture
 import org.apache.spark.sql.DataFrame
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
@@ -517,12 +519,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[ResultSetFuture] =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
-        val count = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
+        val (count, resultsets) = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
+        resultsets
     }
 
     def write_glm (trafo: SimulationTrafoKreis): Unit =
@@ -653,10 +656,26 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
-        if (result._1)
-            trafo.recorders.foreach (x ⇒ store_recorder_csv (cluster, x, trafo.simulation, trafo.directory))
+        def doit (recorder: SimulationRecorder): List[ResultSetFuture] =
+        {
+            store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory)
+        }
+        val resultsets: List[ResultSetFuture] =  if (result._1)
+            trafo.recorders.flatMap (doit).toList
         else
+        {
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
+            List[ResultSetFuture] ()
+        }
+
+        var todo = resultsets.filter (!_.isDone)
+          while (todo.nonEmpty)
+        {
+            log.info ("waiting for Cassandra")
+            Thread.sleep (250)
+            todo = todo.filter (!_.isDone)
+        }
+
         if (!options.keep)
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
 
