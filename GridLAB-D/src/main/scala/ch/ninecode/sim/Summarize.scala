@@ -3,13 +3,9 @@ package ch.ninecode.sim
 import java.sql.Date
 import java.sql.Timestamp
 
-import scala.collection.JavaConversions._
 import scala.reflect.runtime.universe.TypeTag
-import com.datastax.driver.core.ResultSet
+
 import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -520,6 +516,96 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""responsibility records saved to cimapplication.responsibility_by_day""")
     }
 
+    /**
+     * Voltage quality
+     *
+     * Determine the peak devation (voltage drop) from the nominal voltage.
+     *
+     */
+    def voltage_quality (): Unit =
+    {
+        val simulated_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("interval")
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .drop ("units")
+            .filter ("type = 'voltage'")
+            .drop ("type")
+            .cache
+        log.info ("""%d simulation voltages to process""".format (simulated_value_by_day.count))
+        //simulated_value_by_day.show (5)
+
+        val houses = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type", "geometry")
+            .cache
+        log.info ("""%d GeoJSON points to process""".format (houses.count))
+        //houses.show (5)
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        val simulated_value_by_day_points = simulated_value_by_day
+            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
+            .drop ("real_a", "imag_a")
+            .join (
+                houses,
+                Seq ("simulation", "mrid"))
+        log.info ("""%d joined points to process""".format (simulated_value_by_day_points.count))
+        //simulated_value_by_day_points.show (5)
+
+        val minimums = simulated_value_by_day_points.groupBy ("mrid", "date")
+            .agg ("magnitude" → "min")
+            .withColumnRenamed ("min(magnitude)", "magnitude")
+        log.info ("%d minimums found".format (minimums.count))
+        //minimums.show (5)
+
+        val info = minimums.join (simulated_value_by_day_points, Seq ("mrid", "date", "magnitude"))
+        log.info ("%d minimums joined with simulation values".format (info.count))
+        //info.show (5)
+
+        val mrid = info.schema.fieldIndex ("mrid")
+        val date = info.schema.fieldIndex ("date")
+        val time = info.schema.fieldIndex ("time")
+        val mag = info.schema.fieldIndex ("magnitude")
+        val simulation = info.schema.fieldIndex ("simulation")
+        val properties = info.schema.fieldIndex ("properties")
+        val transformer = info.schema.fieldIndex ("transformer")
+
+        val work = info.rdd.flatMap (
+            row ⇒
+            {
+                val map = row.getMap (properties).asInstanceOf[Map[String,String]]
+                val nominalVoltage = map.getOrElse ("nominalVoltage", "-1.0").toDouble
+                if (nominalVoltage < 0.0)
+                    List ()
+                else
+                {
+                    val voltage = row.getDouble (mag)
+                    val ratio = (voltage - nominalVoltage) / nominalVoltage
+                    val percent = if (Math.abs (ratio) < 1e-4) 0.0 else ratio * 100.0 // just filter out the stupid ones
+                    val tx = row.getString (transformer)
+                    List ((row.getString (mrid), row.getDate (date), row.getTimestamp (time), percent, "percent", row.getString (simulation), tx))
+                }
+            }
+        )
+        log.info ("""%d voltage drop records""".format (work.count))
+        //println (work.take (5).mkString("\n"))
+
+        // save to Cassandra
+        work.saveToCassandra ("cimapplication", "voltage_drop_by_day",
+            SomeColumns ("mrid", "date", "time", "percent", "units", "simulation", "transformer"))
+        log.info ("""voltage drop records saved to cimapplication.voltage_drop_by_day""")
+    }
+
     def run (): Unit =
     {
         log.info ("Utilization")
@@ -530,5 +616,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         coincidence_factor ()
         log.info ("Responsibility Factor")
         responsibility_factor ()
+        voltage_quality ()
+        log.info ("Voltage quality")
     }
 }

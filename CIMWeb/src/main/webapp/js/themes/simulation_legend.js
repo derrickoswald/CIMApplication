@@ -57,6 +57,11 @@ define
                         title: "Losses (Wh)",
                         id: "losses",
                         selected: false
+                    },
+                    {
+                        title: "Smart meter measurements (Wh)",
+                        id: "measurements",
+                        selected: false
                     }
                 ];
                 this._quality_factor = "utilization";

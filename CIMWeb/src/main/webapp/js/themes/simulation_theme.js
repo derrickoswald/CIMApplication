@@ -55,31 +55,76 @@ define
                 return (this._legend);
             }
 
+// Note:
+// interpolation expressions don't work, despite there being this example on-line https://github.com/mapbox/mapbox-gl-js/issues/5685:
+//[
+//  'interpolate',
+//  ['linear'],
+//  ['/', ['get', 'B19001_017'], ['/', ['get', 'ALAND'], 1000000]],
+//  10,
+//  '#00adef',
+//  100,
+//  '#212529',
+//  1000,
+//  '#ea950b',
+//  5000,
+//  '#e94e34'
+//];
+//                        var expression =
+//                        [
+//                            "interpolate",
+//                            ["linear"],
+//                            ["get", val],
+//                            0.0, "RGB(0, 255, 0)",
+//                            100.0, "RGB(255,0,0)"
+//                        ];
+//                        this._TheMap.setPaintProperty ("polygons", "fill-color", expression);
+
             legend_changed (value)
             {
                 if ("string" == typeof (value))
                 {
-                    alert (value);
+                    this.setupPolygons ();
+                    if (this._Trafo)
+                        this.load_trafo (this._Trafo);
+                    this.legend_changed (this._LastValue); // trigger color paint by recursive call
                 }
                 else
                 {
+                    this._LastValue = value;
                     if (this._TheChart)
                         this._TheChart.drawChartCursor (value);
                     var date = new Date (value).toISOString ();
-                    var val = "T" + date.substring (0, date.indexOf ("T")) + "max";
-                    var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
-                    if (current.property != val)
+                    var polygon_color;
+                    var line_color;
+                    var subtheme = this.getLegend ().currentQualityFactor ();
+                    switch (subtheme)
                     {
-                        console.log ("paint polygons");
-                        this._TheMap.setPaintProperty ("polygons", "fill-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
+                        case "utilization":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")) + "max", stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                            line_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                            break;
+                        case "load_factor":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0, 255, 0)"] ] };
+                            line_color = "#000000";
+                            break;
+                        case "utilization":
+                        case "load_factor":
+                        case "coincidence_factor":
+                        case "diversity_factor":
+                        case "responsibility_factor":
+                        case "voltage_deviation":
+                        case "losses":
+                        case "measururements":
+                            polygon_color = "#0000ff";
+                            line_color = "#000000";
                     }
+
+                    var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
+                    this._TheMap.setPaintProperty ("polygons", "fill-color", polygon_color);
                     var has_lines = this._TheMap.getSource ("edges")._data.features.length > 0;
                     if (has_lines)
-                    {
-                        val = "T" + date.replace ("T", " ");
-                        console.log ("paint lines");
-                        this._TheMap.setPaintProperty ("lines", "line-color", { type: "exponential", property: val, stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] });
-                    }
+                        this._TheMap.setPaintProperty ("lines", "line-color", line_color);
                 }
             }
 
@@ -116,7 +161,7 @@ define
             {
                 var self = this;
                 self._Trafo = trafo;
-                cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                var promise = cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
                 .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
                 .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Points.call (self, data))
@@ -125,16 +170,38 @@ define
                         self._TheMap.getSource ("nodes").setData (self._simulation_points);
                         self._TheMap.getSource ("edges").setData (self._simulation_lines);
                     }
-                )
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                .then (data => self.setSimulationSummary_for_Polygon.call (self, data))
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                .then (data => self.setUtilization_for_Lines.call (self, data))
-                .then (() =>
-                    {
-                        self._TheMap.getSource ("edges").setData (self._simulation_lines);
-                    }
                 );
+
+                var subtheme = self.getLegend ().currentQualityFactor ();
+                switch (subtheme)
+                {
+                    case "utilization":
+                        promise
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setUtilizationSummary_for_Polygon.call (self, data))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setUtilization_for_Lines.call (self, data))
+                            .then (() =>
+                                {
+                                    self._TheMap.getSource ("edges").setData (self._simulation_lines);
+                                }
+                            );
+                        break;
+                    case "load_factor":
+                        promise
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' and interval = 86400000 allow filtering", cassandra: true }))
+                            .then (data => self.setLoadFactor_for_Polygon.call (self, data))
+                        break;
+                    case "utilization":
+                    case "load_factor":
+                    case "coincidence_factor":
+                    case "diversity_factor":
+                    case "responsibility_factor":
+                    case "voltage_deviation":
+                    case "losses":
+                    case "measururements":
+                        alert (value);
+                }
             }
 
             // load cable data
@@ -168,7 +235,7 @@ define
                             if (features[i].properties.mRID && features[i].properties.ratedCurrent)
                                 cable = features[i].properties.mRID;
                     if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo) || (trafo && !cable))
-                        this.load_trafo (trafo)
+                        this.load_trafo (trafo);
                     else if (cable)
                         this.load_cable (cable);
                 }
@@ -208,7 +275,6 @@ define
                 this._cimmap = cimmap;
                 var map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
-                map.on ("render", () => { console.log ("render " + (new Date ()).toISOString ()); });
 
                 // update the map
                 map.addSource
@@ -306,10 +372,21 @@ define
                 };
             }
 
-            setSimulationSummary_for_Polygons (data)
+            stripTs (object) // remove old data
+            {
+                var ts = [];
+                for (var x in object.properties)
+                    if (x.startsWith ("T2"))
+                        ts.push (x);
+                ts.forEach (x => delete object.properties[x]);
+                return (object);
+            }
+
+            setUtilizationSummary_for_Polygons (data)
             {
                 var index = {};
-                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = polygon);
+                var self = this;
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
                 var default_data = {};
                 data.forEach (
                     row =>
@@ -349,7 +426,7 @@ define
                 );
             }
 
-            setSimulationSummary_for_Polygon (data)
+            setUtilizationSummary_for_Polygon (data)
             {
                 if (null != this._TheChart)
                 {
@@ -375,7 +452,8 @@ define
             setUtilization_for_Lines (data)
             {
                 var index = {};
-                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = line);
+                var self = this;
+                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = this.stripTs (line));
                 var default_data = {};
                 data.forEach (
                     row =>
@@ -422,6 +500,60 @@ define
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
                 this._TheChart.addChart (cable + " Cable Utilization", cable, values)
+            }
+
+            setLoadFactor_for_Polygons (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var load_factor = JSON.parse (row["[json]"]);
+                        var polygon = index[load_factor.mrid];
+                        if (polygon)
+                        {
+                            polygon = polygon.properties;
+                            var date = load_factor.date;
+                            var item = "T" + date;
+                            polygon[item] = load_factor.load_factor;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_polygons.features.forEach (
+                    polygon =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (polygon.properties[x]))
+                                polygon.properties[x] = default_data[x];
+                    }
+                );
+            }
+
+            setLoadFactor_for_Polygon (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var transformer = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var load_factor = JSON.parse (row["[json]"]);
+                        transformer = load_factor.mrid;
+                        return ([(new Date (load_factor.time)).getTime (), load_factor.load_factor]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]);
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart ("Load Factor", transformer, values)
             }
 
             setSimulationGeoJSON_Polygons (data)
@@ -501,6 +633,41 @@ define
                 this.getLegend ().setTimes (times);
             }
 
+            // query the summary results and apply the values to each polygon
+            setupPolygons ()
+            {
+                var ret;
+                var self = this;
+                var subtheme = self.getLegend ().currentQualityFactor ();
+                switch (subtheme)
+                {
+                    case "utilization":
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day", cassandra: true })
+                            .then (data => self.setUtilizationSummary_for_Polygons.call (self, data));
+                        break;
+                    case "load_factor":
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where interval = 86400000 allow filtering", cassandra: true })
+                            .then (data => self.setLoadFactor_for_Polygons.call (self, data))
+                        break;
+                    case "utilization":
+                    case "load_factor":
+                    case "coincidence_factor":
+                    case "diversity_factor":
+                    case "responsibility_factor":
+                    case "voltage_deviation":
+                    case "losses":
+                    case "measururements":
+                        alert (value);
+                }
+                function regen ()
+                {
+                    this._TheMap.getSource ("areas").setData (this._simulation_polygons);
+                }
+                if (self._TheMap)
+                    ret = ret.then (regen.bind (self));
+                return (ret);
+            }
+
             setSimulation (id)
             {
                 this._simulation = id;
@@ -510,9 +677,7 @@ define
                 // query the polygons
                 .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Polygons.call (self, data))
-                // query the summary results
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day", cassandra: true }))
-                .then (data => self.setSimulationSummary_for_Polygons.call (self, data));
+                .then (self.setupPolygons.bind (self));
                 return (promise);
             }
 

@@ -21,6 +21,7 @@ define
      truncate table cimapplication.load_factor_by_day;
      truncate table cimapplication.coincidence_factor_by_day;
      truncate table cimapplication.responsibility_by_day;
+     truncate table cimapplication.voltage_drop_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -227,7 +228,7 @@ define
                     `
                     select
                         concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'power' type,
                         'power_out' property,
@@ -268,7 +269,7 @@ define
                     `
                     select
                         concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'current' type,
                         'current_out' property,
@@ -308,7 +309,7 @@ define
                 "query":
                     `
                     select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'energy' type,
                         'power_losses' property,
@@ -349,7 +350,7 @@ define
                     `
                     select
                         concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
-                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'current' type,
                         'current_in' property,
@@ -399,7 +400,7 @@ define
                     `
                     select
                         concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID,
+                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
                         'energy' type,
                         'power_losses' property,

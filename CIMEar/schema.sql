@@ -205,3 +205,14 @@ create table if not exists cimapplication.responsibility_by_day (
    primary key ((mrid, type, date, interval), time)
 ) with clustering order by (time asc) and comment = 'Responsibility';
 
+create table if not exists cimapplication.voltage_drop_by_day (
+   mrid text,
+   date date,
+   time timestamp,
+   percent double,
+   units text,
+   simulation text,
+   transformer text,
+   primary key ((mrid, date), time)
+) with clustering order by (time asc) and comment = 'Voltage drop';
+
