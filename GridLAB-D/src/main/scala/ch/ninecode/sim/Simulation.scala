@@ -25,18 +25,19 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
+
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
 import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import org.apache.spark.sql.DataFrame
 import org.apache.commons.io.FileUtils
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -52,8 +53,6 @@ import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import com.datastax.driver.core.ResultSetFuture
-import org.apache.spark.sql.DataFrame
 
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -461,7 +460,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def gridlabd (trafo: SimulationTrafoKreis): (Boolean, String)=
     {
-        val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
+        val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
         var lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
@@ -519,13 +518,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[ResultSetFuture] =
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
-        val (count, resultsets) = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
+        val count = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
-        resultsets
     }
 
     def write_glm (trafo: SimulationTrafoKreis): Unit =
@@ -656,25 +654,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
-        def doit (recorder: SimulationRecorder): List[ResultSetFuture] =
-        {
-            store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory)
-        }
-        val resultsets: List[ResultSetFuture] =  if (result._1)
-            trafo.recorders.flatMap (doit).toList
+        if (result._1)
+            trafo.recorders.foreach (recorder ⇒ store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory))
         else
-        {
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
-            List[ResultSetFuture] ()
-        }
-
-        var todo = resultsets.filter (!_.isDone)
-          while (todo.nonEmpty)
-        {
-            log.info ("waiting for Cassandra")
-            Thread.sleep (250)
-            todo = todo.filter (!_.isDone)
-        }
 
         if (!options.keep)
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
@@ -692,6 +675,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val storage = StorageLevel.fromString (options.storage)
 
         val id = java.util.UUID.randomUUID.toString
+        log.info ("""starting simulation %s""".format (id))
 
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
         // clean up in case there was a file already loaded

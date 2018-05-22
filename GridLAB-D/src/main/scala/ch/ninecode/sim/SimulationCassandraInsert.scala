@@ -51,10 +51,9 @@ case class SimulationCassandraInsert (cluster: Cluster)
         }
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[ResultSetFuture]) =
+    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
     {
         var ret = 0
-        var resultsets = List[ResultSetFuture] ()
         val session = cluster.connect
         val accumulators = aggregates.map (
             aggregate ⇒
@@ -127,7 +126,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                             accumulator.statement.setString        (11, entry.units)
                             accumulator.statement.setString        (12, simulation)
 
-                            resultsets = resultsets.filter (!_.isDone) :+ session.executeAsync (accumulator.statement)
+                            session.execute (accumulator.statement)
                             ret = ret + 1
                             accumulator.reset ()
                         }
@@ -135,7 +134,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                 )
             }
         )
-        (ret, resultsets)
+        ret
     }
 }
 

@@ -4,8 +4,8 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import scala.reflect.runtime.universe.TypeTag
-
 import com.datastax.spark.connector._
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -172,14 +172,11 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("real_b")
-            .drop ("real_c")
-            .drop ("imag_b")
-            .drop ("imag_c")
+            .drop ("real_b", "real_c", "imag_b","imag_c")
             .filter ("type = 'power'")
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
-        // simulated_value_by_day.show (5)
+        simulated_value_by_day.show (5)
 
         val trafos = spark
             .read
@@ -190,50 +187,56 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("geometry")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
-        // trafos.show (5)
+        trafos.show (5)
 
-        val join = simulated_value_by_day
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        val simulated_value_by_day_trafos = simulated_value_by_day
+            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
+            .drop ("real_a", "imag_a")
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-        log.info ("""%d simulation values with polygons to process""".format (join.count))
-        // join.show (5)
+        log.info ("""%d simulation values with polygons to process""".format (simulated_value_by_day_trafos.count))
+        simulated_value_by_day_trafos.show (5)
 
-        val mrid = join.schema.fieldIndex ("mrid")
-        val typ = join.schema.fieldIndex ("type")
-        val date = join.schema.fieldIndex ("date")
-        val interval = join.schema.fieldIndex ("interval")
-        val time = join.schema.fieldIndex ("time")
-        val real_a = join.schema.fieldIndex ("real_a")
-        val imag_a = join.schema.fieldIndex ("imag_a")
-        val simulation = join.schema.fieldIndex ("simulation")
+        val peaks = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+            .agg ("magnitude" → "max")
+            .withColumnRenamed ("max(magnitude)", "maximum")
+        log.info ("%d peaks found".format (peaks.count))
+        peaks.show (5)
 
-        // get the peak value per day
-        def power (item: (String, Row)): (String, Double) =
-        {
-            val real = item._2.getDouble (real_a)
-            val imag = item._2.getDouble (imag_a)
-            val p = Math.sqrt (real * real + imag * imag)
-            (item._1, p)
-        }
-        def greatest (left: Double, right: Double): Double = if (left > right) left else right
-        val peak = join.rdd.keyBy (row ⇒ row.getString (mrid) + "|" + row.getDate (date).toString).map (power).reduceByKey (greatest).collect.toMap
-        // println (peak.mkString ("\n"))
+        val day_trafos = simulated_value_by_day_trafos
+            .filter (simulated_value_by_day_trafos ("interval") === 86400000)
+        log.info ("%d daily transformer power values".format (day_trafos.count))
+        day_trafos.show (5)
 
-        val work = join.rdd.map (
+        val loadfactors = day_trafos
+            .join (
+                peaks,
+                Seq ("mrid", "date"))
+        log.info ("%d peaks joined".format (loadfactors.count))
+        loadfactors.show (5)
+
+        val mrid = loadfactors.schema.fieldIndex ("mrid")
+        val typ = loadfactors.schema.fieldIndex ("type")
+        val date = loadfactors.schema.fieldIndex ("date")
+        val interval = loadfactors.schema.fieldIndex ("interval")
+        val time = loadfactors.schema.fieldIndex ("time")
+        val mag = loadfactors.schema.fieldIndex ("magnitude")
+        val maximum = loadfactors.schema.fieldIndex ("maximum")
+        val simulation = loadfactors.schema.fieldIndex ("simulation")
+
+        val work = loadfactors.rdd.map (
             row ⇒
             {
                 val id = row.getString (mrid)
-                val day = row.getDate (date)
-                val key =  id + "|" + day.toString
-                val max = peak.getOrElse (key, 1.0)
-                val real = row.getDouble (real_a)
-                val imag = row.getDouble (imag_a)
-                val power = Math.sqrt (real * real + imag * imag)
-                val load_factor = power / max
-                (id, row.getString (typ), day, row.getInt (interval), row.getTimestamp (time), load_factor, "VA/VA", row.getString (simulation))
+                val power = row.getDouble (mag)
+                val peak = row.getDouble (maximum)
+                val load_factor = power / peak
+                (id, row.getString (typ), row.getDate (date), row.getInt (interval), row.getTimestamp (time), load_factor, "VA/VA", row.getString (simulation))
             }
         )
+
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "interval", "time", "load_factor", "units", "simulation"))
@@ -279,7 +282,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val simulated_value_by_day_trafos = simulated_value_by_day
             .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
-            .withColumnRenamed ("max(magnitude)", "magnitude")
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
