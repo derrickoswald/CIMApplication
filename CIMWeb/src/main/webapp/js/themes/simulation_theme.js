@@ -95,29 +95,36 @@ define
                     if (this._TheChart)
                         this._TheChart.drawChartCursor (value);
                     var date = new Date (value).toISOString ();
-                    var polygon_color;
-                    var line_color;
+                    var polygon_color = "#000000";
+                    var line_color = "#000000";
+                    var point_color = "#000000";
                     var subtheme = this.getLegend ().currentQualityFactor ();
                     switch (subtheme)
                     {
                         case "utilization":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")) + "max", stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")) + "max", stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
                             line_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
                             break;
                         case "load_factor":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0, 255, 0)"] ] };
-                            line_color = "#000000";
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0,255,0)"] ] };
                             break;
-                        case "utilization":
-                        case "load_factor":
                         case "coincidence_factor":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [1.0, "RGB(255,0,0)"] ] };
+                            break;
                         case "diversity_factor":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [1.0, "RGB(255,0,0)"], [4.0, "RGB(0,255,0)"] ] };
+                            break;
                         case "responsibility_factor":
+                            point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [1.0, "RGB(255,0,0)"] ] };
+                            break;
                         case "voltage_deviation":
+                            point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"]] };
+                            break;
                         case "losses":
-                        case "measururements":
-                            polygon_color = "#0000ff";
-                            line_color = "#000000";
+                            break;
+                        case "measurements":
+                            point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0,255,0)"], [3000.0, "RGB(255,0,0)"]] };
+                            break;
                     }
 
                     var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
@@ -125,6 +132,9 @@ define
                     var has_lines = this._TheMap.getSource ("edges")._data.features.length > 0;
                     if (has_lines)
                         this._TheMap.setPaintProperty ("lines", "line-color", line_color);
+                    var has_points = this._TheMap.getSource ("nodes")._data.features.length > 0;
+                    if (has_points)
+                        this._TheMap.setPaintProperty ("points", "circle-color", point_color);
                 }
             }
 
@@ -156,11 +166,25 @@ define
                 }
             }
 
-            // load trafokreis
-            load_trafo (trafo)
+            clear_points_and_lines ()
+            {
+                this._simulation_points =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                this._simulation_lines =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                this._TheMap.getSource ("nodes").setData (this._simulation_points);
+                this._TheMap.getSource ("edges").setData (this._simulation_lines);
+            }
+
+            load_points_and_lines (trafo)
             {
                 var self = this;
-                self._Trafo = trafo;
                 var promise = cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
                 .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
                 .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
@@ -171,12 +195,20 @@ define
                         self._TheMap.getSource ("edges").setData (self._simulation_lines);
                     }
                 );
+                return (promise);
+            }
+
+            // load trafokreis
+            load_trafo (trafo)
+            {
+                var self = this;
+                self._Trafo = trafo;
 
                 var subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
                     case "utilization":
-                        promise
+                        this.load_points_and_lines (trafo)
                             .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setUtilizationSummary_for_Polygon.call (self, data))
                             .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
@@ -188,19 +220,47 @@ define
                             );
                         break;
                     case "load_factor":
-                        promise
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' and interval = 86400000 allow filtering", cassandra: true }))
+                        this.clear_points_and_lines ();
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' and interval = 86400000 allow filtering", cassandra: true })
                             .then (data => self.setLoadFactor_for_Polygon.call (self, data))
                         break;
-                    case "utilization":
-                    case "load_factor":
                     case "coincidence_factor":
+                        this.clear_points_and_lines ();
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, false, data))
+                        break;
                     case "diversity_factor":
+                        this.clear_points_and_lines ();
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, true, data))
+                        break;
                     case "responsibility_factor":
+                         this.load_points_and_lines (trafo)
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setResponsibility_for_Points.call (self, data))
+                            .then (() =>
+                                {
+                                    self._TheMap.getSource ("nodes").setData (self._simulation_points);
+                                }
+                            );
+                        break;
                     case "voltage_deviation":
+                         this.load_points_and_lines (trafo)
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_drop_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setVoltageDeviation_for_Points.call (self, data))
+                            .then (() =>
+                                {
+                                    self._TheMap.getSource ("nodes").setData (self._simulation_points);
+                                }
+                            );
+                        break;
                     case "losses":
-                    case "measururements":
                         alert (value);
+                        break;
+                    case "measurements":
+                        // don't have the transformer in the measurement schema
+                        this.load_points_and_lines (trafo);
+                        break;
                 }
             }
 
@@ -208,8 +268,62 @@ define
             load_cable (cable)
             {
                 var self = this;
-                cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
-                .then (data => self.setCableUtilization.call (self, data));
+                var subtheme = self.getLegend ().currentQualityFactor ();
+                switch (subtheme)
+                {
+                    case "utilization":
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
+                            .then (data => self.setCableUtilization.call (self, data));
+                        break;
+                    case "load_factor":
+                        break;
+                    case "coincidence_factor":
+                        break;
+                    case "diversity_factor":
+                        break;
+                    case "responsibility_factor":
+                        break;
+                    case "voltage_deviation":
+                        break;
+                    case "losses":
+                        alert (cable);
+                        break;
+                    case "measurements":
+                        break;
+                }
+            }
+
+            // load house data
+            load_house (house)
+            {
+                var self = this;
+                var subtheme = self.getLegend ().currentQualityFactor ();
+                switch (subtheme)
+                {
+                    case "utilization":
+                        break;
+                    case "load_factor":
+                        break;
+                    case "coincidence_factor":
+                        break;
+                    case "diversity_factor":
+                        break;
+                    case "responsibility_factor":
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where interval = 900000 and mrid ='" + house + "' allow filtering", cassandra: true })
+                            .then (data => self.setHouseResponsibility.call (self, data));
+                        break;
+                    case "voltage_deviation":
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_drop_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                            .then (data => self.setHouseVoltageDeviation.call (self, data));
+                        break;
+                    case "losses":
+                        alert (house);
+                        break;
+                    case "measurements":
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.measured_value_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                            .then (data => self.setHouseMeasurement.call (self, data));
+                        break;
+                }
             }
 
             click (x, y)
@@ -228,16 +342,26 @@ define
                 {
                     var trafo = null;
                     var cable = null;
+                    var house = null;
                     for (var i = 0; i < features.length; i++)
                         if (features[i].layer.id == "polygons")
                             trafo = features[i].properties.mRID;
-                        else
+                        else if (features[i].layer.id == "lines")
+                        {
                             if (features[i].properties.mRID && features[i].properties.ratedCurrent)
                                 cable = features[i].properties.mRID;
-                    if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo) || (trafo && !cable))
+                        }
+                        else if (features[i].layer.id == "points")
+                        {
+                            if (features[i].properties.mRID && features[i].properties.nominalVoltage)
+                                house = features[i].properties.mRID;
+                        }
+                    if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo) || (trafo && !cable && !house))
                         this.load_trafo (trafo);
-                    else if (cable)
+                    else if (cable && !house)
                         this.load_cable (cable);
+                    else if (house)
+                        this.load_house (house);
                 }
             }
 
@@ -446,7 +570,7 @@ define
                 .sort ((a, b) => a[0] - b[0]);
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Utilization", transformer, values)
+                this._TheChart.addChart ("Utilization (%)", transformer, values)
             }
 
             setUtilization_for_Lines (data)
@@ -499,7 +623,78 @@ define
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (cable + " Cable Utilization", cable, values)
+                this._TheChart.addChart (cable + " Cable Utilization (%)", cable, values)
+            }
+
+            setHouseResponsibility (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var house = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var responsibility = JSON.parse (row["[json]"]);
+                        house = responsibility.mrid;
+                        return ([(new Date (responsibility.time)).getTime (), responsibility.responsibility]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart (house + " Responsibility (0 → 1)", house, values)
+            }
+
+            setHouseVoltageDeviation (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var house = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var deviation = JSON.parse (row["[json]"]);
+                        house = deviation.mrid;
+                        return ([(new Date (deviation.time)).getTime (), deviation.percent]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart (house + " Voltage Deviation (%)", house, values)
+            }
+
+            setHouseMeasurement (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var house = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var measurement = JSON.parse (row["[json]"]);
+                        house = measurement.mrid;
+                        var real = measurement.real_a;
+                        var imag = measurement.imag_a;
+                        return ([(new Date (measurement.time)).getTime (), Math.sqrt (real * real + imag * imag)]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart (house + " Measurements (Wh)", house, values)
             }
 
             setLoadFactor_for_Polygons (data)
@@ -553,7 +748,123 @@ define
                 .sort ((a, b) => a[0] - b[0]);
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Load Factor", transformer, values)
+                this._TheChart.addChart ("Load Factor (0 → 1)", transformer, values)
+            }
+
+            setCoincidenceFactor_for_Polygons (invert, data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var coincidence_factor = JSON.parse (row["[json]"]);
+                        var polygon = index[coincidence_factor.transformer];
+                        if (polygon)
+                        {
+                            polygon = polygon.properties;
+                            var date = coincidence_factor.date;
+                            var item = "T" + date;
+                            var factor = coincidence_factor.coincidence_factor;
+                            polygon[item] = invert ? 1.0 / factor : factor;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_polygons.features.forEach (
+                    polygon =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (polygon.properties[x]))
+                                polygon.properties[x] = default_data[x];
+                    }
+                );
+            }
+
+            setCoincidenceFactor_for_Polygon (invert, data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var transformer = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var coincidence_factor = JSON.parse (row["[json]"]);
+                        transformer = coincidence_factor.mrid;
+                        var factor = coincidence_factor.coincidence_factor;
+                        return ([(new Date (coincidence_factor.date)).getTime (), invert ? 1.0 / factor : factor]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]);
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart (invert ? "Coincidence Factor (0 → 1)" : "Diversity Factor (1 → ∞)", transformer, values)
+            }
+
+            setResponsibility_for_Points (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_points.features.forEach (point => index[point.properties.mRID] = this.stripTs (point));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var responsibility = JSON.parse (row["[json]"]);
+                        var point = index[responsibility.mrid];
+                        if (point)
+                        {
+                            var time = responsibility.time;
+                            var item = "T" + time.substring (0, time.indexOf (" "));
+                            point.properties[item] = responsibility.responsibility;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_points.features.forEach (
+                    point =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (point.properties[x]))
+                                point.properties[x] = default_data[x];
+                    }
+                );
+            }
+
+            setVoltageDeviation_for_Points (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_points.features.forEach (point => index[point.properties.mRID] = this.stripTs (point));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var deviation = JSON.parse (row["[json]"]);
+                        var point = index[deviation.mrid];
+                        if (point)
+                        {
+                            var time = deviation.time;
+                            var item = "T" + time;
+                            point.properties[item] = deviation.percent;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_points.features.forEach (
+                    point =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (point.properties[x]))
+                                point.properties[x] = default_data[x];
+                    }
+                );
             }
 
             setSimulationGeoJSON_Polygons (data)
@@ -646,18 +957,32 @@ define
                             .then (data => self.setUtilizationSummary_for_Polygons.call (self, data));
                         break;
                     case "load_factor":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where interval = 86400000 allow filtering", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day", cassandra: true })
                             .then (data => self.setLoadFactor_for_Polygons.call (self, data))
                         break;
-                    case "utilization":
-                    case "load_factor":
                     case "coincidence_factor":
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day", cassandra: true })
+                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, false, data))
+                        break;
                     case "diversity_factor":
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day", cassandra: true })
+                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, true, data))
+                        break;
                     case "responsibility_factor":
+                        self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
+                        ret = Promise.resolve ();
+                        break;
                     case "voltage_deviation":
+                        self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
+                        ret = Promise.resolve ();
+                        break;
                     case "losses":
-                    case "measururements":
                         alert (value);
+                        break;
+                    case "measurements":
+                        self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
+                        ret = Promise.resolve ();
+                        break;
                 }
                 function regen ()
                 {
