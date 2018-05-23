@@ -216,3 +216,11 @@ create table if not exists cimapplication.voltage_drop_by_day (
    primary key ((mrid, date), time)
 ) with clustering order by (time asc) and comment = 'Voltage drop';
 
+create table if not exists cimapplication.losses_by_day (
+   transformer text,
+   date date,
+   transformer_losses double,
+   cable_losses double,
+   total double,
+   primary key (transformer, date)
+) with comment = 'Losses';

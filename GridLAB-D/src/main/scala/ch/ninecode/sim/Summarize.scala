@@ -4,9 +4,8 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import scala.reflect.runtime.universe.TypeTag
+
 import com.datastax.spark.connector._
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.slf4j.Logger
@@ -199,7 +198,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values with polygons to process""".format (simulated_value_by_day_trafos.count))
         simulated_value_by_day_trafos.show (5)
 
-        val peaks = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+        val peaks = simulated_value_by_day_trafos
+            .groupBy ("mrid", "date")
             .agg ("magnitude" → "max")
             .withColumnRenamed ("max(magnitude)", "maximum")
         log.info ("%d peaks found".format (peaks.count))
@@ -288,7 +288,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values with transformers to process""".format (simulated_value_by_day_trafos.count))
         // simulated_value_by_day_trafos.show (5)
 
-        val peaks_trafos = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+        val peaks_trafos = simulated_value_by_day_trafos
+            .groupBy ("mrid", "date")
             .agg ("magnitude" → "max")
             .withColumnRenamed ("mrid", "transformer")
             .withColumnRenamed ("max(magnitude)", "magnitude")
@@ -332,7 +333,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d measured values to process""".format (measured_value_by_day.count))
         // measured_value_by_day.show (5)
 
-        val peaks_houses = measured_value_by_day.groupBy ("mrid", "date")
+        val peaks_houses = measured_value_by_day
+            .groupBy ("mrid", "date")
             .agg ("power" → "max")
             .withColumnRenamed ("max(power)", "power")
         log.info ("%d peaks found".format (peaks_houses.count))
@@ -346,7 +348,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // measured_value_by_day_houses.show (5)
 
         // sum up the individual peaks for each transformer|date combination
-        val sums_houses = measured_value_by_day_houses.groupBy ("transformer", "date")
+        val sums_houses = measured_value_by_day_houses
+            .groupBy ("transformer", "date")
             .agg ("power" → "sum")
             .withColumnRenamed ("sum(power)", "power")
         log.info ("""%d summed peaks with transformers to process""".format (sums_houses.count))
@@ -428,7 +431,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values with transformers to process""".format (simulated_value_by_day_trafos.count))
         // simulated_value_by_day_trafos.show (5)
 
-        val peaks = simulated_value_by_day_trafos.groupBy ("mrid", "date")
+        val peaks = simulated_value_by_day_trafos
+            .groupBy ("mrid", "date")
             .agg ("magnitude" → "max")
             .withColumnRenamed ("max(magnitude)", "magnitude")
         log.info ("%d peaks found".format (peaks.count))
@@ -481,7 +485,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d measurements with energy consumers to process""".format (measured_value_by_day_and_trafo.count))
         // measured_value_by_day_and_trafo.show (5)
 
-        val maximums = measured_value_by_day_and_trafo.groupBy ("mrid", "date").agg ("power" → "max").withColumnRenamed ("max(power)", "peak")
+        val maximums = measured_value_by_day_and_trafo
+            .groupBy ("mrid", "date")
+            .agg ("power" → "max")
+            .withColumnRenamed ("max(power)", "peak")
         log.info ("""%d maximums found""".format (maximums.count))
         // maximums.show (5)
 
@@ -564,7 +571,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d joined points to process""".format (simulated_value_by_day_points.count))
         //simulated_value_by_day_points.show (5)
 
-        val minimums = simulated_value_by_day_points.groupBy ("mrid", "date")
+        val minimums = simulated_value_by_day_points
+            .groupBy ("mrid", "date")
             .agg ("magnitude" → "min")
             .withColumnRenamed ("min(magnitude)", "magnitude")
         log.info ("%d minimums found".format (minimums.count))
@@ -608,6 +616,96 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""voltage drop records saved to cimapplication.voltage_drop_by_day""")
     }
 
+    /**
+     * Losses
+     *
+     * Determine the sum of losses for a transformer area.
+     *
+     */
+    def losses (): Unit =
+    {
+        val simulated_value_by_day = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulated_value_by_day", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("real_b")
+            .drop ("real_c")
+            .drop ("imag_b")
+            .drop ("imag_c")
+            .drop ("units")
+            .filter ("type = 'energy'")
+            .drop ("type")
+            .cache
+        log.info ("""%d simulation values to process""".format (simulated_value_by_day.count))
+        //simulated_value_by_day.show (5)
+
+        val lines = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_lines", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type")
+            .drop ("geometry")
+            .cache
+        log.info ("""%d GeoJSON lines to process""".format (lines.count))
+        //lines.show (5)
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        val losses = simulated_value_by_day
+            .filter (simulated_value_by_day ("interval") === 86400000)
+            .drop ("interval")
+            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value_by_day ("real_a"), simulated_value_by_day ("imag_a")))
+            .drop ("real_a", "imag_a")
+        log.info ("""%d loss totals""".format (losses.count))
+        //losses.show (5)
+
+        val cables = losses
+            .join (
+                lines,
+                Seq ("simulation", "mrid"))
+            .groupBy ("transformer", "date")
+            .agg ("magnitude" → "sum")
+            .withColumnRenamed ("sum(magnitude)", "cable_losses")
+            .withColumnRenamed ("mrid", "transformer")
+        log.info ("""%d daily cable loss totals""".format (cables.count))
+        //cables.show (5)
+
+        val trafos = losses
+            .withColumnRenamed ("mrid", "transformer")
+            .withColumnRenamed ("magnitude", "transformer_losses")
+            .join (
+                cables,
+                Seq ("transformer", "date"))
+        log.info ("""%d daily transformer loss totals""".format (trafos.count))
+        //trafos.show (5)
+
+        val totals = trafos
+            .withColumn ("total", trafos ("transformer_losses") + trafos ("cable_losses"))
+            .drop ("time", "simulation")
+
+        val transformer = totals.schema.fieldIndex ("transformer")
+        val date = totals.schema.fieldIndex ("date")
+        val transformer_losses = totals.schema.fieldIndex ("transformer_losses")
+        val cable_losses = totals.schema.fieldIndex ("cable_losses")
+        val total = totals.schema.fieldIndex ("total")
+
+        val work = totals.rdd.map (
+            row ⇒
+            {
+                (row.getString (transformer), row.getDate (date), row.getDouble (transformer_losses), row.getDouble (cable_losses), row.getDouble (total))
+            }
+        )
+        log.info ("""%d losses records""".format (work.count))
+        //println (work.take (5).mkString("\n"))
+
+        // save to Cassandra
+        work.saveToCassandra ("cimapplication", "losses_by_day",
+            SomeColumns ("transformer", "date", "transformer_losses", "cable_losses", "total"))
+        log.info ("""losses records saved to cimapplication.losses_by_day""")
+    }
+
     def run (): Unit =
     {
         log.info ("Utilization")
@@ -618,7 +716,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         coincidence_factor ()
         log.info ("Responsibility Factor")
         responsibility_factor ()
-        voltage_quality ()
         log.info ("Voltage quality")
+        voltage_quality ()
+        log.info ("Losses")
+        losses ()
     }
 }
