@@ -121,6 +121,7 @@ define
                             point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"]] };
                             break;
                         case "losses":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [200000.0, "RGB(255,0,0)"] ] };
                             break;
                         case "measurements":
                             point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0,255,0)"], [3000.0, "RGB(255,0,0)"]] };
@@ -255,7 +256,14 @@ define
                             );
                         break;
                     case "losses":
-                        alert (value);
+//                         this.load_points_and_lines (trafo)
+//                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+//                            .then (data => self.setLosses_for_Lines.call (self, data))
+//                            .then (() =>
+//                                {
+//                                    self._TheMap.getSource ("nodes").setData (self._simulation_lines);
+//                                }
+//                            );
                         break;
                     case "measurements":
                         // don't have the transformer in the measurement schema
@@ -867,6 +875,67 @@ define
                 );
             }
 
+            setLosses_for_Polygons (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var losses = JSON.parse (row["[json]"]);
+                        var polygon = index[losses.transformer];
+                        if (polygon)
+                        {
+                            polygon = polygon.properties;
+                            var date = losses.date;
+                            var item = "T" + date;
+                            polygon[item] = losses.total;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_polygons.features.forEach (
+                    polygon =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (polygon.properties[x]))
+                                polygon.properties[x] = default_data[x];
+                    }
+                );
+            }
+
+            setLosses_for_Lines (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_lines.features.forEach (lines => index[line.properties.mRID] = this.stripTs (line));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var losses = JSON.parse (row["[json]"]);
+                        var line = index[losses.mrid];
+                        if (line)
+                        {
+                            var date = losses.date;
+                            var item = "T" + date;
+                            line.properties[item] = losses.cable_losses;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_points.features.forEach (
+                    point =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (point.properties[x]))
+                                point.properties[x] = default_data[x];
+                    }
+                );
+            }
+
             setSimulationGeoJSON_Polygons (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "TRA3215", "geometry": {"type": "Polygon", "coordinates": [[[9.50617, 47.0154], [9.50617, 47.0154]]]}, "type": "Feature"}, ...
@@ -977,7 +1046,8 @@ define
                         ret = Promise.resolve ();
                         break;
                     case "losses":
-                        alert (value);
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day", cassandra: true })
+                            .then (data => self.setLosses_for_Polygons.call (self, data))
                         break;
                     case "measurements":
                         self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
