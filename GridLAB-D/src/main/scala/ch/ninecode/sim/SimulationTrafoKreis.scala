@@ -19,8 +19,8 @@ import ch.ninecode.gl.TransformerSet
  * @param raw_edges topological edges for the simulation
  * @param start_time the simulatuon starting time
  * @param finish_time the simulation ending time
- * @param players list of the GridLAB-D players - these are queried from Cassandra measured_value_by_day and written to .csv player files
- * @param recorders list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simulated_value_by_day
+ * @param players list of the GridLAB-D players - these are queried from Cassandra measured_value and written to .csv player files
+ * @param recorders list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simulated_value
  * @param directory the directory to write the .glm, players and recorders
  */
 case class SimulationTrafoKreis (

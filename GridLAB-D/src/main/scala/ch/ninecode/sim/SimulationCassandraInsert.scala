@@ -51,7 +51,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
         }
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, interval: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
+    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
     {
         var ret = 0
         val session = cluster.connect
@@ -62,9 +62,9 @@ case class SimulationCassandraInsert (cluster: Cluster)
 
                 val sql = pack (
                     """
-                    | insert into cimapplication.simulated_value_by_day
-                    | (mrid, type, date, interval, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
-                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    | insert into cimapplication.simulated_value
+                    | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
+                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin) + aggregate.time_to_live
                 val bound = if (bounds.contains (sql))
                     bounds (sql)
@@ -95,36 +95,34 @@ case class SimulationCassandraInsert (cluster: Cluster)
                         if (accumulator.count >= accumulator.intervals)
                         {
                             // Java and Cassandra timestamps are in milliseconds, but Spark is in seconds not milliseconds
-                            val timepoint = entry.millis - 1000L * (interval * (accumulator.intervals - 1))
-                            val date = LocalDate.fromMillisSinceEpoch (timepoint)
+                            val timepoint = entry.millis - 1000L * (period * (accumulator.intervals - 1))
                             timestamp.setTime (timepoint)
 
                             accumulator.statement.setString        ( 0, entry.element)
                             accumulator.statement.setString        ( 1, typ)
-                            accumulator.statement.setDate          ( 2, date)
-                            accumulator.statement.setInt           ( 3, interval * accumulator.intervals * 1000)
-                            accumulator.statement.setTimestamp     ( 4, timestamp)
+                            accumulator.statement.setInt           ( 2, period * accumulator.intervals * 1000)
+                            accumulator.statement.setTimestamp     ( 3, timestamp)
                             if (accumulator.average)
                             {
                                 val n = accumulator.intervals
-                                accumulator.statement.setDouble    ( 5, accumulator.value_a_re / n)
-                                accumulator.statement.setDouble    ( 6, accumulator.value_a_im / n)
-                                accumulator.statement.setDouble    ( 7, accumulator.value_b_re / n)
-                                accumulator.statement.setDouble    ( 8, accumulator.value_b_im / n)
-                                accumulator.statement.setDouble    ( 9, accumulator.value_c_re / n)
-                                accumulator.statement.setDouble    (10, accumulator.value_c_im / n)
+                                accumulator.statement.setDouble    ( 4, accumulator.value_a_re / n)
+                                accumulator.statement.setDouble    ( 5, accumulator.value_a_im / n)
+                                accumulator.statement.setDouble    ( 6, accumulator.value_b_re / n)
+                                accumulator.statement.setDouble    ( 7, accumulator.value_b_im / n)
+                                accumulator.statement.setDouble    ( 8, accumulator.value_c_re / n)
+                                accumulator.statement.setDouble    ( 9, accumulator.value_c_im / n)
                             }
                             else
                             {
-                                accumulator.statement.setDouble    ( 5, accumulator.value_a_re)
-                                accumulator.statement.setDouble    ( 6, accumulator.value_a_im)
-                                accumulator.statement.setDouble    ( 7, accumulator.value_b_re)
-                                accumulator.statement.setDouble    ( 8, accumulator.value_b_im)
-                                accumulator.statement.setDouble    ( 9, accumulator.value_c_re)
-                                accumulator.statement.setDouble    (10, accumulator.value_c_im)
+                                accumulator.statement.setDouble    ( 4, accumulator.value_a_re)
+                                accumulator.statement.setDouble    ( 5, accumulator.value_a_im)
+                                accumulator.statement.setDouble    ( 6, accumulator.value_b_re)
+                                accumulator.statement.setDouble    ( 7, accumulator.value_b_im)
+                                accumulator.statement.setDouble    ( 8, accumulator.value_c_re)
+                                accumulator.statement.setDouble    ( 9, accumulator.value_c_im)
                             }
-                            accumulator.statement.setString        (11, entry.units)
-                            accumulator.statement.setString        (12, simulation)
+                            accumulator.statement.setString        (10, entry.units)
+                            accumulator.statement.setString        (11, simulation)
 
                             session.execute (accumulator.statement)
                             ret = ret + 1

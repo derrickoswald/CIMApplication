@@ -16,48 +16,48 @@ create table if not exists cimapplication.measured_value (
 ) with clustering order by (time asc) and comment = '
 Measurement values.
 These are typically smart meter readings, or transformer values from a SCADA system.
-   mrid   - the unique CIM mRID for the element with this measurement
-   type   - the type of value, e.g. energy, power, voltage, current
-   time   - the time at which the measurement was taken in GMT
-   period - the time period over which the measurement was taken in milliseconds
-   real_a - the real component of the phase A (or R) value
-   imag_a - the imaginary component of the phase A (or R) value
-   real_b - the real component of the phase B (or S) value
-   imag_b - the imaginary component of the phase A (or S) value
-   real_c - the real component of the phase C (or T) value
-   imag_c - the imaginary component of the phase C (or T) value
-   units  - the units for the measurement
+    mrid   - the unique CIM mRID for the element with this measurement
+    type   - the type of value, e.g. energy, power, voltage, current
+    time   - the time at which the measurement was taken in GMT
+    period - the time period over which the measurement was taken in milliseconds
+    real_a - the real component of the phase A (or R) value
+    imag_a - the imaginary component of the phase A (or R) value
+    real_b - the real component of the phase B (or S) value
+    imag_b - the imaginary component of the phase A (or S) value
+    real_c - the real component of the phase C (or T) value
+    imag_c - the imaginary component of the phase C (or T) value
+    units  - the units for the measurement
 ';
 
 create table if not exists cimapplication.simulated_value (
-   mrid text,
-   type text,
-   period int,
-   time timestamp,
-   real_a double,
-   imag_a double,
-   real_b double,
-   imag_b double,
-   real_c double,
-   imag_c double,
-   units text,
-   simulation text,
-   primary key ((mrid, type, period), time)
+    mrid text,
+    type text,
+    period int,
+    time timestamp,
+    real_a double,
+    imag_a double,
+    real_b double,
+    imag_b double,
+    real_c double,
+    imag_c double,
+    units text,
+    simulation text,
+    primary key ((mrid, type, period), time)
 ) with clustering order by (time asc) and comment = '
 Simulation results.
 These are values obtained from load-flow simulations or other analysis software.
-   mrid   - the unique CIM mRID for the element with this measurement
-   type   - the type of value, e.g. energy, power, voltage, current
-   time   - the time at which the simulated value was taken in GMT
-   period - the time period of the simulated value in milliseconds
-   real_a - the real component of the phase A (or R) value
-   imag_a - the imaginary component of the phase A (or R) value
-   real_b - the real component of the phase B (or S) value
-   imag_b - the imaginary component of the phase A (or S) value
-   real_c - the real component of the phase C (or T) value
-   imag_c - the imaginary component of the phase C (or T) value
-   units  - the units for the simulated value
-   simulation - the simulation run identifier, UUID
+    mrid   - the unique CIM mRID for the element with this measurement
+    type   - the type of value, e.g. energy, power, voltage, current
+    time   - the time at which the simulated value was taken in GMT
+    period - the time period of the simulated value in milliseconds
+    real_a - the real component of the phase A (or R) value
+    imag_a - the imaginary component of the phase A (or R) value
+    real_b - the real component of the phase B (or S) value
+    imag_b - the imaginary component of the phase A (or S) value
+    real_c - the real component of the phase C (or T) value
+    imag_c - the imaginary component of the phase C (or T) value
+    units  - the units for the simulated value
+    simulation - the simulation run identifier, UUID
 ';
 
 create table if not exists cimapplication.simulation (
@@ -71,7 +71,19 @@ create table if not exists cimapplication.simulation (
     players list<frozen <map<text,text>>>,
     recorders list<frozen <map<text,text>>>,
     primary key (id)
-) with comment = 'Details about a simulation execution';
+) with comment = '
+Details about a simulation execution.
+Describes each run of the Simulate code.
+    id - the simulation run identifier, UUID
+    name - the user supplied name of the simulation
+    description - the user supplied description of the simulation
+    cim - the CIM file(s) used to run the simulation
+    cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
+    interval - the time period simulated (start and end) in GMT
+    transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
+    players - the details about GridLAB-D players applied to the model
+    recorders - the details about GridLAB-D recorders read from the model
+';
 
 create type if not exists cimapplication.point_data (type text, coordinates list<double>);
 create type if not exists cimapplication.line_data (type text, coordinates list<frozen <list<double>>>);

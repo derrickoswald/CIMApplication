@@ -1,6 +1,5 @@
 package ch.ninecode.sim
 
-import java.io
 import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
@@ -70,9 +69,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     iso_date_format.setCalendar (calendar)
-
-    val just_date: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd")
-    just_date.setCalendar (calendar)
 
     def read (rdf: String, reader_options: Map[String,String] = Map(), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     {
@@ -170,33 +166,16 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
         log.info ("""resolving "%s" [%s, %s)""".format (player.title, from, to))
         var ret = List[SimulationPlayer]()
-        val day1 = just_date.format (begin)
-        val day2 = just_date.format (end)
-        val range =
-            if (day1 == day2)
-                "date = '%s'".format (day1)
-            else
-            {
-                val start = iso_parse (from)
-                val stop = iso_parse (to)
-                var dates = List[String](day1)
-                do
-                {
-                    start.add (Calendar.DAY_OF_MONTH, 1)
-                    dates = dates :+ just_date.format (start.getTimeInMillis)
-                }
-                while (0 >= start.compareTo (stop))
-                dates.mkString("date in ('", "','", "')")
-            }
+        val span = """time >= %s and time <= %s""".format (begin, end)
         val jsons = destringify (player.jsons)
         jsons.foreach (
             x ⇒
             {
                 val json = x.asScala
                 val substitutions = player.bind.map (y ⇒ json(y).asInstanceOf[JsonString].getString)
-                val sql = player.cassandraquery.format (substitutions: _*) + " and " + range + " allow filtering"
+                val sql = player.cassandraquery.format (substitutions: _*) + " and " + span + " allow filtering"
                 val name = json("name").asInstanceOf[JsonString].getString
-                val file = "input_data/" + name + "_" + day1 + ".csv" // ToDo: use both dates?
+                val file = "input_data/" + name + ".csv"
                 ret = ret :+ SimulationPlayer (
                     name,
                     json("parent").asInstanceOf[JsonString].getString,
@@ -227,7 +206,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val json = x.asScala
                 val name = json("name").asInstanceOf[JsonString].getString
-                val file = "output_data/" + name + "_" + just_date.format (start) + ".csv"
+                val file = "output_data/" + name + ".csv"
                 ret = ret :+ SimulationRecorder (
                     name,
                     json("mrid").asInstanceOf[JsonString].getString,
@@ -738,7 +717,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 {
                     if (transformers.length > 1)
                         log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
-                    val date = just_date.format (task.start.getTime)
                     List (
                         SimulationTrafoKreis (
                             id,
@@ -750,7 +728,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                             task.end,
                             task.players,
                             task.recorders,
-                            transformers(0).transformer_name + "_" + date + System.getProperty ("file.separator")
+                            transformers(0).transformer_name + System.getProperty ("file.separator")
                         )
                     )
                 }
