@@ -43,7 +43,7 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
     val ZuluTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS")
     ZuluTimestampFormat.setCalendar (ZuluTimeCalendar)
 
-    case class Reading (mRID: String, time: Timestamp, interval: Int, values: Array[Double])
+    case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
     def not_all_null (row: Row): Boolean =
     {
@@ -58,28 +58,28 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
 
     def sum (a: Reading, b:Reading): Reading =
     {
-        Reading (a.mRID, a.time, a.interval, (for (i <- 0 until 96) yield a.values(i) + b.values(i)).toArray)
+        Reading (a.mRID, a.time, a.period, (for (i <- 0 until 96) yield a.values(i) + b.values(i)).toArray)
     }
 
     /**
      * Make tuples suitable for Cassandra:
-     * ("mrid", "type", "time", "interval", "real_a", "imag_a", "units")
+     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
      *
      * @param reading the reading from the csv
      * @return the list of time series records
      */
     def to_timeseries (reading: Reading): IndexedSeq[(String, String, String, String, Double, Double, String)] =
     {
-        // Note: reading.interval is in seconds and we need milliseconds for Cassandra
+        // Note: reading.period is in seconds and we need milliseconds for Cassandra
 
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-        val half_interval = reading.interval * 1000 / 2
+        val half_period = reading.period * 1000 / 2
         def inrange (i: Int): Boolean =
         {
-            val offset = (reading.interval * i) * 1000
-            val date_time = new Date (timestamp.getTime + offset - half_interval)
+            val offset = (reading.period * i) * 1000
+            val date_time = new Date (timestamp.getTime + offset - half_period)
             val measurement_time = new Date (timestamp.getTime + offset).getTime
             (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
         }
@@ -89,11 +89,11 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         )
         yield
         {
-            val offset = (reading.interval * i) * 1000
-            val date_time = new Date (timestamp.getTime + offset - half_interval)
+            val offset = (reading.period * i) * 1000
+            val date_time = new Date (timestamp.getTime + offset - half_period)
             val measurement_time = new Date (timestamp.getTime + offset)
             val time = ZuluTimestampFormat.format (measurement_time)
-            (reading.mRID, "energy", time, (reading.interval * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
+            (reading.mRID, "energy", time, (reading.period * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
         }
     }
 
@@ -252,7 +252,7 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
         val ok = readings.filter (_._1 != null)
-        ok.saveToCassandra ("cimapplication", "measured_value_by_day", SomeColumns ("mrid", "type", "time", "interval", "real_a", "imag_a", "units"))
+        ok.saveToCassandra ("cimapplication", "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
     def run (): Unit =

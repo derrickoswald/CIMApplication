@@ -1,10 +1,10 @@
 create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 2 };
 
-create table if not exists cimapplication.measured_value_by_day (
+create table if not exists cimapplication.measured_value (
     mrid text,
     type text,
     time timestamp,
-    interval int,
+    period int,
     real_a double,
     imag_a double,
     real_b double,
@@ -13,13 +13,26 @@ create table if not exists cimapplication.measured_value_by_day (
     imag_c double,
     units text,
     primary key ((mrid, type), time)
-) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readings';
+) with clustering order by (time asc) and comment = '
+Measurement values.
+These are typically smart meter readings, or transformer values from a SCADA system.
+   mrid   - the unique CIM mRID for the element with this measurement
+   type   - the type of value, e.g. energy, power, voltage, current
+   time   - the time at which the measurement was taken in GMT
+   period - the time period over which the measurement was taken in milliseconds
+   real_a - the real component of the phase A (or R) value
+   imag_a - the imaginary component of the phase A (or R) value
+   real_b - the real component of the phase B (or S) value
+   imag_b - the imaginary component of the phase A (or S) value
+   real_c - the real component of the phase C (or T) value
+   imag_c - the imaginary component of the phase C (or T) value
+   units  - the units for the measurement
+';
 
-create table if not exists cimapplication.simulated_value_by_day (
+create table if not exists cimapplication.simulated_value (
    mrid text,
    type text,
-   date date,
-   interval int,
+   period int,
    time timestamp,
    real_a double,
    imag_a double,
@@ -29,8 +42,23 @@ create table if not exists cimapplication.simulated_value_by_day (
    imag_c double,
    units text,
    simulation text,
-   primary key ((mrid, type, date, interval), time)
-) with clustering order by (time asc) and comment = 'Simulation results';
+   primary key ((mrid, type, period), time)
+) with clustering order by (time asc) and comment = '
+Simulation results.
+These are values obtained from load-flow simulations or other analysis software.
+   mrid   - the unique CIM mRID for the element with this measurement
+   type   - the type of value, e.g. energy, power, voltage, current
+   time   - the time at which the simulated value was taken in GMT
+   period - the time period of the simulated value in milliseconds
+   real_a - the real component of the phase A (or R) value
+   imag_a - the imaginary component of the phase A (or R) value
+   real_b - the real component of the phase B (or S) value
+   imag_b - the imaginary component of the phase A (or S) value
+   real_c - the real component of the phase C (or T) value
+   imag_c - the imaginary component of the phase C (or T) value
+   units  - the units for the simulated value
+   simulation - the simulation run identifier, UUID
+';
 
 create table if not exists cimapplication.simulation (
     id text,
