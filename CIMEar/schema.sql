@@ -3,7 +3,6 @@ create keyspace if not exists cimapplication with replication = {'class': 'Simpl
 create table if not exists cimapplication.measured_value_by_day (
     mrid text,
     type text,
-    date date,
     time timestamp,
     interval int,
     real_a double,
@@ -13,7 +12,7 @@ create table if not exists cimapplication.measured_value_by_day (
     real_c double,
     imag_c double,
     units text,
-    primary key ((mrid, type, date), time)
+    primary key ((mrid, type), time)
 ) with clustering order by (time asc) and comment = 'Measurement values, e.g. smart meter readings';
 
 create table if not exists cimapplication.simulated_value_by_day (
