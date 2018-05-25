@@ -250,6 +250,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * Coincidence factor is the peak of a system divided by the sum of peak loads of its individual components.
      * It tells how likely the individual components are peaking at the same time.
      * The highest possible coincidence factor is 1, when all of the individual components are peaking at the same time.
+     * For this calculation we use the peak values per day.
      */
     def coincidence_factor (): Unit =
     {
@@ -391,6 +392,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * the peak load of this individual component.
      * Responsibility factor tells how much of the component is contributing to the system peak.
      * When a component peaks at the same time as the system, its responsibility factor is 100%.
+     * For this calculation we use the transformer peak value per day.
      */
     def responsibility_factor (): Unit =
     {
@@ -399,14 +401,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulated_value", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("period")
-            .drop ("real_b")
-            .drop ("real_c")
-            .drop ("imag_b")
-            .drop ("imag_c")
-            .drop ("units")
+            .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
             .filter ("type = 'power'")
-            .drop ("type")
+            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+            .drop ("type", "period")
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         // simulated_value.show (5)
@@ -416,9 +414,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type")
-            .drop ("geometry")
-            .drop ("properties")
+            .drop ("type", "geometry", "properties")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
         // trafos.show (5)
@@ -427,11 +423,11 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val simulated_value_trafos = simulated_value
             .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
-            .withColumnRenamed ("max(magnitude)", "magnitude")
+            .drop ("real_a", "imag_a")
+            .withColumn ("date", simulated_value ("time").cast (DateType))
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-
         log.info ("""%d simulation values with transformers to process""".format (simulated_value_trafos.count))
         // simulated_value_trafos.show (5)
 
@@ -444,8 +440,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val info = peaks.join (simulated_value_trafos, Seq ("mrid", "date", "magnitude"))
             .withColumnRenamed ("mrid", "transformer")
-            .drop ("real_a")
-            .drop ("imag_a")
         log.info ("%d peaks joined with simulation values".format (info.count))
         // info.show (5)
 
@@ -454,16 +448,14 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("real_b")
-            .drop ("real_c")
-            .drop ("imag_b")
-            .drop ("imag_c")
-            .drop ("units")
             .filter ("type = 'energy'")
+            .drop ("real_b", "real_c", "imag_b", "imag_c", "units", "energy")
+
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
-        val measured_value = _measured_value.withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
-            .drop ("real_a")
-            .drop ("imag_a")
+        val measured_value = _measured_value
+            .withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
+            .drop ("real_a", "imag_a", "period")
+            .withColumn ("date", _measured_value ("time").cast (DateType))
             .cache
         log.info ("""%d measured values to process""".format (measured_value.count))
         // measured_value.show (5)
@@ -473,11 +465,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("simulation")
-            .drop ("geometry")
-            .drop ("properties")
-            .drop ("type")
-            .distinct // could choose by simulation id
+            .drop ("geometry", "properties", "type")
+            .distinct // should somehow choose by simulation id
             .cache
         log.info ("""%d energy consumers to process""".format (geojson_points.count))
         // geojson_points.show (5)
@@ -496,19 +485,19 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d maximums found""".format (maximums.count))
         // maximums.show (5)
 
-        val peak_times = measured_value_and_trafo.join (info, Seq ("date", "time", "transformer"))
+        val peak_times = measured_value_and_trafo
+            .join (info, Seq ("date", "time", "transformer", "simulation"))
             .drop ("magnitude")
         log.info ("""%d peak times found""".format (peak_times.count))
         // peak_times.show (5)
 
         val responsibilities = peak_times.join (maximums, Seq ("mrid", "date"))
-            .withColumn ("responsibility", measured_value_and_trafo ("power") / maximums ("peak"))
+            .withColumn ("responsibility", round (measured_value_and_trafo ("power") / maximums ("peak") * 100.0 * 100.0) / 100.0)
         log.info ("""%d responsibility factors evaluated""".format (responsibilities.count))
         // responsibilities.show (5)
 
         val mrid = responsibilities.schema.fieldIndex ("mrid")
         val date = responsibilities.schema.fieldIndex ("date")
-        val period = responsibilities.schema.fieldIndex ("period")
         val time = responsibilities.schema.fieldIndex ("time")
         val transformer = responsibilities.schema.fieldIndex ("transformer")
         val p = responsibilities.schema.fieldIndex ("power")
@@ -520,12 +509,12 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             row ⇒
             {
                 val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
-                (row.getString (mrid), "power", row.getDate (date), row.getInt (period), row.getTimestamp (time), row.getString (transformer), row.getDouble (p), row.getDouble (peak), resp, "VA/VA", row.getString (simulation))
+                (row.getString (mrid), "power", row.getDate (date), row.getTimestamp (time), row.getString (transformer), row.getDouble (p), row.getDouble (peak), resp, "VA÷VA×100", row.getString (simulation))
             }
         )
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "responsibility_by_day",
-            SomeColumns ("mrid", "type", "date", "period", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
+            SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
         log.info ("""responsibility records saved to cimapplication.responsibility_by_day""")
     }
 
@@ -718,8 +707,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         load_factor ()
         log.info ("Coincidence Factor")
         coincidence_factor ()
-//        log.info ("Responsibility Factor")
-//        responsibility_factor ()
+        log.info ("Responsibility Factor")
+        responsibility_factor ()
 //        log.info ("Voltage quality")
 //        voltage_quality ()
 //        log.info ("Losses")

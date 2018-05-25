@@ -310,7 +310,7 @@ Transformer peak power divided by the sum of the peak powers of all connected el
     peak_power  - the peak power for the transformer by day
     sum_power   - the sum of the component peak powers by day
     coincidence_factor - the ratio of the peak power to the sum of the peak powers
-    units       - the units for the utilization value
+    units       - the units for the coincidence value
     simulation  - the simulation run identifier, UUID
 ';
 
@@ -318,7 +318,6 @@ create table if not exists cimapplication.responsibility_by_day (
    mrid text,
    type text,
    date date,
-   interval int,
    time timestamp,
    transformer text,
    power double,
@@ -326,8 +325,21 @@ create table if not exists cimapplication.responsibility_by_day (
    responsibility double,
    units text,
    simulation text,
-   primary key ((mrid, type, date, interval), time)
-) with clustering order by (time asc) and comment = 'Responsibility';
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Responsibility
+Individual element contributions to the peak power of a transformer per day.
+    mrid        - the unique CIM mRID of the element for which the responsibility factor applies
+    type        - the type of value, in this case power
+    date        - the date for which the responsibility factors are computed in GMT
+    time        - the time at which the peak transformer power occurred in GMT
+    transformer - the mRID of the transformer to which this element contributes responsibility
+    power       - the power of the element at the peak power time
+    peak        - the peak power of the transformer by day
+    responsibility - the responsibility factor for the element
+    units       - the units for the responsibility factor value
+    simulation  - the simulation run identifier, UUID
+';
 
 create table if not exists cimapplication.voltage_drop_by_day (
    mrid text,
