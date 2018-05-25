@@ -110,7 +110,6 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             }
             if ("" != cassandra_table_name)
             {
-                // insert into cimapplication.measured_value_by_day (mrid, type, date, time, interval, real_a, imag_a, units) values ('HAS1234', 'energy', '2017-07-18', '2017-07-18T20:00:00.000+0000', 900000, 0.0, 0.0, 'Watt-hours');
                 val rows: RDD[Row] = df.rdd
                 val len = rows.first.length
                 if ((len == 8) || (len == 12))

@@ -92,7 +92,7 @@ define
         //            {
         //                "title": "house services",
         //                "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
-        //                "cassandraquery": "select cimapplication.subtract_offset (time, interval) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
+        //                "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
         //                "bind": [
         //                    "mrid",
         //                    "type"
@@ -153,7 +153,7 @@ define
                         c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `,
-                "cassandraquery": "select cimapplication.subtract_offset (time, interval) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value_by_day where mrid='%s' and type='%s'",
+                "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
                 "bind": [
                     "mrid",
                     "type"
@@ -830,15 +830,11 @@ define
 
         function getDateRange ()
         {
-//            var sql = "select distimct mrid, type, date from cimapplication.measured_value_by_day limit 20";
-//            var nex = "select distinct mrid, type, date from cimapplication.measured_value_by_day where date<'2017-07-17' allow filtering";
-//            var lim = "select min(time) as low, max(time) as high from cimapplication.measured_value_by_day";
-//            val low = "select * from cimapplication.measured_value_by_day where time='2017-07-17T23:00:00.00' allow filtering";
             return (
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select min(date) as low, max(date) as high from cimapplication.measured_value_by_day"
+                        sql: "select min(time) as low, max(time) as high from cimapplication.measured_value"
                     }
                 ).then (
                     function (resultset)

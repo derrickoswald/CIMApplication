@@ -272,13 +272,24 @@ create table if not exists cimapplication.load_factor_by_day (
    mrid text,
    type text,
    date date,
-   interval int,
-   time timestamp,
+   avg_power double,
+   peak_power double,
    load_factor double,
    units text,
    simulation text,
-   primary key ((mrid, type, date, interval), time)
-) with clustering order by (time asc) and comment = 'Load factor';
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Load factor
+Transformer load divided by daily peak load.
+    mrid        - the transformer mRID of the topological island for which the load factors are calculated
+    type        - the type of value, in this case power
+    date        - the date for which the load factors are computed in GMT
+    avg_power   - the average power used in the transformer area by day
+    peak_power  - the peak power used in the transformer area by day
+    load_factor - the load factor for the transformer area
+    units       - the units for the load factor value
+    simulation  - the simulation run identifier, UUID
+';
 
 create table if not exists cimapplication.coincidence_factor_by_day (
    transformer text,

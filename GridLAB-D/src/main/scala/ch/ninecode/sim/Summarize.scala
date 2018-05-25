@@ -137,6 +137,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val trafokreise = utilization
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
+            .drop ("period")
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
             .groupBy ("type", "date", "transformer", "simulation")
@@ -177,6 +178,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * The higher the load factor is, the smoother the load profile is,
      * and the more the infrastructure is being utilized.
      * The highest possible load factor is 1, which indicates a flat load profile.
+     * For this calculation we use the peak value per day.
      */
     def load_factor (): Unit =
     {
@@ -186,74 +188,59 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .options (Map ("table" -> "simulated_value", "keyspace" -> "cimapplication" ))
             .load
             .drop ("real_b", "real_c", "imag_b","imag_c")
-            .filter ("type = 'power'")
+            .filter ("type = 'power'") // ToDo: how to pick the transformer power values if another recorder asks for power
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value.count))
-        simulated_value.show (5)
+        // simulated_value.show (5)
 
         val trafos = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type")
-            .drop ("geometry")
+            .drop ("type", "geometry")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
-        trafos.show (5)
+        // trafos.show (5)
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         val simulated_value_trafos = simulated_value
-            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
+            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+            .drop ("period")
+            .withColumn ("date", simulated_value ("time").cast (DateType))
+            .drop ("time")
+            .withColumn ("power", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
             .drop ("real_a", "imag_a")
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
-        log.info ("""%d simulation values with polygons to process""".format (simulated_value_trafos.count))
-        simulated_value_trafos.show (5)
+        log.info ("""%d power values to process""".format (simulated_value_trafos.count))
+        // simulated_value_trafos.show (5)
 
-        val peaks = simulated_value_trafos
-            .groupBy ("mrid", "date")
-            .agg ("magnitude" → "max")
-            .withColumnRenamed ("max(magnitude)", "maximum")
-        log.info ("%d peaks found".format (peaks.count))
-        peaks.show (5)
-
-        val day_trafos = simulated_value_trafos
-            .filter (simulated_value_trafos ("period") === 86400000)
-        log.info ("%d daily transformer power values".format (day_trafos.count))
-        day_trafos.show (5)
-
-        val loadfactors = day_trafos
-            .join (
-                peaks,
-                Seq ("mrid", "date"))
-        log.info ("%d peaks joined".format (loadfactors.count))
-        loadfactors.show (5)
+        val aggregates = simulated_value_trafos
+            .groupBy ("mrid", "type", "date", "simulation") // sum over time for each day
+            .agg ("power" → "avg", "power" → "max")
+            .withColumnRenamed ("avg(power)", "avg_power")
+            .withColumnRenamed ("max(power)", "peak_power")
+        val loadfactors = aggregates
+            .withColumn ("load_factor", aggregates ("avg_power") / aggregates ("peak_power"))
+        log.info ("""%d transformer average and peak power values""".format (loadfactors.count))
+        // loadfactors.show (5)
 
         val mrid = loadfactors.schema.fieldIndex ("mrid")
         val typ = loadfactors.schema.fieldIndex ("type")
         val date = loadfactors.schema.fieldIndex ("date")
-        val period = loadfactors.schema.fieldIndex ("period")
-        val time = loadfactors.schema.fieldIndex ("time")
-        val mag = loadfactors.schema.fieldIndex ("magnitude")
-        val maximum = loadfactors.schema.fieldIndex ("maximum")
+        val avg_power = loadfactors.schema.fieldIndex ("avg_power")
+        val peak_power = loadfactors.schema.fieldIndex ("peak_power")
+        val load_factor = loadfactors.schema.fieldIndex ("load_factor")
         val simulation = loadfactors.schema.fieldIndex ("simulation")
 
         val work = loadfactors.rdd.map (
-            row ⇒
-            {
-                val id = row.getString (mrid)
-                val power = row.getDouble (mag)
-                val peak = row.getDouble (maximum)
-                val load_factor = power / peak
-                (id, row.getString (typ), row.getDate (date), row.getInt (period), row.getTimestamp (time), load_factor, "VA/VA", row.getString (simulation))
-            }
-        )
+            row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA/VA", row.getString (simulation)))
 
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "load_factor_by_day",
-            SomeColumns ("mrid", "type", "date", "period", "time", "load_factor", "units", "simulation"))
+            SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
         log.info ("""load factor records saved to cimapplication.load_factor_by_day""")
     }
 
@@ -724,8 +711,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     {
         log.info ("Utilization")
         utilization ()
-//        log.info ("Load Factor")
-//        load_factor ()
+        log.info ("Load Factor")
+        load_factor ()
 //        log.info ("Coincidence Factor")
 //        coincidence_factor ()
 //        log.info ("Responsibility Factor")

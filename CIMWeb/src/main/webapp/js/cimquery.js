@@ -203,7 +203,7 @@ define
                         </div>
                         <div class="form-group">
                           <label for="cassandra_table_name">Save in Cassandra</label>
-                          <input id="cassandra_table_name" type="text" class="form-control" aria-describedby="cassandraHelp" placeholder="cassandra table name, e.g. measured_value_by_day" value="{{ctable}}">
+                          <input id="cassandra_table_name" type="text" class="form-control" aria-describedby="cassandraHelp" placeholder="cassandra table name, e.g. measured_value" value="{{ctable}}">
                           <small id="cassandraHelp" class="form-text text-muted">Enter the name of the Cassandra table to store the results of the query.</small>
                         </div>
                         <div class="form-group">

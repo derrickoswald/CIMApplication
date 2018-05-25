@@ -328,7 +328,7 @@ define
                         alert (house);
                         break;
                     case "measurements":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.measured_value_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseMeasurement.call (self, data));
                         break;
                 }
