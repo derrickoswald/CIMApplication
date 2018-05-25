@@ -224,15 +224,15 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |            "aggregations": [
                     |                {
                     |                    "intervals": 1,
-                    |                    "ttl": 1800
+                    |                    "ttl": null
                     |                },
                     |                {
                     |                    "intervals": 4,
-                    |                    "ttl": 3600
+                    |                    "ttl": null
                     |                },
                     |                {
                     |                    "intervals": 12,
-                    |                    "ttl": 7200
+                    |                    "ttl": null
                     |                },
                     |                {
                     |                    "intervals": 96,
@@ -499,11 +499,11 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         main (Array ("--unittest", "--verbose", "--host", "sandbox", json))
     }
 
-//    test ("Summarize")
-//    {
-//        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--summarize"))
-//    }
-//
+    test ("Summarize")
+    {
+        main (Array ("--unittest", "--verbose", "--host", "sandbox", "--summarize"))
+    }
+
 //    test ("DemoData")
 //    {
 //        val json = FILE_DEPOT + "basic.json"

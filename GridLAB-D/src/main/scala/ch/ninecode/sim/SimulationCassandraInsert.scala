@@ -8,9 +8,7 @@ import java.util.TimeZone
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.LocalDate
 import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.ResultSetFuture
 
 case class SimulationCassandraInsert (cluster: Cluster)
 {

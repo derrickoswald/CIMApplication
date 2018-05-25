@@ -775,13 +775,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val player = Json.createObjectBuilder
                 player.add ("name", x.name)
-                player.add ("parent", x.parent)
+                player.add ("mrid", x.parent)
                 player.add ("typ", x.typ)
                 player.add ("property", x.property)
                 // player.add ("file", x.file)
                 // player.add ("sql", x.sql)
-                player.add ("start", iso_date_format.format (new Date (x.start)))
-                player.add ("end", iso_date_format.format (new Date (x.end)))
+                // player.add ("start", iso_date_format.format (new Date (x.start)))
+                // player.add ("end", iso_date_format.format (new Date (x.end)))
                 players.add (player)
             }
         record.add ("players", players)
@@ -791,13 +791,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val recorder = Json.createObjectBuilder
                 recorder.add ("name", x.name)
-                recorder.add ("parent", x.parent)
+                recorder.add ("mrid", x.mrid)
+                // recorder.add ("parent", x.parent)
                 recorder.add ("typ", x.typ)
                 recorder.add ("property", x.property)
                 recorder.add ("unit", x.unit)
                 // recorder.add ("file", x.file)
                 recorder.add ("interval", x.interval.toString)
-                recorder.add ("aggregations", x.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (","))
+                // recorder.add ("aggregations", x.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (","))
                 recorders.add (recorder)
             }
         record.add ("recorders", recorders)
