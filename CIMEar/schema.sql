@@ -246,7 +246,7 @@ Aggregations of the utilization table by day.
 ';
 
 create table if not exists cimapplication.utilization_summary_by_day_by_transformer (
-    transformer text,
+    mrid text,
     type text,
     date date,
     min_utilization double,
@@ -254,11 +254,11 @@ create table if not exists cimapplication.utilization_summary_by_day_by_transfor
     max_utilization double,
     units text,
     simulation text,
-    primary key ((transformer, type), date)
+    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
 Transformer area utilization summary by day.
 Aggregations of the utilization table by day and by transformer area.
-    transformer - the transformer mRID of the topological island for which the utilizations are aggregated
+    mrid        - the transformer mRID of the topological island for which the utilizations are aggregated
     type        - the type of value, e.g. energy, power, voltage, current
     date        - the date for which the aggregations are computed in GMT
     min_utilization - the minumum utilization value for the transformer area for the day in percent
@@ -292,11 +292,27 @@ Transformer load divided by daily peak load.
 ';
 
 create table if not exists cimapplication.coincidence_factor_by_day (
-   transformer text,
+   mrid text,
+   type text,
    date date,
+   peak_power double,
+   sum_power double,
    coincidence_factor double,
-   primary key (transformer, date)
-) with comment = 'Coincidence factor';
+   units text,
+   simulation text,
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Coincidence factor
+Transformer peak power divided by the sum of the peak powers of all connected elements.
+    mrid        - the transformer mRID of the topological island for which the coincidence factors are aggregated
+    type        - the type of value, in this case power
+    date        - the date for which the coincidence factors are computed in GMT
+    peak_power  - the peak power for the transformer by day
+    sum_power   - the sum of the component peak powers by day
+    coincidence_factor - the ratio of the peak power to the sum of the peak powers
+    units       - the units for the utilization value
+    simulation  - the simulation run identifier, UUID
+';
 
 create table if not exists cimapplication.responsibility_by_day (
    mrid text,

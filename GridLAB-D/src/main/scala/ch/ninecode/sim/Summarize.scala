@@ -165,7 +165,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "utilization_summary_by_day_by_transformer",
-                SomeColumns ("transformer", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "simulation"))
+                SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "simulation"))
             log.info ("""%d transformer area utilization summary records saved to cimapplication.utilization_summary_by_day_by_transformer""".format (work.count))
         }
 
@@ -236,7 +236,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val simulation = loadfactors.schema.fieldIndex ("simulation")
 
         val work = loadfactors.rdd.map (
-            row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA/VA", row.getString (simulation)))
+            row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", row.getString (simulation)))
 
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "load_factor_by_day",
@@ -253,6 +253,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      */
     def coincidence_factor (): Unit =
     {
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
         val simulated_value = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
@@ -263,6 +265,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("imag_b")
             .drop ("imag_c")
             .filter ("type = 'power'")
+            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+            .drop ("period")
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         // simulated_value.show (5)
@@ -279,10 +283,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
         // trafos.show (5)
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
         val simulated_value_trafos = simulated_value
-            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
+            .withColumn ("power", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
+            .drop ("real_a", "imag_a")
+            .withColumn ("date", simulated_value ("time").cast (DateType))
             .join (
                 trafos,
                 Seq ("simulation", "mrid"))
@@ -290,10 +294,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // simulated_value_trafos.show (5)
 
         val peaks_trafos = simulated_value_trafos
-            .groupBy ("mrid", "date")
-            .agg ("magnitude" → "max")
+            .groupBy ("simulation", "mrid", "date", "type")
+            .agg ("power" → "max")
             .withColumnRenamed ("mrid", "transformer")
-            .withColumnRenamed ("max(magnitude)", "magnitude")
+            .withColumnRenamed ("max(power)", "peak_power")
         log.info ("%d peaks found".format (peaks_trafos.count))
         // peaks_trafos.show (5)
 
@@ -304,11 +308,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("real_b")
-            .drop ("real_c")
-            .drop ("imag_b")
-            .drop ("imag_c")
             .filter ("type = 'energy'")
+            .drop ("real_b", "real_c", "imag_b", "imag_c", "type", "units")
             .cache
         log.info ("""%d measured values to process""".format (_measured_value.count))
         // _measured_value.show (5)
@@ -318,18 +319,16 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type")
-            .drop ("geometry")
-            .drop ("simulation")
-            .drop ("properties")
+            .drop ("type", "geometry", "properties")
             .cache
         log.info ("""%d GeoJSON points to process""".format (houses.count))
         // houses.show (5)
 
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
-        val measured_value = _measured_value.withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
-            .drop ("real_a")
-            .drop ("imag_a")
+        val measured_value = _measured_value
+            .withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
+            .drop ("real_a", "imag_a")
+            .withColumn ("date", _measured_value ("time").cast (DateType))
             .cache
         log.info ("""%d measured values to process""".format (measured_value.count))
         // measured_value.show (5)
@@ -339,7 +338,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .agg ("power" → "max")
             .withColumnRenamed ("max(power)", "power")
         log.info ("%d peaks found".format (peaks_houses.count))
-        // peaks_houses.show (5)
+        //peaks_houses.show (5)
 
         val measured_value_houses = peaks_houses
             .join (
@@ -348,36 +347,40 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d measured peaks with transformers to process""".format (measured_value_houses.count))
         // measured_value_houses.show (5)
 
-        // sum up the individual peaks for each transformer|date combination
+        // sum up the individual peaks for each transformer and date combination
         val sums_houses = measured_value_houses
             .groupBy ("transformer", "date")
             .agg ("power" → "sum")
-            .withColumnRenamed ("sum(power)", "power")
+            .withColumnRenamed ("sum(power)", "sum_power")
         log.info ("""%d summed peaks with transformers to process""".format (sums_houses.count))
         // sums_houses.show (5)
 
-        def ratio[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => x / y)
         val _coincidences = peaks_trafos
             .join (sums_houses, Seq ("transformer", "date"))
         val coincidences = _coincidences
-            .withColumn ("coincidence", ratio[Double, Double].apply (_coincidences ("magnitude"), _coincidences ("power")))
+            .withColumn ("coincidence", _coincidences ("peak_power") / _coincidences ("sum_power"))
         log.info ("""%d coincidence factors calculated""".format (coincidences.count))
         // coincidences.show (5)
 
         val transformer = coincidences.schema.fieldIndex ("transformer")
         val date = coincidences.schema.fieldIndex ("date")
+        val typ = coincidences.schema.fieldIndex ("type")
+        val peak_power = coincidences.schema.fieldIndex ("peak_power")
+        val sum_power = coincidences.schema.fieldIndex ("sum_power")
         val coincidence = coincidences.schema.fieldIndex ("coincidence")
+        val simulation = coincidences.schema.fieldIndex ("simulation")
 
         val work = coincidences.rdd.map (
             row ⇒
             {
                 val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
-                (row.getString (transformer), row.getDate (date), factor)
+                (row.getString (transformer), row.getString (typ), row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", row.getString (simulation))
             }
         )
+
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "coincidence_factor_by_day",
-            SomeColumns ("transformer", "date", "coincidence_factor"))
+            SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
         log.info ("""coincidence factor records saved to cimapplication.coincidence_factor_by_day""")
     }
 
@@ -713,8 +716,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         utilization ()
         log.info ("Load Factor")
         load_factor ()
-//        log.info ("Coincidence Factor")
-//        coincidence_factor ()
+        log.info ("Coincidence Factor")
+        coincidence_factor ()
 //        log.info ("Responsibility Factor")
 //        responsibility_factor ()
 //        log.info ("Voltage quality")
