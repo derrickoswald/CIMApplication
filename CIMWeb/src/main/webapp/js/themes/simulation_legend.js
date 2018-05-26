@@ -248,7 +248,7 @@ define
                 this._slider = new Slider (
                     document.getElementById ("simulation_slider"),
                     {
-                        step: 1000 * 60 * 15, // 15 minutes in milliseconds
+                        step: 1000 * 60 * 60 * 24, // one day in milliseconds
                         min: this._times.start,
                         max: this._times.end,
                         formatter: function (value)
@@ -341,7 +341,7 @@ define
             advance ()
             {
                 var now = this._slider.getValue ();
-                now += 900000; // 15 minutes
+                now += 1000 * 60 * 60 * 24; // one day in milliseconds
                 if (now > this._times.end)
                     this.play_pause ();
                 else
@@ -358,7 +358,7 @@ define
                 }
                 else
                 {
-                    this.playing = window.setInterval (this.advance.bind (this), 250); // a quarter second
+                    this.playing = window.setInterval (this.advance.bind (this), 2000); // two seconds
                     document.getElementById ("player_action").innerHTML = this.pause ();
                 }
             }

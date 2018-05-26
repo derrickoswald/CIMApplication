@@ -8,7 +8,7 @@ define
     ["../mustache", "./default_theme", "./simulation_legend", "./layers", "../cimquery", "../cimchart"],
     /**
      * @summary Theme on simulation output.
-     * @description Theme class for colorizing by (eventually percent maximum) cable current and (eventually) deviation from nominal voltage.
+     * @description Theme class for colorizing by simulation summaries like utilization, load factor, and deviation from nominal voltage.
      * @name simulation_theme
      * @exports simulation_theme
      * @version 1.0
@@ -102,8 +102,8 @@ define
                     switch (subtheme)
                     {
                         case "utilization":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")) + "max", stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
-                            line_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
+                            line_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
                             break;
                         case "load_factor":
                             polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0,255,0)"] ] };
@@ -115,7 +115,7 @@ define
                             polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [1.0, "RGB(255,0,0)"], [4.0, "RGB(0,255,0)"] ] };
                             break;
                         case "responsibility_factor":
-                            point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [1.0, "RGB(255,0,0)"] ] };
+                            point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
                             break;
                         case "voltage_deviation":
                             point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"]] };
@@ -210,9 +210,9 @@ define
                 {
                     case "utilization":
                         this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day_by_transformer where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setUtilizationSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setUtilization_for_Lines.call (self, data))
                             .then (() =>
                                 {
@@ -222,17 +222,17 @@ define
                         break;
                     case "load_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' and interval = 86400000 allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setLoadFactor_for_Polygon.call (self, data))
                         break;
                     case "coincidence_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygon.call (self, false, data))
                         break;
                     case "diversity_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygon.call (self, true, data))
                         break;
                     case "responsibility_factor":
@@ -280,7 +280,7 @@ define
                 switch (subtheme)
                 {
                     case "utilization":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_by_day where interval = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization where period = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
                             .then (data => self.setCableUtilization.call (self, data));
                         break;
                     case "load_factor":
@@ -317,7 +317,7 @@ define
                     case "diversity_factor":
                         break;
                     case "responsibility_factor":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where interval = 900000 and mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseResponsibility.call (self, data));
                         break;
                     case "voltage_deviation":
@@ -536,14 +536,8 @@ define
                         {
                             polygon = polygon.properties;
                             var date = utilization.date;
-                            var item = "T" + date + "min";
-                            polygon[item] = utilization.min;
-                            default_data[item] = 0.0;
-                            var item = "T" + date + "avg";
-                            polygon[item] = utilization.avg;
-                            default_data[item] = 0.0;
-                            var item = "T" + date + "max";
-                            polygon[item] = utilization.max;
+                            var item = "T" + date;
+                            polygon[item] = utilization.max_utilization;
                             default_data[item] = 0.0;
                         }
                     }
@@ -572,7 +566,7 @@ define
                     {
                         var utilization = JSON.parse (row["[json]"]);
                         transformer = utilization.mrid;
-                        return ([(new Date (utilization.date)).getTime (), utilization.max]);
+                        return ([(new Date (utilization.date)).getTime (), utilization.max_utilization]);
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
@@ -594,9 +588,9 @@ define
                         var line = index[utilization.mrid];
                         if (line)
                         {
-                            var time = utilization.time;
-                            var item = "T" + time;
-                            line.properties[item] = utilization.percent;
+                            var date = utilization.date;
+                            var item = "T" + date;
+                            line.properties[item] = utilization.max_utilization;
                             default_data[item] = 0.0;
                         }
                     }
@@ -625,7 +619,7 @@ define
                     {
                         var utilization = JSON.parse (row["[json]"]);
                         cable = utilization.mrid;
-                        return ([(new Date (utilization.time)).getTime (), utilization.percent]);
+                        return ([(new Date (utilization.time)).getTime (), utilization.utilization]);
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
@@ -750,7 +744,7 @@ define
                     {
                         var load_factor = JSON.parse (row["[json]"]);
                         transformer = load_factor.mrid;
-                        return ([(new Date (load_factor.time)).getTime (), load_factor.load_factor]);
+                        return ([(new Date (load_factor.date)).getTime (), load_factor.load_factor]);
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
@@ -769,7 +763,7 @@ define
                     row =>
                     {
                         var coincidence_factor = JSON.parse (row["[json]"]);
-                        var polygon = index[coincidence_factor.transformer];
+                        var polygon = index[coincidence_factor.mrid];
                         if (polygon)
                         {
                             polygon = polygon.properties;
@@ -812,7 +806,7 @@ define
                 .sort ((a, b) => a[0] - b[0]);
                 this._TheChart = new CIMChart ()
                 this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (invert ? "Coincidence Factor (0 → 1)" : "Diversity Factor (1 → ∞)", transformer, values)
+                this._TheChart.addChart (invert ? "Diversity Factor (1 → ∞)" : "Coincidence Factor (0 → 1)", transformer, values)
             }
 
             setResponsibility_for_Points (data)
@@ -1022,7 +1016,7 @@ define
                 switch (subtheme)
                 {
                     case "utilization":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day_by_transformer", cassandra: true })
                             .then (data => self.setUtilizationSummary_for_Polygons.call (self, data));
                         break;
                     case "load_factor":
