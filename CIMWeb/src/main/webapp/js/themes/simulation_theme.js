@@ -127,7 +127,8 @@ define
                             point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"] ] };
                             break;
                         case "losses":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [200000.0, "RGB(255,0,0)"] ] };
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100000.0, "RGB(255,0,0)"] ] };
+                            line_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0, 255, 0)"], [1000.0, "RGB(255,0,0)"] ] };
                             break;
                         case "measurements":
                             point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0,255,0)"], [3000.0, "RGB(255,0,0)"]] };
@@ -264,14 +265,16 @@ define
                             );
                         break;
                     case "losses":
-//                         this.load_points_and_lines (trafo)
-//                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-//                            .then (data => self.setLosses_for_Lines.call (self, data))
-//                            .then (() =>
-//                                {
-//                                    self._TheMap.getSource ("nodes").setData (self._simulation_lines);
-//                                }
-//                            );
+                         this.load_points_and_lines (trafo)
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setLossesSummary_for_Polygon.call (self, data))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setLosses_for_Lines.call (self, data))
+                            .then (() =>
+                                {
+                                    self._TheMap.getSource ("edges").setData (self._simulation_lines);
+                                }
+                            );
                         break;
                     case "measurements":
                         // don't have the transformer in the measurement schema
@@ -302,7 +305,8 @@ define
                     case "voltage_deviation":
                         break;
                     case "losses":
-                        alert (cable);
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
+                            .then (data => self.setCableLosses.call (self, data));
                         break;
                     case "measurements":
                         break;
@@ -941,13 +945,13 @@ define
                     row =>
                     {
                         var losses = JSON.parse (row["[json]"]);
-                        var polygon = index[losses.transformer];
+                        var polygon = index[losses.mrid];
                         if (polygon)
                         {
                             polygon = polygon.properties;
                             var date = losses.date;
                             var item = "T" + date;
-                            polygon[item] = losses.total;
+                            polygon[item] = losses.losses;
                             default_data[item] = 0.0;
                         }
                     }
@@ -962,11 +966,34 @@ define
                 );
             }
 
+            setLossesSummary_for_Polygon (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var transformer = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var losses = JSON.parse (row["[json]"]);
+                        transformer = losses.mrid;
+                        return ([(new Date (losses.date)).getTime (), losses.losses]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]);
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart ("Transformer Area Losses (Wh)", transformer, values)
+            }
+
             setLosses_for_Lines (data)
             {
                 var index = {};
                 var self = this;
-                this._simulation_lines.features.forEach (lines => index[line.properties.mRID] = this.stripTs (line));
+                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = this.stripTs (line));
                 var default_data = {};
                 data.forEach (
                     row =>
@@ -977,7 +1004,7 @@ define
                         {
                             var date = losses.date;
                             var item = "T" + date;
-                            line.properties[item] = losses.cable_losses;
+                            line.properties[item] = losses.losses;
                             default_data[item] = 0.0;
                         }
                     }
@@ -990,6 +1017,29 @@ define
                                 point.properties[x] = default_data[x];
                     }
                 );
+            }
+
+            setCableLosses (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var cable = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var losses = JSON.parse (row["[json]"]);
+                        cable = losses.mrid;
+                        return ([(new Date (losses.date)).getTime (), losses.losses]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart (cable + " Cable Losses (Wh)", cable, values)
             }
 
             setSimulationGeoJSON_Polygons (data)
@@ -1102,7 +1152,7 @@ define
                             .then (data => self.setDeviationSummary_for_Polygons.call (self, data));
                         break;
                     case "losses":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_summary_by_day", cassandra: true })
                             .then (data => self.setLosses_for_Polygons.call (self, data))
                         break;
                     case "measurements":
