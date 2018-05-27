@@ -341,16 +341,59 @@ Individual element contributions to the peak power of a transformer per day.
     simulation  - the simulation run identifier, UUID
 ';
 
-create table if not exists cimapplication.voltage_drop_by_day (
+create table if not exists cimapplication.voltage_deviation_by_day (
    mrid text,
+   type text,
    date date,
-   time timestamp,
-   percent double,
+   min_voltage double,
+   avg_voltage double,
+   max_voltage double,
+   nominal_voltage double,
+   deviation double,
    units text,
    simulation text,
    transformer text,
-   primary key ((mrid, date), time)
-) with clustering order by (time asc) and comment = 'Voltage drop';
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Voltage maximum and minimum values per day.
+    mrid         - the unique CIM mRID of the element for which the extrema applies
+    type         - the type of value, in this case voltage
+    date         - the date for which the voltage deviations are computed in GMT
+    min_voltage  - the minimum voltage by day (Volts)
+    avg_voltage  - the average voltage by day (Volts)
+    max_voltage  - the maximum voltage by day (Volts)
+    nominal_voltage - the nominal voltage of the element (Volts)
+    deviation    - the maximum deviation (plus or minus) by day as a percentage deviation from the nominal voltage (%)
+    units        - the units for the deviation value
+    transformer  - the mRID of the transformer to which this element belongs
+    simulation   - the simulation run identifier, UUID
+';
+
+create table if not exists cimapplication.voltage_deviation_summary_by_day (
+   mrid text,
+   type text,
+   date date,
+   min_voltage double,
+   avg_voltage double,
+   max_voltage double,
+   nominal_voltage double,
+   deviation double,
+   units text,
+   simulation text,
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Voltage maximum and minimum values per day.
+    mrid         - the unique CIM mRID of the transformer for which the deviation applies
+    type         - the type of value, in this case voltage
+    date         - the date for which the voltage deviations are computed in GMT
+    min_voltage  - the minimum voltage by day (Volts)
+    avg_voltage  - the average voltage by day (Volts)
+    max_voltage  - the maximum voltage by day (Volts)
+    nominal_voltage - the nominal voltage of the element (Volts)
+    deviation    - the maximum deviation (plus or minus) by day as a percentage deviation from the nominal voltage (%)
+    units        - the units for the deviation value
+    simulation   - the simulation run identifier, UUID
+';
 
 create table if not exists cimapplication.losses_by_day (
    transformer text,

@@ -87,6 +87,11 @@ define
                     this.setupPolygons ();
                     if (this._Trafo)
                         this.load_trafo (this._Trafo);
+                    if (null != this._TheChart) // remove the existing chart
+                    {
+                        this._TheMap.removeControl (this._TheChart);
+                        this._TheChart = null;
+                    }
                     this.legend_changed (this._LastValue); // trigger color paint by recursive call
                 }
                 else
@@ -118,7 +123,8 @@ define
                             point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
                             break;
                         case "voltage_deviation":
-                            point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"]] };
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"] ] };
+                            point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"] ] };
                             break;
                         case "losses":
                             polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [200000.0, "RGB(255,0,0)"] ] };
@@ -247,7 +253,9 @@ define
                         break;
                     case "voltage_deviation":
                          this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_drop_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (data => self.setDeviationSummary_for_Polygon.call (self, data))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setVoltageDeviation_for_Points.call (self, data))
                             .then (() =>
                                 {
@@ -321,7 +329,7 @@ define
                             .then (data => self.setHouseResponsibility.call (self, data));
                         break;
                     case "voltage_deviation":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_drop_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseVoltageDeviation.call (self, data));
                         break;
                     case "losses":
@@ -665,7 +673,7 @@ define
                     {
                         var deviation = JSON.parse (row["[json]"]);
                         house = deviation.mrid;
-                        return ([(new Date (deviation.time)).getTime (), deviation.percent]);
+                        return ([(new Date (deviation.date)).getTime (), deviation.deviation]);
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
@@ -839,6 +847,60 @@ define
                 );
             }
 
+            setDeviationSummary_for_Polygons (data)
+            {
+                var index = {};
+                var self = this;
+                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
+                var default_data = {};
+                data.forEach (
+                    row =>
+                    {
+                        var deviation = JSON.parse (row["[json]"]);
+                        var polygon = index[deviation.mrid];
+                        if (polygon)
+                        {
+                            polygon = polygon.properties;
+                            var date = deviation.date;
+                            var item = "T" + date;
+                            polygon[item] = deviation.deviation;
+                            default_data[item] = 0.0;
+                        }
+                    }
+                );
+                this._simulation_polygons.features.forEach (
+                    polygon =>
+                    {
+                        for (var x in default_data)
+                            if ("undefined" == typeof (polygon.properties[x]))
+                                polygon.properties[x] = default_data[x];
+                    }
+                );
+            }
+
+            setDeviationSummary_for_Polygon (data)
+            {
+                if (null != this._TheChart)
+                {
+                    this._TheMap.removeControl (this._TheChart);
+                    this._TheChart = null;
+                }
+
+                var transformer = "";
+                var values = data.map (
+                    row =>
+                    {
+                        var deviation = JSON.parse (row["[json]"]);
+                        transformer = deviation.mrid;
+                        return ([(new Date (deviation.date)).getTime (), deviation.deviation]);
+                    }
+                )
+                .sort ((a, b) => a[0] - b[0]);
+                this._TheChart = new CIMChart ()
+                this._TheMap.addControl (this._TheChart);
+                this._TheChart.addChart ("Voltage Deviation (%)", transformer, values)
+            }
+
             setVoltageDeviation_for_Points (data)
             {
                 var index = {};
@@ -852,9 +914,9 @@ define
                         var point = index[deviation.mrid];
                         if (point)
                         {
-                            var time = deviation.time;
-                            var item = "T" + time;
-                            point.properties[item] = deviation.percent;
+                            var date = deviation.date;
+                            var item = "T" + date;
+                            point.properties[item] = deviation.deviation;
                             default_data[item] = 0.0;
                         }
                     }
@@ -1036,8 +1098,8 @@ define
                         ret = Promise.resolve ();
                         break;
                     case "voltage_deviation":
-                        self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
-                        ret = Promise.resolve ();
+                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_summary_by_day", cassandra: true })
+                            .then (data => self.setDeviationSummary_for_Polygons.call (self, data));
                         break;
                     case "losses":
                         ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day", cassandra: true })
