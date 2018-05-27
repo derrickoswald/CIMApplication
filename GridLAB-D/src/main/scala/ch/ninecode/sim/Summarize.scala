@@ -198,7 +198,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type", "geometry")
+            .drop ("type", "geometry", "properties")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
         show (trafos)
@@ -277,9 +277,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type")
-            .drop ("geometry")
-            .drop ("properties")
+            .drop ("type", "geometry", "properties")
             .cache
         log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
         show (trafos)
@@ -650,75 +648,104 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .options (Map ("table" -> "simulated_value", "keyspace" -> "cimapplication" ))
             .load
             .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
-            .filter ("type = 'energy'")
-            .drop ("type")
+            .filter ("type = 'losses'")
+            .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .cache
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         show (simulated_value)
+
+        def energy[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => Math.sqrt (x * x + y * y) * z / (60 * 60 * 1000))
+
+        val losses = simulated_value
+            .withColumn ("losses", energy[Double, Double, Int].apply (simulated_value ("real_a"), simulated_value ("imag_a"), simulated_value ("period")))
+            .drop ("real_a", "imag_a", "period")
+            .withColumn ("date", simulated_value ("time").cast (DateType))
+            .drop ("time")
+            .cache
+        log.info ("""%d loss totals""".format (losses.count))
+        show (losses)
 
         val lines = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "geojson_lines", "keyspace" -> "cimapplication" ))
             .load
-            .drop ("type")
-            .drop ("geometry")
+            .drop ("type", "geometry", "properties")
             .cache
         log.info ("""%d GeoJSON lines to process""".format (lines.count))
         show (lines)
-
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        val losses = simulated_value
-            .filter (simulated_value ("period") === 86400000)
-            .drop ("period")
-            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
-            .drop ("real_a", "imag_a")
-        log.info ("""%d loss totals""".format (losses.count))
-        show (losses)
 
         val cables = losses
             .join (
                 lines,
                 Seq ("simulation", "mrid"))
-            .groupBy ("transformer", "date")
-            .agg ("magnitude" → "sum")
-            .withColumnRenamed ("sum(magnitude)", "cable_losses")
-            .withColumnRenamed ("mrid", "transformer")
+            .groupBy ("mrid", "date", "simulation", "transformer")
+            .agg ("losses" → "sum")
+            .withColumnRenamed ("sum(losses)", "losses")
         log.info ("""%d daily cable loss totals""".format (cables.count))
         show (cables)
 
-        val trafos = losses
-            .withColumnRenamed ("mrid", "transformer")
-            .withColumnRenamed ("magnitude", "transformer_losses")
+        val polygons = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type", "geometry", "properties")
+            .cache
+        log.info ("""%d GeoJSON polygons to process""".format (polygons.count))
+        show (polygons)
+
+        val _trafos = losses
             .join (
-                cables,
-                Seq ("transformer", "date"))
+                polygons,
+                Seq ("simulation", "mrid"))
+        val trafos = _trafos
+            .withColumn ("transformer", _trafos ("mrid"))
+            .groupBy ("mrid", "date", "simulation", "transformer")
+            .agg ("losses" → "sum")
+            .withColumnRenamed ("sum(losses)", "losses")
         log.info ("""%d daily transformer loss totals""".format (trafos.count))
         show (trafos)
 
-        val totals = trafos
-            .withColumn ("total", trafos ("transformer_losses") + trafos ("cable_losses"))
-            .drop ("time", "simulation")
+        val total = cables.union (trafos)
 
-        val transformer = totals.schema.fieldIndex ("transformer")
-        val date = totals.schema.fieldIndex ("date")
-        val transformer_losses = totals.schema.fieldIndex ("transformer_losses")
-        val cable_losses = totals.schema.fieldIndex ("cable_losses")
-        val total = totals.schema.fieldIndex ("total")
+        {
+            val mrid = total.schema.fieldIndex ("mrid")
+            val date = total.schema.fieldIndex ("date")
+            val losses = total.schema.fieldIndex ("losses")
+            val simulation = total.schema.fieldIndex ("simulation")
+            val transformer = total.schema.fieldIndex ("transformer")
 
-        val work = totals.rdd.map (
-            row ⇒
-            {
-                (row.getString (transformer), row.getDate (date), row.getDouble (transformer_losses), row.getDouble (cable_losses), row.getDouble (total))
-            }
-        )
-        log.info ("""%d losses records""".format (work.count))
+            val work = total.rdd.map (row ⇒ (row.getString (mrid), "energy", row.getDate (date), row.getDouble (losses), "Wh", row.getString (transformer), row.getString (simulation)))
+            log.info ("""%d transformer area loss records""".format (work.count))
 
-        // save to Cassandra
-        work.saveToCassandra ("cimapplication", "losses_by_day",
-            SomeColumns ("transformer", "date", "transformer_losses", "cable_losses", "total"))
-        log.info ("""losses records saved to cimapplication.losses_by_day""")
+            // save to Cassandra
+            work.saveToCassandra ("cimapplication", "losses_by_day",
+                SomeColumns ("mrid", "type", "date", "losses", "units", "transformer", "simulation"))
+            log.info ("""transformer area loss records saved to cimapplication.losses_by_day""")
+        }
+
+        // roll up each transformer area
+        val sum = total
+            .groupBy ("date", "simulation", "transformer")
+            .agg ("losses" → "sum")
+            .withColumnRenamed ("sum(losses)", "losses")
+            .withColumnRenamed ("transformer", "mrid")
+
+        {
+            val mrid = sum.schema.fieldIndex ("mrid")
+            val date = sum.schema.fieldIndex ("date")
+            val losses = sum.schema.fieldIndex ("losses")
+            val simulation = sum.schema.fieldIndex ("simulation")
+
+            val work = sum.rdd.map (row ⇒ (row.getString (mrid), "energy", row.getDate (date), row.getDouble (losses), "Wh", row.getString (simulation)))
+            log.info ("""%d transformer area summary loss records""".format (work.count))
+
+            // save to Cassandra
+            work.saveToCassandra ("cimapplication", "losses_summary_by_day",
+                SomeColumns ("mrid", "type", "date", "losses", "units", "simulation"))
+            log.info ("""transformer area loss records saved to cimapplication.losses_summary_by_day""")
+        }
     }
 
     def run (): Unit =
@@ -733,7 +760,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         responsibility_factor ()
         log.info ("Voltage quality")
         voltage_quality ()
-//        log.info ("Losses")
-//        losses ()
+        log.info ("Losses")
+        losses ()
     }
 }

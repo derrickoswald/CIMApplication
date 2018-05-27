@@ -352,7 +352,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |        },
                     |        {
                     |            "title": "All transformer power losses",
-                    |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'energy' type, 'power_losses' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
+                    |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'losses' type, 'power_losses' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
                     |            "interval": 900,
                     |            "aggregations": [
                     |                {

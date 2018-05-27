@@ -10,18 +10,22 @@ define
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
-     truncate table cimapplication.simulated_value_by_day;
-     truncate table cimapplication.simulation;
-     truncate table cimapplication.key_value;
-     truncate table cimapplication.geojson_points;
-     truncate table cimapplication.geojson_lines;
-     truncate table cimapplication.geojson_polygons;
-     truncate table cimapplication.utilization_by_day;
-     truncate table cimapplication.utilization_summary_by_day;
-     truncate table cimapplication.load_factor_by_day;
-     truncate table cimapplication.coincidence_factor_by_day;
-     truncate table cimapplication.responsibility_by_day;
-     truncate table cimapplication.voltage_drop_by_day;
+truncate table cimapplication.simulated_value;
+truncate table cimapplication.simulation;
+truncate table cimapplication.geojson_points;
+truncate table cimapplication.geojson_lines;
+truncate table cimapplication.geojson_polygons;
+truncate table cimapplication.key_value;
+truncate table cimapplication.utilization;
+truncate table cimapplication.utilization_summary_by_day;
+truncate table cimapplication.utilization_summary_by_day_by_transformer;
+truncate table cimapplication.load_factor_by_day;
+truncate table cimapplication.coincidence_factor_by_day;
+truncate table cimapplication.responsibility_by_day;
+truncate table cimapplication.voltage_deviation_by_day;
+truncate table cimapplication.voltage_deviation_summary_by_day;
+truncate table cimapplication.losses_by_day;
+truncate table cimapplication.losses_summary_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
@@ -311,7 +315,7 @@ define
                     select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
-                        'energy' type,
+                        'losses' type,
                         'power_losses' property,
                         'VA' unit,
                         n.TopologicalIsland island
@@ -402,7 +406,7 @@ define
                         concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
-                        'energy' type,
+                        'losses' type,
                         'power_losses' property,
                         'Wh' unit,
                         n.TopologicalIsland island

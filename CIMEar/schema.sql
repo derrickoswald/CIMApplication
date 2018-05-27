@@ -355,6 +355,7 @@ create table if not exists cimapplication.voltage_deviation_by_day (
    transformer text,
    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
+Voltage Deviation
 Voltage maximum and minimum values per day.
     mrid         - the unique CIM mRID of the element for which the extrema applies
     type         - the type of value, in this case voltage
@@ -382,7 +383,8 @@ create table if not exists cimapplication.voltage_deviation_summary_by_day (
    simulation text,
    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
-Voltage maximum and minimum values per day.
+Voltage Deviation
+Voltage maximum and minimum values per day per transformer.
     mrid         - the unique CIM mRID of the transformer for which the deviation applies
     type         - the type of value, in this case voltage
     date         - the date for which the voltage deviations are computed in GMT
@@ -396,10 +398,41 @@ Voltage maximum and minimum values per day.
 ';
 
 create table if not exists cimapplication.losses_by_day (
-   transformer text,
+   mrid text,
+   type text,
    date date,
-   transformer_losses double,
-   cable_losses double,
-   total double,
-   primary key (transformer, date)
-) with comment = 'Losses';
+   losses double,
+   units text,
+   transformer text,
+   simulation text,
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Losses
+Energy losses per day.
+    mrid         - the unique CIM mRID of the element for which the losses apply (may be the transformer itself)
+    type         - the type of value, in this case energy
+    date         - the date for which the losses are computed in GMT
+    losses       - the losses by day (Wh)
+    units        - the units for the losses value
+    transformer  - the mRID of the transformer to which this element belongs
+    simulation   - the simulation run identifier, UUID
+';
+
+create table if not exists cimapplication.losses_summary_by_day (
+   mrid text,
+   type text,
+   date date,
+   losses double,
+   units text,
+   simulation text,
+   primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Losses
+Energy losses per day.
+    mrid         - the unique CIM mRID of the transformer for which the losses apply
+    type         - the type of value, in this case energy
+    date         - the date for which the losses are computed in GMT
+    losses       - the losses in cables and the transformer by day by transformer area (Wh)
+    units        - the units for the loss values
+    simulation   - the simulation run identifier, UUID
+';
