@@ -245,6 +245,29 @@ Aggregations of the utilization table by day.
     simulation  - the simulation run identifier, UUID
 ';
 
+create table if not exists cimapplication.utilization_historical (
+   mrid text,
+   type text,
+    date date,
+    min_utilization double,
+    avg_utilization double,
+    max_utilization double,
+    transformer text,
+    simulation text,
+    primary key ((mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Utilization historical values.
+Aggregations of the utilization table by for 30 prior days.
+    mrid        - the unique CIM mRID for the element with this utilization
+    type        - the type of value, e.g. energy, power, voltage, current
+    date        - the date for which the past 30 day aggregations are computed in GMT
+    min_utilization - the minumum utilization value for the past 30 days in percent
+    avg_utilization - the average utilization value for the past 30 days in percent
+    max_utilization - the maximum utilization value for the past 30 days in percent
+    transformer - the transformer mRID of the topological island in which this element is found
+    simulation  - the simulation run identifier, UUID
+';
+
 create table if not exists cimapplication.utilization_summary_by_day_by_transformer (
     mrid text,
     type text,

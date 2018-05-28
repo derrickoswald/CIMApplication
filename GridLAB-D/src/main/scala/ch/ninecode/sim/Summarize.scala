@@ -1,5 +1,6 @@
 package ch.ninecode.sim
 
+import java.sql.Date
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
@@ -7,6 +8,8 @@ import java.util.TimeZone
 import scala.reflect.runtime.universe.TypeTag
 import com.datastax.spark.connector._
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.DateType
@@ -35,6 +38,48 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
     def show (dataframe: DataFrame, records: Int = 5): Unit = if (options.unittest) dataframe.show (records)
 
+    def geojson_points: DataFrame =
+    {
+        val ret = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type", "geometry")
+            .cache
+        log.info ("""%d GeoJSON points to process""".format (ret.count))
+        show (ret)
+        ret
+    }
+
+    def geojson_lines: DataFrame =
+    {
+        val ret = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_lines", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type", "geometry")
+            .cache
+        log.info ("""%d GeoJSON lines to process""".format (ret.count))
+        show (ret)
+        ret
+    }
+
+    def geojson_polygons: DataFrame =
+    {
+        val ret = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
+            .load
+            .drop ("type", "geometry")
+            .cache
+        log.info ("""%d GeoJSON polygons to process""".format (ret.count))
+        show (ret)
+        ret
+    }
+
     /**
      * Utilization
      *
@@ -55,15 +100,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulated current values to process""".format (simulated_current_values.count))
         show (simulated_current_values)
 
-        val lines = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_lines", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry")
-            .cache
-        log.info ("""%d GeoJSON lines to process""".format (lines.count))
-        show (lines)
+        val lines = geojson_lines
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         def maxCurrent[Type_x: TypeTag] = udf[Double, Map[String,String]]((map: Map[String,String]) => map.getOrElse ("ratedCurrent", "1.0").toDouble)
@@ -169,6 +206,124 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             log.info ("""%d transformer area utilization summary records saved to cimapplication.utilization_summary_by_day_by_transformer""".format (work.count))
         }
 
+        // do daily 1 month, 3 month, 6 month and 12 month historical series
+        val timeseries = utilization
+            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+            .drop ("period")
+            .withColumn ("date", utilization ("time").cast (DateType))
+            .drop ("time")
+            .groupBy ("mrid", "type", "date", "transformer", "simulation")
+            .agg (
+                "utilization" → "min",
+                "utilization" → "avg",
+                "utilization" → "max"
+            )
+            .withColumnRenamed ("min(utilization)", "min_utilization")
+            .withColumnRenamed ("avg(utilization)", "avg_utilization")
+            .withColumnRenamed ("max(utilization)", "max_utilization")
+            .orderBy ("simulation", "type", "transformer", "mrid", "date")
+            .cache
+        log.info ("""%d time series values""".format (timeseries.count))
+        show (timeseries, 20)
+
+        {
+            val mrid = timeseries.schema.fieldIndex ("mrid")
+            val typ = timeseries.schema.fieldIndex ("type")
+            val date = timeseries.schema.fieldIndex ("date")
+            val min_utilization = timeseries.schema.fieldIndex ("min_utilization")
+            val avg_utilization = timeseries.schema.fieldIndex ("avg_utilization")
+            val max_utilization = timeseries.schema.fieldIndex ("max_utilization")
+            val simulation = timeseries.schema.fieldIndex ("simulation")
+            val transformer = timeseries.schema.fieldIndex ("transformer")
+
+            //case class Record (mrid: String, `type`: String, date: Date, min_utilization: Double, avg_utilization: Double, max_utilization: Double, simulation: String, transformer: String)
+            type Record = (String, String, Date, Double, Double, Double, String, String)
+            trait History
+            {
+                val size: Int
+                val minvalues: Array[Double]
+                val avgvalues: Array[Double]
+                val maxvalues: Array[Double]
+                var level: Int  = 0
+                var simulation: String = ""
+                var `type`: String = ""
+                var transformer: String = ""
+                var mrid: String = ""
+                var date: Date = _
+            }
+            case class History30 (
+                 size: Int = 30,
+                 minvalues: Array[Double] = Array.ofDim[Double] (30),
+                 avgvalues: Array[Double] = Array.ofDim[Double] (30),
+                 maxvalues: Array[Double] = Array.ofDim[Double] (30))
+            extends History
+
+            def emit (history: History):  List[Record] =
+            {
+                val min = history.minvalues.slice (0, history.level).reduce ((a: Double, b: Double) ⇒ if (a < b) a else b)
+                val avg = history.avgvalues.slice (0, history.level).sum / history.size
+                val max = history.maxvalues.slice (0, history.level).reduce ((a: Double, b: Double) ⇒ if (a > b) a else b)
+                List (/*Record*/ (history.mrid, history.`type`, history.date, min, avg, max, history.simulation, history.transformer))
+            }
+
+            def flush (row: Row, history: History): List[Record] =
+            {
+                val ret = if (history.simulation == "") // initial call?
+                    List ()
+                else
+                    emit (history)
+                history.level = 0
+                for (i ← 0 until history.size)
+                {
+                    history.minvalues(i) = 0.0
+                    history.avgvalues(i) = 0.0
+                    history.maxvalues(i) = 0.0
+                }
+                history.simulation = row.getString (simulation)
+                history.transformer = row.getString (transformer)
+                history.`type` = row.getString (typ)
+                history.mrid = row.getString (mrid)
+                ret
+            }
+            def update (row: Row, history: History)
+            {
+                val index = history.level % history.size // where to store the current value
+                history.minvalues(index) = row.getDouble (min_utilization) // push the current values into the arrays
+                history.avgvalues(index) = row.getDouble (avg_utilization)
+                history.maxvalues(index) = row.getDouble (max_utilization)
+                history.date = row.getDate (date) // update the date to the latest value
+                history.level = history.level + 1 // the number of values we've seen
+            }
+            def historical (history: History) (row: Row): List[/*Record*/(String, String, Date, Double, Double, Double, String, String)] =
+            {
+                if (history.mrid != row.getString (mrid)) // switch to another cable?
+                {
+                    val ret = flush (row, history)
+                    update (row, history)
+                    ret
+                }
+                else
+                {
+                    update (row, history)
+                    if (history.level >= history.size) // have we got enough values to start outputting
+                        emit (history)
+                    else
+                        List ()
+                }
+            }
+            import spark.implicits._
+            val history = timeseries
+                .repartition (timeseries ("mrid"))
+                .flatMap (historical (History30 ()))
+            log.info ("""%d historical values calculated""".format (history.count))
+            println (history.take(20).mkString ("\n"))
+
+            // save to Cassandra
+            history.rdd.saveToCassandra ("cimapplication", "utilization_historical",
+                SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
+            log.info ("""%d historical values saved to cimapplication.utilization_historical""".format (history.count))
+
+        }
     }
 
     /**
@@ -193,15 +348,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val trafos = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
-        show (trafos)
+        val trafos = geojson_polygons.drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         val simulated_value_trafos = simulated_value
@@ -272,15 +419,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val trafos = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
-        show (trafos)
+        val trafos = geojson_polygons.drop ("properties").cache
 
         val simulated_value_trafos = simulated_value
             .withColumn ("power", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
@@ -312,15 +451,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d measured values to process""".format (_measured_value.count))
         show (_measured_value)
 
-        val houses = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON points to process""".format (houses.count))
-        show (houses)
+        val houses = geojson_points.drop ("properties").cache
 
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
         val measured_value = _measured_value
@@ -406,15 +537,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation values to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val trafos = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON polygons to process""".format (trafos.count))
-        show (trafos)
+        val trafos = geojson_polygons.drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -457,20 +580,11 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d measured values to process""".format (measured_value.count))
         show (measured_value)
 
-        val geojson_points = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("geometry", "properties", "type")
-            .distinct // should somehow choose by simulation id
-            .cache
-        log.info ("""%d energy consumers to process""".format (geojson_points.count))
-        show (geojson_points)
+        val houses = geojson_points.drop ("properties").cache
 
         val measured_value_and_trafo = measured_value
             .join (
-                geojson_points,
+                houses,
                 Seq ("mrid"))
         log.info ("""%d measurements with energy consumers to process""".format (measured_value_and_trafo.count))
         show (measured_value_and_trafo)
@@ -536,15 +650,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d simulation voltages to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val houses = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_points", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry")
-            .cache
-        log.info ("""%d GeoJSON points to process""".format (houses.count))
-        show (houses)
+        val houses = geojson_points
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -665,15 +771,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d loss totals""".format (losses.count))
         show (losses)
 
-        val lines = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_lines", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON lines to process""".format (lines.count))
-        show (lines)
+        val lines = geojson_lines.drop ("properties").cache
 
         val cables = losses
             .join (
@@ -685,15 +783,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         log.info ("""%d daily cable loss totals""".format (cables.count))
         show (cables)
 
-        val polygons = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "geojson_polygons", "keyspace" -> "cimapplication" ))
-            .load
-            .drop ("type", "geometry", "properties")
-            .cache
-        log.info ("""%d GeoJSON polygons to process""".format (polygons.count))
-        show (polygons)
+        val polygons = geojson_polygons.drop ("properties").cache
 
         val _trafos = losses
             .join (
@@ -752,15 +842,15 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     {
         log.info ("Utilization")
         utilization ()
-        log.info ("Load Factor")
-        load_factor ()
-        log.info ("Coincidence Factor")
-        coincidence_factor ()
-        log.info ("Responsibility Factor")
-        responsibility_factor ()
-        log.info ("Voltage quality")
-        voltage_quality ()
-        log.info ("Losses")
-        losses ()
+//        log.info ("Load Factor")
+//        load_factor ()
+//        log.info ("Coincidence Factor")
+//        coincidence_factor ()
+//        log.info ("Responsibility Factor")
+//        responsibility_factor ()
+//        log.info ("Voltage quality")
+//        voltage_quality ()
+//        log.info ("Losses")
+//        losses ()
     }
 }
