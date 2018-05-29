@@ -251,11 +251,29 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 var date: Date = _
             }
             case class History30 (
-                 size: Int = 30,
-                 minvalues: Array[Double] = Array.ofDim[Double] (30),
-                 avgvalues: Array[Double] = Array.ofDim[Double] (30),
-                 maxvalues: Array[Double] = Array.ofDim[Double] (30))
-            extends History
+                size: Int = 30,
+                minvalues: Array[Double] = Array.ofDim[Double] (30),
+                avgvalues: Array[Double] = Array.ofDim[Double] (30),
+                maxvalues: Array[Double] = Array.ofDim[Double] (30))
+                extends History
+            case class History90 (
+                size: Int = 90,
+                minvalues: Array[Double] = Array.ofDim[Double] (90),
+                avgvalues: Array[Double] = Array.ofDim[Double] (90),
+                maxvalues: Array[Double] = Array.ofDim[Double] (90))
+                extends History
+            case class History180(
+                size: Int = 180,
+                minvalues: Array[Double] = Array.ofDim[Double] (180),
+                avgvalues: Array[Double] = Array.ofDim[Double] (180),
+                maxvalues: Array[Double] = Array.ofDim[Double] (180))
+                extends History
+            case class History365(
+                size: Int = 365,
+                minvalues: Array[Double] = Array.ofDim[Double] (365),
+                avgvalues: Array[Double] = Array.ofDim[Double] (365),
+                maxvalues: Array[Double] = Array.ofDim[Double] (365))
+                extends History
 
             def emit (history: History):  List[Record] =
             {
@@ -293,7 +311,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 history.date = row.getDate (date) // update the date to the latest value
                 history.level = history.level + 1 // the number of values we've seen
             }
-            def historical (history: History) (row: Row): List[/*Record*/(String, String, Long, Date, Double, Double, Double, String, String)] =
+            def historical (history: History) (row: Row): List[Record] =
             {
                 if (history.mrid != row.getString (mrid)) // switch to another cable?
                 {
@@ -310,10 +328,21 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                         List ()
                 }
             }
+            def make_history (histories: Array[History]) (row: Row): List[/*Record*/(String, String, Long, Date, Double, Double, Double, String, String)] =
+            {
+                histories.flatMap (h ⇒ historical (h) (row)).toList
+            }
             import spark.implicits._
+            val periods: Array[History] =
+                Array (
+                    History30 (),
+                    History90 (),
+                    History180 (),
+                    History365 ()
+                )
             val history = timeseries
                 .repartition (timeseries ("mrid"))
-                .flatMap (historical (History30 ()))
+                .flatMap (make_history (periods))
             log.info ("""%d historical values calculated""".format (history.count))
             println (history.take(20).mkString ("\n"))
 
