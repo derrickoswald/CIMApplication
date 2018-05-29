@@ -261,7 +261,7 @@ Utilization historical values.
 Aggregations of the utilization table by for prior periods.
     mrid        - the unique CIM mRID for the element with this utilization
     type        - the type of value, e.g. energy, power, voltage, current
-    period      - the period of the aggregation (mSec)
+    period      - the period of the aggregation (mSec), the special value 0 indicates "over all time"
     date        - the date for which the past period aggregations are computed in GMT
     min_utilization - the minumum utilization value for the past period in percent
     avg_utilization - the average utilization value for the past period in percent

@@ -220,10 +220,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .withColumnRenamed ("min(utilization)", "min_utilization")
             .withColumnRenamed ("avg(utilization)", "avg_utilization")
             .withColumnRenamed ("max(utilization)", "max_utilization")
+            .union (trafokreise.withColumn ("mrid", trafokreise ("transformer"))
+                // reorder the columns because union is brain-dead
+                .select ("mrid", "type", "date", "transformer", "simulation", "min_utilization", "avg_utilization", "max_utilization"))
             .orderBy ("simulation", "type", "transformer", "mrid", "date")
             .cache
         log.info ("""%d time series values""".format (timeseries.count))
-        show (timeseries, 20)
+        show (timeseries)
 
         {
             val mrid = timeseries.schema.fieldIndex ("mrid")
@@ -344,13 +347,46 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 .repartition (timeseries ("mrid"))
                 .flatMap (make_history (periods))
             log.info ("""%d historical values calculated""".format (history.count))
-            println (history.take(20).mkString ("\n"))
+            println (history.take(5).mkString ("\n"))
 
             // save to Cassandra
             history.rdd.saveToCassandra ("cimapplication", "utilization_historical",
                 SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
             log.info ("""%d historical values saved to cimapplication.utilization_historical""".format (history.count))
+        }
 
+        // do the 'all time' historical values
+        val alltime = timeseries
+            .groupBy ("mrid", "type", "transformer", "simulation")
+            .agg (
+                "date" → "max",
+                "min_utilization" → "min",
+                "avg_utilization" → "avg",
+                "max_utilization" → "max"
+            )
+            .withColumnRenamed ("max(date)", "date")
+            .withColumnRenamed ("min(min_utilization)", "min_utilization")
+            .withColumnRenamed ("avg(avg_utilization)", "avg_utilization")
+            .withColumnRenamed ("max(max_utilization)", "max_utilization")
+        log.info ("""%d all time historical values calculated""".format (alltime.count))
+        show (alltime)
+
+        {
+            val mrid = alltime.schema.fieldIndex ("mrid")
+            val typ = alltime.schema.fieldIndex ("type")
+            val date = alltime.schema.fieldIndex ("date")
+            val min_utilization = alltime.schema.fieldIndex ("min_utilization")
+            val avg_utilization = alltime.schema.fieldIndex ("avg_utilization")
+            val max_utilization = alltime.schema.fieldIndex ("max_utilization")
+            val simulation = alltime.schema.fieldIndex ("simulation")
+            val transformer = alltime.schema.fieldIndex ("transformer")
+
+            val work = alltime.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), 0L, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), row.getString (simulation), row.getString (transformer))).cache
+
+            // save to Cassandra
+            work.saveToCassandra ("cimapplication", "utilization_historical",
+                SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
+            log.info ("""%d all time historical values saved to cimapplication.utilization_historical""".format (alltime.count))
         }
     }
 
@@ -870,15 +906,15 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     {
         log.info ("Utilization")
         utilization ()
-//        log.info ("Load Factor")
-//        load_factor ()
-//        log.info ("Coincidence Factor")
-//        coincidence_factor ()
-//        log.info ("Responsibility Factor")
-//        responsibility_factor ()
-//        log.info ("Voltage quality")
-//        voltage_quality ()
-//        log.info ("Losses")
-//        losses ()
+        log.info ("Load Factor")
+        load_factor ()
+        log.info ("Coincidence Factor")
+        coincidence_factor ()
+        log.info ("Responsibility Factor")
+        responsibility_factor ()
+        log.info ("Voltage quality")
+        voltage_quality ()
+        log.info ("Losses")
+        losses ()
     }
 }
