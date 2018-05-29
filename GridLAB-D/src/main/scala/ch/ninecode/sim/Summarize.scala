@@ -8,7 +8,6 @@ import java.util.TimeZone
 import scala.reflect.runtime.universe.TypeTag
 import com.datastax.spark.connector._
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -236,8 +235,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val simulation = timeseries.schema.fieldIndex ("simulation")
             val transformer = timeseries.schema.fieldIndex ("transformer")
 
-            //case class Record (mrid: String, `type`: String, date: Date, min_utilization: Double, avg_utilization: Double, max_utilization: Double, simulation: String, transformer: String)
-            type Record = (String, String, Date, Double, Double, Double, String, String)
+            //case class Record (mrid: String, `type`: String, period: Long, date: Date, min_utilization: Double, avg_utilization: Double, max_utilization: Double, simulation: String, transformer: String)
+            type Record = (String, String, Long, Date, Double, Double, Double, String, String)
             trait History
             {
                 val size: Int
@@ -263,7 +262,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 val min = history.minvalues.slice (0, history.level).reduce ((a: Double, b: Double) ⇒ if (a < b) a else b)
                 val avg = history.avgvalues.slice (0, history.level).sum / history.size
                 val max = history.maxvalues.slice (0, history.level).reduce ((a: Double, b: Double) ⇒ if (a > b) a else b)
-                List (/*Record*/ (history.mrid, history.`type`, history.date, min, avg, max, history.simulation, history.transformer))
+                List (/*Record*/ (history.mrid, history.`type`, history.size * 24L * 60L * 60L * 1000L, history.date, min, avg, max, history.simulation, history.transformer))
             }
 
             def flush (row: Row, history: History): List[Record] =
@@ -294,7 +293,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 history.date = row.getDate (date) // update the date to the latest value
                 history.level = history.level + 1 // the number of values we've seen
             }
-            def historical (history: History) (row: Row): List[/*Record*/(String, String, Date, Double, Double, Double, String, String)] =
+            def historical (history: History) (row: Row): List[/*Record*/(String, String, Long, Date, Double, Double, Double, String, String)] =
             {
                 if (history.mrid != row.getString (mrid)) // switch to another cable?
                 {
@@ -320,7 +319,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
             // save to Cassandra
             history.rdd.saveToCassandra ("cimapplication", "utilization_historical",
-                SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
+                SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
             log.info ("""%d historical values saved to cimapplication.utilization_historical""".format (history.count))
 
         }
