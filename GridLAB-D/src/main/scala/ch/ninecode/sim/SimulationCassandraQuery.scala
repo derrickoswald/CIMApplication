@@ -33,8 +33,8 @@ import com.datastax.driver.core.DataType.Name.UDT
 import com.datastax.driver.core.DataType.Name.UUID
 import com.datastax.driver.core.DataType.Name.VARCHAR
 import com.datastax.driver.core.DataType.Name.VARINT
-import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.Row
+import com.datastax.driver.core.SimpleStatement
 
 case class SimulationCassandraQuery (cluster: Cluster, sql: String)
 {
@@ -83,7 +83,10 @@ case class SimulationCassandraQuery (cluster: Cluster, sql: String)
     def execute (): Seq[JsonObject] =
     {
         val session = cluster.connect
-        val resultset: ResultSet = session.execute (sql)
+        var statement = new SimpleStatement (sql)
+        statement.setIdempotent (true)
+        val future = session.executeAsync (statement)
+        val resultset = future.getUninterruptibly ()
         resultset.iterator.map (packRow).toSeq
     }
 }

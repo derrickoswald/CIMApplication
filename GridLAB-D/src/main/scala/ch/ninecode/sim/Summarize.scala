@@ -347,7 +347,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 .repartition (timeseries ("mrid"))
                 .flatMap (make_history (periods))
             log.info ("""%d historical values calculated""".format (history.count))
-            println (history.take(5).mkString ("\n"))
+            // println (history.take(5).mkString ("\n"))
 
             // save to Cassandra
             history.rdd.saveToCassandra ("cimapplication", "utilization_historical",

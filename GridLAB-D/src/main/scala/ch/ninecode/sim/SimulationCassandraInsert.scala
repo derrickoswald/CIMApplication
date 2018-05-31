@@ -5,10 +5,12 @@ import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 
-import ch.ninecode.gl.ThreePhaseComplexDataElement
-import com.datastax.driver.core.BoundStatement
+import com.datastax.driver.core.BatchStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
+import com.datastax.driver.core.ResultSetFuture
+
+import ch.ninecode.gl.ThreePhaseComplexDataElement
 
 case class SimulationCassandraInsert (cluster: Cluster)
 {
@@ -24,8 +26,10 @@ case class SimulationCassandraInsert (cluster: Cluster)
     }
 
     case class Accumulator (
+        name: String,
         sql: String,
-        statement: BoundStatement,
+        statement: PreparedStatement,
+        batch: BatchStatement,
         intervals: Int,
         average: Boolean,
         var count: Int = 0,
@@ -49,7 +53,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
         }
     }
 
-    def execute (data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): Int =
+    def execute (name: String, data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, ResultSetFuture)])=
     {
         var ret = 0
         val session = cluster.connect
@@ -64,16 +68,19 @@ case class SimulationCassandraInsert (cluster: Cluster)
                     | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
                     | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin) + aggregate.time_to_live
-                val bound = if (bounds.contains (sql))
-                    bounds (sql)
+                val statement = if (statements.contains (sql))
+                    statements (sql)
                 else
                 {
-                    val prepared: PreparedStatement = session.prepare (sql)
-                    val statement: BoundStatement = prepared.bind ()
-                    bounds = bounds + (sql → statement)
+                    val statement = session.prepare (sql)
+                    statements = statements + (sql → statement)
                     statement
                 }
-                Accumulator (sql, bound, aggregate.intervals, typ != "energy")
+                // we can use unlogged batch because the partition key is (mrid, type, period)
+                // which is the same for each accumulator if the data entries come from one recorder file
+                val batch = new BatchStatement (BatchStatement.Type.UNLOGGED)
+                batch.setIdempotent (true)
+                Accumulator (name, sql, statement, batch, aggregate.intervals, typ != "energy")
             }
         )
         val timestamp = new Date ()
@@ -95,34 +102,39 @@ case class SimulationCassandraInsert (cluster: Cluster)
                             // Java and Cassandra timestamps are in milliseconds, but Spark is in seconds not milliseconds
                             val timepoint = entry.millis - 1000L * (period * (accumulator.intervals - 1))
                             timestamp.setTime (timepoint)
-
-                            accumulator.statement.setString        ( 0, entry.element)
-                            accumulator.statement.setString        ( 1, typ)
-                            accumulator.statement.setInt           ( 2, period * accumulator.intervals * 1000)
-                            accumulator.statement.setTimestamp     ( 3, timestamp)
-                            if (accumulator.average)
+                            val partition: List[Object] = List[Object] (
+                                    entry.element,
+                                    typ,
+                                    new java.lang.Integer (period * accumulator.intervals * 1000),
+                                    timestamp
+                                )
+                            val variation = if (accumulator.average)
                             {
                                 val n = accumulator.intervals
-                                accumulator.statement.setDouble    ( 4, accumulator.value_a_re / n)
-                                accumulator.statement.setDouble    ( 5, accumulator.value_a_im / n)
-                                accumulator.statement.setDouble    ( 6, accumulator.value_b_re / n)
-                                accumulator.statement.setDouble    ( 7, accumulator.value_b_im / n)
-                                accumulator.statement.setDouble    ( 8, accumulator.value_c_re / n)
-                                accumulator.statement.setDouble    ( 9, accumulator.value_c_im / n)
+                                List[Object] (
+                                    new java.lang.Double (accumulator.value_a_re / n),
+                                    new java.lang.Double (accumulator.value_a_im / n),
+                                    new java.lang.Double (accumulator.value_b_re / n),
+                                    new java.lang.Double (accumulator.value_b_im / n),
+                                    new java.lang.Double (accumulator.value_c_re / n),
+                                    new java.lang.Double (accumulator.value_c_im / n)
+                                )
                             }
                             else
-                            {
-                                accumulator.statement.setDouble    ( 4, accumulator.value_a_re)
-                                accumulator.statement.setDouble    ( 5, accumulator.value_a_im)
-                                accumulator.statement.setDouble    ( 6, accumulator.value_b_re)
-                                accumulator.statement.setDouble    ( 7, accumulator.value_b_im)
-                                accumulator.statement.setDouble    ( 8, accumulator.value_c_re)
-                                accumulator.statement.setDouble    ( 9, accumulator.value_c_im)
-                            }
-                            accumulator.statement.setString        (10, entry.units)
-                            accumulator.statement.setString        (11, simulation)
-
-                            session.execute (accumulator.statement)
+                                List[Object] (
+                                    new java.lang.Double (accumulator.value_a_re),
+                                    new java.lang.Double (accumulator.value_a_im),
+                                    new java.lang.Double (accumulator.value_b_re),
+                                    new java.lang.Double (accumulator.value_b_im),
+                                    new java.lang.Double (accumulator.value_c_re),
+                                    new java.lang.Double (accumulator.value_c_im)
+                                )
+                            val tail = List[Object] (
+                                entry.units,
+                                simulation
+                            )
+                            val args = partition ::: variation ::: tail
+                            accumulator.batch.add (accumulator.statement.bind (args:_*))
                             ret = ret + 1
                             accumulator.reset ()
                         }
@@ -130,11 +142,11 @@ case class SimulationCassandraInsert (cluster: Cluster)
                 )
             }
         )
-        ret
+        (ret, accumulators.map (accumulator ⇒ ("""%s@%s""".format (accumulator.name, accumulator.intervals), session.executeAsync (accumulator.batch))))
     }
 }
 
 object SimulationCassandraInsert
 {
-    var bounds: Map[String, BoundStatement] = Map()
+    var statements: Map[String, PreparedStatement] = Map()
 }

@@ -28,6 +28,7 @@ import scala.sys.process._
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Session
 import com.datastax.driver.core.ResultSet
+import com.datastax.driver.core.ResultSetFuture
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import org.apache.spark.sql.DataFrame
@@ -497,12 +498,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): Unit =
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[(String, ResultSetFuture)] =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
         val insert = SimulationCassandraInsert (cluster)
-        val count = insert.execute (data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
+        val (count, resultsets) = insert.execute (recorder.name, data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
+        resultsets
     }
 
     def write_glm (trafo: SimulationTrafoKreis): Unit =
@@ -625,18 +627,22 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
     {
+        if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
         // reset cached prepared statements
-        SimulationCassandraInsert.bounds = SimulationCassandraInsert.bounds.empty
+        SimulationCassandraInsert.statements = SimulationCassandraInsert.statements.empty
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
-        if (result._1)
-            trafo.recorders.foreach (recorder ⇒ store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory))
+        val resultsets: Array[(String, ResultSetFuture)] = if (result._1)
+            trafo.recorders.flatMap (recorder ⇒ store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory))
         else
+        {
             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
+            Array()
+        }
 
         if (!options.keep)
             FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
@@ -645,6 +651,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         store_geojson_points (cluster, trafo, extra)
         store_geojson_lines (cluster, trafo, extra)
         store_geojson_polygons (cluster, trafo, extra)
+
+        // note: you cannot ask for the resultset, otherwise it will time out
+        // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
+        resultsets.foreach (resultset ⇒ if (!resultset._2.isDone) log.warn ("""result set %s is not done yet""".format (resultset._1)))
 
         result
     }
