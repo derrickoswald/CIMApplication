@@ -65,9 +65,17 @@ object Main
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
-        opt[String]("host").valueName ("Cassandra").
+        opt[String]("host").valueName ("<cassandra>").
             action ((x, c) ⇒ c.copy (host = x)).
             text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
+
+        opt[String]("keyspace").valueName ("<name>").
+            action ((x, c) ⇒ c.copy (keyspace = x)).
+            text ("Cassandra keyspace under which to store results [%s]".format (default.keyspace))
+
+        opt[Int]("batchsize").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (batchsize = x)).
+            text ("Cassandra maximum batch size (<= 65535) [%s]".format (default.batchsize))
 
         opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
@@ -175,15 +183,12 @@ object Main
                         configuration.set ("spark.cassandra.connection.host", options.host)
 
                     // get the necessary jar files to send to the cluster
-                    if ("" != options.master)
-                    {
-                        val s1 = jarForObject (new DefaultSource ())
-                        val s2 = jarForObject (SimulationOptions ())
-                        if (s1 != s2)
-                            configuration.setJars (Array (s1, s2))
-                        else
-                            configuration.setJars (Array (s1))
-                    }
+                    val s1 = jarForObject (new DefaultSource ())
+                    val s2 = jarForObject (SimulationOptions ())
+                    if (s1 != s2)
+                        configuration.setJars (Array (s1, s2))
+                    else
+                        configuration.setJars (Array (s1))
 
                     configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes

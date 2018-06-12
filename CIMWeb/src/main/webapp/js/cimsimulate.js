@@ -550,7 +550,7 @@ truncate table cimapplication.losses_summary_by_day;
         function do_show ()
         {
             var simulation_id = document.getElementById ("simulation_id").value;
-            if (document.getElementById ("to_map").value)
+            if (document.getElementById ("to_map").checked)
             {
                 var theme = new SimulationTheme ();
                 theme.setSimulation (simulation_id).then (
@@ -566,7 +566,20 @@ truncate table cimapplication.losses_summary_by_day;
                 );
             }
             else
-                alert ("check the 'View on map' checkbox to make this work");
+                cimquery.queryPromise (
+                    {
+                        cassandra: true,
+                        sql: "select json * from cimapplication.simulation where id='" + simulation_id + "'"
+                    }
+                ).then (
+                    function (resultset)
+                    {
+                        var json = JSON.parse (resultset[0]["[json]"]);
+                        document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
+                        TheSimulation = json;
+                        formFill (resultset);
+                    }
+                );
         }
 
         function jsonify (data)

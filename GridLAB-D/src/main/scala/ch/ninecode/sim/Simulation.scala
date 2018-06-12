@@ -44,6 +44,7 @@ import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -158,8 +159,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def generate_player_csv (player: SimulationPlayerQuery, begin: Long, end: Long): Seq[SimulationPlayer] =
     {
-        var from = iso_date_format.format (new Date (begin))
-        var   to = iso_date_format.format (new Date (end))
+        val from = iso_date_format.format (new Date (begin))
+        val   to = iso_date_format.format (new Date (end))
         if (begin > end)
         {
             log.error ("""player "%s" has a start time (%s) after the end time (%s)""".format (player.title, from, to))
@@ -498,10 +499,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[(String, ResultSetFuture)] =
+    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[(String, List[ResultSetFuture])] =
     {
         val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
-        val insert = SimulationCassandraInsert (cluster)
+        val insert = SimulationCassandraInsert (options, cluster)
         val (count, resultsets) = insert.execute (recorder.name, data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
         resultsets
@@ -524,7 +525,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def store_geojson_points (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
-        val sql = """insert into cimapplication.geojson_points json ?"""
+        val sql = """insert into %s.geojson_points json ?""".format (options.keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
         for (n <- trafo.nodes)
@@ -550,7 +551,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def store_geojson_lines (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
-        val sql = """insert into cimapplication.geojson_lines json ?"""
+        val sql = """insert into %s.geojson_lines json ?""".format (options.keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
         for (raw <- trafo.edges)
@@ -587,7 +588,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
         val session: Session = cluster.connect
-        val sql = """insert into cimapplication.geojson_polygons json ?"""
+        val sql = """insert into %s.geojson_polygons json ?""".format (options.keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
         val hull = Hull.scan (get_points (trafo).toList)
@@ -611,7 +612,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def query_extra (cluster: Cluster, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
     {
         val session: Session = cluster.connect
-        val sql = """select * from cimapplication.key_value where simulation='%s'""".format (trafo.simulation)
+        val sql = """select * from %s.key_value where simulation='%s'""".format (options.keyspace, trafo.simulation)
         val resultset: ResultSet = session.execute (sql)
         if (resultset.nonEmpty)
         {
@@ -636,7 +637,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
-        val resultsets: Array[(String, ResultSetFuture)] = if (result._1)
+        val resultsets: Array[(String, List[ResultSetFuture])] = if (result._1)
             trafo.recorders.flatMap (recorder ⇒ store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory))
         else
         {
@@ -654,7 +655,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // note: you cannot ask for the resultset, otherwise it will time out
         // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
-        resultsets.foreach (resultset ⇒ if (!resultset._2.isDone) log.warn ("""result set %s is not done yet""".format (resultset._1)))
+        resultsets.foreach (resultset ⇒ if (resultset._2.exists (!_.isDone)) log.warn ("""result set %s is not done yet""".format (resultset._1)))
 
         result
     }
@@ -704,49 +705,54 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
         )
 
-        val tasks = batch.flatMap (make_tasks)
-        log.info ("""%d task%s to do for simulation %s""".format (tasks.size, if (1 == tasks.size) "" else "s", id))
-
-        val transformers = new Transformers (session, storage)
-        val tdata = transformers.getTransformerData (topological_nodes = true, null)
-        val trafokreise = tasks.flatMap (
-            task ⇒
-            {
-                // get the transformer(s)
-                val transformers: Array[TransformerSet] = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
-                    .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
-                    .filter (_._2._2.TopologicalIsland == task.island) // ... for this Trafokreis
-                    .map (x ⇒ (x._1, x._2._1)) // (low_voltage_node_name, TData)
-                    .groupByKey.values.map (_.toArray).map (TransformerSet).collect
-                if (transformers.length == 0)
-                {
-                    log.error ("""no transformer sets for island %s""".format (task.island))
-                    List ()
-                }
-                else
-                {
-                    if (transformers.length > 1)
-                        log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, transformers.map (_.transformer_name).mkString (",")))
-                    List (
-                        SimulationTrafoKreis (
-                            id,
-                            task.island,
-                            transformers(0),
-                            task.nodes,
-                            task.edges,
-                            task.start,
-                            task.end,
-                            task.players,
-                            task.recorders,
-                            transformers(0).transformer_name + System.getProperty ("file.separator")
-                        )
-                    )
-                }
-            }
-        )
-
         val executors = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
-        val simulations = session.sparkContext.parallelize (trafokreise, executors)
+        val tasks = session.sparkContext.parallelize (batch.flatMap (make_tasks), executors).cache
+        log.info ("""%d task%s to do for simulation %s""".format (tasks.count, if (1 == tasks.count) "" else "s", id))
+
+        // get the transformer(s)
+        val tdata = new Transformers (session, storage).getTransformerData (topological_nodes = true, null)
+        val tx = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
+            .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
+            .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TData, island))
+            .groupByKey.values // Iterable[(TData, island)]
+        def toTransformerSet (transformers: Iterable[(TData, String)]): (String, TransformerSet) =
+        {
+            val island = transformers.head._2
+            if (!transformers.forall (_._2 == island))
+                // log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, tx.map (_.transformer_name).mkString (",")))
+                log.error ("""not all transformers are members of the same island (%s)""".format (island))
+            (island, TransformerSet (transformers.map (_._1).toArray))
+        }
+        val transformers = tx.map (toTransformerSet).collect.toMap
+
+        val simulations =
+            tasks.flatMap (
+                task ⇒
+                {
+                    transformers.get (task.island) match
+                    {
+                        case Some (transformeerset) ⇒
+                            List (
+                                SimulationTrafoKreis (
+                                    id,
+                                    task.island,
+                                    transformeerset,
+                                    task.nodes,
+                                    task.edges,
+                                    task.start,
+                                    task.end,
+                                    task.players,
+                                    task.recorders,
+                                    transformeerset.transformer_name + System.getProperty ("file.separator")
+                                )
+                            )
+                        case None ⇒
+                            log.error ("""no transformer sets for island %s""".format (task.island))
+                            List ()
+                    }
+                }
+            ).cache
+
         val results = simulations.map (execute).cache
         val failures = results.filter (!_._1)
         if (!failures.isEmpty)
@@ -780,8 +786,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         for (x ← ajob.interval) interval.add (x._1, x._2)
         record.add ("interval", interval)
         val players = Json.createArrayBuilder
-        if (tasks.nonEmpty)
-            for (x ← tasks.head.players)
+        if (0 != tasks.count)
+            for (x ← tasks.first.players)
             {
                 val player = Json.createObjectBuilder
                 player.add ("name", x.name)
@@ -796,8 +802,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
         record.add ("players", players)
         val recorders = Json.createArrayBuilder
-        if (tasks.nonEmpty)
-            for (x ← tasks.head.recorders)
+        if (0 != tasks.count)
+            for (x ← tasks.first.recorders)
             {
                 val recorder = Json.createObjectBuilder
                 recorder.add ("name", x.name)
@@ -825,7 +831,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         val cluster = Cluster.builder.addContactPoint (options.host).build
         val c = cluster.connect
-        val prepared = c.prepare ("""insert into cimapplication.simulation json ?""")
+        val prepared = c.prepare ("""insert into %s.simulation json ?""".format (options.keyspace))
         val bound = prepared.bind ()
         bound.setString (0, string.toString)
         c.execute (bound)

@@ -18,7 +18,7 @@ case class SimulationOptions
     /**
      * Spark master.
      */
-    master: String = "local[*]",
+    master: String = "",
 
     /**
      * Spark options.
@@ -29,6 +29,17 @@ case class SimulationOptions
      * Cassandra connection host.
      */
     host: String = "localhost",
+
+    /**
+     * The Cassandra keyspace to save results to.
+     */
+    keyspace: String = "cimapplication",
+
+    /**
+     * The maximum number of statements to submit in one batch.
+     * Note: java.lang.IllegalStateException: Batch statement cannot contain more than 65535 statements.
+     */
+    batchsize: Int = 65535,
 
     /**
      * Storage level for RDD serialization.

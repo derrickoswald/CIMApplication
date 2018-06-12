@@ -9,10 +9,10 @@ import com.datastax.driver.core.BatchStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSetFuture
-
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import com.datastax.driver.core.Session
 
-case class SimulationCassandraInsert (cluster: Cluster)
+case class SimulationCassandraInsert (options: SimulationOptions, cluster: Cluster)
 {
     val calendar: Calendar = Calendar.getInstance ()
     calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
@@ -38,7 +38,9 @@ case class SimulationCassandraInsert (cluster: Cluster)
         var value_b_re: Double = 0.0,
         var value_b_im: Double = 0.0,
         var value_c_re: Double = 0.0,
-        var value_c_im: Double = 0.0
+        var value_c_im: Double = 0.0,
+        var statements: Int = 0,
+        var futures: List[ResultSetFuture] = List()
         )
     {
         def reset (): Unit =
@@ -51,9 +53,34 @@ case class SimulationCassandraInsert (cluster: Cluster)
             value_c_re = 0.0
             value_c_im = 0.0
         }
+
+        def description: String = """%s@%s""".format (name, intervals)
+
+        def execute (session: Session): ResultSetFuture =
+        {
+            val future = session.executeAsync (batch)
+            batch.clear ()
+            statements = 0
+            future
+        }
+
+        def add (session: Session, parameters: Seq[Object]): Unit =
+        {
+            batch.add (statement.bind (parameters:_*))
+            statements = statements + 1
+            if (statements == options.batchsize)
+                futures = futures :+ execute (session)
+        }
+
+        def flush (session: Session): List[ResultSetFuture] =
+        {
+            if (0 != statements)
+                futures = futures :+ execute (session)
+            futures
+        }
     }
 
-    def execute (name: String, data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, ResultSetFuture)])=
+    def execute (name: String, data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, List[ResultSetFuture])])=
     {
         var ret = 0
         val session = cluster.connect
@@ -64,10 +91,10 @@ case class SimulationCassandraInsert (cluster: Cluster)
 
                 val sql = pack (
                     """
-                    | insert into cimapplication.simulated_value
+                    | insert into %s.simulated_value
                     | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
                     | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """.stripMargin) + aggregate.time_to_live
+                    """.stripMargin.format (options.keyspace)) + aggregate.time_to_live
                 val statement = if (statements.contains (sql))
                     statements (sql)
                 else
@@ -134,7 +161,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                                 simulation
                             )
                             val args = partition ::: variation ::: tail
-                            accumulator.batch.add (accumulator.statement.bind (args:_*))
+                            accumulator.add (session, args)
                             ret = ret + 1
                             accumulator.reset ()
                         }
@@ -142,7 +169,7 @@ case class SimulationCassandraInsert (cluster: Cluster)
                 )
             }
         )
-        (ret, accumulators.map (accumulator ⇒ ("""%s@%s""".format (accumulator.name, accumulator.intervals), session.executeAsync (accumulator.batch))))
+        (ret, accumulators.map (accumulator ⇒ (accumulator.description, accumulator.flush (session))))
     }
 }
 

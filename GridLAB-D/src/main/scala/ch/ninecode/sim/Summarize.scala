@@ -134,7 +134,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "utilization",
                 SomeColumns ("mrid", "type", "period", "time", "value", "reference", "utilization", "units", "transformer", "simulation"))
-            log.info ("""%d utilization records saved to cimapplication.utilization""".format (work.count))
+            log.info ("""%d utilization records saved to %s.utilization""".format (work.count, options.keyspace))
         }
 
         val summary = utilization
@@ -168,7 +168,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "utilization_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "transformer", "simulation"))
-            log.info ("""%d utilization summary records saved to cimapplication.utilization_summary_by_day""".format (work.count))
+            log.info ("""%d utilization summary records saved to %s.utilization_summary_by_day""".format (work.count, options.keyspace))
         }
 
         val trafokreise = utilization
@@ -202,7 +202,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "utilization_summary_by_day_by_transformer",
                 SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "simulation"))
-            log.info ("""%d transformer area utilization summary records saved to cimapplication.utilization_summary_by_day_by_transformer""".format (work.count))
+            log.info ("""%d transformer area utilization summary records saved to %s.utilization_summary_by_day_by_transformer""".format (work.count, options.keyspace))
         }
 
         // do daily 1 month, 3 month, 6 month and 12 month historical series
@@ -352,7 +352,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             history.rdd.saveToCassandra ("cimapplication", "utilization_historical",
                 SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
-            log.info ("""%d historical values saved to cimapplication.utilization_historical""".format (history.count))
+            log.info ("""%d historical values saved to %s.utilization_historical""".format (history.count, options.keyspace))
         }
 
         // do the 'all time' historical values
@@ -386,7 +386,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "utilization_historical",
                 SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
-            log.info ("""%d all time historical values saved to cimapplication.utilization_historical""".format (alltime.count))
+            log.info ("""%d all time historical values saved to %s.utilization_historical""".format (alltime.count, options.keyspace))
         }
     }
 
@@ -452,7 +452,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
-        log.info ("""load factor records saved to cimapplication.load_factor_by_day""")
+        log.info ("""load factor records saved to %s.load_factor_by_day""".format (options.keyspace))
     }
 
     /**
@@ -574,7 +574,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "coincidence_factor_by_day",
             SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
-        log.info ("""coincidence factor records saved to cimapplication.coincidence_factor_by_day""")
+        log.info ("""coincidence factor records saved to %s.coincidence_factor_by_day""".format (options.keyspace))
     }
 
     /**
@@ -690,7 +690,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // save to Cassandra
         work.saveToCassandra ("cimapplication", "responsibility_by_day",
             SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
-        log.info ("""responsibility records saved to cimapplication.responsibility_by_day""")
+        log.info ("""responsibility records saved to %s.responsibility_by_day""".format (options.keyspace))
     }
 
     /**
@@ -768,7 +768,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "voltage_deviation_by_day",
                 SomeColumns ("mrid", "type", "date", "min_voltage", "avg_voltage", "max_voltage", "nominal_voltage", "deviation", "units", "simulation", "transformer"))
-            log.info ("""voltage deviation records saved to cimapplication.voltage_deviation_by_day""")
+            log.info ("""voltage deviation records saved to %s.voltage_deviation_by_day""".format (options.keyspace))
         }
 
         // roll up for each transformer
@@ -800,7 +800,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "voltage_deviation_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "min_voltage", "avg_voltage", "max_voltage", "nominal_voltage", "deviation", "units", "simulation"))
-            log.info ("""transformer area voltage deviation records saved to cimapplication.voltage_deviation_summary_by_day""")
+            log.info ("""transformer area voltage deviation records saved to %s.voltage_deviation_summary_by_day""".format (options.keyspace))
         }
     }
 
@@ -876,7 +876,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "losses_by_day",
                 SomeColumns ("mrid", "type", "date", "losses", "units", "transformer", "simulation"))
-            log.info ("""transformer area loss records saved to cimapplication.losses_by_day""")
+            log.info ("""transformer area loss records saved to %s.losses_by_day""".format (options.keyspace))
         }
 
         // roll up each transformer area
@@ -898,7 +898,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // save to Cassandra
             work.saveToCassandra ("cimapplication", "losses_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "losses", "units", "simulation"))
-            log.info ("""transformer area loss records saved to cimapplication.losses_summary_by_day""")
+            log.info ("""transformer area loss records saved to %s.losses_summary_by_day""".format (options.keyspace))
         }
     }
 
