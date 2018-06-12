@@ -1,1 +1,1 @@
-/home/derrick/code/CIMApplication/CIMEar/schema.sql
+../../../../CIMEar/schema.sql
