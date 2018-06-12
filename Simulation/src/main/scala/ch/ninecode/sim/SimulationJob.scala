@@ -7,11 +7,11 @@ import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.JsonString
-import javax.json.JsonStructure
 import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

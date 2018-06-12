@@ -1,29 +1,17 @@
 package ch.ninecode.cim.cimweb
 
-import java.io.ByteArrayOutputStream
-import java.io.StringReader
-import java.nio.charset.StandardCharsets
 import java.util.logging.Logger
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 import javax.ejb.Stateless
-import javax.json.Json
-import javax.json.JsonException
 import javax.json.JsonObject
 import javax.resource.ResourceException
-import javax.resource.cci.Connection
-import javax.ws.rs.GET
 import javax.ws.rs.POST
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.Path
-import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.MatrixParam
-import javax.ws.rs.core.Response
 
-import scala.collection.JavaConverters._
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl

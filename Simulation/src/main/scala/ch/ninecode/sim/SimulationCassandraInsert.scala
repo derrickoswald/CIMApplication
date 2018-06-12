@@ -9,8 +9,9 @@ import com.datastax.driver.core.BatchStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSetFuture
-import ch.ninecode.gl.ThreePhaseComplexDataElement
 import com.datastax.driver.core.Session
+
+import ch.ninecode.gl.ThreePhaseComplexDataElement
 
 case class SimulationCassandraInsert (options: SimulationOptions, cluster: Cluster)
 {

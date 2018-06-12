@@ -6,13 +6,15 @@ import java.util.Properties
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
+import org.slf4j.Logger
 import scopt.OptionParser
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import org.slf4j.Logger
 
 object Main
 {

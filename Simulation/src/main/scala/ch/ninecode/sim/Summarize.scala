@@ -6,6 +6,7 @@ import java.util.Calendar
 import java.util.TimeZone
 
 import scala.reflect.runtime.universe.TypeTag
+
 import com.datastax.spark.connector._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row

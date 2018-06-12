@@ -107,6 +107,7 @@
         <module>Spatial</module>
         <module>SmartMeter</module>
         <module>Ingest</module>
+        <module>Simulation</module>
     </modules>
 
     <dependencyManagement>

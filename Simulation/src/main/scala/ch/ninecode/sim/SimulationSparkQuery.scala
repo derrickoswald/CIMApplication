@@ -1,11 +1,10 @@
 package ch.ninecode.sim
 
-import java.util
-
 import javax.json.Json
 import javax.json.JsonObject
 
 import scala.collection.JavaConversions._
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession

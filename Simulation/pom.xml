@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -9,12 +10,12 @@
         <relativePath>../pom.xml</relativePath>
         <version>2.11-2.2.1-2.4.0</version>
     </parent>
-    <artifactId>GridLAB-D</artifactId>
-    <groupId>ch.ninecode.gl</groupId>
+    <artifactId>Simulation</artifactId>
+    <groupId>ch.ninecode.sim</groupId>
     <name>GridLAB-D</name>
-    <description>Perform GridLAB-D load flow using Spark and Scala</description>
-    <inceptionYear>2016</inceptionYear>
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
+    <description>Perform time series simulation using GridLAB-D load flow via Spark and Scala</description>
+    <inceptionYear>2018</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/Simulation</url>
 
     <properties>
         <!-- component versions -->
@@ -34,12 +35,13 @@
             <artifactId>CIMReader</artifactId>
             <version>${version.dependency.cimreader}</version>
             <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>ch.ninecode.gl</groupId>
-                    <artifactId>GridLAB-D</artifactId>
-                </exclusion>
-            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.gl</groupId>
+            <artifactId>GridLAB-D</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -222,7 +224,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.esl.GridLABDSuite</suites>
+                    <suites>SimulationSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -240,55 +242,19 @@
                 <version>3.0.0</version>
                 <executions>
                     <execution>
-                        <id>make-gridlabd-assembly</id>
+                        <id>make-simulation-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>Einspeiseleistung-${project.parent.version}</finalName>
+                            <finalName>Simulation-${project.parent.version}</finalName>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.esl.Main</mainClass>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>make-export-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>Export-${project.parent.version}</finalName>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <mainClass>ch.ninecode.export.Main</mainClass>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>make-medium_voltage-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>MediumVoltage-${project.parent.version}</finalName>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <mainClass>ch.ninecode.ms.Main</mainClass>
+                                    <mainClass>ch.ninecode.sim.Main</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
