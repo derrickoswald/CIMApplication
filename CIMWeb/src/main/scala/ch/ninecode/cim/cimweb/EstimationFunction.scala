@@ -23,7 +23,12 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    jars = Array (jarForObject (this), jarForObject (options), jarForObject (Cluster.builder), jarForObject (Json.createObjectBuilder))
+    jars = Array (
+        jarForObject (this),
+        jarForObject (options),                           // Simulate.jar
+        jarForObject (ch.ninecode.gl.Complex (0.0, 0.0)), // GridLabD.jar
+        jarForObject (Cluster.builder),                   // spark-cassandra-connector.jar
+        jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON
 
