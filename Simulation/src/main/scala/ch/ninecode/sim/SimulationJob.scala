@@ -168,8 +168,8 @@ object SimulationJob
 
     def parseExtras (name: String, json: JsonObject): Seq[SimulationExtraQuery] =
     {
-        val extra: Seq[JsonObject] = json.getJsonArray ("extra").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
-        extra.flatMap (parseExtra (name, _))
+        val extras: Seq[JsonObject] = json.getJsonArray ("extras").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
+        extras.flatMap (parseExtra (name, _))
     }
 
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
