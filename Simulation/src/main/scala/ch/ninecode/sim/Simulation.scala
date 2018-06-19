@@ -841,10 +841,16 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def run (): Seq[String] =
     {
-        val jobs = SimulationJob.getAll (options)
-        // organize by same RDF and same options
-        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
-        batches.values.map (process).toSeq
+        val schema = Schema (session, options)
+        if (schema.make)
+        {
+            val jobs = SimulationJob.getAll (options)
+            // organize by same RDF and same options
+            val batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
+            batches.values.map (process).toSeq
+        }
+        else
+            List()
     }
 }
 

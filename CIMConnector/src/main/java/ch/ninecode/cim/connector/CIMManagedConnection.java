@@ -216,7 +216,10 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             configuration.set ("spark.sql.warehouse.dir", "file:/tmp/spark-warehouse");
 // need hive jars too:
 //            configuration.set ("spark.sql.catalogImplementation", "hive");
+            // use client mode
             configuration.set ("spark.submit.deployMode", "client");
+            // dial down the console verbosity
+            configuration.set ("spark.ui.showConsoleProgress", "false");
 
             // add the other properties
             for (String key : _RequestInfo.getProperties ().keySet ())

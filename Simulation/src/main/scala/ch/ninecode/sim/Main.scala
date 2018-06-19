@@ -212,21 +212,17 @@ object Main
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    val schema = Schema (session, options)
-                    if (schema.make)
+                    if (0 != options.simulation.size)
                     {
-                        if (0 != options.simulation.size)
-                        {
-                            val sim = Simulation (session, options)
-                            val runs = sim.run ()
-                            log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
-                        }
+                        val sim = Simulation (session, options)
+                        val runs = sim.run ()
+                        log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
+                    }
 
-                        if (options.summarize)
-                        {
-                            val sum = Summarize (session, options)
-                            sum.run ()
-                        }
+                    if (options.summarize)
+                    {
+                        val sum = Summarize (session, options)
+                        sum.run ()
                     }
 
                     val calculate = System.nanoTime ()

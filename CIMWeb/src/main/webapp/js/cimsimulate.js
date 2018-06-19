@@ -533,9 +533,10 @@ truncate table cimapplication.losses_summary_by_day;
             TheSimulation.recorders = query_recorders ();
             TheSimulation.extras = query_extras ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
-            var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
-            var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
             var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
+            var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
+            var write_keyspace = ";write_keyspace=" + document.getElementById ("write_keyspace").value;
+            var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
             var to_map = document.getElementById ("to_map").checked;
             if (to_map)
@@ -544,7 +545,7 @@ truncate table cimapplication.losses_summary_by_day;
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation" + summarize + keep + verbose;
+            url = util.home () + "cim/estimation" + verbose + keep + write_keyspace + summarize;
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {

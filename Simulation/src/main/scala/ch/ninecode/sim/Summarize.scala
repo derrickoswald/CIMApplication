@@ -910,11 +910,15 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
     def run (): Unit =
     {
-        utilization ()
-        load_factor ()
-        coincidence_factor ()
-        responsibility_factor ()
-        voltage_quality ()
-        losses ()
+        val schema = Schema (spark, options)
+        if (schema.make)
+        {
+            utilization ()
+            load_factor ()
+            coincidence_factor ()
+            responsibility_factor ()
+            voltage_quality ()
+            losses ()
+        }
     }
 }
