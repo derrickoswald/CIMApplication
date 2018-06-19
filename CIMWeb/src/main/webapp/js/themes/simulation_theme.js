@@ -193,9 +193,9 @@ define
             load_points_and_lines (trafo)
             {
                 var self = this;
-                var promise = cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                var promise = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
                 .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Points.call (self, data))
                 .then (() =>
                     {
@@ -217,9 +217,9 @@ define
                 {
                     case "utilization":
                         this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day_by_transformer where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day_by_transformer where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setUtilizationSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setUtilization_for_Lines.call (self, data))
                             .then (() =>
                                 {
@@ -229,22 +229,22 @@ define
                         break;
                     case "load_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".load_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setLoadFactor_for_Polygon.call (self, data))
                         break;
                     case "coincidence_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygon.call (self, false, data))
                         break;
                     case "diversity_factor":
                         this.clear_points_and_lines ();
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygon.call (self, true, data))
                         break;
                     case "responsibility_factor":
                          this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".responsibility_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setResponsibility_for_Points.call (self, data))
                             .then (() =>
                                 {
@@ -254,9 +254,9 @@ define
                         break;
                     case "voltage_deviation":
                          this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setDeviationSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setVoltageDeviation_for_Points.call (self, data))
                             .then (() =>
                                 {
@@ -266,9 +266,9 @@ define
                         break;
                     case "losses":
                          this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setLossesSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setLosses_for_Lines.call (self, data))
                             .then (() =>
                                 {
@@ -291,7 +291,7 @@ define
                 switch (subtheme)
                 {
                     case "utilization":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization where period = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization where period = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
                             .then (data => self.setCableUtilization.call (self, data));
                         break;
                     case "load_factor":
@@ -305,7 +305,7 @@ define
                     case "voltage_deviation":
                         break;
                     case "losses":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
                             .then (data => self.setCableLosses.call (self, data));
                         break;
                     case "measurements":
@@ -329,18 +329,18 @@ define
                     case "diversity_factor":
                         break;
                     case "responsibility_factor":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.responsibility_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".responsibility_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseResponsibility.call (self, data));
                         break;
                     case "voltage_deviation":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseVoltageDeviation.call (self, data));
                         break;
                     case "losses":
                         alert (house);
                         break;
                     case "measurements":
-                        cimquery.queryPromise ({ sql: "select json * from cimapplication.measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseMeasurement.call (self, data));
                         break;
                 }
@@ -1128,19 +1128,19 @@ define
                 switch (subtheme)
                 {
                     case "utilization":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.utilization_summary_by_day_by_transformer", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day_by_transformer", cassandra: true })
                             .then (data => self.setUtilizationSummary_for_Polygons.call (self, data));
                         break;
                     case "load_factor":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.load_factor_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".load_factor_by_day", cassandra: true })
                             .then (data => self.setLoadFactor_for_Polygons.call (self, data))
                         break;
                     case "coincidence_factor":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygons.call (self, false, data))
                         break;
                     case "diversity_factor":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.coincidence_factor_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day", cassandra: true })
                             .then (data => self.setCoincidenceFactor_for_Polygons.call (self, true, data))
                         break;
                     case "responsibility_factor":
@@ -1148,11 +1148,11 @@ define
                         ret = Promise.resolve ();
                         break;
                     case "voltage_deviation":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.voltage_deviation_summary_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_summary_by_day", cassandra: true })
                             .then (data => self.setDeviationSummary_for_Polygons.call (self, data));
                         break;
                     case "losses":
-                        ret = cimquery.queryPromise ({ sql: "select json * from cimapplication.losses_summary_by_day", cassandra: true })
+                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_summary_by_day", cassandra: true })
                             .then (data => self.setLosses_for_Polygons.call (self, data))
                         break;
                     case "measurements":
@@ -1169,14 +1169,15 @@ define
                 return (ret);
             }
 
-            setSimulation (id)
+            setSimulation (keyspace, id)
             {
+                this._keyspace = keyspace;
                 this._simulation = id;
                 var self = this;
-                var promise = cimquery.queryPromise ({ sql: "select json * from cimapplication.simulation where id='" + id + "'", cassandra: true })
+                var promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".simulation where id='" + id + "'", cassandra: true })
                 .then (data => self.setSimulationJSON.call (self, data))
                 // query the polygons
-                .then (() => cimquery.queryPromise ({ sql: "select json * from cimapplication.geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Polygons.call (self, data))
                 .then (self.setupPolygons.bind (self));
                 return (promise);

@@ -535,7 +535,7 @@ truncate table cimapplication.losses_summary_by_day;
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
             var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
-            var write_keyspace = ";write_keyspace=" + document.getElementById ("write_keyspace").value;
+            var keyspace = ";write_keyspace=" + write_keyspace;
             var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
             var to_map = document.getElementById ("to_map").checked;
@@ -545,7 +545,7 @@ truncate table cimapplication.losses_summary_by_day;
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation" + verbose + keep + write_keyspace + summarize;
+            url = util.home () + "cim/estimation" + verbose + keep + keyspace + summarize;
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -562,7 +562,7 @@ truncate table cimapplication.losses_summary_by_day;
                             if (to_map)
                             {
                                 var theme = new SimulationTheme ();
-                                theme.setSimulation (simulation_id).then (
+                                theme.setSimulation (write_keyspace, simulation_id).then (
                                     function ()
                                     {
                                         cimmap.get_themer ().removeTheme (theme);
@@ -575,7 +575,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select json * from cimapplication.simulation where id='".replace ("cimapplication", write_keyspace) + simulation_id + "'"
+                                        sql: "select json * from " + write_keyspace + ".simulation where id='" + simulation_id + "'"
                                     }
                                 ).then (
                                     function (resultset)
@@ -601,7 +601,7 @@ truncate table cimapplication.losses_summary_by_day;
             if (document.getElementById ("to_map").checked)
             {
                 var theme = new SimulationTheme ();
-                theme.setSimulation (simulation_id).then (
+                theme.setSimulation (write_keyspace, simulation_id).then (
                     function ()
                     {
                         cimmap.get_themer ().removeTheme (theme);
@@ -617,7 +617,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select json * from cimapplication.simulation where id='".replace ("cimapplication", write_keyspace) + simulation_id + "'"
+                        sql: "select json * from " + write_keyspace + ".simulation where id='" + simulation_id + "'"
                     }
                 ).then (
                     function (resultset)

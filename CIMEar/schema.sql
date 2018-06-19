@@ -128,14 +128,6 @@ create table if not exists cimapplication.key_value (
     primary key (simulation, query, key)
 ) with comment = 'Key-value pairs for extra data';
 
-/*
- * Requires adjustment of cassandra.yaml to enable user defined functions
- * and scripted user defined functions:
- *
- * $ sed --in-place 's/enable_user_defined_functions: false/enable_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml \
- * $ sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml
- *
- */
 create or replace function cimapplication.add_days (t timestamp, days int)
     returns null on null input
     returns timestamp

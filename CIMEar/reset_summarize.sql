@@ -1,0 +1,11 @@
+truncate table cimapplication.utilization;
+truncate table cimapplication.utilization_summary_by_day;
+truncate table cimapplication.utilization_summary_by_day_by_transformer;
+truncate table cimapplication.utilization_historical;
+truncate table cimapplication.load_factor_by_day;
+truncate table cimapplication.coincidence_factor_by_day;
+truncate table cimapplication.responsibility_by_day;
+truncate table cimapplication.voltage_deviation_by_day;
+truncate table cimapplication.voltage_deviation_summary_by_day;
+truncate table cimapplication.losses_by_day;
+truncate table cimapplication.losses_summary_by_day;

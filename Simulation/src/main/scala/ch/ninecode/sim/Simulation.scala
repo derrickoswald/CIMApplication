@@ -679,9 +679,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         read (ajob.cim, ajob.cimreaderoptions, storage)
 
         // perform the extra queries and insert into the key_value table
+        log.info ("""executing %d extra queries""".format (ajob.extras.length))
         ajob.extras.foreach (
             extra ⇒
             {
+                log.info ("""executing %s""".format (extra.query))
                 val df: DataFrame = session.sql (extra.query)
                 if (df.count > 0)
                 {
@@ -697,7 +699,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         if ((keytype != "string") || (valuetype != "string"))
                             log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
                         else
-                            df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra ("cimapplication", "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                            df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (options.keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
                     }
                 }
                 else
