@@ -967,42 +967,133 @@ truncate table cimapplication.losses_summary_by_day;
             }
         }
 
-        function getDateRange ()
+        function getEarliestDate (start)
         {
             return (
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select min(time) as low, max(time) as high from cimapplication.measured_value".replace ("cimapplication", read_keyspace)
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where time < " + start.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
                     function (resultset)
                     {
-                        var start = new Date (resultset[0].low);
-                        var end = new Date (resultset[0].high);
-                        setDateRange (start, end);
-                        var dater = new DateRangePicker (
-                            "#simulation_timerange",
-                            {
-                                timePicker: true,
-                                timePickerIncrement: 15,
-                                locale: {
-                                    format: 'YYYY.MM.DD HH:mm'
-                                },
-                                timePicker24Hour: true,
-                                linkedCalendars: false,
-                                startDate: start,
-                                endDate: end,
-                                minDate: start,
-                                maxDate: end,
-                                showDropdowns: true
-                                //showISOWeekNumbers: true
-                            },
-                            setDateRange
-                        );
-                        // unfortunately you can't set the min and max date as well, so this doesn't work:
-                        // $('#simulation_timerange').data('daterangepicker').setEndDate (end);
-                        // $('#simulation_timerange').data('daterangepicker').setStartDate (start);
+                        if (0 == resultset.length)
+                            return (start);
+                        else
+                        {
+                            var time = new Date (resultset[0].time);
+                            return (
+                                cimquery.queryPromise (
+                                    {
+                                        cassandra: true,
+                                        sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
+                                    }
+                                ).then (
+                                    function (resultset)
+                                    {
+                                        if (0 == resultset.length)
+                                            return (time);
+                                        else
+                                            return (getEarliestDate (new Date (resultset[0].lo)));
+                                    }
+                                )
+                            );
+                        }
+                    }
+                )
+            );
+        }
+
+        function getLatestDate (end)
+        {
+            return (
+                cimquery.queryPromise (
+                    {
+                        cassandra: true,
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where time > " + end.getTime () + " limit 1 allow filtering"
+                    }
+                ).then (
+                    function (resultset)
+                    {
+                        if (0 == resultset.length)
+                            return (end);
+                        else
+                        {
+                            var time = new Date (resultset[0].time);
+                            return (
+                                cimquery.queryPromise (
+                                    {
+                                        cassandra: true,
+                                        sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
+                                    }
+                                ).then (
+                                    function (resultset)
+                                    {
+                                        if (0 == resultset.length)
+                                            return (time);
+                                        else
+                                            return (getLatestDate (new Date (resultset[0].hi)));
+                                    }
+                                )
+                            );
+                        }
+                    }
+                )
+            );
+        }
+
+        function getDateRange ()
+        {
+            // unfortunately Cassandra is really, really, really bad at aggregates,
+            // so we use this recursive widening bracket strategy based on specific mRID values,
+            // instead of the direct query "select min(time) as low, max(time) as high from cimapplication.measured_value"
+            // which takes forever
+            return (
+                cimquery.queryPromise (
+                    {
+                        cassandra: true,
+                        sql: "select time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " limit 1"
+                    }
+                ).then (
+                    function (resultset)
+                    {
+                        if (0 == resultset.length)
+                            alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", read_keyspace));
+                        else
+                        {
+                            var time = new Date (resultset[0].time);
+                            Promise.all ([getEarliestDate (time), getLatestDate (time)]).then (
+                                function (minmax)
+                                {
+                                    var start = minmax[0];
+                                    var end = minmax[1];
+                                    setDateRange (start, end);
+                                    var dater = new DateRangePicker (
+                                        "#simulation_timerange",
+                                        {
+                                            timePicker: true,
+                                            timePickerIncrement: 15,
+                                            locale: {
+                                                format: 'YYYY.MM.DD HH:mm'
+                                            },
+                                            timePicker24Hour: true,
+                                            linkedCalendars: false,
+                                            startDate: start,
+                                            endDate: end,
+                                            minDate: start,
+                                            maxDate: end,
+                                            showDropdowns: true
+                                            //showISOWeekNumbers: true
+                                        },
+                                        setDateRange
+                                    );
+                                    // unfortunately you can't set the min and max date as well, so this doesn't work:
+                                    // $('#simulation_timerange').data('daterangepicker').setEndDate (end);
+                                    // $('#simulation_timerange').data('daterangepicker').setStartDate (start);
+                                }
+                            );
+                        }
                     }
                 )
             );
