@@ -35,6 +35,8 @@ define
                 return (disk);
             }
             mappings = mappings.map (add);
+            // remove Encrypted parameter to avoid: failed: Parameter encrypted is invalid. You cannot specify the encrypted flag if specifying a snapshot id in a block device mapping.
+            mappings = mappings.map (disk => { if (disk.Ebs.SnapshotId) delete disk.Ebs.Encrypted; return (disk); } );
             return (mappings);
         }
 
@@ -55,6 +57,8 @@ define
                 return (disk);
             }
             mappings = mappings.map (add);
+            // remove Encrypted parameter to avoid: failed: Parameter encrypted is invalid. You cannot specify the encrypted flag if specifying a snapshot id in a block device mapping.
+            mappings = mappings.map (disk => { if (disk.Ebs.SnapshotId) delete disk.Ebs.Encrypted; return (disk); } );
             return (mappings);
         }
 
