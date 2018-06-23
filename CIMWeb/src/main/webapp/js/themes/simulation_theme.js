@@ -90,7 +90,7 @@ define
                     if (null != this._TheChart) // remove the existing chart
                     {
                         this._TheMap.removeControl (this._TheChart);
-                        this._TheChart = null;
+                        delete this._TheChart;
                     }
                     this.legend_changed (this._LastValue); // trigger color paint by recursive call
                 }
@@ -156,7 +156,7 @@ define
                 if (this._TheChart)
                 {
                     this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
+                    delete this._TheChart;
                 }
                 if ((null != this._TheMap) && this._TheMap.getSource ("nodes"))
                 {
@@ -566,12 +566,6 @@ define
 
             setUtilizationSummary_for_Polygon (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var transformer = "";
                 var values = data.map (
                     row =>
@@ -582,9 +576,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Utilization (%)", transformer, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart ("Utilization (%)", transformer, values)
             }
 
             setUtilization_for_Lines (data)
@@ -619,12 +615,6 @@ define
 
             setCableUtilization (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var cable = "";
                 var values = data.map (
                     row =>
@@ -635,19 +625,15 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (cable + " Cable Utilization (%)", cable, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (cable + " Cable Utilization (%)", cable, values)
             }
 
             setHouseResponsibility (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var house = "";
                 var values = data.map (
                     row =>
@@ -658,19 +644,15 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (house + " Responsibility (0 → 1)", house, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (house + " Responsibility (0 → 1)", house, values)
             }
 
             setHouseVoltageDeviation (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var house = "";
                 var values = data.map (
                     row =>
@@ -681,19 +663,15 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (house + " Voltage Deviation (%)", house, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (house + " Voltage Deviation (%)", house, values)
             }
 
             setHouseMeasurement (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var house = "";
                 var values = data.map (
                     row =>
@@ -706,9 +684,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (house + " Measurements (Wh)", house, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (house + " Measurements (Wh)", house, values)
             }
 
             setLoadFactor_for_Polygons (data)
@@ -744,12 +724,6 @@ define
 
             setLoadFactor_for_Polygon (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var transformer = "";
                 var values = data.map (
                     row =>
@@ -760,9 +734,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Load Factor (0 → 1)", transformer, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart ("Load Factor (0 → 1)", transformer, values)
             }
 
             setCoincidenceFactor_for_Polygons (invert, data)
@@ -799,12 +775,6 @@ define
 
             setCoincidenceFactor_for_Polygon (invert, data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var transformer = "";
                 var values = data.map (
                     row =>
@@ -816,9 +786,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (invert ? "Diversity Factor (1 → ∞)" : "Coincidence Factor (0 → 1)", transformer, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (invert ? "Diversity Factor (1 → ∞)" : "Coincidence Factor (0 → 1)", transformer, values)
             }
 
             setResponsibility_for_Points (data)
@@ -884,12 +856,6 @@ define
 
             setDeviationSummary_for_Polygon (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var transformer = "";
                 var values = data.map (
                     row =>
@@ -900,9 +866,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Voltage Deviation (%)", transformer, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart ("Voltage Deviation (%)", transformer, values)
             }
 
             setVoltageDeviation_for_Points (data)
@@ -968,12 +936,6 @@ define
 
             setLossesSummary_for_Polygon (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var transformer = "";
                 var values = data.map (
                     row =>
@@ -984,9 +946,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]);
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart ("Transformer Area Losses (Wh)", transformer, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart ("Transformer Area Losses (Wh)", transformer, values)
             }
 
             setLosses_for_Lines (data)
@@ -1021,12 +985,6 @@ define
 
             setCableLosses (data)
             {
-                if (null != this._TheChart)
-                {
-                    this._TheMap.removeControl (this._TheChart);
-                    this._TheChart = null;
-                }
-
                 var cable = "";
                 var values = data.map (
                     row =>
@@ -1037,9 +995,11 @@ define
                     }
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                this._TheChart = new CIMChart ()
-                this._TheMap.addControl (this._TheChart);
-                this._TheChart.addChart (cable + " Cable Losses (Wh)", cable, values)
+                if (!this._TheChart)
+                    this._TheChart = new CIMChart ();
+                if (!this._TheChart.visible ())
+                    this._TheMap.addControl (this._TheChart);
+                this._TheChart.setChart (cable + " Cable Losses (Wh)", cable, values)
             }
 
             setSimulationGeoJSON_Polygons (data)

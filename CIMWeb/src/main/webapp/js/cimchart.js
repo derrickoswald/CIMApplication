@@ -26,17 +26,30 @@ define
                 this._map = map;
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl card";
+                // add the chart div
                 var text = document.createElement ("div");
                 text.id = "chart";
                 text.className = "card-body";
-                text.setAttribute ("style", "min-width: 600px; height: 400px; margin: 0 auto;");
+                text.setAttribute ("style", "min-width: 600px; height: 400px; margin: 0 auto; position: relative;");
                 text.innerHTML = "";
                 this._container.appendChild (text);
+                // add close button
+                var close = document.createElement ("button");
+                close.className = "close";
+                close.setAttribute ("type", "button");
+                close.setAttribute ("aria-label", "Close");
+                close.setAttribute ("style", "position: absolute; top: 2px; right: 8px;");
+                close.innerHTML = `<span aria-hidden="true">&times;</span>`;
+                this._container.appendChild (close);
+                this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
                 return (this._container);
             }
 
             onRemove ()
             {
+                // destroy the chart
+                if (this._theChart)
+                    delete this._theChart;
                 // destroy the container
                 this._container.parentNode.removeChild (this._container);
                 delete this._container;
@@ -48,9 +61,23 @@ define
                 return ("bottom-left");
             }
 
-            addChart (title, name, data)
+            close (event)
             {
-                // Create the chart
+                this._map.removeControl (this);
+            }
+
+            visible ()
+            {
+                return ("undefined" != typeof (this._container));
+            }
+
+            setChart (title, name, data)
+            {
+                // delete any existing chart
+                var chart = document.getElementById ("chart");
+                if (chart)
+                    chart.innerHTML = "";
+                // create the chart
                 this._theChart = window.Highcharts.stockChart
                 (
                     'chart',
