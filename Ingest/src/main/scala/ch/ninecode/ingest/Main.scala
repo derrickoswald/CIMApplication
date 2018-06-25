@@ -203,11 +203,8 @@ object Main
                         configuration.set ("spark.cassandra.connection.host", options.host)
 
                     // get the necessary jar files to send to the cluster
-                    if ("" != options.master)
-                    {
-                        val s1 = jarForObject (IngestOptions ())
-                        configuration.setJars (Array (s1))
-                    }
+                    val s1 = jarForObject (IngestOptions ())
+                    configuration.setJars (Array (s1))
 
                     configuration.set ("spark.ui.showConsoleProgress", "false")
 

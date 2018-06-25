@@ -18,7 +18,7 @@ case class IngestOptions
     /**
      * Spark master.
      */
-    master: String = "local[*]",
+    master: String = "",
 
     /**
      * Spark options.
