@@ -14,4 +14,4 @@ case class SimulationExtraQuery (
     */
    query: String
 
-) extends SimulationQuery
+)

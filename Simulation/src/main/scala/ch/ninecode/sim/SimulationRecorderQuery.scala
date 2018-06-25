@@ -20,16 +20,5 @@ case class SimulationRecorderQuery (
     /**
      * The list of aggregations.
      */
-    aggregations: List[SimulationAggregate],
-
-    /**
-     * The results of the query as a Json array.
-     */
-    jsons: String = null,
-
-    /**
-     * The file name for recording.
-     */
-    file: String = null
+    aggregations: List[SimulationAggregate]
 )
-extends SimulationQuery
