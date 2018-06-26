@@ -95,6 +95,8 @@ object Complex {
     // constants
     val j = Complex (0, 1)
 
+    val regex = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
+
     // factory methods
     def apply (re: Double) = new Complex (re)
 
@@ -119,7 +121,6 @@ object Complex {
     implicit def fromShort (s: Short): Complex = new Complex (s)
     def parseString (string: String): Complex =
     {
-        var regex = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
         val matcher = regex.matcher (string)
         if (matcher.find)
         {

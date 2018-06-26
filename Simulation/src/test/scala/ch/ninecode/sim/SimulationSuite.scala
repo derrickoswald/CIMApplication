@@ -412,8 +412,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |        "ch.ninecode.cim.split_maxsize": 67108864
                     |    },
                     |    "interval": {
-                    |        "start": "2018-01-30T00:00:00.000+0000",
-                    |        "end": "2018-03-01T00:00:00.000+0000"
+                    |        "start": "2017-04-11T20:15:00.000+0000",
+                    |        "end": "2018-04-19T20:00:00.000+0000"
                     |    },
                     |    "transformers": [
                     |        "TRA2755",
@@ -497,7 +497,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "sandbox", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "sandbox", json))
     }
 
     test ("Summarize")

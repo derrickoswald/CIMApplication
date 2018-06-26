@@ -992,7 +992,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 ).then (
                                     function (resultset)
                                     {
-                                        if (0 == resultset.length)
+                                        if ((0 == resultset.length) || (null == resultset[0].lo))
                                             return (time);
                                         else
                                             return (getEarliestDate (new Date (resultset[0].lo)));
@@ -1030,7 +1030,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 ).then (
                                     function (resultset)
                                     {
-                                        if (0 == resultset.length)
+                                        if ((0 == resultset.length) || (null == resultset[0].hi))
                                             return (time);
                                         else
                                             return (getLatestDate (new Date (resultset[0].hi)));

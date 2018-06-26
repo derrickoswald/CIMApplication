@@ -96,14 +96,7 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
                     | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
                     | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin.format (options.keyspace)) + aggregate.time_to_live
-                val statement = if (statements.contains (sql))
-                    statements (sql)
-                else
-                {
-                    val statement = session.prepare (sql)
-                    statements = statements + (sql → statement)
-                    statement
-                }
+                val statement = session.prepare (sql)
                 // we can use unlogged batch because the partition key is (mrid, type, period)
                 // which is the same for each accumulator if the data entries come from one recorder file
                 val batch = new BatchStatement (BatchStatement.Type.UNLOGGED)
@@ -172,9 +165,4 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
         )
         (ret, accumulators.map (accumulator ⇒ (accumulator.description, accumulator.flush (session))))
     }
-}
-
-object SimulationCassandraInsert
-{
-    var statements: Map[String, PreparedStatement] = Map()
 }

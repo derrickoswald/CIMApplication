@@ -70,6 +70,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     iso_date_format.setCalendar (calendar)
 
+    val executors: Int = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
+
     def read (rdf: String, reader_options: Map[String,String] = Map(), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     {
         log.info ("""reading "%s"""".format (rdf))
@@ -600,8 +602,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
         write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
-        // reset cached prepared statements
-        SimulationCassandraInsert.statements = SimulationCassandraInsert.statements.empty
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
@@ -703,19 +703,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         {
                             transformers.get (task.island) match
                             {
-                                case Some (transformeerset) ⇒
+                                case Some (transformerset) ⇒
                                     List (
                                         SimulationTrafoKreis (
                                             id,
                                             task.island,
-                                            transformeerset,
+                                            transformerset,
                                             task.nodes,
                                             task.edges,
                                             task.start,
                                             task.end,
                                             task.players,
                                             task.recorders,
-                                            transformeerset.transformer_name + System.getProperty ("file.separator")
+                                            transformerset.transformer_name + System.getProperty ("file.separator")
                                         )
                                     )
                                 case None ⇒
@@ -723,7 +723,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                     List ()
                             }
                         }
-                    ).cache
+                    ).repartition (executors).cache
 
                 val results = simulations.map (execute).cache
                 val failures = results.filter (!_._1)
