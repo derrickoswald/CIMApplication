@@ -333,8 +333,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // process the list of islands
         val islands = (if (0 != job.transformers.size) islands_trafos.filter (island ⇒ job.transformers.contains (island._2)) else islands_trafos).map (_._1)
-        val rdd1 = queryNetwork // (island, [nodes], [edges])
-        val rdd2 = rdd1.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache  // (island, [nodes], [edges], [players])
+        val rdd1 = queryNetwork.join (islands.keyBy (x ⇒ x)).map (x ⇒ (x._1,  x._2._1))  // (island, ([nodes], [edges]))
+        val rdd2 = rdd1.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache  // (island, ([nodes], [edges], [players]))
         val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache  // (island, [nodes], [edges], [players], [recorders])
         rdd3.map (l ⇒
             {
