@@ -194,6 +194,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     test ("Ingest")
     {
         main (Array ("--unittest", "--verbose",
+            "--master", "spark://sandbox:7077",
             "--host", "sandbox",
             "--mapping", FILE_DEPOT + FILENAME1,
             "--mintime", "2017-10-22 00:00:00", "--maxtime", "2018-02-14 00:00:00",

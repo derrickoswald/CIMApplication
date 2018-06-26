@@ -26,7 +26,15 @@ import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-case class Ingest (spark: SparkSession, options: IngestOptions)
+/**
+ * Import measured data into Cassandra.
+ *
+ * Copies files to HDFS, reads them into Spark, executes a join across a CH### to mRID mapping table and stores them in Cassandra.
+ *
+ * @param session The Spark session to use.
+ * @param options Options regarding Cassandra master, files to process etc.
+ */
+case class Ingest (session: SparkSession, options: IngestOptions)
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -129,6 +137,18 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
             path.substring (index + 1)
         else
             path
+    }
+
+    def readFile (file: String): Array[Byte] =
+    {
+        try
+            Files.readAllBytes (Paths.get (file))
+        catch
+        {
+            case e: Exception =>
+                log.error ("""ingest failed for file "%s"""".format (file), e)
+                Array()
+        }
     }
 
     def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
@@ -248,11 +268,12 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         options.put ("inferSchema", inferSchema)
 
         // we assume a very specific format since there is no header
-        val rdd = spark.sqlContext.read.format ("csv").options (options).csv (filename).rdd
+        val rdd = session.sqlContext.read.format ("csv").options (options).csv (filename).rdd
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
         val ok = readings.filter (_._1 != null)
         ok.saveToCassandra ("cimapplication", "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        rdd.unpersist (false)
     }
 
     def run (): Unit =
@@ -295,10 +316,9 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
         mapping_options.put ("mode", mode)
         mapping_options.put ("inferSchema", inferSchema)
 
-        val bytes = Files.readAllBytes (Paths.get (options.mapping))
-        val mapping_files = putFile (spark, "/" + base_name (options.mapping), bytes, options.mapping.toLowerCase.endsWith (".zip"))
+        val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
         val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-        val dataframe = spark.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
+        val dataframe = session.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
 
         val read = System.nanoTime ()
         log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
@@ -312,24 +332,22 @@ case class Ingest (spark: SparkSession, options: IngestOptions)
 
         for (file ← options.belvis)
         {
-            try
+            val belvis_files =
+            {
+                val start = System.nanoTime ()
+                val data = readFile (file)
+                val files = putFile (session, "/" + base_name (file), data, file.toLowerCase.endsWith (".zip"))
+                val end = System.nanoTime ()
+                log.info ("copy %s: %s bytes, %s seconds".format (new File (file).getName, data.length, (end - start) / 1e9))
+                files
+            }
+            for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
             {
                 var start = System.nanoTime ()
-                val bytes = Files.readAllBytes (Paths.get (file))
-                val belvis_files = putFile (spark, "/" + base_name (file), bytes, file.toLowerCase.endsWith (".zip"))
-                for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
-                {
-                    sub (filename, join_table)
-                    hdfs.delete (new Path (filename), false)
-                    val end = System.nanoTime ()
-                    log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
-                    start = end
-                }
-            }
-            catch
-            {
-                case e: Exception =>
-                    log.error ("""ingest failed for file "%s"""".format (file), e)
+                sub (filename, join_table)
+                hdfs.delete (new Path (filename), false)
+                val end = System.nanoTime ()
+                log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
             }
         }
         hdfs.delete (new Path (filename), false)
