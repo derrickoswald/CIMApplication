@@ -274,6 +274,9 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val ok = readings.filter (_._1 != null)
         ok.saveToCassandra ("cimapplication", "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         rdd.unpersist (false)
+        raw.unpersist (false)
+        readings.unpersist (false)
+        ok.unpersist (false)
     }
 
     def run (): Unit =
