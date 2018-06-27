@@ -70,8 +70,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     iso_date_format.setCalendar (calendar)
 
-    val executors: Int = Math.max (1, session.sparkContext.getExecutorMemoryStatus.keys.size - 1)
-
     def read (rdf: String, reader_options: Map[String,String] = Map(), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     {
         log.info ("""reading "%s"""".format (rdf))
@@ -603,6 +601,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         write_glm (trafo)
         val cluster = Cluster.builder.addContactPoint (options.host).build
         trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
+        // reset cached prepared statements
+        SimulationCassandraInsert.statements = SimulationCassandraInsert.statements.empty
         new File (options.workdir + trafo.directory + "output_data/").mkdirs
         val result = gridlabd (trafo)
         val resultsets: Array[(String, List[ResultSetFuture])] = if (result._1)
@@ -696,7 +696,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             job ⇒
             {
                 val tasks = make_tasks (job)
-                log.info ("""%d task%s to do for simulation %s batch %d""".format (tasks.count, if (1 == tasks.count) "" else "s", id, batchno))
+                val numtasks: Long = tasks.count
+                log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
                 val simulations =
                     tasks.flatMap (
                         task ⇒
@@ -723,8 +724,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                     List ()
                             }
                         }
-                    ).repartition (executors).cache
+                    ).cache
 
+                log.info ("""using %d partitions""".format (simulations.getNumPartitions))
                 val results = simulations.map (execute).cache
                 val failures = results.filter (!_._1)
                 if (!failures.isEmpty)

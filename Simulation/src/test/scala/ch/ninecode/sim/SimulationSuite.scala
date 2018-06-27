@@ -497,7 +497,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "sandbox", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--batchsize", "32767", "--host", "sandbox", json))
     }
 
     test ("Summarize")

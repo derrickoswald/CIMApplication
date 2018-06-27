@@ -61,9 +61,9 @@ case class SimulationTrafoKreis (
             raw ⇒
             {
                 val edges: Iterable[SimulationEdge] = raw.asInstanceOf[Iterable[SimulationEdge]]
-                val ids = edges.map (_.id).toArray
-                var these_recorders = recorders.filter (r ⇒ ids.contains (r.parent))
-                var these_players = players.filter (r ⇒ ids.contains (r.parent))
+                val id = edges.head.id
+                var these_recorders = recorders.filter (_.parent == id) // keep only recorders for primary edge
+                var these_players = players.filter (_.parent == id)
                 edges.map (
                     edge ⇒
                     {
