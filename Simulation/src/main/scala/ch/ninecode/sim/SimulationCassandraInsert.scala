@@ -13,13 +13,15 @@ import com.datastax.driver.core.Session
 
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 
-case class SimulationCassandraInsert (options: SimulationOptions, cluster: Cluster)
+case class SimulationCassandraInsert (cluster: Cluster, keyspace: String = "cimapplication", batchsize: Int = 65535)
 {
     val calendar: Calendar = Calendar.getInstance ()
     calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
     calendar.setTimeInMillis (0L)
     val just_date: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd")
     just_date.setCalendar (calendar)
+
+    var statements: Map[String, PreparedStatement] = Map()
 
     def pack (string: String): String =
     {
@@ -69,14 +71,14 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
         {
             batch.add (statement.bind (parameters:_*))
             statements = statements + 1
-            if (statements == options.batchsize)
-                futures = futures :+ execute (session)
+            if (statements == batchsize)
+                futures = futures.filter (!_.isDone) :+ execute (session)
         }
 
         def flush (session: Session): List[ResultSetFuture] =
         {
             if (0 != statements)
-                futures = futures :+ execute (session)
+                futures = futures.filter (!_.isDone) :+ execute (session)
             futures
         }
     }
@@ -88,14 +90,12 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
         val accumulators = aggregates.map (
             aggregate ⇒
             {
-                import SimulationCassandraInsert._
-
                 val sql = pack (
                     """
                     | insert into %s.simulated_value
                     | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
                     | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """.stripMargin.format (options.keyspace)) + aggregate.time_to_live
+                    """.stripMargin.format (keyspace)) + aggregate.time_to_live
                 val statement = if (statements.contains (sql))
                     statements (sql)
                 else
@@ -130,38 +130,37 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
                             // Java and Cassandra timestamps are in milliseconds, but Spark is in seconds not milliseconds
                             val timepoint = entry.millis - 1000L * (period * (accumulator.intervals - 1))
                             timestamp.setTime (timepoint)
-                            val partition: List[Object] = List[Object] (
+                            val n = accumulator.intervals
+                            val args: List[Object] = if (accumulator.average)
+                                List[Object] (
                                     entry.element,
                                     typ,
                                     new java.lang.Integer (period * accumulator.intervals * 1000),
-                                    timestamp
-                                )
-                            val variation = if (accumulator.average)
-                            {
-                                val n = accumulator.intervals
-                                List[Object] (
+                                    timestamp,
                                     new java.lang.Double (accumulator.value_a_re / n),
                                     new java.lang.Double (accumulator.value_a_im / n),
                                     new java.lang.Double (accumulator.value_b_re / n),
                                     new java.lang.Double (accumulator.value_b_im / n),
                                     new java.lang.Double (accumulator.value_c_re / n),
-                                    new java.lang.Double (accumulator.value_c_im / n)
+                                    new java.lang.Double (accumulator.value_c_im / n),
+                                    entry.units,
+                                    simulation
                                 )
-                            }
                             else
                                 List[Object] (
+                                    entry.element,
+                                    typ,
+                                    new java.lang.Integer (period * accumulator.intervals * 1000),
+                                    timestamp,
                                     new java.lang.Double (accumulator.value_a_re),
                                     new java.lang.Double (accumulator.value_a_im),
                                     new java.lang.Double (accumulator.value_b_re),
                                     new java.lang.Double (accumulator.value_b_im),
                                     new java.lang.Double (accumulator.value_c_re),
-                                    new java.lang.Double (accumulator.value_c_im)
+                                    new java.lang.Double (accumulator.value_c_im),
+                                    entry.units,
+                                    simulation
                                 )
-                            val tail = List[Object] (
-                                entry.units,
-                                simulation
-                            )
-                            val args = partition ::: variation ::: tail
                             accumulator.add (session, args)
                             ret = ret + 1
                             accumulator.reset ()
@@ -172,9 +171,4 @@ case class SimulationCassandraInsert (options: SimulationOptions, cluster: Clust
         )
         (ret, accumulators.map (accumulator ⇒ (accumulator.description, accumulator.flush (session))))
     }
-}
-
-object SimulationCassandraInsert
-{
-    var statements: Map[String, PreparedStatement] = Map()
 }

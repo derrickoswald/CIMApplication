@@ -6,13 +6,11 @@ import java.util.Properties
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 import scopt.OptionParser
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 
@@ -125,10 +123,10 @@ object Main
         help ("help").text ("prints this usage text")
     }
 
-    def jarForObject (obj: Object): String =
+    def jarForClass (cls: Class[_]): String =
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
+        var ret = cls.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
             ret = URLDecoder.decode (ret, "UTF-8")
@@ -185,12 +183,14 @@ object Main
                         configuration.set ("spark.cassandra.connection.host", options.host)
 
                     // get the necessary jar files to send to the cluster
-                    val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (SimulationOptions ())
-                    if (s1 != s2)
-                        configuration.setJars (Array (s1, s2))
-                    else
-                        configuration.setJars (Array (s1))
+                    val sim = jarForClass (SimulationOptions ().getClass)
+                    val glm = jarForClass (Class.forName ("ch.ninecode.gl.GLMEdge"))
+                    val reader = jarForClass (Class.forName ("ch.ninecode.cim.DefaultSource"))
+                    val json = jarForClass (Class.forName ("javax.json.JsonStructure"))
+                    val json_impl = jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl"))
+                    val datastax = jarForClass (Class.forName ("com.datastax.driver.core.Cluster"))
+                    val twitter = jarForClass (Class.forName ("com.twitter.jsr166e.LongAdder"))
+                    configuration.setJars (Array (sim, glm, reader, json, json_impl, datastax, twitter))
 
                     configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes

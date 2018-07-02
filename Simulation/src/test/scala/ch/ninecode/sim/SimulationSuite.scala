@@ -400,7 +400,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     |{
                     |    "name": "Typical",
                     |    "description": "typical simulation file for illustrative purposes",
-                    |    "cim": "data/SAK_sta117_sta206.rdf",
+                    |    "cim": "hdfs://sandbox:8020/SAK_sta117_sta206.rdf",
                     |    "cimreaderoptions": {
                     |        "ch.ninecode.cim.do_about": false,
                     |        "ch.ninecode.cim.do_normalize": false,
@@ -497,7 +497,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--batchsize", "32767", "--host", "sandbox", json))
+        Main.main (Array ("--unittest", "--master", "spark://sandbox:7077", "--verbose", "--keep", "--batchsize", "32767", "--host", "sandbox", json))
     }
 
     test ("Summarize")

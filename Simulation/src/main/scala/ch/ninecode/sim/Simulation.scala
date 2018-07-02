@@ -1,8 +1,6 @@
 package ch.ninecode.sim
 
 import java.io.Closeable
-import java.io.File
-import java.io.PrintWriter
 import java.io.StringReader
 import java.io.StringWriter
 import java.text.SimpleDateFormat
@@ -14,36 +12,28 @@ import java.util.TimeZone
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
-import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
-import scala.io.Source
-import scala.sys.process._
 
 import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.Session
-import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.ResultSetFuture
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.TData
-import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
@@ -53,10 +43,41 @@ import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
+/**
+ * Execute simulations using GridLAB-D.
+ *
+ * Input is in the form of one or more JSON files with all the details of a particular simulation.
+ * The terms used in this context are:
+ *
+ *  - '''Job''': The in-memory representation of a simulation JSON file.
+ *  - '''Batch''': Jobs with the same RDF file and CIMReader parameters (used to avoid redundant reading and topological analysis over multiple jobs).
+ *  - '''Task''': One topological island including nodes, edges, players and recorders.
+ *  - '''Simulation''': One transformer service area (corresponds to one topological island) including the transformer set, nodes, edges, players and recorders.
+ *  - '''TransformerSet''': Usually one transformer, but where transformers are ganged together to provide more power it is the parallel combination of transformers.
+ *
+ * Processing consists of the following steps:
+ *
+ *  - all input JSON files are read and parsed into Jobs
+ *  - Jobs with the same RDF file are gathered into Batches
+ *  - For each batch:
+ *   -    the RDF file is read into Spark RDDs
+ *   -    topological processing adds topological nodes and islands
+ *   -    any 'extra' queries (for data to be attached to GeoJSON objects) are performed against Spark RDDs as DataFrames
+ *   -    a list of transformer sets is created
+ *   -    jobs are converted into individual transformer area tasks, possibly limited by the transformers specified in the job, by:
+ *    -        performing the player queries to determine player files that need to be generated
+ *    -        performing the recorder queries to determine the recorder files that will be created
+ *    -        identifying the nodes and edges that belong to each transformer area (topological island)
+ *   -    for each task (spread out over the cluster of executors) do the simulation as the following steps:
+ *    -        generate the GridLAB-D glm file
+ *    -        query Cassandra for each player file
+ *    -        perform the gridlabd load-flow analysis
+ *    -        insert the contents of each recorder file into Cassandra
+ **/
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
     if (options.verbose)
-        org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     implicit val spark: SparkSession = session
 
@@ -134,25 +155,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     {
         try { block (resource) }
         finally { resource.close () }
-    }
-
-    // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-    def glm_format (obj: JsonObject): String =
-    {
-        var time = 0L
-        var real = 0.0
-        var imag = 0.0
-        val o = obj.asScala
-        o.foreach (
-            x ⇒
-                x._1 match
-                {
-                    case "time" ⇒ time = x._2.asInstanceOf[JsonNumber].longValue
-                    case "real" ⇒ real = x._2.asInstanceOf[JsonNumber].doubleValue
-                    case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
-                }
-        )
-        glm_date_format.format (time) + "," + real + "," + imag
     }
 
     def generate_player_csv (player: SimulationPlayerResult, begin: Long, end: Long): List[SimulationPlayer] =
@@ -352,282 +354,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         ).cache
     }
 
-    def write_player_csv (name: String, text: String): Unit =
-    {
-        val file = new File (options.workdir + name)
-        file.getParentFile.mkdirs
-        if (null != text)
-            using (new PrintWriter (file, "UTF-8"))
-            {
-                writer =>
-                    writer.write (text)
-            }
-    }
-
-    def make_record (time: Long, real: Double, imag: Double): JsonObject =
-        Json.createObjectBuilder ()
-            .add ("time", time)
-            .add ("real", real)
-            .add ("imag", imag)
-            .build ()
-
-    // zero player
-    // "1970-01-01 00:00:00,0.0,0.0"
-    def zero: JsonObject = make_record (0L, 0.0, 0.0)
-
-    def create_player_csv (cluster: Cluster, player: SimulationPlayer, file_prefix: String)
-    {
-        val query = SimulationCassandraQuery (cluster, player.sql)
-        val resultset = query.execute ()
-        val count = resultset.length
-
-        val set =
-            if (0 == count)
-            {
-                log.warn ("""0 records found for "%s" as %s""".format (player.name, player.sql))
-                List (zero)
-            }
-            else
-            {
-                val found = resultset.filter (
-                    j ⇒
-                    {
-                        val time = j.getJsonNumber ("time").longValue
-                        time >= player.start && time < player.end
-                    }
-                )
-                log.info ("""%d records found for "%s" as %s""".format (found.size, player.name, player.sql))
-                found.sortBy (_.getJsonNumber ("time").longValue)
-                // if it is necessary, bookend records could be added:
-                // make_record (player.start, 0.0, 0.0) +: sorted :+ make_record (player.end, 0.0, 0.0)
-            }
-        val text = set.map (glm_format).mkString ("\n")
-        write_player_csv (file_prefix + player.file, text)
-    }
-
-    def gridlabd (trafo: SimulationTrafoKreis): (Boolean, String)=
-    {
-        log.info ("""executing GridLAB-D for %s""".format (trafo.name))
-
-        val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (options.workdir, trafo.directory, trafo.name))
-        var lines = new ListBuffer[String]()
-        var warningLines = 0
-        var errorLines = 0
-        def check (line: String): Unit =
-        {
-            lines += line
-            if (line.contains ("WARNING")) warningLines += 1
-            if (line.contains ("ERROR")) errorLines += 1
-            if (line.contains ("FATAL")) errorLines += 1
-        }
-        val countLogger = ProcessLogger (check, check)
-        val p: Process = Process (command).run (countLogger)
-        // wait for the process to finish
-        val exit_code = p.exitValue
-        if (0 != errorLines)
-            log.error ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
-        else if (0 != warningLines)
-            log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
-
-        ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
-    }
-
-    def read_recorder_csv (file: String, element: String, one_phase: Boolean, units: String): Iterator[ThreePhaseComplexDataElement] =
-    {
-        val name = new File (options.workdir + file)
-        if (!name.exists)
-        {
-            log.error ("""recorder file %s does not exist""".format (name.getCanonicalPath))
-            Iterator.empty
-        }
-        else
-        {
-            val text: Iterator[String] = Source.fromFile (name, "UTF-8").getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
-            val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
-            def toTimeStamp (string: String): Long =
-            {
-                date_format.parse (string).getTime
-            }
-            text.map (
-                line ⇒
-                {
-                    val fields = line.split(",")
-                    if (one_phase)
-                        if (fields.length == 2)
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex(0.0), Complex(0.0), units)
-                        else
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
-                    else
-                        if (fields.length == 4)
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex.fromString (fields(2)), Complex.fromString (fields(3)), units)
-                        else
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
-                }
-            )
-        }
-    }
-
-    def store_recorder_csv (cluster: Cluster, recorder: SimulationRecorder, simulation: String, file_prefix: String): List[(String, List[ResultSetFuture])] =
-    {
-        val data = read_recorder_csv (file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
-        val insert = SimulationCassandraInsert (options, cluster)
-        val (count, resultsets) = insert.execute (recorder.name, data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
-        log.info ("""%d records stored for "%s"""".format (count, recorder.name))
-        resultsets
-    }
-
-    def write_glm (trafo: SimulationTrafoKreis): Unit =
-    {
-        log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
-        val generator = SimulationGLMGenerator (one_phase = true, date_format = glm_date_format, trafo)
-        val text = generator.make_glm ()
-        val file = new File (options.workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
-        file.getParentFile.mkdirs
-        using (new PrintWriter (file, "UTF-8"))
-        {
-            writer =>
-                writer.write (text)
-        }
-    }
-
-    def store_geojson_points (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val session: Session = cluster.connect
-        val sql = """insert into %s.geojson_points json ?""".format (options.keyspace)
-        val prepared = session.prepare (sql)
-        val statement = prepared.bind ()
-        for (n <- trafo.nodes)
-        {
-            val node = n.asInstanceOf[SimulationNode]
-            val properties = extra.collect (
-                {
-                    case (query, id, value) if id == node.equipment =>
-                        (query, value)
-                }
-            ).map (
-                pair ⇒
-                    """"%s": "%s"""".format (pair._1, pair._2)
-            ).mkString ("{", ",", "}")
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] }, "properties": %s }"""
-                .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2, properties)
-            statement.setString (0, json)
-            session.execute (statement)
-        }
-        log.info ("""%d geojson point features stored for "%s"""".format (trafo.nodes.size, trafo.name))
-    }
-
-    def store_geojson_lines (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val session: Session = cluster.connect
-        val sql = """insert into %s.geojson_lines json ?""".format (options.keyspace)
-        val prepared = session.prepare (sql)
-        val statement = prepared.bind ()
-        for (raw <- trafo.edges)
-        {
-            val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
-            val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
-            val properties = extra.collect (
-                {
-                    case (query, id, value) if id == edge.id_equ =>
-                        (query, value)
-                }
-            ).map (
-                pair ⇒
-                    """"%s": "%s"""".format (pair._1, pair._2)
-            ).mkString ("{", ",", "}")
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
-                .format (trafo.simulation, edge.element.id, trafo.transformer.transformer_name, coordinates, properties)
-            statement.setString (0, json)
-            session.execute (statement)
-        }
-        log.info ("""%d geojson line features stored for "%s"""".format (trafo.edges.size, trafo.name))
-    }
-
-    def get_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
-    {
-        var points =
-            for (raw <- trafo.nodes)
-                yield raw.asInstanceOf[SimulationNode].position
-        for (raw <- trafo.edges)
-            points = points ++ raw.asInstanceOf[Iterable[SimulationEdge]].head.position.toIterable
-        points
-    }
-
-    def store_geojson_polygons (cluster: Cluster, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val session: Session = cluster.connect
-        val sql = """insert into %s.geojson_polygons json ?""".format (options.keyspace)
-        val prepared = session.prepare (sql)
-        val statement = prepared.bind ()
-        val hull = Hull.scan (get_points (trafo).toList)
-        val coordinates = hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")
-        val properties = extra.collect (
-            {
-                case (query, id, value) if id == trafo.transformer.transformer_name =>
-                    (query, value)
-            }
-        ).map (
-            pair ⇒
-                """"%s": "%s"""".format (pair._1, pair._2)
-        ).mkString ("{", ",", "}")
-        val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] }, "properties": %s }"""
-            .format (trafo.simulation, trafo.transformer.transformer_name, coordinates, properties)
-        statement.setString (0, json)
-        session.execute (statement)
-        log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
-    }
-
-    def query_extra (cluster: Cluster, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
-    {
-        val session: Session = cluster.connect
-        val sql = """select * from %s.key_value where simulation='%s'""".format (options.keyspace, trafo.simulation)
-        val resultset: ResultSet = session.execute (sql)
-        if (resultset.nonEmpty)
-        {
-            val definitions = resultset.getColumnDefinitions
-            val index_q = definitions.getIndexOf ("query")
-            val index_k = definitions.getIndexOf ("key")
-            val index_v = definitions.getIndexOf ("value")
-            resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
-        }
-        else
-            Array()
-    }
-
-    def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
-    {
-        if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-        log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
-        write_glm (trafo)
-        val cluster = Cluster.builder.addContactPoint (options.host).build
-        trafo.players.foreach (x ⇒ create_player_csv (cluster, x, trafo.directory))
-        // reset cached prepared statements
-        SimulationCassandraInsert.statements = SimulationCassandraInsert.statements.empty
-        new File (options.workdir + trafo.directory + "output_data/").mkdirs
-        val result = gridlabd (trafo)
-        val resultsets: Array[(String, List[ResultSetFuture])] = if (result._1)
-            trafo.recorders.flatMap (recorder ⇒ store_recorder_csv (cluster, recorder, trafo.simulation, trafo.directory))
-        else
-        {
-            log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
-            Array()
-        }
-
-        if (!options.keep)
-            FileUtils.deleteQuietly (new File (options.workdir + trafo.directory))
-
-        val extra = query_extra (cluster, trafo)
-        store_geojson_points (cluster, trafo, extra)
-        store_geojson_lines (cluster, trafo, extra)
-        store_geojson_polygons (cluster, trafo, extra)
-
-        // note: you cannot ask for the resultset, otherwise it will time out
-        // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
-        resultsets.foreach (resultset ⇒ if (resultset._2.exists (!_.isDone)) log.warn ("""result set %s is not done yet""".format (resultset._1)))
-
-        result
-    }
-
     def process (batch: Seq[SimulationJob]): String =
     {
         val storage = StorageLevel.fromString (options.storage)
@@ -725,9 +451,49 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                             }
                         }
                     ).cache
+                simulations.name = "simulations"
+                val numsimulations = simulations.count.asInstanceOf[Int]
+                log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
 
-                log.info ("""using %d partitions""".format (simulations.getNumPartitions))
-                val results = simulations.map (execute).cache
+                // spread the simulations over the cluster
+                val exec = SimulationExecutors (session)
+                val map = exec.getActiveWorkerHostSet
+                val executors = map.keys.toArray
+                log.info ("""executors: %s""".format (executors.mkString (", ")))
+
+                val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
+                raw.name = "raw"
+                val raw_count = raw.count
+                log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
+//                raw.partitions.foreach (
+//                    partition ⇒
+//                    {
+//                        val locations = raw.preferredLocations (partition)
+//                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
+//                    }
+//                )
+                val gridlabd = raw.coalesce (executors.length, false, Some(SimulationCoalescer (executors))).cache
+                gridlabd.name = "gridlabd"
+                val gridlabd_count = gridlabd.count
+                log.info ("""gridlabd RDD has %d elements in %d partitions""".format (gridlabd_count, gridlabd.getNumPartitions))
+//                gridlabd.partitions.foreach (
+//                    partition ⇒
+//                    {
+//                        val locations = gridlabd.preferredLocations (partition)
+//                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
+//                    }
+//                )
+
+                log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
+                val results = gridlabd.map (
+                    trafokreis ⇒
+                    {
+                        val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
+                        runner.execute (trafokreis)
+                    }
+                ).cache
+                val results_count = results.count
+                log.info ("""gridlabd results has %d elements""".format (results_count))
                 val failures = results.filter (!_._1)
                 if (!failures.isEmpty)
                 {
