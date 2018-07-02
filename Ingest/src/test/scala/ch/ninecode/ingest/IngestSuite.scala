@@ -13,6 +13,7 @@ import java.util
 import java.util.zip.ZipInputStream
 
 import scala.collection.JavaConverters._
+import Array._
 
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FunSuite
@@ -208,5 +209,20 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             FILE_DEPOT + FILENAME9,
             FILE_DEPOT + FILENAME10,
             FILE_DEPOT + FILENAME11))
+    }
+
+    test ("Full")
+    {
+        val prefix = "/home/derrick/trial/aws/"
+        val root = prefix + "Messdaten_20180424/"
+        val dir = new File (root)
+        val files = dir.list.filter (_.endsWith (".zip")).map (root + _)
+        val args = concat (Array (
+            "--unittest", "--verbose",
+            "--master", "spark://sandbox:7077",
+            "--host", "sandbox",
+            "--mapping", prefix + "Messdaten_20180424/Steuerung_Messstellen2.csv"),
+            files)
+        main (args)
     }
 }

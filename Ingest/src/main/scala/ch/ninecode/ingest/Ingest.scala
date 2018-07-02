@@ -21,6 +21,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -53,6 +54,104 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
+//    def dumpHeap (): Unit =
+//    {
+//        import java.lang.management.ManagementFactory
+//        import java.lang.management.MemoryType
+//        import scala.collection.JavaConversions._
+//        // System.gc()
+//        for (mpBean ← ManagementFactory.getMemoryPoolMXBeans)
+//        {
+//            if (mpBean.getType eq MemoryType.HEAP)
+//            {
+//                val usage = mpBean.getUsage
+//                log.info ("""  %s: %s%% (%s/%s)""".format (mpBean.getName, (1000.0 * usage.getUsed / usage.getMax / 10.0).asInstanceOf[Int], usage.getUsed, usage.getMax))
+//            }
+//        }
+//    }
+
+    def map_csv_options: mutable.HashMap[String, String] =
+    {
+        val mapping_options = new mutable.HashMap[String, String] ()
+
+        val header = "true"
+        val ignoreLeadingWhiteSpace = "false"
+        val ignoreTrailingWhiteSpace = "false"
+        val sep = ";"
+        val quote = "\""
+        val escape = "\\"
+        val encoding = "UTF-8"
+        val comment = "#"
+        val nullValue = ""
+        val nanValue = "NaN"
+        val positiveInf = "Inf"
+        val negativeInf = "-Inf"
+        val dateFormat = "yyyy-MM-dd"
+        val timestampFormat = "dd.MM.yyyy HH:mm"
+        val mode = "PERMISSIVE"
+        val inferSchema = "true"
+
+        mapping_options.put ("header", header)
+        mapping_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
+        mapping_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
+        mapping_options.put ("sep", sep)
+        mapping_options.put ("quote", quote)
+        mapping_options.put ("escape", escape)
+        mapping_options.put ("encoding", encoding)
+        mapping_options.put ("comment", comment)
+        mapping_options.put ("nullValue", nullValue)
+        mapping_options.put ("nanValue", nanValue)
+        mapping_options.put ("positiveInf", positiveInf)
+        mapping_options.put ("negativeInf", negativeInf)
+        mapping_options.put ("dateFormat", dateFormat)
+        mapping_options.put ("timestampFormat", timestampFormat)
+        mapping_options.put ("mode", mode)
+        mapping_options.put ("inferSchema", inferSchema)
+
+        mapping_options
+    }
+
+    def measurement_csv_options: mutable.HashMap[String, String] =
+    {
+        val measurement_options = new mutable.HashMap[String,String] ()
+
+        val header = "false"
+        val ignoreLeadingWhiteSpace = "false"
+        val ignoreTrailingWhiteSpace = "false"
+        val sep = ";"
+        val quote = "\""
+        val escape = "\\"
+        val encoding = "UTF-8"
+        val comment = "#"
+        val nullValue = ""
+        val nanValue = "NaN"
+        val positiveInf = "Inf"
+        val negativeInf = "-Inf"
+        val dateFormat = "yyyy-MM-dd"
+        val timestampFormat = "dd.MM.yyyy HH:mm"
+        val mode = "DROPMALFORMED"
+        val inferSchema = "true"
+
+        measurement_options.put ("header", header)
+        measurement_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
+        measurement_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
+        measurement_options.put ("sep", sep)
+        measurement_options.put ("quote", quote)
+        measurement_options.put ("escape", escape)
+        measurement_options.put ("encoding", encoding)
+        measurement_options.put ("comment", comment)
+        measurement_options.put ("nullValue", nullValue)
+        measurement_options.put ("nanValue", nanValue)
+        measurement_options.put ("positiveInf", positiveInf)
+        measurement_options.put ("negativeInf", negativeInf)
+        measurement_options.put ("dateFormat", dateFormat)
+        measurement_options.put ("timestampFormat", timestampFormat)
+        measurement_options.put ("mode", mode)
+        measurement_options.put ("inferSchema", inferSchema)
+
+        measurement_options
+    }
+
     def not_all_null (row: Row): Boolean =
     {
         (for (i <- 0 until 96) yield row.isNullAt (7 + (2 * i))).exists (!_)
@@ -83,11 +182,9 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-        val half_period = reading.period * 1000 / 2
         def inrange (i: Int): Boolean =
         {
             val offset = (reading.period * i) * 1000
-            val date_time = new Date (timestamp.getTime + offset - half_period)
             val measurement_time = new Date (timestamp.getTime + offset).getTime
             (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
         }
@@ -98,7 +195,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         yield
         {
             val offset = (reading.period * i) * 1000
-            val date_time = new Date (timestamp.getTime + offset - half_period)
             val measurement_time = new Date (timestamp.getTime + offset)
             val time = ZuluTimestampFormat.format (measurement_time)
             (reading.mRID, "energy", time, (reading.period * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
@@ -155,7 +251,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         var ret = Seq[String]()
 
-        val file: Path = new Path (hdfs.getUri.toString, path)
+        val file = new Path (hdfs.getUri.toString, path)
         // write the file
         try
         {
@@ -229,130 +325,65 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         ret
     }
 
-    def sub (filename: String, join_table: Map[String, String]): Unit =
+    def sub (filename: String, measurement_options: Map[String, String], join_table: Map[String, String]): Unit =
     {
-        val options = new mutable.HashMap[String,String]
-
-        val header = "false"
-        val ignoreLeadingWhiteSpace = "false"
-        val ignoreTrailingWhiteSpace = "false"
-        val sep = ";"
-        val quote = "\""
-        val escape = "\\"
-        val encoding = "UTF-8"
-        val comment = "#"
-        val nullValue = ""
-        val nanValue = "NaN"
-        val positiveInf = "Inf"
-        val negativeInf = "-Inf"
-        val dateFormat = "yyyy-MM-dd"
-        val timestampFormat = "dd.MM.yyyy HH:mm"
-        val mode = "DROPMALFORMED"
-        val inferSchema = "true"
-
-        options.put ("header", header)
-        options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
-        options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
-        options.put ("sep", sep)
-        options.put ("quote", quote)
-        options.put ("escape", escape)
-        options.put ("encoding", encoding)
-        options.put ("comment", comment)
-        options.put ("nullValue", nullValue)
-        options.put ("nanValue", nanValue)
-        options.put ("positiveInf", positiveInf)
-        options.put ("negativeInf", negativeInf)
-        options.put ("dateFormat", dateFormat)
-        options.put ("timestampFormat", timestampFormat)
-        options.put ("mode", mode)
-        options.put ("inferSchema", inferSchema)
-
         // we assume a very specific format since there is no header
-        val rdd = session.sqlContext.read.format ("csv").options (options).csv (filename).rdd
+        val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
+        val rdd = df.rdd
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
         val ok = readings.filter (_._1 != null)
         ok.saveToCassandra ("cimapplication", "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        df.unpersist (false)
         rdd.unpersist (false)
         raw.unpersist (false)
         readings.unpersist (false)
         ok.unpersist (false)
     }
 
+    def process (measurement_options: Map[String, String], join_table: Map[String, String]) (file: String): Unit =
+    {
+        val belvis_files =
+        {
+            val start = System.nanoTime ()
+            val files = putFile (session, "/" + base_name (file), readFile (file), file.toLowerCase.endsWith (".zip"))
+            val end = System.nanoTime ()
+            log.info ("copy %s: %s seconds".format (new File (file).getName, (end - start) / 1e9))
+            files
+        }
+        // dumpHeap ()
+        for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
+        {
+            val start = System.nanoTime ()
+            sub (filename, measurement_options, join_table)
+            hdfs.delete (new Path (filename), false)
+            val end = System.nanoTime ()
+            log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
+        }
+        // dumpHeap ()
+    }
+
     def run (): Unit =
     {
         val begin = System.nanoTime ()
 
-        val header = "true"
-        val ignoreLeadingWhiteSpace = "false"
-        val ignoreTrailingWhiteSpace = "false"
-        val sep = ";"
-        val quote = "\""
-        val escape = "\\"
-        val encoding = "UTF-8"
-        val comment = "#"
-        val nullValue = ""
-        val nanValue = "NaN"
-        val positiveInf = "Inf"
-        val negativeInf = "-Inf"
-        val dateFormat = "yyyy-MM-dd"
-        val timestampFormat = "dd.MM.yyyy HH:mm"
-        val mode = "PERMISSIVE"
-        val inferSchema = "true"
-
-        val mapping_options = new mutable.HashMap[String, String] ()
-
-        mapping_options.put ("header", header)
-        mapping_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
-        mapping_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
-        mapping_options.put ("sep", sep)
-        mapping_options.put ("quote", quote)
-        mapping_options.put ("escape", escape)
-        mapping_options.put ("encoding", encoding)
-        mapping_options.put ("comment", comment)
-        mapping_options.put ("nullValue", nullValue)
-        mapping_options.put ("nanValue", nanValue)
-        mapping_options.put ("positiveInf", positiveInf)
-        mapping_options.put ("negativeInf", negativeInf)
-        mapping_options.put ("dateFormat", dateFormat)
-        mapping_options.put ("timestampFormat", timestampFormat)
-        mapping_options.put ("mode", mode)
-        mapping_options.put ("inferSchema", inferSchema)
-
         val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
         val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-        val dataframe = session.sqlContext.read.format ("csv").options (mapping_options).csv (filename)
+        val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
         val read = System.nanoTime ()
         log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
 
         val ch_number = dataframe.schema.fieldIndex (options.metercol)
         val nis_number = dataframe.schema.fieldIndex (options.mridcol)
-        val join_table = dataframe.rdd.cache.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+        val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
 
         val map = System.nanoTime ()
         log.info ("map: %s seconds".format ((map - read) / 1e9))
 
-        for (file ← options.belvis)
-        {
-            val belvis_files =
-            {
-                val start = System.nanoTime ()
-                val data = readFile (file)
-                val files = putFile (session, "/" + base_name (file), data, file.toLowerCase.endsWith (".zip"))
-                val end = System.nanoTime ()
-                log.info ("copy %s: %s bytes, %s seconds".format (new File (file).getName, data.length, (end - start) / 1e9))
-                files
-            }
-            for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
-            {
-                var start = System.nanoTime ()
-                sub (filename, join_table)
-                hdfs.delete (new Path (filename), false)
-                val end = System.nanoTime ()
-                log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
-            }
-        }
+        // dumpHeap ()
+        options.belvis.foreach (process (measurement_csv_options, join_table))
+
         hdfs.delete (new Path (filename), false)
     }
 }
