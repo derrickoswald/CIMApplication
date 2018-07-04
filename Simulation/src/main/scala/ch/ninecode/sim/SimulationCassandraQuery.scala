@@ -5,7 +5,6 @@ import javax.json.JsonObject
 
 import scala.collection.JavaConversions._
 
-import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.DataType
 import com.datastax.driver.core.DataType.Name.ASCII
 import com.datastax.driver.core.DataType.Name.BIGINT
@@ -34,9 +33,10 @@ import com.datastax.driver.core.DataType.Name.UUID
 import com.datastax.driver.core.DataType.Name.VARCHAR
 import com.datastax.driver.core.DataType.Name.VARINT
 import com.datastax.driver.core.Row
+import com.datastax.driver.core.Session
 import com.datastax.driver.core.SimpleStatement
 
-case class SimulationCassandraQuery (cluster: Cluster, sql: String)
+case class SimulationCassandraQuery (session: Session, sql: String)
 {
     def packRow (row: Row): JsonObject =
     {
@@ -82,7 +82,6 @@ case class SimulationCassandraQuery (cluster: Cluster, sql: String)
 
     def execute (): Seq[JsonObject] =
     {
-        val session = cluster.connect
         var statement = new SimpleStatement (sql)
         statement.setIdempotent (true)
         val future = session.executeAsync (statement)

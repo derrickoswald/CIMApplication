@@ -17,9 +17,10 @@ import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process.Process
 import scala.sys.process.ProcessLogger
-
 import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
+import com.datastax.driver.core.Session
 import org.apache.commons.io.FileUtils
 import org.apache.log4j.LogManager
 import org.slf4j.Logger
@@ -87,14 +88,13 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         file.getParentFile.mkdirs
         using (new PrintWriter (file, "UTF-8"))
         {
-            writer =>
+            writer ⇒
                 writer.write (text)
         }
     }
 
-    def store_geojson_points (cluster: Cluster, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
+    def store_geojson_points (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
-        val session = cluster.connect
         val sql = """insert into %s.geojson_points json ?""".format (keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
@@ -118,9 +118,8 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         // log.info ("""%d geojson point features stored for "%s"""".format (trafo.nodes.size, trafo.name))
     }
 
-    def store_geojson_lines (cluster: Cluster, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
+    def store_geojson_lines (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
-        val session = cluster.connect
         val sql = """insert into %s.geojson_lines json ?""".format (keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
@@ -155,9 +154,8 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         points
     }
 
-    def store_geojson_polygons (cluster: Cluster, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
+    def store_geojson_polygons (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
     {
-        val session = cluster.connect
         val sql = """insert into %s.geojson_polygons json ?""".format (keyspace)
         val prepared = session.prepare (sql)
         val statement = prepared.bind ()
@@ -179,9 +177,8 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         // log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
     }
 
-    def query_extra (cluster: Cluster, keyspace: String, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
+    def query_extra (session: Session, keyspace: String, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
     {
-        val session = cluster.connect
         val sql = """select * from %s.key_value where simulation='%s'""".format (keyspace, trafo.simulation)
         val resultset = session.execute (sql)
         if (resultset.nonEmpty)
@@ -222,14 +219,14 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         if (null != text)
             using (new PrintWriter (file, "UTF-8"))
             {
-                writer =>
+                writer ⇒
                     writer.write (text)
             }
     }
 
-    def create_player_csv (cluster: Cluster, player: SimulationPlayer, file_prefix: String)
+    def create_player_csv (session: Session, player: SimulationPlayer, file_prefix: String)
     {
-        val query = SimulationCassandraQuery (cluster, player.sql)
+        val query = SimulationCassandraQuery (session, player.sql)
         val resultset = query.execute ()
         val count = resultset.length
 
@@ -285,23 +282,24 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
     }
 
-    def read_recorder_csv (workdir: String, file: String, element: String, one_phase: Boolean, units: String): Iterator[ThreePhaseComplexDataElement] =
+    def read_recorder_csv (workdir: String, file: String, element: String, one_phase: Boolean, units: String): Array[ThreePhaseComplexDataElement] =
     {
         val name = new File (workdir + file)
         if (!name.exists)
         {
             log.error ("""recorder file %s does not exist""".format (name.getCanonicalPath))
-            Iterator.empty
+            Array()
         }
         else
         {
-            val text = Source.fromFile (name, "UTF-8").getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
+            val handle = Source.fromFile (name, "UTF-8")
+            val text = handle.getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
             val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
             def toTimeStamp (string: String): Long =
             {
                 date_format.parse (string).getTime
             }
-            text.map (
+            val ret = text.map (
                 line ⇒
                 {
                     val fields = line.split(",")
@@ -316,7 +314,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                         else
                             ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
                 }
-            )
+            ).toArray
+            handle.close
+            ret
         }
     }
 
@@ -328,46 +328,81 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         resultsets.filter (_._2.exists (!_.isDone))
     }
 
+    def closeIfDone (resultset: ResultSetFuture): List[ResultSetFuture] =
+    {
+        if (resultset.isDone)
+        {
+            //val r: ResultSet = resultset.getUninterruptibly
+            val r: ResultSet = resultset.get
+            if (!r.wasApplied)
+                log.error ("""insert was not applied""")
+            val rows = r.all // hopefully this shuts down the socket
+            if (!r.isFullyFetched)
+                log.error ("""insert resultset was not fully fetched""")
+            List()
+        }
+        else
+            List (resultset)
+    }
+
+
     def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
 
+        var ret = (false, "default 'failed' return value")
         write_glm (trafo, workdir)
-        val cluster = Cluster.builder.addContactPoint (cassandra).build
-        trafo.players.foreach (x ⇒ create_player_csv (cluster, x, workdir + trafo.directory))
-        new File (workdir + trafo.directory + "output_data/").mkdirs
-        val result = gridlabd (trafo, workdir)
-        val insert = SimulationCassandraInsert (cluster, keyspace, batchsize)
-        val resultsets = if (result._1)
+        // Note: According to "4 simple rules when using the DataStax drivers for Cassandra"
+        // https://www.datastax.com/dev/blog/4-simple-rules-when-using-the-datastax-drivers-for-cassandra
+        //  1) Use one Cluster instance per (physical) cluster (per application lifetime)
+        // but Cluster does not implement Serializable, so we can't pass it from master to worker,
+        // so we instantiate one per runner execution.
+        // It would be better to establish it once per worker JVM.
+        using (Cluster.builder.addContactPoint (cassandra).build)
         {
-            var undone = List[(String, List[ResultSetFuture])] ()
-            for (index ← trafo.recorders.indices)
-            {
-                val recorder = trafo.recorders(index)
-                val next = store_recorder_csv (insert, recorder, trafo.simulation, workdir, trafo.directory)
-                undone = undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty) ::: next
-            }
-            undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty).toArray
+            cluster ⇒
+                using (cluster.connect)
+                {
+                    // Note: The above also says:
+                    //   2) Use at most one Session per keyspace, or use a single Session and explicitly specify the keyspace in your queries
+                    // so we make one here and pass it as a method parameter
+                    session ⇒
+                        trafo.players.foreach (x ⇒ create_player_csv (session, x, workdir + trafo.directory))
+                        new File (workdir + trafo.directory + "output_data/").mkdirs
+                        ret = gridlabd (trafo, workdir)
+                        val insert = SimulationCassandraInsert (session, keyspace, batchsize)
+                        val resultsets = if (ret._1)
+                        {
+                            var undone = List[(String, List[ResultSetFuture])] ()
+                            for (index ← trafo.recorders.indices)
+                            {
+                                val recorder = trafo.recorders(index)
+                                val next = store_recorder_csv (insert, recorder, trafo.simulation, workdir, trafo.directory)
+                                undone = undone.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty) ::: next
+                            }
+                            undone.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty).toArray
+                        }
+                        else
+                        {
+                            log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
+                            Array()
+                        }
+
+                        if (!keep)
+                            FileUtils.deleteQuietly (new File (workdir + trafo.directory))
+
+                        val extra = query_extra (session, keyspace, trafo)
+                        store_geojson_points (session, keyspace, trafo, extra)
+                        store_geojson_lines (session, keyspace, trafo, extra)
+                        store_geojson_polygons (session, keyspace, trafo, extra)
+
+                        // note: you cannot ask for the resultset, otherwise it will time out
+                        // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
+                        val remainder = resultsets.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty)
+                        remainder.foreach (resultset ⇒ log.warn ("""result set %s is not done yet""".format (resultset._1)))
+                }
         }
-        else
-        {
-            log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
-            Array()
-        }
 
-        if (!keep)
-            FileUtils.deleteQuietly (new File (workdir + trafo.directory))
-
-        val extra = query_extra (cluster, keyspace, trafo)
-        store_geojson_points (cluster, keyspace, trafo, extra)
-        store_geojson_lines (cluster, keyspace, trafo, extra)
-        store_geojson_polygons (cluster, keyspace, trafo, extra)
-
-        // note: you cannot ask for the resultset, otherwise it will time out
-        // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
-        val remainder = resultsets.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty)
-        remainder.foreach (resultset ⇒ log.warn ("""result set %s is not done yet""".format (resultset._1)))
-
-        result
+        ret
     }
 }

@@ -107,7 +107,7 @@ object Main
                 try
                 {
                     val sep = System.getProperty ("file.separator")
-                    val file = new java.io.File(".").getCanonicalPath + (if (x.startsWith (sep)) x else sep + x)
+                    val file = (if (x.startsWith (sep)) x else new java.io.File(".").getCanonicalPath + sep + x)
                     val text = scala.io.Source.fromFile (file, "UTF-8").mkString
                     c.copy (simulation = c.simulation :+ text)
                 }

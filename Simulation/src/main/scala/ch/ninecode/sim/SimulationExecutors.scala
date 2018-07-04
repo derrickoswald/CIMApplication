@@ -94,35 +94,40 @@ case class SimulationExecutors (session: SparkSession)
 
         var foundNewHosts: Boolean = true
         val hosts = getActiveWorkerHosts.size
-        while (foundNewHosts)
+        if (0 != hosts)
         {
-            val old = accumulator.value
-            val dataSet = 1 to hosts * 10000
-            val numTasks = hosts * 100
-            val data = session.sparkContext.parallelize (dataSet, numTasks)
-            data.foreach (
-                _ =>
-                {
-                    val identifier = SparkEnv.get.executorId
-                    log.info ("""executor id: %s""".format (identifier))
-                    val host = InetAddress.getLocalHost
-                    val name = host.getHostName
-                    log.info ("""localhost is %s named %s""".format (host, name))
-                    val split = identifier.split ("=")
-                    val id = split(0)
-                    val worker = if (split.length > 1) split(1) else name
-                    log.info ("""worker %s id: %s""".format (worker, id))
-                    val executor = "executor_" + worker + "_" + id
-                    val address = host.getHostAddress
-                    log.info ("""executing on %s @ %s""".format (executor, address))
-                    val v = new ConcurrentHashMap[String,String]()
-                    v.put (executor, address)
-                    accumulator.add (v)
-                }
-            )
-            val newSet = accumulator.value
-            foundNewHosts = newSet.size > old.size
+            while (foundNewHosts)
+            {
+                val old = accumulator.value
+                val dataSet = 1 to hosts * 1000
+                val numTasks = hosts * 100
+                val data = session.sparkContext.parallelize (dataSet, numTasks)
+                data.foreach (
+                    _ =>
+                    {
+                        val identifier = SparkEnv.get.executorId
+                        log.info ("""executor id: %s""".format (identifier))
+                        val host = InetAddress.getLocalHost
+                        val name = host.getHostName
+                        log.info ("""localhost is %s named %s""".format (host, name))
+                        val split = identifier.split ("=")
+                        val id = split(0)
+                        val worker = if (split.length > 1) split(1) else name
+                        log.info ("""worker %s id: %s""".format (worker, id))
+                        val executor = "executor_" + worker + "_" + id
+                        val address = host.getHostAddress
+                        log.info ("""executing on %s @ %s""".format (executor, address))
+                        val v = new ConcurrentHashMap[String,String]()
+                        v.put (executor, address)
+                        accumulator.add (v)
+                    }
+                )
+                val newSet = accumulator.value
+                foundNewHosts = newSet.size > old.size
+            }
+            accumulator.value
         }
-        accumulator.value
+        else
+            new ConcurrentHashMap[String, String]()
     }
 }

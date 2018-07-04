@@ -461,18 +461,23 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val executors = map.keys.toArray
                 log.info ("""executors: %s""".format (executors.mkString (", ")))
 
-                val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
-                raw.name = "raw"
-                val raw_count = raw.count
-                log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
-//                raw.partitions.foreach (
-//                    partition ⇒
-//                    {
-//                        val locations = raw.preferredLocations (partition)
-//                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
-//                    }
-//                )
-                val gridlabd = raw.coalesce (executors.length, false, Some(SimulationCoalescer (executors))).cache
+                val gridlabd = if (0 !=executors.size)
+                {
+                    val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
+                    raw.name = "raw"
+                    val raw_count = raw.count
+                    log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
+    //                raw.partitions.foreach (
+    //                    partition ⇒
+    //                    {
+    //                        val locations = raw.preferredLocations (partition)
+    //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
+    //                    }
+    //                )
+                    raw.coalesce (executors.length, false, Some(SimulationCoalescer (executors))).cache
+                }
+                else
+                    simulations
                 gridlabd.name = "gridlabd"
                 val gridlabd_count = gridlabd.count
                 log.info ("""gridlabd RDD has %d elements in %d partitions""".format (gridlabd_count, gridlabd.getNumPartitions))

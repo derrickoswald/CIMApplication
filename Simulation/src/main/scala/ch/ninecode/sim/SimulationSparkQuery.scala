@@ -19,9 +19,14 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
     val propertyfield: String = "property"
     val unitfield: String = "unit"
 
+    def pack (string: String): String =
+    {
+        string.replace ("\n", " ").replaceAll ("[ ]+", " ").trim
+    }
+
     def executePlayerQuery (query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] =
     {
-        log.info ("""executing "%s" as %s""".format (query.title, query.query))
+        log.info ("""executing "%s" as %s""".format (query.title, pack (query.query)))
         val resultset = session.sql (query.query).cache
         val island = resultset.schema.fieldIndex (keyfield)
         val name = resultset.schema.fieldIndex (namefield)
@@ -46,7 +51,7 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
 
     def executeRecorderQuery (query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] =
     {
-        log.info ("""executing "%s" as %s""".format (query.title, query.query))
+        log.info ("""executing "%s" as %s""".format (query.title, pack (query.query)))
         val resultset = session.sql (query.query).cache
         val island = resultset.schema.fieldIndex (keyfield)
         val name = resultset.schema.fieldIndex (namefield)

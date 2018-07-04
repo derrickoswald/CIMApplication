@@ -5,16 +5,22 @@ import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 
+import scala.collection.JavaConversions._
+
 import com.datastax.driver.core.BatchStatement
-import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
+import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 
-case class SimulationCassandraInsert (cluster: Cluster, keyspace: String = "cimapplication", batchsize: Int = 65535)
+case class SimulationCassandraInsert (session: Session, keyspace: String = "cimapplication", batchsize: Int = 65535)
 {
+    val log: Logger = LoggerFactory.getLogger (getClass)
+
     val calendar: Calendar = Calendar.getInstance ()
     calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
     calendar.setTimeInMillis (0L)
@@ -59,6 +65,23 @@ case class SimulationCassandraInsert (cluster: Cluster, keyspace: String = "cima
 
         def description: String = """%s@%s""".format (name, intervals)
 
+        def closeIfDone (resultset: ResultSetFuture): List[ResultSetFuture] =
+        {
+            if (resultset.isDone)
+            {
+                //val r: ResultSet = resultset.getUninterruptibly
+                val r: ResultSet = resultset.get
+                if (!r.wasApplied)
+                    log.error ("""insert was not applied""")
+                val rows = r.all // hopefully this shuts down the socket
+                if (!r.isFullyFetched)
+                    log.error ("""insert resultset was not fully fetched""")
+                List()
+            }
+            else
+                List (resultset)
+        }
+
         def execute (session: Session): ResultSetFuture =
         {
             val future = session.executeAsync (batch)
@@ -72,21 +95,20 @@ case class SimulationCassandraInsert (cluster: Cluster, keyspace: String = "cima
             batch.add (statement.bind (parameters:_*))
             statements = statements + 1
             if (statements == batchsize)
-                futures = futures.filter (!_.isDone) :+ execute (session)
+                futures = futures.flatMap (closeIfDone) :+ execute (session)
         }
 
         def flush (session: Session): List[ResultSetFuture] =
         {
             if (0 != statements)
-                futures = futures.filter (!_.isDone) :+ execute (session)
+                futures = futures.flatMap (closeIfDone) :+ execute (session)
             futures
         }
     }
 
-    def execute (name: String, data: Iterator[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, List[ResultSetFuture])])=
+    def execute (name: String, data: Array[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, List[ResultSetFuture])])=
     {
         var ret = 0
-        val session = cluster.connect
         val accumulators = aggregates.map (
             aggregate ⇒
             {
