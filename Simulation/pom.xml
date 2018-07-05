@@ -19,8 +19,8 @@
 
     <properties>
         <!-- component versions -->
-        <version.dependency.cassandra_spark>2.0.7</version.dependency.cassandra_spark>
-        <version.dependency.cassandra_java>3.4.0</version.dependency.cassandra_java>
+        <version.dependency.cassandra_spark>2.3.0</version.dependency.cassandra_spark>
+        <version.dependency.cassandra_java>3.5.1</version.dependency.cassandra_java>
         <version.dependency.sqlite>3.14.2.1</version.dependency.sqlite>
         <version.dependency.json>1.1.2</version.dependency.json>
 

@@ -328,24 +328,6 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         resultsets.filter (_._2.exists (!_.isDone))
     }
 
-    def closeIfDone (resultset: ResultSetFuture): List[ResultSetFuture] =
-    {
-        if (resultset.isDone)
-        {
-            //val r: ResultSet = resultset.getUninterruptibly
-            val r: ResultSet = resultset.get
-            if (!r.wasApplied)
-                log.error ("""insert was not applied""")
-            val rows = r.all // hopefully this shuts down the socket
-            if (!r.isFullyFetched)
-                log.error ("""insert resultset was not fully fetched""")
-            List()
-        }
-        else
-            List (resultset)
-    }
-
-
     def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
@@ -378,9 +360,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                             {
                                 val recorder = trafo.recorders(index)
                                 val next = store_recorder_csv (insert, recorder, trafo.simulation, workdir, trafo.directory)
-                                undone = undone.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty) ::: next
+                                undone = undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty) ::: next
                             }
-                            undone.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty).toArray
+                            undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty).toArray
                         }
                         else
                         {
@@ -398,7 +380,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
 
                         // note: you cannot ask for the resultset, otherwise it will time out
                         // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
-                        val remainder = resultsets.map (r ⇒ (r._1, r._2.flatMap (closeIfDone))).filter (_._2.nonEmpty)
+                        val remainder = resultsets.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty)
                         remainder.foreach (resultset ⇒ log.warn ("""result set %s is not done yet""".format (resultset._1)))
                 }
         }

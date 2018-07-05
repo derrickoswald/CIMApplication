@@ -5,8 +5,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 
-import scala.collection.JavaConversions._
-
 import com.datastax.driver.core.BatchStatement
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSet
@@ -14,6 +12,9 @@ import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import shade.com.datastax.spark.connector.google.common.util.concurrent.FutureCallback
+import shade.com.datastax.spark.connector.google.common.util.concurrent.Futures
+import shade.com.datastax.spark.connector.google.common.util.concurrent.MoreExecutors
 
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 
@@ -65,28 +66,28 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
 
         def description: String = """%s@%s""".format (name, intervals)
 
-        def closeIfDone (resultset: ResultSetFuture): List[ResultSetFuture] =
-        {
-            if (resultset.isDone)
-            {
-                //val r: ResultSet = resultset.getUninterruptibly
-                val r: ResultSet = resultset.get
-                if (!r.wasApplied)
-                    log.error ("""insert was not applied""")
-                val rows = r.all // hopefully this shuts down the socket
-                if (!r.isFullyFetched)
-                    log.error ("""insert resultset was not fully fetched""")
-                List()
-            }
-            else
-                List (resultset)
-        }
-
         def execute (session: Session): ResultSetFuture =
         {
             val future = session.executeAsync (batch)
             batch.clear ()
             statements = 0
+            // see also: https://www.datastax.com/dev/blog/java-driver-async-queries
+            Futures.addCallback (future, new FutureCallback[ResultSet] ()
+            {
+                def onSuccess (result: ResultSet): Unit =
+                {
+                    if (!result.wasApplied)
+                        log.error ("""insert was not applied""")
+                    val rows = result.all // hopefully this shuts down the socket
+                    if (!result.isFullyFetched)
+                        log.error ("""insert resultset was not fully fetched""")
+                }
+
+                def onFailure (t: Throwable): Unit =
+                {
+                    log.error ("error while waiting for Cassandra execute: " + t.getMessage)
+                }
+            }, MoreExecutors.newDirectExecutorService)
             future
         }
 
@@ -95,13 +96,13 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
             batch.add (statement.bind (parameters:_*))
             statements = statements + 1
             if (statements == batchsize)
-                futures = futures.flatMap (closeIfDone) :+ execute (session)
+                futures = futures.filter (!_.isDone) :+ execute (session)
         }
 
         def flush (session: Session): List[ResultSetFuture] =
         {
             if (0 != statements)
-                futures = futures.flatMap (closeIfDone) :+ execute (session)
+                futures = futures.filter (!_.isDone) :+ execute (session)
             futures
         }
     }
