@@ -64,180 +64,180 @@ define
 
         function start ()
         {
-            var master_startup_script = "\
-Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n\
-MIME-Version: 1.0\n\
-\n\
---==BOUNDARY==\n\
-Content-Type: text/text/x-shellscript; charset=\"us-ascii\"\n\
-\n\
-#!/bin/bash\n\
-# Specify the cluster that the container instance should register into\n\
-cluster=" + details.cluster.clusterName + "\n\
-\n\
-# Write the cluster configuration variables to the ecs.config file\n\
-echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config\n\
-echo ECS_INSTANCE_ATTRIBUTES={\\\"node_type\\\": \\\"master\\\"} >> /etc/ecs/ecs.config\n\
-\n\
-# Install the ftp, unzip and the jq JSON parser\n\
-yum install -y ftp unzip jq\n\
-\n\
-# Install a modern version of the aws-cli package (yum installs an old one)\n\
-pushd /tmp\n\
-curl \"https://s3.amazonaws.com/aws-cli/awscli-bundle.zip\" -o \"awscli-bundle.zip\"\n\
-unzip awscli-bundle.zip\n\
-rm  awscli-bundle.zip\n\
-./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws\n\
-rm -rf awscli-bundle\n\
-popd\n\
-\n\
---==BOUNDARY==\n\
-Content-Type: text/text/upstart-job; charset=\"us-ascii\"\n\
-\n\
-#upstart-job\n\
-description \"Amazon EC2 Container Service (start task on instance boot)\"\n\
-author \"Derrick Oswald\"\n\
-start on started ecs\n\
-\n\
-script\n\
-    exec 2>>/var/log/ecs/ecs-start-task.log\n\
-    set -x\n\
-    until curl -s http://localhost:51678/v1/metadata\n\
-    do\n\
-        sleep 1\n\
-    done\n\
-\n\
-    # Grab the container instance ARN, cluster name and AWS region from instance metadata\n\
-    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )\n\
-    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )\n\
-    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')\n\
-\n\
-    # Get the master public DNS name\n\
-    master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
-    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
-    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
-\n\
-    # make the overrides JSON file\n\
-    cat <<-EOF >/tmp/overrides.json\n\
-	{\n\
-		\"containerOverrides\":\n\
-		[\n\
-			{\n\
-				\"name\": \"master\",\n\
-				\"command\": [\"start-spark\", \"master\"],\n\
-				\"environment\":\n\
-				[\n\
-					{\n\
-						\"name\": \"SPARK_PUBLIC_DNS\",\n\
-						\"value\": $master_dns_name\n\
-					}\n\
-				]\n\
-			}\n\
-		]\n\
-	}\n\
-	EOF\n\
-\n\
-    # Jam the local IP address for master in /etc/hosts\n\
-    echo $master_ip_address	master >> /etc/hosts\n\
-\n\
-    # Specify the task definition to run at launch\n\
-    task_definition=" + details.master_taskdefinition.family + "\n\
-\n\
-    # Run the AWS CLI start-task command to start your task on this container instance\n\
-    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json\n\
-end script\n\
---==BOUNDARY==--";
+            var master_startup_script =
+`Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+MIME-Version: 1.0
 
-            var worker_startup_script = "\
-Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n\
-MIME-Version: 1.0\n\
-\n\
---==BOUNDARY==\n\
-Content-Type: text/text/x-shellscript; charset=\"us-ascii\"\n\
-\n\
-#!/bin/bash\n\
-# Specify the cluster that the container instance should register into\n\
-cluster=" + details.cluster.clusterName + "\n\
-\n\
-# Write the cluster configuration variables to the ecs.config file\n\
-echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config\n\
-echo ECS_INSTANCE_ATTRIBUTES={\\\"node_type\\\": \\\"worker\\\"} >> /etc/ecs/ecs.config\n\
-\n\
-# Install the ftp, unzip and the jq JSON parser\n\
-yum install -y ftp unzip jq\n\
-\n\
-# Install a modern version of the aws-cli package (yum installs an old one)\n\
-pushd /tmp\n\
-curl \"https://s3.amazonaws.com/aws-cli/awscli-bundle.zip\" -o \"awscli-bundle.zip\"\n\
-unzip awscli-bundle.zip\n\
-rm  awscli-bundle.zip\n\
-./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws\n\
-rm -rf awscli-bundle\n\
-popd\n\
-\n\
---==BOUNDARY==\n\
-Content-Type: text/text/upstart-job; charset=\"us-ascii\"\n\
-\n\
-#upstart-job\n\
-description \"Amazon EC2 Container Service (start task on instance boot)\"\n\
-author \"Derrick Oswald\"\n\
-start on started ecs\n\
-\n\
-script\n\
-    exec 2>>/var/log/ecs/ecs-start-task.log\n\
-    set -x\n\
-    until curl -s http://localhost:51678/v1/metadata\n\
-    do\n\
-        sleep 1\n\
-    done\n\
-\n\
-    # Grab the container instance ARN, cluster name and AWS region from instance metadata\n\
-    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )\n\
-    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )\n\
-    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')\n\
-\n\
-    # Get the master internal DNS name\n\
-    until [ -n \"$master_ecs_arn\" ]; do master_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == master' | jq '.containerInstanceArns|.[0]' | awk -F'\"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;\n\
-    master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $master_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
-    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')\n\
-    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
-\n\
-    # Get the worker public DNS name\n\
-    worker_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'\"' '{print $2}')\n\
-    worker_dns_name=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')\n\
-    worker_ip_address=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '\"')\n\
-\n\
-    # make the overrides JSON file\n\
-    cat <<-EOF >/tmp/overrides.json\n\
-	{\n\
-		\"containerOverrides\":\n\
-		[\n\
-			{\n\
-				\"name\": \"worker\",\n\
-				\"command\": [\"start-spark\", \"worker\", $master_dns_name],\n\
-				\"environment\":\n\
-				[\n\
-					{\n\
-						\"name\": \"SPARK_PUBLIC_DNS\",\n\
-						\"value\": $worker_dns_name\n\
-					}\n\
-				]\n\
-			}\n\
-		]\n\
-	}\n\
-	EOF\n\
-\n\
-    # Jam the local IP address for master and worker in /etc/hosts\n\
-    echo $master_ip_address	master >> /etc/hosts\n\
-    echo $worker_ip_address	worker >> /etc/hosts\n\
-\n\
-    # Specify the task definition to run at launch\n\
-    task_definition=" + details.worker_taskdefinition.family + "\n\
-\n\
-    # Run the AWS CLI start-task command to start your task on this container instance\n\
-    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json\n\
-end script\n\
---==BOUNDARY==--";
+--==BOUNDARY==
+Content-Type: text/text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+# Specify the cluster that the container instance should register into
+cluster=${ details.cluster.clusterName }
+
+# Write the cluster configuration variables to the ecs.config file
+echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config
+echo ECS_INSTANCE_ATTRIBUTES={\\"node_type\\": \\"master\\"} >> /etc/ecs/ecs.config
+
+# Install the ftp, unzip and the jq JSON parser
+yum install -y ftp unzip jq
+
+# Install a modern version of the aws-cli package (yum installs an old one)
+pushd /tmp
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+unzip awscli-bundle.zip
+rm  awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+rm -rf awscli-bundle
+popd
+
+--==BOUNDARY==
+Content-Type: text/text/upstart-job; charset="us-ascii"
+
+#upstart-job
+description "Amazon EC2 Container Service (start task on instance boot)"
+author "Derrick Oswald"
+start on started ecs
+
+script
+    exec 2>>/var/log/ecs/ecs-start-task.log
+    set -x
+    until curl -s http://localhost:51678/v1/metadata
+    do
+        sleep 1
+    done
+
+    # Grab the container instance ARN, cluster name and AWS region from instance metadata
+    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )
+    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )
+    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')
+
+    # Get the master public DNS name
+    master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')
+    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '"')
+
+    # make the overrides JSON file
+    cat <<-EOF >/tmp/overrides.json
+	{
+		"containerOverrides":
+		[
+			{
+				"name": "master",
+				"command": ["start-spark", "master"],
+				"environment":
+				[
+					{
+						"name": "SPARK_PUBLIC_DNS",
+						"value": $master_dns_name
+					}
+				]
+			}
+		]
+	}
+	EOF
+
+    # Jam the local IP address for master in /etc/hosts
+    echo $master_ip_address	master >> /etc/hosts
+
+    # Specify the task definition to run at launch
+    task_definition=${ details.master_taskdefinition.family }
+
+    # Run the AWS CLI start-task command to start your task on this container instance
+    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json
+end script
+--==BOUNDARY==--`;
+
+        var worker_startup_script =
+`Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+MIME-Version: 1.0
+
+--==BOUNDARY==
+Content-Type: text/text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+# Specify the cluster that the container instance should register into
+cluster=${ details.cluster.clusterName }
+
+# Write the cluster configuration variables to the ecs.config file
+echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config
+echo ECS_INSTANCE_ATTRIBUTES={\\"node_type\\": \\"worker\\"} >> /etc/ecs/ecs.config
+
+# Install the ftp, unzip and the jq JSON parser
+yum install -y ftp unzip jq
+
+# Install a modern version of the aws-cli package (yum installs an old one)
+pushd /tmp
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+unzip awscli-bundle.zip
+rm  awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+rm -rf awscli-bundle
+popd
+
+--==BOUNDARY==
+Content-Type: text/text/upstart-job; charset="us-ascii"
+
+#upstart-job
+description "Amazon EC2 Container Service (start task on instance boot)"
+author "Derrick Oswald"
+start on started ecs
+
+script
+    exec 2>>/var/log/ecs/ecs-start-task.log
+    set -x
+    until curl -s http://localhost:51678/v1/metadata
+    do
+        sleep 1
+    done
+
+    # Grab the container instance ARN, cluster name and AWS region from instance metadata
+    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )
+    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )
+    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')
+
+    # Get the master internal DNS name
+    until [ -n "$master_ecs_arn" ]; do master_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == master' | jq '.containerInstanceArns|.[0]' | awk -F'"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;
+    master_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $master_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')
+    master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '"')
+
+    # Get the worker public DNS name
+    worker_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    worker_dns_name=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')
+    worker_ip_address=$(aws ec2 describe-instances --region $region --instance-id $worker_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '"')
+
+    # make the overrides JSON file
+    cat <<-EOF >/tmp/overrides.json
+	{
+		"containerOverrides":
+		[
+			{
+				"name": "worker",
+				"command": ["start-spark", "worker", $master_dns_name],
+				"environment":
+				[
+					{
+						"name": "SPARK_PUBLIC_DNS",
+						"value": $worker_dns_name
+					}
+				]
+			}
+		]
+	}
+	EOF
+
+    # Jam the local IP address for master and worker in /etc/hosts
+    echo $master_ip_address	master >> /etc/hosts
+    echo $worker_ip_address	worker >> /etc/hosts
+
+    # Specify the task definition to run at launch
+    task_definition=${ details.worker_taskdefinition.family }
+
+    # Run the AWS CLI start-task command to start your task on this container instance
+    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json
+end script
+--==BOUNDARY==--`;
 
             var master_price = document.getElementById ("master_price").value;
             if ("" == master_price)
