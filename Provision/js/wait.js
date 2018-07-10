@@ -19,7 +19,7 @@ define
         var details = null;
         var attempts = 0;
         var SLEEP_TIME = 2000; // milliseconds between attempts
-        var MAX_ATTEMPTS = 30; // at 2 seconds per attempt, this is one minute
+        var MAX_ATTEMPTS = 60; // at 2 seconds per attempt, this is two minutes
 
         function sleep (ms)
         {
@@ -58,10 +58,9 @@ define
         function wait_for_instances ()
         {
             attempts += 1;
-            var workers = details.worker_count
-            if ((0 == workers) || isNaN (workers))
-                workers = 1;
-            var waiting_on = workers + 1;
+            var workers = details.worker_count;
+            var cassandras = details.cassandra_count;
+            var waiting_on = 1 + workers + cassandras;
             var ecs = new AWS.ECS ();
             var params =
             {
@@ -114,7 +113,7 @@ define
                                                 }
                                             );
                                             document.getElementById ("ssh_command").innerHTML = text;
-                                            if (waiting_on >= count)
+                                            if (count == waiting_on)
                                                 started ();
                                             else
                                                 if (attempts >= MAX_ATTEMPTS)

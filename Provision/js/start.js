@@ -8,8 +8,8 @@ define
 (
     [],
     /**
-     * @summary Start master and worker instances.
-     * @description Executes requestSpotInstances for master and workers.
+     * @summary Start master, worker and Cassandra instances.
+     * @description Executes requestSpotInstances for Spark master, workers and Cassandra.
      * @name start
      * @exports start
      * @version 1.0
@@ -18,38 +18,15 @@ define
     {
         var details;
 
-        function adjust_master_disk ()
+        function adjust_disk (details, instance)
         {
             var mappings = JSON.parse (JSON.stringify (details.image.BlockDeviceMappings));
-            var master = details.master;
             function sum (size, disk)
             {
                 return (size + disk.Ebs.VolumeSize);
             }
             var needed = mappings.reduce (sum, 0);
-            var extra = master.storage - needed;
-            function add (disk)
-            {
-                if (disk.DeviceName == "/dev/xvdcz")
-                    disk.Ebs.VolumeSize = disk.Ebs.VolumeSize + extra;
-                return (disk);
-            }
-            mappings = mappings.map (add);
-            // remove Encrypted parameter to avoid: failed: Parameter encrypted is invalid. You cannot specify the encrypted flag if specifying a snapshot id in a block device mapping.
-            mappings = mappings.map (disk => { if (disk.Ebs.SnapshotId) delete disk.Ebs.Encrypted; return (disk); } );
-            return (mappings);
-        }
-
-        function adjust_worker_disk ()
-        {
-            var mappings = JSON.parse (JSON.stringify (details.image.BlockDeviceMappings));
-            var worker = details.worker;
-            function sum (size, disk)
-            {
-                return (size + disk.Ebs.VolumeSize);
-            }
-            var needed = mappings.reduce (sum, 0);
-            var extra = worker.storage - needed;
+            var extra = instance.storage - needed;
             function add (disk)
             {
                 if (disk.DeviceName == "/dev/xvdcz")
@@ -117,6 +94,12 @@ script
     master_dns_name=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')
     master_ip_address=$(aws ec2 describe-instances --region $region --instance-id $master_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '"')
 
+    # Get the seed internal DNS name
+    until [ -n "$seed_ecs_arn" ]; do seed_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == cassandra_seed' | jq '.containerInstanceArns|.[0]' | awk -F'"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;
+    seed_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $seed_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    seed_dns_name=$(aws ec2 describe-instances --region $region --instance-id $seed_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')
+    seed_ip_address=$(aws ec2 describe-instances --region $region --instance-id $seed_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress' | tr -d '"')
+
     # make the overrides JSON file
     cat <<-EOF >/tmp/overrides.json
 	{
@@ -139,6 +122,7 @@ script
 
     # Jam the local IP address for master in /etc/hosts
     echo $master_ip_address	master >> /etc/hosts
+    echo $seed_ip_address	cassandra >> /etc/hosts
 
     # Specify the task definition to run at launch
     task_definition=${ details.master_taskdefinition.family }
@@ -239,6 +223,204 @@ script
 end script
 --==BOUNDARY==--`;
 
+        var cassandra_seed_startup_script =
+`Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+MIME-Version: 1.0
+
+--==BOUNDARY==
+Content-Type: text/text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+# Specify the cluster that the container instance should register into
+cluster=${ details.cluster.clusterName }
+
+# Write the cluster configuration variables to the ecs.config file
+echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config
+echo ECS_INSTANCE_ATTRIBUTES={\\"node_type\\": \\"cassandra_seed\\"} >> /etc/ecs/ecs.config
+
+# Install the ftp, unzip and the jq JSON parser
+yum install -y ftp unzip jq
+
+# Install a modern version of the aws-cli package (yum installs an old one)
+pushd /tmp
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+unzip awscli-bundle.zip
+rm  awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+rm -rf awscli-bundle
+popd
+
+--==BOUNDARY==
+Content-Type: text/text/upstart-job; charset="us-ascii"
+
+#upstart-job
+description "Amazon EC2 Container Service (start task on instance boot)"
+author "Derrick Oswald"
+start on started ecs
+
+script
+    exec 2>>/var/log/ecs/ecs-start-task.log
+    set -x
+    until curl -s http://localhost:51678/v1/metadata
+    do
+        sleep 1
+    done
+
+    # Grab the container instance ARN, cluster name and AWS region from instance metadata
+    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )
+    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )
+    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')
+
+    # Get the node public DNS name
+    node_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    node_dns_name=$(aws ec2 describe-instances --region $region --instance-id $node_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')
+    node_ip_address_string=$(aws ec2 describe-instances --region $region --instance-id $node_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress')
+    node_ip_address=$(echo $node_ip_address_string | tr -d '"')
+
+    # make the overrides JSON file
+    cat <<-EOF >/tmp/overrides.json
+	{
+		"containerOverrides":
+		[
+			{
+				"name": "cassandra",
+				"command": ["cassandra", "-f"],
+				"environment":
+				[
+					{
+						"name": "CASSANDRA_CLUSTER_NAME",
+						"value": "cassandra"
+					},
+					{
+						"name": "CASSANDRA_LISTEN_ADDRESS",
+						"value": $node_ip_address_string
+					},
+					{
+						"name": "CASSANDRA_BROADCAST_ADDRESS",
+						"value": $node_ip_address_string
+					}
+				]
+			}
+		]
+	}
+	EOF
+
+    # Jam the local IP address for the seed in /etc/hosts
+    echo $node_ip_address	cassandra >> /etc/hosts
+
+    # Specify the task definition to run at launch
+    task_definition=${ details.cassandra_taskdefinition.family }
+
+    # Run the AWS CLI start-task command to start your task on this container instance
+    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json
+end script
+--==BOUNDARY==--`;
+
+        var cassandra_node_startup_script =
+`Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+MIME-Version: 1.0
+
+--==BOUNDARY==
+Content-Type: text/text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+# Specify the cluster that the container instance should register into
+cluster=${ details.cluster.clusterName }
+
+# Write the cluster configuration variables to the ecs.config file
+echo ECS_CLUSTER=$cluster >> /etc/ecs/ecs.config
+echo ECS_INSTANCE_ATTRIBUTES={\\"node_type\\": \\"cassandra_node\\"} >> /etc/ecs/ecs.config
+
+# Install the ftp, unzip and the jq JSON parser
+yum install -y ftp unzip jq
+
+# Install a modern version of the aws-cli package (yum installs an old one)
+pushd /tmp
+curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+unzip awscli-bundle.zip
+rm  awscli-bundle.zip
+./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+rm -rf awscli-bundle
+popd
+
+--==BOUNDARY==
+Content-Type: text/text/upstart-job; charset="us-ascii"
+
+#upstart-job
+description "Amazon EC2 Container Service (start task on instance boot)"
+author "Derrick Oswald"
+start on started ecs
+
+script
+    exec 2>>/var/log/ecs/ecs-start-task.log
+    set -x
+    until curl -s http://localhost:51678/v1/metadata
+    do
+        sleep 1
+    done
+
+    # Grab the container instance ARN, cluster name and AWS region from instance metadata
+    instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )
+    cluster=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .Cluster' | awk -F/ '{print $NF}' )
+    region=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F: '{print $4}')
+
+    # Get the seed internal DNS name
+    until [ -n "$seed_ecs_arn" ]; do seed_ecs_arn=$(aws ecs list-container-instances --cluster $cluster --region $region --filter 'attribute:node_type == cassandra_seed' | jq '.containerInstanceArns|.[0]' | awk -F'"' '{print $2}' | awk -F/ '{print $NF}'); sleep 1; done;
+    seed_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $seed_ecs_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    seed_dns_name=$(aws ec2 describe-instances --region $region --instance-id $seed_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateDnsName')
+    seed_ip_address_string=$(aws ec2 describe-instances --region $region --instance-id $seed_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress')
+    seed_ip_address=$(echo $seed_ip_address_string | tr -d '"')
+
+    # Get the node public DNS name
+    node_ec2_arn=$(aws ecs describe-container-instances --cluster $cluster --region $region --container-instances $instance_arn | jq '.containerInstances|.[0]|.ec2InstanceId' | awk -F'"' '{print $2}')
+    node_dns_name=$(aws ec2 describe-instances --region $region --instance-id $node_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PublicDnsName')
+    node_ip_address_string=$(aws ec2 describe-instances --region $region --instance-id $node_ec2_arn | jq '.Reservations|.[0]|.Instances|.[0]|.PrivateIpAddress')
+    node_ip_address=$(echo $node_ip_address_string | tr -d '"')
+
+    # make the overrides JSON file
+    cat <<-EOF >/tmp/overrides.json
+	{
+		"containerOverrides":
+		[
+			{
+				"name": "cassandra",
+				"command": ["cassandra", "-f"],
+				"environment":
+				[
+					{
+						"name": "CASSANDRA_CLUSTER_NAME",
+						"value": "cassandra"
+					},
+					{
+						"name": "CASSANDRA_SEEDS",
+						"value": $seed_ip_address_string
+					},
+					{
+						"name": "CASSANDRA_LISTEN_ADDRESS",
+						"value": $node_ip_address_string
+					},
+					{
+						"name": "CASSANDRA_BROADCAST_ADDRESS",
+						"value": $node_ip_address_string
+					}
+				]
+			}
+		]
+	}
+	EOF
+
+    # Jam the local IP address for seed and node in /etc/hosts
+    echo $seed_ip_address	cassandra >> /etc/hosts
+    echo $node_ip_address	cassandra_node >> /etc/hosts
+
+    # Specify the task definition to run at launch
+    task_definition=${ details.cassandra_taskdefinition.family }
+
+    # Run the AWS CLI start-task command to start your task on this container instance
+    aws ecs start-task --cluster $cluster --task-definition $task_definition --container-instances $instance_arn --started-by $instance_arn --region $region --overrides file:///tmp/overrides.json
+end script
+--==BOUNDARY==--`;
+
             var master_price = document.getElementById ("master_price").value;
             if ("" == master_price)
                 master_price = "0.25";
@@ -249,9 +431,14 @@ end script
             if ((0 == workers) || isNaN (workers))
                 workers = 1;
             details.worker_count = workers;
+            var cassandra_price = document.getElementById ("cassandra_price").value;
+            if ("" == cassandra_price)
+                cassandra_price = "0.10";
+            var cassandras = Number (document.getElementById ("cassandras").value);
 
-            var master_disk = adjust_master_disk ();
-            var worker_disk = adjust_worker_disk ();
+            var master_disk = adjust_disk (details, details.master);
+            var worker_disk = adjust_disk (details, details.worker);
+            var cassandra_disk = adjust_disk (details, details.cassandra);
 
             var now = new Date ();
             var then = new Date (now.valueOf ());
@@ -263,7 +450,7 @@ end script
 
             var master_request =
             {
-                //DryRun = true,
+                //DryRun: true,
                 SpotPrice: master_price,
                 //ClientToken; "",
                 InstanceCount: 1,
@@ -300,7 +487,7 @@ end script
 
             var worker_request =
             {
-                //DryRun = true,
+                //DryRun: true,
                 SpotPrice: worker_price,
                 //ClientToken; "",
                 InstanceCount: workers,
@@ -335,20 +522,111 @@ end script
                 }
             };
 
+            var cassandra_seed_request =
+            {
+                //DryRun: true,
+                SpotPrice: cassandra_price,
+                //ClientToken; "",
+                InstanceCount: 1,
+                Type: "one-time",
+                //ValidFrom: from,
+                ValidUntil: until,
+                //LaunchGroup: "",
+                //AvailabilityZoneGroup: "",
+                //BlockDurationMinutes: 0,
+                LaunchSpecification:
+                {
+                    ImageId: details.image.ImageId,
+                    KeyName: details.keypair.KeyName,
+                    SecurityGroups: [ details.cassandra_security_group.GroupName ],
+                    UserData: btoa (cassandra_seed_startup_script),
+                    //AddressingType: "",
+                    InstanceType: details.cassandra.type,
+                    //Placement: {
+                    //    AvailabilityZone: "",
+                    //    GroupName: "",
+                    //    Tenancy: ""
+                    //},
+                    //KernelId: "",
+                    //RamdiskId: "",
+                    BlockDeviceMappings: cassandra_disk,
+                    //SubnetId: "",
+                    //NetworkInterfaces: []
+                    IamInstanceProfile: { Arn : details.iam.profileArn },
+                    //EbsOptimized: true
+                    //Monitoring: { enabled: true }
+                    SecurityGroupIds: [ details.cassandra_security_group.GroupId ]
+                }
+            };
 
-            var text = "Master\n" + JSON.stringify (master_request, null, 4) + "\nWorkers\n" + JSON.stringify (worker_request, null, 4);
+            var cassandra_node_request =
+            {
+                //DryRun: true,
+                SpotPrice: cassandra_price,
+                //ClientToken; "",
+                InstanceCount: cassandras - 1,
+                Type: "one-time",
+                //ValidFrom: from,
+                ValidUntil: until,
+                //LaunchGroup: "",
+                //AvailabilityZoneGroup: "",
+                //BlockDurationMinutes: 0,
+                LaunchSpecification:
+                {
+                    ImageId: details.image.ImageId,
+                    KeyName: details.keypair.KeyName,
+                    SecurityGroups: [ details.cassandra_security_group.GroupName ],
+                    UserData: btoa (cassandra_node_startup_script),
+                    //AddressingType: "",
+                    InstanceType: details.cassandra.type,
+                    //Placement: {
+                    //    AvailabilityZone: "",
+                    //    GroupName: "",
+                    //    Tenancy: ""
+                    //},
+                    //KernelId: "",
+                    //RamdiskId: "",
+                    BlockDeviceMappings: cassandra_disk,
+                    //SubnetId: "",
+                    //NetworkInterfaces: []
+                    IamInstanceProfile: { Arn : details.iam.profileArn },
+                    //EbsOptimized: true
+                    //Monitoring: { enabled: true }
+                    SecurityGroupIds: [ details.cassandra_security_group.GroupId ]
+                }
+            };
+
+            var text =
+                "Master\n" + JSON.stringify (master_request, null, 4) +
+                "\nWorkers\n" + JSON.stringify (worker_request, null, 4) +
+                "\nCassandra seed\n" + JSON.stringify (cassandra_seed_request, null, 4) +
+                "\nCassandra node\n" + JSON.stringify (cassandra_node_request, null, 4);
             document.getElementById ("wizard_data").innerHTML = text;
 
             var ec2 = new AWS.EC2 ();
-            ec2.requestSpotInstances (master_request, function (err, data) {
+            ec2.requestSpotInstances (cassandra_seed_request, function (err, data) {
                 if (err) console.log (err, err.stack); // an error occurred
                 else
                 {
-                    details.master_request = data.SpotInstanceRequests;
-                    ec2.requestSpotInstances (worker_request, function (err, data) {
+                    details.cassandra_seed_request = data.SpotInstanceRequests;
+                    ec2.requestSpotInstances (cassandra_node_request, function (err, data) {
                         if (err) console.log (err, err.stack); // an error occurred
                         else
-                            details.worker_request = data.SpotInstanceRequests;
+                        {
+                            details.cassandra_node_request = data.SpotInstanceRequests;
+                            ec2.requestSpotInstances (master_request, function (err, data) {
+                                if (err) console.log (err, err.stack); // an error occurred
+                                else
+                                {
+                                    details.master_request = data.SpotInstanceRequests;
+                                    ec2.requestSpotInstances (worker_request, function (err, data) {
+                                        if (err) console.log (err, err.stack); // an error occurred
+                                        else
+                                            details.worker_request = data.SpotInstanceRequests;
+                                    });
+                                }
+                            });
+                        }
                     });
                 }
             });
@@ -372,11 +650,15 @@ end script
                 var margin = 1.5;
                 var master = (details.costs.master * margin).toFixed (3);
                 var worker = (details.costs.worker * margin).toFixed (3);
+                var cassandra = (details.costs.cassandra * margin).toFixed (3);
                 document.getElementById ("master_price").value = master.toString ();
                 document.getElementById ("worker_price").value = worker.toString ();
+                document.getElementById ("cassandra_price").value = cassandra.toString ();
             }
             if ("undefined" != typeof (details.worker_count))
                 document.getElementById ("workers").value = details.worker_count.toString ();
+            if ("undefined" != typeof (details.cassandra_count))
+                document.getElementById ("cassandras").value = details.cassandra_count.toString ();
         }
 
         function term (event)

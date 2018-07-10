@@ -1,6 +1,6 @@
 <h1>Select ECS Compatible Image</h1>
 <p>
-    <strong>Select an Amazon Machine Image (AMI) for the master and worker instances.</strong>
+    <strong>Select an Amazon Machine Image (AMI) for the master, worker and Cassandra instances.</strong>
 </p>
 <p>
 Each of the software images running on the instances used in the ECS cluster must meet certain requirements.
@@ -9,7 +9,7 @@ The recommended AMI is the most recently released version.
 </p>
 
 <p>
-In this step we choose an AMI for the master and worker nodes.
+In this step we choose an AMI for the master, worker and Cassandra nodes.
 Choose from the drop down list.
 </p>
 <div class="form-horizontal">
@@ -19,7 +19,7 @@ Choose from the drop down list.
             <select id="image" class="form-control" type="select" name="image" aria-describedby="image_help">
             </select>
             <span id="images_help" class="help-block">
-                Choose the Amazon Machine Image for the master and worker instances from the list.
+                Choose the Amazon Machine Image for the master, worker and Cassandra instances from the list.
             </span>
         </div>
     </div>

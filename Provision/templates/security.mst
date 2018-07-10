@@ -7,16 +7,20 @@ The security groups created by this step have the permissions specified by
 <a href="https://spark.apache.org/docs/latest/security.html#configuring-ports-for-network-security" target="_blank">
 Spark Configuring Ports For Network Security
 </a>
-and
-<a href = "https://hadoop.apache.org/docs/r2.7.3/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml" target="_blank">
+,
+<a href="https://hadoop.apache.org/docs/r2.7.3/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml" target="_blank">
 Hadoop HDFS Default Port Assignments
+</a>
+and
+<a href="https://docs.datastax.com/en/cassandra/3.0/cassandra/configuration/secureFireWall.html" target="_blank">
+Cassandra - Configuring firewall port access
 </a>
 to permit ingress for the following services:
 <h2>Master:</h2>
 <ul>
-<li>all icmp traffic from workers to master</li>
-<li>all tcp traffic from workers to master</li>
-<li>all udp traffic from workers to master</li>
+<li>all icmp traffic within the cluster</li>
+<li>all tcp traffic within the cluster</li>
+<li>all udp traffic within the cluster</li>
 <li>ssh</li>
 <li>Standalone Master Web UI</li>
 <li>Driver to Standalone Master</li>
@@ -35,9 +39,9 @@ to permit ingress for the following services:
 </ul>
 <h2>Worker:</h2>
 <ul>
-<li>all icmp traffic from master to workers</li>
-<li>all tcp traffic from master to workers</li>
-<li>all udp traffic from master to workers</li>
+<li>all icmp traffic within the cluster</li>
+<li>all tcp traffic within the cluster</li>
+<li>all udp traffic within the cluster</li>
 <li>ssh</li>
 <li>Standalone Worker Web UI</li>
 <li>DFS Namenode IPC</li>
@@ -45,7 +49,19 @@ to permit ingress for the following services:
 <li>DFS Datanode IPC</li>
 <li>DFS Backup Node data transfer
 </ul>
-
+<h2>Cassandra:</h2>
+<ul>
+<li>all icmp traffic within the cluster</li>
+<li>all tcp traffic within the cluster</li>
+<li>all udp traffic within the cluster</li>
+<li>ssh</li>
+<li>Cassandra inter-node cluster communication</li>
+<li>Cassandra SSL inter-node cluster communication</li>
+<li>Cassandra JMX monitoring port</li>
+<li>Cassandra client port</li>
+<li>Cassandra client port (Thrift)</li>
+<li>Default for native_transport_port_ssl</li>
+</ul>
 </p>
 
 <p>
@@ -85,6 +101,17 @@ or create new security groups for master and worker instances (recommended).
             </datalist>
             <span id="worker_security_group_help" class="help-block">
                 Use this group for the worker instances. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandra_security_group">Cassandra security group</label>
+        <div class="col-sm-9">
+            <input id="cassandra_security_group" class="form-control" type="text" name="cassandra_security_group" list="cassandra_security_group_list" aria-describedby="cassandra_security_group_help">
+            <datalist id="cassandra_security_group_list">
+            </datalist>
+            <span id="cassandra_security_group_help" class="help-block">
+                Use this group for the Cassandra instances. If it does not exist yet, click the Create button.
             </span>
         </div>
     </div>

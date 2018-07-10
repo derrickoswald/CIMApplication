@@ -137,9 +137,10 @@ define
             var options = biggies.map (wrap).join ("\n");
             document.getElementById ("master").innerHTML = options;
             document.getElementById ("worker").innerHTML = options;
+            document.getElementById ("cassandra").innerHTML = options;
 
             // initialize the charts
-            get_price_history (["master_chart", "worker_chart"], biggies[0].type);
+            get_price_history (["master_chart", "worker_chart", "cassandra_chart"], biggies[0].type);
         }
 
         function get_instances (callback)
@@ -383,15 +384,24 @@ define
         {
             var master = $("#master_chart").highcharts ();
             var worker = $("#worker_chart").highcharts ();
+            var cassandra = $("#cassandra_chart").highcharts ();
             var master_costs = get_minimum_latest_cost (master);
             var worker_costs = get_minimum_latest_cost (worker);
             var worker_count = Number (document.getElementById ("worker_count").value);
-            if ((master_costs.count > 0) && (worker_costs.count > 0))
+            var cassandra_costs = get_minimum_latest_cost (cassandra);
+            var cassandra_count = Number (document.getElementById ("cassandra_count").value);
+            if (cassandra_count < 2)
+            {
+                alert ("the Cassandra schema requires 2 nodes for 2 replicas");
+                document.getElementById ("cassandra_count").value = "2";
+                cassandra_count = 2;
+            }
+            if ((master_costs.count > 0) && (worker_costs.count > 0) && (cassandra_costs.count > 0))
             {
 //                label_minimum (master, master_costs.point, "last: " + dollars_cents (master_costs.cost));
 //                label_minimum (worker, worker_costs.point, "last: " + dollars_cents (worker_costs.cost));
-                var cost = master_costs.cost + (worker_costs.cost * worker_count);
-                var formula = dollars_cents (master_costs.cost) + " + " + worker_count + " × " + dollars_cents (worker_costs.cost) + " = " + dollars_cents (cost);
+                var cost = master_costs.cost + (worker_costs.cost * worker_count) + (cassandra_costs.cost * cassandra_count);
+                var formula = dollars_cents (master_costs.cost) + " + " + worker_count + " × " + dollars_cents (worker_costs.cost) + " + " + cassandra_count + " × " + dollars_cents (cassandra_costs.cost) + " = " + dollars_cents (cost);
                 document.getElementById ("cost_estimate").innerHTML = "<h1>Estimated cost: " + formula + "/hr</h1>";
             }
         }
@@ -508,6 +518,7 @@ define
                 // create the chart
                 create_chart ("master_chart", "Master Spot Price");
                 create_chart ("worker_chart", "Worker Spot Price");
+                create_chart ("cassandra_chart", "Cassandra Spot Price");
 
                 get_instances (function (err, data) {
                     if (err) console.log (err); // an error occurred
@@ -520,12 +531,15 @@ define
         {
             this.master = lookup_instance (document.getElementById ("master").value);
             this.worker = lookup_instance (document.getElementById ("worker").value);
+            this.cassandra = lookup_instance (document.getElementById ("cassandra").value);
             this.costs =
             {
                 master: get_minimum_latest_cost ($("#master_chart").highcharts ()).cost,
-                worker: get_minimum_latest_cost ($("#worker_chart").highcharts ()).cost
+                worker: get_minimum_latest_cost ($("#worker_chart").highcharts ()).cost,
+                cassandra: get_minimum_latest_cost ($("#cassandra_chart").highcharts ()).cost
             };
             this.worker_count = Number (document.getElementById ("worker_count").value);
+            this.cassandra_count = Number (document.getElementById ("cassandra_count").value);
         }
 
         return (
@@ -541,8 +555,10 @@ define
                             [
                                 { id: "master", event: "change", code: change_instance },
                                 { id: "worker", event: "change", code: change_instance },
+                                { id: "cassandra", event: "change", code: change_instance },
                                 { id: "worker_count", event: "change", code: estimate_costs },
                                 { id: "worker_count", event: "input", code: estimate_costs },
+                                { id: "cassandra_count", event: "input", code: estimate_costs }
                             ],
                             transitions:
                             {

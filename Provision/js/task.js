@@ -9,7 +9,7 @@ define
     [],
     /**
      * @summary Get/create the Spark task.
-     * @description Gets the task that the user chooses or create a new task for both master and worker.
+     * @description Gets the task that the user chooses or create a new task for both master, worker and cassandra.
      * @name task
      * @exports task
      * @version 1.0
@@ -27,17 +27,27 @@ define
             var options = taskdefinitions.map (wrap).join ("\n");
             document.getElementById ("master_taskdefinition_list").innerHTML = options;
             document.getElementById ("worker_taskdefinition_list").innerHTML = options;
-            // if there are exactly one task definition named master and the other named worker, then select them
+            document.getElementById ("cassandra_taskdefinition_list").innerHTML = options;
+            // if there is exactly one task definition with the standard name, then select them
             var masters = taskdefinitions.filter (function (taskdef) { return ("master" == taskdef.containerDefinitions[0].name); });
             var workers = taskdefinitions.filter (function (taskdef) { return ("worker" == taskdef.containerDefinitions[0].name); });
-            if ((1 == masters.length) && (1 == workers.length))
+            var cassandra = taskdefinitions.filter (function (taskdef) { return ("cassandra" == taskdef.containerDefinitions[0].name); });
+            if (1 == masters.length)
             {
                 document.getElementById ("master_taskdefinition").value = masters[0].family;
-                document.getElementById ("worker_taskdefinition").value = workers[0].family;
-                change_taskdefinition (null);
                 this.master_taskdefinition = masters[0];
+            }
+            if (1 == workers.length)
+            {
+                document.getElementById ("worker_taskdefinition").value = workers[0].family;
                 this.worker_taskdefinition = workers[0];
             }
+            if (1 == cassandra.length)
+            {
+                document.getElementById ("cassandra_taskdefinition").value = cassandra[0].family;
+                this.cassandra_taskdefinition = cassandra[0];
+            }
+            change_taskdefinition (null);
         }
 
         function describe_tasks (data)
@@ -115,7 +125,8 @@ define
             return (
                 {
                     master_taskdefinition: lookup_task (document.getElementById ("master_taskdefinition").value),
-                    worker_taskdefinition: lookup_task (document.getElementById ("worker_taskdefinition").value)
+                    worker_taskdefinition: lookup_task (document.getElementById ("worker_taskdefinition").value),
+                    cassandra_taskdefinition: lookup_task (document.getElementById ("cassandra_taskdefinition").value)
                 }
             );
         }
@@ -123,49 +134,50 @@ define
         function change_taskdefinition (event)
         {
             var tasks = lookup_tasks ();
-            var image = document.getElementById ("dockerimage").value;
-            var master_creatable = ((null != tasks.master_taskdefinition) && (image != ""))
+            var spark_image = document.getElementById ("spark_dockerimage").value;
+            var master_creatable = ((null != tasks.master_taskdefinition) && (spark_image != ""))
             document.getElementById ("create_master_taskdefinition").disabled = master_creatable;
-            var worker_creatable = ((null != tasks.worker_taskdefinition) && (image != ""))
+            var worker_creatable = ((null != tasks.worker_taskdefinition) && (spark_image != ""))
             document.getElementById ("create_worker_taskdefinition").disabled = worker_creatable;
+            var cassandra_image = document.getElementById ("cassandra_dockerimage").value;
+            var cassandra_creatable = ((null != tasks.cassandra_taskdefinition) && (cassandra_image != ""))
+            document.getElementById ("create_cassandra_taskdefinition").disabled = cassandra_creatable;
             if (null != tasks.master_taskdefinition)
-                document.getElementById ("dockerimage").value = tasks.master_taskdefinition.containerDefinitions[0].image
+                document.getElementById ("spark_dockerimage").value = tasks.master_taskdefinition.containerDefinitions[0].image
             else if (null != tasks.worker_taskdefinition)
-                    document.getElementById ("dockerimage").value = tasks.worker_taskdefinition.containerDefinitions[0].image
+                document.getElementById ("spark_dockerimage").value = tasks.worker_taskdefinition.containerDefinitions[0].image
+            else if (null != tasks.cassandra_taskdefinition)
+                document.getElementById ("cassandra_dockerimage").value = tasks.cassandra_taskdefinition.containerDefinitions[0].image
         }
 
-        function create_taskdefinition (event)
+        function register_task_definition (family, name, image, host)
         {
-            var target = event.currentTarget.id;
-            var master = ("create_master_taskdefinition" == target);
-            var name = document.getElementById (master ? "master_taskdefinition" : "worker_taskdefinition").value;
-            var image = document.getElementById ("dockerimage").value;
             var params =
             {
-                "family": name, 
-                "networkMode": "host", 
+                "family": family,
+                "networkMode": "host",
                 "containerDefinitions":
                 [
                     {
-                        "name": (master ? "master" : "worker"),
-                        "image": image, 
-                        "memoryReservation": 4096, 
+                        "name": name,
+                        "image": image,
+                        "memoryReservation": 4096,
                         "essential": true,
                         "mountPoints":
                         [
                             {
-                                "sourceVolume": "tmp", 
-                                "containerPath": "/host_tmp", 
+                                "sourceVolume": "tmp",
+                                "containerPath": "/host_tmp",
                                 "readOnly": false
                             }
-                        ], 
-                        "hostname": (master ? "master" : "worker"),
-                        "disableNetworking": false, 
-                        "privileged": true, 
+                        ],
+                        "hostname": host,
+                        "disableNetworking": false,
+                        "privileged": true,
                         "readonlyRootFilesystem": false
                     }
                 ],
-                "volumes": 
+                "volumes":
                 [
                     {
                         "name": "tmp",
@@ -181,6 +193,34 @@ define
                 if (err) console.log (err, err.stack); // an error occurred
                 else     init (null); // refresh
             });
+        }
+
+        function create_taskdefinition (event)
+        {
+            switch (event.currentTarget.id)
+            {
+                case "create_master_taskdefinition":
+                    register_task_definition (
+                        document.getElementById ("master_taskdefinition").value,
+                        "master",
+                        document.getElementById ("spark_dockerimage").value,
+                        "master");
+                    break;
+                case "create_worker_taskdefinition":
+                    register_task_definition (
+                        document.getElementById ("worker_taskdefinition").value,
+                        "worker",
+                        document.getElementById ("spark_dockerimage").value,
+                        "worker");
+                    break;
+                case "create_cassandra_taskdefinition":
+                    register_task_definition (
+                        document.getElementById ("cassandra_taskdefinition").value,
+                        "cassandra",
+                        document.getElementById ("cassandra_dockerimage").value,
+                        "cassandra");
+                    break;
+            }
         }
 
         /**
@@ -211,6 +251,7 @@ define
             var tasks = lookup_tasks ();
             this.master_taskdefinition = tasks.master_taskdefinition;
             this.worker_taskdefinition = tasks.worker_taskdefinition;
+            this.cassandra_taskdefinition = tasks.cassandra_taskdefinition;
         }
 
         return (
@@ -229,7 +270,10 @@ define
                                 { id: "create_master_taskdefinition", event : "click", code : create_taskdefinition },
                                 { id: "worker_taskdefinition", event: "change", code: change_taskdefinition },
                                 { id: "worker_taskdefinition", event: "input", code: change_taskdefinition },
-                                { id: "create_worker_taskdefinition", event : "click", code : create_taskdefinition }
+                                { id: "create_worker_taskdefinition", event : "click", code : create_taskdefinition },
+                                { id: "cassandra_taskdefinition", event: "change", code: change_taskdefinition },
+                                { id: "cassandra_taskdefinition", event: "input", code: change_taskdefinition },
+                                { id: "create_cassandra_taskdefinition", event : "click", code : create_taskdefinition }
                             ],
                             transitions:
                             {

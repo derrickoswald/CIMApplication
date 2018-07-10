@@ -1,17 +1,27 @@
 <h1>Create or Select Task Definitions</h1>
 <p>
-    <strong>Create a Spark Docker task definition for master and worker on ECS.</strong>
+    <strong>Create a ECS task definition for Spark master, Spark worker and Cassandra.</strong>
 </p>
 <p>
-To run Spark on ECS, as opposed to some other program, there needs to be a task definition
-that will start a Spark master or worker. An example Docker image is
-<a href="https://hub.docker.com/r/derrickoswald/spark-docker/" target="_blank">spark-docker</a>.
-It is required that the docker container can start with either of the two commands:
+To run Spark or Cassandra on ECS, as opposed to some other program, there needs to be a task definition
+that will start a Spark master, worker or Cassandra node.
+Example Docker images are
+<a href="https://hub.docker.com/r/derrickoswald/spark-docker/" target="_blank">spark-docker</a> and
+<a href="https://hub.docker.com/r/derrickoswald/cassandra-docker/" target="_blank">cassandra-docker</a>.
+It is required that the spark docker container can start with either of the two commands:
 <ul style="font-family: monospace;">
     <li>start-spark master</li>
     <li>start-spark worker <i>&lt;master dns name&gt;</i></li>
 </ul>
-Note: The <i>&lt;master dns name&gt;</i> is filled in with the DNS name of the master;
+Note: The <i>&lt;master dns name&gt;</i> is filled in with the DNS name of the master.
+</p>
+<p>
+It is required that the cassandra docker container can start with either of the two commands:
+<ul style="font-family: monospace;">
+    <li>cassandra -f</li>
+    <li>CASSANDRA_SEEDS=<i>&lt;cassandra seed dns name&gt;</i>; cassandra -f</li>
+</ul>
+Note: The <i>&lt;cassandra seed dns name&gt;</i> is filled in with the DNS name of the seed node.
 </p>
 
 <p>
@@ -22,14 +32,14 @@ or create new task definitions (recommended).
 Task definitions created by this step will have the following parameters (intended to consume all resources of the EC2 instance):
 <ul>
     <li>networkMode: "host" (all ports on the docker image are exposed on the host instance)</li>
-    <li>name: "master" or "worker"</i></li>
+    <li>name: "master", "worker" or "cassandra"</i></li>
     <li>memoryReservation: 4096 (minimum memory, no upper limit)</li>
     <li>a disk mapping from the host instance /tmp directory to /host_tmp in the Docker image</li> 
 </ul>
 </p>
 <div class="form-horizontal">
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="master_taskdefinition">Master Task Definition</label>
+        <label class="col-sm-3 control-label" for="master_taskdefinition">Master task definition</label>
         <div class="col-sm-9">
             <div class="input-group" aria-describedby="master_taskdefinition_help">
                 <input id="master_taskdefinition" class="form-control" type="text" name="master_taskdefinition" list="master_taskdefinition_list">
@@ -45,7 +55,7 @@ Task definitions created by this step will have the following parameters (intend
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="worker_taskdefinition">Worker Task Definition</label>
+        <label class="col-sm-3 control-label" for="worker_taskdefinition">Worker task definition</label>
         <div class="col-sm-9">
             <div class="input-group" aria-describedby="worker_taskdefinition_help">
                 <input id="worker_taskdefinition" class="form-control" type="text" name="worker_taskdefinition" list="worker_taskdefinition_list">
@@ -61,11 +71,36 @@ Task definitions created by this step will have the following parameters (intend
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label" for="dockerimage">Docker image</label>
+        <label class="col-sm-3 control-label" for="spark_dockerimage">Spark docker image</label>
         <div class="col-sm-9">
-            <input id="dockerimage" class="form-control" type="text" name="dockerimage" placeholder="e.g. derrickoswald/spark-docker" aria-describedby="dockerimage_help">
-            <span id="dockerimage_help" class="help-block">
-                Enter the name of the public Docker image to be used when creating a task definition.
+            <input id="spark_dockerimage" class="form-control" type="text" name="spark_dockerimage" placeholder="e.g. derrickoswald/spark-docker" aria-describedby="spark_dockerimage_help">
+            <span id="spark_dockerimage_help" class="help-block">
+                Enter the name of the public Docker image to be used when creating a Spark task definition.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandra_taskdefinition">Cassandra task definition</label>
+        <div class="col-sm-9">
+            <div class="input-group" aria-describedby="cassandra_taskdefinition_help">
+                <input id="cassandra_taskdefinition" class="form-control" type="text" name="cassandra_taskdefinition" list="cassandra_taskdefinition_list">
+                <span class="input-group-btn">
+                    <button id="create_cassandra_taskdefinition" class="btn btn-default" type="button">Create</button>
+                </span>
+            </div>
+            <datalist id="cassandra_taskdefinition_list">
+            </datalist>
+            <span id="cassandra_taskdefinition_help" class="help-block">
+                Use this task definition for Cassandra nodes. If it does not exist yet, click the Create button.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandra_dockerimage">Cassandra docker image</label>
+        <div class="col-sm-9">
+            <input id="cassandra_dockerimage" class="form-control" type="text" name="cassandra_dockerimage" placeholder="e.g. derrickoswald/cassandra-docker" aria-describedby="cassandra_dockerimage_help">
+            <span id="cassandra_dockerimage_help" class="help-block">
+                Enter the name of the public Docker image to be used when creating a Cassandra task definition.
             </span>
         </div>
     </div>

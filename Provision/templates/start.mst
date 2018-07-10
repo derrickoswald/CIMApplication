@@ -3,7 +3,7 @@
     <strong>Initiate the cluster instances.</strong>
 </p>
 <p>
-In this step we request instances for the master and worker nodes.
+In this step we request instances for the master, worker and Cassandra nodes.
 </p>
 
 <p>
@@ -35,6 +35,24 @@ The suggested price is a 50% margin over the last recorded price.
             <input id="workers" class="form-control" type="text" name="workers" aria-describedby="workers_help">
             <span id="workers_help" class="help-block">
                 Specify the number of worker instances.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandra_price">Cassandra limit price</label>
+        <div class="col-sm-9">
+            <input id="cassandra_price" class="form-control" type="text" name="cassandra_price" aria-describedby="cassandra_price_help">
+            <span id="cassandra_price_help" class="help-block">
+                Specify a maximum price for the Cassandra instances.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandras">Number of Cassandra nodes</label>
+        <div class="col-sm-9">
+            <input id="cassandras" class="form-control" type="text" name="cassandras" aria-describedby="cassandras_help">
+            <span id="cassandras_help" class="help-block">
+                Specify the number of cassandra instances.
             </span>
         </div>
     </div>
