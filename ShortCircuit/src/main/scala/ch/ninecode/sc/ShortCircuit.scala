@@ -4,6 +4,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 
 import scala.collection.Map
 import scala.io.Source
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -177,7 +178,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = get[BaseVoltage].map ((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get[BaseVoltage].map (v ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
         val terminals = get[Terminal].filter (null != _.TopologicalNode)
@@ -405,11 +406,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         else {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter ((td) ⇒ td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            val niederspannug = tdata.filter (td ⇒ td.voltage0 != 0.4 && td.voltage1 == 0.4)
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
 
-        val starting_nodes = transformers.map ((txs) ⇒ trafo_mapping (TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance)))
+        val starting_nodes = transformers.map (txs ⇒ trafo_mapping (TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance)))
 
         // create the initial Graph with ScNode vertices
         def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =

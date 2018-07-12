@@ -2,8 +2,6 @@ package ch.ninecode.sc
 
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Conductor
 import ch.ninecode.model.Cut
 import ch.ninecode.model.Disconnector
 import ch.ninecode.model.Element

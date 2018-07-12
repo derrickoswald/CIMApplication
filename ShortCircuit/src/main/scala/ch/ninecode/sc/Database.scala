@@ -10,7 +10,6 @@ import java.sql.Types
 import java.util.Calendar
 
 import org.apache.spark.rdd.RDD
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

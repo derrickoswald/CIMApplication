@@ -99,9 +99,9 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         }
         // match terminals to ends
         val end1 = x._2._1._3
-        val match1 = terminals.find ((x) => x.id == end1._1.TransformerEnd.Terminal)
+        val match1 = terminals.find (x => x.id == end1._1.TransformerEnd.Terminal)
         val end2 = x._2._1._4
-        val match2 = terminals.find ((x) => x.id == end2._1.TransformerEnd.Terminal)
+        val match2 = terminals.find (x => x.id == end2._1.TransformerEnd.Terminal)
         val ret = match1 match
         {
             case Some (t1) =>
@@ -230,7 +230,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // get a map of voltages
-        val voltages = get[BaseVoltage].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // attach PowerTransformerEnd elements
         val transformers_stations_plus_ends = transformers_stations.keyBy (_._1.id).leftOuterJoin (ends).flatMap (addEnds (voltages))
@@ -253,7 +253,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
         // convert to TData
         val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (
-            (x) => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, node_name (x._3._3), x._4._1, x._4._2, x._4._3, node_name (x._4._3))
+            x => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, node_name (x._3._3), x._4._1, x._4._2, x._4._3, node_name (x._4._3))
             )
         transformer_data.persist (storage_level)
         session.sparkContext.getCheckpointDir match

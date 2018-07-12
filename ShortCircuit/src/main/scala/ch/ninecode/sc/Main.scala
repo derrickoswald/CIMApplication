@@ -44,7 +44,7 @@ object Main
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
-        (s) ⇒
+        s ⇒
             {
                 var ret = Map[String, String] ()
                 val ss = s.split (",")
@@ -57,7 +57,7 @@ object Main
     )
 
     implicit val complexRead: scopt.Read[Complex] = scopt.Read.reads (
-        (s) ⇒ Complex.fromString (s)
+        s ⇒ Complex.fromString (s)
     )
 
     case class Arguments (

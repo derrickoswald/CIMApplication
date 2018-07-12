@@ -13,19 +13,16 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
     val modulus: Double = sqrt (pow (re, 2) + pow (im, 2))
     val angle: Double = atan2 (im, re)
 
-    // Constructors
-    //def this (re: Double) = this (re, 0.0)
-
-    // Unary operators
+    // unary operators
     def unary_+ : Complex = this
     def unary_- : Complex = Complex (-re, -im)
     def unary_~ : Complex = Complex (re, -im) // conjugate
     def unary_! : Double = modulus
 
-    // Comparison
+    // comparison
     def compare (that: Complex): Int = !this compare !that
 
-    // Arithmetic operations
+    // arithmetic operations
     def + (c: Complex): Complex = Complex (re + c.re, im + c.im)
     def - (c: Complex): Complex = this + -c
     def * (c: Complex) = Complex (re * c.re - im * c.im, im * c.re + re * c.im)

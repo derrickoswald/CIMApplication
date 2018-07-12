@@ -134,7 +134,7 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     // the characteristic transformer impedances at the secondary
     // with a flag indicating if it is the default value (the impedance was zero)
     val impedances: Array[(Complex, Boolean)] = transformers.map (
-        (edge) =>
+        edge =>
         {
             if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
             {

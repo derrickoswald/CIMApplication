@@ -47,7 +47,7 @@ case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel 
     {
         // ToDo: fix this 1000V multiplier
         val voltages = session.sql ("select IdentifiedObject.mRID, nominalVoltage * 1000.0 voltage from BaseVoltage")
-        voltages.rdd.map ((v) ⇒ (v.getDouble (1), v.getString (0))).collectAsMap ()
+        voltages.rdd.map (v ⇒ (v.getDouble (1), v.getString (0))).collectAsMap ()
     }
 
     def read_csv (csv: String): RDD[EquivalentInjection] =
