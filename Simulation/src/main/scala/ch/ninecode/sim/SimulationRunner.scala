@@ -25,9 +25,10 @@ import org.apache.commons.io.FileUtils
 import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import com.datastax.driver.core.HostDistance
+import com.datastax.driver.core.PoolingOptions
 
 /**
  * Perform a GridLAB-D simulation.
@@ -340,7 +341,12 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         // but Cluster does not implement Serializable, so we can't pass it from master to worker,
         // so we instantiate one per runner execution.
         // It would be better to establish it once per worker JVM.
-        using (Cluster.builder.addContactPoint (cassandra).build)
+        //
+        // establish some better pooling options
+        val pooling = new PoolingOptions ()
+        pooling.setPoolTimeoutMillis (20000)
+        pooling.setMaxConnectionsPerHost (HostDistance.LOCAL, 4)
+        using (Cluster.builder.addContactPoint (cassandra).withPoolingOptions (pooling).build)
         {
             cluster ⇒
                 using (cluster.connect)
