@@ -52,7 +52,16 @@ The suggested price is a 50% margin over the last recorded price.
         <div class="col-sm-9">
             <input id="cassandras" class="form-control" type="text" name="cassandras" aria-describedby="cassandras_help">
             <span id="cassandras_help" class="help-block">
-                Specify the number of cassandra instances.
+                Specify the number of Cassandra instances.
+            </span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label" for="cassandra_seeds">Number of Cassandra seeds</label>
+        <div class="col-sm-9">
+            <input id="cassandra_seeds" class="form-control" type="text" name="cassandra_seeds" aria-describedby="cassandra_seeds_help">
+            <span id="cassandra_seeds_help" class="help-block">
+                Specify the number of Cassandra seeds (must be less than the number of Cassandra instances).
             </span>
         </div>
     </div>
