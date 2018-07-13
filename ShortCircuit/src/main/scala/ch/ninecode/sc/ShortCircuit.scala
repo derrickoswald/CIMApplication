@@ -1,7 +1,5 @@
 package ch.ninecode.sc
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-
 import scala.collection.Map
 import scala.io.Source
 
@@ -16,6 +14,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 import ch.ninecode.sc.ScEdge.resistanceAt
@@ -391,7 +390,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (null == get[TopologicalNode])
         {
             val ntp = new CIMNetworkTopologyProcessor (session, storage_level, true, true, false) // force retain switches and fuses
-            val elements = ntp.process (false)
+            val elements = ntp.process (true)
             log.info ("%d elements after topology generated".format (elements.count ()))
         }
 

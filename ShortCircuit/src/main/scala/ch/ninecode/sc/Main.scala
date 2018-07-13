@@ -257,7 +257,7 @@ object Main
 
         // identify topological nodes
         val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
-        val ele: RDD[Element] = ntp.process (false)
+        val ele: RDD[Element] = ntp.process (true)
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
         ele.name = "Elements"
