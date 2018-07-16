@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Graphable
+
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.Cut

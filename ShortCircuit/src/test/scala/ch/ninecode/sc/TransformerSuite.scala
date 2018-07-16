@@ -52,8 +52,11 @@ class TransformerSuite
             }
             else
                 TransformerServiceArea (session)
-            val mapping = tsa.getTransformerServiceAreas
-            val results = mapping.collect
+            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
+            val scopt = ShortCircuitOptions ()
+            val short_circuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, scopt)
+            val simulations = short_circuit.queryNetwork (trafos_islands)
+            val results = trafos_islands.collect
             println (results.map (x ⇒ """%s %s""".format (x._1, x._2)).mkString ("\n"))
 
             val sc = System.nanoTime ()

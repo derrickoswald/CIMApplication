@@ -49,6 +49,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.gl</groupId>
+            <artifactId>GridLAB-D</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>

@@ -2,7 +2,6 @@ package ch.ninecode.sc
 
 import scala.collection.Map
 import scala.io.Source
-
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -13,9 +12,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.Graphable
 import ch.ninecode.model._
 import ch.ninecode.sc.ScEdge.resistanceAt
 
@@ -384,6 +385,104 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
     }
 
+    /**
+     * Vertex data.
+     *
+     * @param id_seq TopologicalNode mRID.
+     * @param equipment ConductingEquipment mRID.
+     * @param voltage Node voltage (V).
+     */
+    case class SimulationNode (
+        id_seq: String,
+        equipment: String,
+        voltage: Double
+    ) extends GLMNode with Graphable
+    {
+        override def id: String = id_seq
+        override def nominal_voltage: Double = voltage
+    }
+
+    /**
+     * Edge data.
+     *
+     * @param id_equ ConductingEquipment MRID.
+     * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
+     * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
+     * @param element Element object for the edge.
+     */
+    case class SimulationEdge (
+        id_equ: String,
+        id_cn_1: String,
+        id_cn_2: String,
+        element: Element
+    ) extends GLMEdge with Graphable
+    {
+        /**
+         * Ordered key.
+         * Provide a key on the two connections, independent of to-from from-to ordering.
+         */
+        def key: String = if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
+        override def id: String = id_equ
+        override def cn1: String = id_cn_1
+        override def cn2: String = id_cn_2
+        override def el: Element = element
+    }
+
+    def pickone (singles: Array[String]) (nodes: Iterable[(String, SimulationNode)]): (String, SimulationNode) =
+    {
+        nodes.find (node ⇒ singles.contains (node._2.equipment)) match
+        {
+            case Some (node) ⇒ node
+            case _ ⇒ nodes.head // just take the first
+        }
+    }
+
+    def queryNetwork (trafos_islands: RDD[(String, String)]): RDD[(String, (Iterable[SimulationNode], Iterable[Iterable[SimulationEdge]]))] =
+    {
+        log.info ("""resolving nodes and edges by transformer service area""")
+
+        // the mapping between island and transformer service area
+        val islands_trafos = trafos_islands.map (x ⇒ (x._2, x._1)) // (islandid, transformersetid)
+        // get nodes by TopologicalIsland
+        val members = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
+        // get terminals by TopologicalIsland
+        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
+        // get equipment in the TopologicalIsland and associated Terminal
+        val equipment_terminals = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_._2.ConductingEquipment)).values.map (x ⇒ (x._2._1, x._1, x._2._2)) // (island, equipment, terminal)
+        // make a list of all single terminal equipment as the preferred association to the node
+        val singles = equipment_terminals.groupBy (_._3.ConductingEquipment).filter (1 == _._2.size).map (_._2.head._2.id).collect
+        // get all nodes with their voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
+        // but this doesn't include the transformer primary node - it's not part of the topology
+        // ToDo: fix this 1kV multiplier on the voltages
+        val nodes = islands_trafos.join (equipment_terminals.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
+            node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, node._2.nominalVoltage * 1000.0))
+        ).groupBy (_._2.id_seq).values.map (pickone (singles))).values // (transformersetid, node)
+        // get equipment in the transformer service area
+        val equipment = equipment_terminals.map (x ⇒ (x._1, (x._2, x._3))).join (islands_trafos)
+            .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (transformersetid, (islandid, equipment, terminal))
+
+        // get all equipment with two nodes in the transformer service area that separate different TopologicalIsland (these are the edges)
+        val two_terminal_equipment = equipment.groupBy (x ⇒ x._2._2.id).filter (
+            edge ⇒ edge._2.size > 1 && (edge._2.head._1 == edge._2.tail.head._1) && (edge._2.head._2._3.TopologicalNode != edge._2.tail.head._2._3.TopologicalNode)
+        ) // (equipmentid, [(txarea, (islandid, equipment, terminal))])
+        // convert ConductingEquipment to Element with Terminal(s)
+        val elements = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
+            .values.map (x ⇒ (x._2.head._1, (x._1, x._2.map (x ⇒ x._2._3)))) // (txarea, (element, [terminals]))
+        // combine parallel equipment
+        val eq3 = elements.keyBy (_._2._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        // the transformer service area is the same, so pull it out of the Iterator
+        val eq4 = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2)))
+        // create the edges keyed by transformersetid
+        val edges = eq4.map (v ⇒
+            (v._1,
+                v._2.map (
+                    edge ⇒ SimulationEdge (edge._1.id, edge._2.head.TopologicalNode, edge._2.tail.head.TopologicalNode, edge._1)
+                )
+            )
+        )
+        nodes.groupByKey.join (edges.groupByKey).cache
+    }
+
     def run (): RDD[ScResult] =
     {
         // check if topology exists, and if not then generate it
@@ -461,8 +560,22 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
         }
         val g = f.map (station_fn)
+
         // compute results
-        g.map (calculate_short_circuit)
+        val results = g.map (calculate_short_circuit)
+
+        // find transformers where there are non-radial networks
+        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct
+        if (0 != problem_trafos.count)
+        {
+            // execute GridLAB-D to get the actual impedances
+            val tsa = TransformerServiceArea (session)
+            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
+            val problem_trafos_islands = problem_trafos.keyBy (x ⇒ x).join (trafos_islands).values // (trafosetid, islandid)
+            val simulations = queryNetwork (problem_trafos_islands)
+        }
+
+        results
     }
 }
 
@@ -474,8 +587,11 @@ object ShortCircuit
     lazy val classes: Array[Class[_]] =
     {
         Array (
+            classOf[ch.ninecode.gl.PreNode],
+            classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PV],
+            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
             classOf[ch.ninecode.sc.Complex],
-            classOf[ch.ninecode.sc.Graphable],
             classOf[ch.ninecode.sc.Impedanzen],
             classOf[ch.ninecode.sc.ScEdge],
             classOf[ch.ninecode.sc.ScError],
