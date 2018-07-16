@@ -402,7 +402,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
 
         // get the transformer(s)
-        val tdata = new Transformers (session, storage).getTransformerData (topological_nodes = true, null)
+        val tdata = new Transformers (session, storage).getTransformerData (topological_nodes = true)
         val tx = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
             .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
             .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TData, island))
@@ -461,7 +461,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val executors = map.keys.toArray
                 log.info ("""executors: %s""".format (executors.mkString (", ")))
 
-                val gridlabd = if (0 !=executors.size)
+                val gridlabd = if (0 != executors.length)
                 {
                     val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
                     raw.name = "raw"

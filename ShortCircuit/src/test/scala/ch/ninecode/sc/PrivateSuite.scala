@@ -1,15 +1,14 @@
 package ch.ninecode.sc
 
-import java.io.File
 import java.util.HashMap
 import java.util.Map
 
-import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.gl.ShortCircuitInfo
 
 class PrivateSuite
     extends

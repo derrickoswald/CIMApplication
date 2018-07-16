@@ -12,11 +12,13 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.Graphable
+import ch.ninecode.gl.Complex
+import ch.ninecode.gl.TData
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.Transformers
 import ch.ninecode.model._
 import ch.ninecode.sc.ScEdge.resistanceAt
 
@@ -385,49 +387,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
     }
 
-    /**
-     * Vertex data.
-     *
-     * @param id_seq TopologicalNode mRID.
-     * @param equipment ConductingEquipment mRID.
-     * @param voltage Node voltage (V).
-     */
-    case class SimulationNode (
-        id_seq: String,
-        equipment: String,
-        voltage: Double
-    ) extends GLMNode with Graphable
-    {
-        override def id: String = id_seq
-        override def nominal_voltage: Double = voltage
-    }
-
-    /**
-     * Edge data.
-     *
-     * @param id_equ ConductingEquipment MRID.
-     * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
-     * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
-     * @param element Element object for the edge.
-     */
-    case class SimulationEdge (
-        id_equ: String,
-        id_cn_1: String,
-        id_cn_2: String,
-        element: Element
-    ) extends GLMEdge with Graphable
-    {
-        /**
-         * Ordered key.
-         * Provide a key on the two connections, independent of to-from from-to ordering.
-         */
-        def key: String = if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
-        override def id: String = id_equ
-        override def cn1: String = id_cn_1
-        override def cn2: String = id_cn_2
-        override def el: Element = element
-    }
-
     def pickone (singles: Array[String]) (nodes: Iterable[(String, SimulationNode)]): (String, SimulationNode) =
     {
         nodes.find (node ⇒ singles.contains (node._2.equipment)) match
@@ -591,7 +550,6 @@ object ShortCircuit
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
-            classOf[ch.ninecode.sc.Complex],
             classOf[ch.ninecode.sc.Impedanzen],
             classOf[ch.ninecode.sc.ScEdge],
             classOf[ch.ninecode.sc.ScError],
@@ -600,12 +558,7 @@ object ShortCircuit
             classOf[ch.ninecode.sc.ScNode],
             classOf[ch.ninecode.sc.ScResult],
             classOf[ch.ninecode.sc.ShortCircuit],
-            classOf[ch.ninecode.sc.ShortCircuitInfo],
             classOf[ch.ninecode.sc.ShortCircuitOptions],
-            classOf[ch.ninecode.sc.StartingTrafos],
-            classOf[ch.ninecode.sc.TData],
-            classOf[ch.ninecode.sc.TransformerDetails],
-            classOf[ch.ninecode.sc.Transformers],
-            classOf[ch.ninecode.sc.TransformerSet])
+            classOf[ch.ninecode.sc.StartingTrafos])
     }
 }

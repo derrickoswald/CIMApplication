@@ -1,4 +1,4 @@
-package ch.ninecode.sc
+package ch.ninecode.gl
 
 /**
  * Gather transformer details from query results.

@@ -222,7 +222,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.esl.GridLABDSuite</suites>
+                    <suites>ch.ninecode.esl.EinspeiseleistungTestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

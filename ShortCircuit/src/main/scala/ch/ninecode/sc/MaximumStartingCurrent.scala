@@ -2,6 +2,8 @@ package ch.ninecode.sc
 
 import scala.math._
 
+import ch.ninecode.gl.Complex
+
 object MaximumStartingCurrent
 {
     /**

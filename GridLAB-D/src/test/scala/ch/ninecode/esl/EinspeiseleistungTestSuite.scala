@@ -2,7 +2,7 @@ package ch.ninecode.esl
 
 import org.scalatest.Suites
 
-class TestSuite extends Suites (
+class EinspeiseleistungTestSuite extends Suites (
   new PowerFeedingSuite,
   new GridLABDSuite
 )

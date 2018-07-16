@@ -20,9 +20,8 @@ import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
-import ch.ninecode.sc.Complex
+import ch.ninecode.gl.Complex
 import ch.ninecode.sc.ShortCircuitOptions
-import ch.ninecode.sc.ScError
 
 @Stateless
 @Path ("/short_circuit/")

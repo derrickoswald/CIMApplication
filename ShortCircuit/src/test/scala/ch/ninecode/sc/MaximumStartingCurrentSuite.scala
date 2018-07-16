@@ -4,6 +4,8 @@ import scala.math._
 
 import org.scalatest.fixture.FunSuite
 
+import ch.ninecode.gl.Complex
+
 class MaximumStartingCurrentSuite extends FunSuite
 {
     type FixtureParam = Int

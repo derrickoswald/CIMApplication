@@ -1,5 +1,6 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
 import ch.ninecode.gl.Graphable
 
 import ch.ninecode.model.ACLineSegment

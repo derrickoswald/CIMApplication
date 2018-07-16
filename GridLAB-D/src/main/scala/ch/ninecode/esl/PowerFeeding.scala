@@ -166,7 +166,7 @@ object PowerFeeding
       val v0 = pn.vertex_id (transformers.node0)
       val v1 = pn.vertex_id (transformers.node1)
       val ratedS = transformers.power_rating
-      val impedance = transformers.total_impedance._1
+      val impedance = transformers.total_impedance_per_unit._1
       StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
     }
 

@@ -11,6 +11,7 @@ import org.apache.spark.storage.StorageLevel
 import org.scalatest.BeforeAndAfter
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.gl.Complex
 
 class ShortCircuitSuite
     extends

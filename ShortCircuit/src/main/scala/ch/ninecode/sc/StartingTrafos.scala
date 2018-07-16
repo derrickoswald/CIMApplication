@@ -2,6 +2,9 @@ package ch.ninecode.sc
 
 import org.apache.spark.graphx.VertexId
 
+import ch.ninecode.gl.Complex
+import ch.ninecode.gl.TransformerSet
+
 /**
  * Transformers for which an available power and angle is known, to be used as the starting points for calculation.
  *

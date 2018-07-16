@@ -17,6 +17,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.ShortCircuitInfo
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.Trace
 import ch.ninecode.gl.Transformers
@@ -98,8 +99,16 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
+        // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
+        if ("" != options.short_circuit)
+        {
+            val infos = ShortCircuitInfo (session, storage_level)
+            val equivalents = infos.getShortCircuitInfo (options.short_circuit)
+            infos.merge (equivalents)
+        }
+
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes = true, options.short_circuit)
+        val tdata = _transformers.getTransformerData (topological_nodes = true)
 
         // determine the set of transformers to work on
         /**
@@ -118,19 +127,19 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         // do all high voltage power transformer (low voltage) islands
         val islands = if (null != trafos)
         {
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
-            selected.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet))
+            val selected = tdata.filter (x => trafos.contains (x.transformer.id)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
+            selected.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)))
         }
         else
         {
             // get the high voltage transformers grouped by low voltage TopologicalIsland
-            val hochpannug = tdata.filter ((td) => (td.voltage1 > 0.4) || (td.voltage0 > 16.0)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
+            val hochpannug = tdata.filter (td => (td.voltage1 > 0.4) || (td.voltage0 > 16.0)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
             // create a TransformerSet for each different low voltage TopologicalNode
-            hochpannug.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet))
+            hochpannug.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)))
         }
 
         // determine the list of low voltage transformer sets
-        val lv = tdata.filter (_.voltage1 <= 0.4).groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet)
+        val lv = tdata.filter (_.voltage1 <= 0.4).groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")

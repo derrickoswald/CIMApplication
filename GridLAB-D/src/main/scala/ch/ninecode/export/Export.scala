@@ -222,13 +222,13 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter ((x) => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet).collect
+            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
         }
         else
         {
             // do all low voltage power transformers
             val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
         }
 
         val prepare = System.nanoTime ()

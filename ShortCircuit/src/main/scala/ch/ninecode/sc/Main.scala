@@ -22,6 +22,9 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.model.Element
 
+import ch.ninecode.gl.Complex
+import ch.ninecode.gl.ShortCircuitInfo
+
 object Main
 {
     val properties: Properties =
