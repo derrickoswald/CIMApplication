@@ -14,8 +14,10 @@ import ch.ninecode.model.Switch
  *
  * @param one_phase If <code>true</code> generate a single phase .glm file.
  * @param date_format The date format to use in
+ * @param emit_voltage_dump if <code>true</code> add a voltage dump element to the .glm prefix text
+ * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
  */
-class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends Serializable
+class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_voltage_dump: Boolean = false, emit_impedance_dump: Boolean = false) extends Serializable
 {
     /**
      * The internal name of the generated GLM file.
@@ -74,9 +76,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
      *
      * This includes the meta-data comments, tape and powerflow modules, clock, and player definitions.
      *
-     * It also currently includes a node voltage dump at time t0.
-     *
-     * @todo Remove name_voltdump.csv.
+     * It can include a node voltage dump at time t0 and an impedance dump if the constructor boolean values are set.
      *
      * @return The text for the .glm file header.
      */
@@ -84,6 +84,27 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     {
         val t0 = start_time
         val t1 = finish_time
+        val voltage_dump =
+            if (emit_voltage_dump)
+                "\n" +
+                "        object voltdump\n" +
+                "        {\n" +
+                "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
+                "            mode polar;\n" +
+                "            runtime \"" + date_format.format (t0.getTime) + "\";\n" +
+                "        };\n"
+            else
+                ""
+        val impedance_dump =
+            if (emit_impedance_dump)
+                "\n" +
+                "        object impedance_dump\n" +
+                "        {\n" +
+                "            filename \"output_data/" + name + "_impedancedump.xml\";\n" +
+                "        };\n"
+            else
+                ""
+
 
         "// $Id: " + name + ".glm\n" +
         "// " + header + "\n" +
@@ -111,13 +132,8 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
         "        {\n" +
         "            complex value;\n" +
         "        };\n" +
-        "\n" +
-        "        object voltdump\n" +
-        "        {\n" +
-        "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
-        "            mode polar;\n" +
-        "            runtime \"" + date_format.format (t0.getTime) + "\";\n" +
-        "        };\n"
+        voltage_dump +
+        impedance_dump
     }
 
     /**
@@ -211,9 +227,9 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat) extends S
     }
 
     // emitting classes
-    val line = new Line (one_phase)
-    val trans = new Trans (one_phase)
-    val switch = new SwitchDevice (one_phase)
+    var line = new Line (one_phase)
+    var trans = new Trans (one_phase)
+    var switch = new SwitchDevice (one_phase)
 
     /**
      * Combine the iterable over strings into one string.

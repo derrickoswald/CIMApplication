@@ -29,7 +29,7 @@ case class SimulationTransformerServiceArea (
     edges: Iterable[Iterable[GLMEdge]],
     start_time: Calendar,
     finish_time: Calendar,
-    directory: String)
+    directory: String) extends Serializable
 {
     val name: String = transformer.transformer_name
     val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))

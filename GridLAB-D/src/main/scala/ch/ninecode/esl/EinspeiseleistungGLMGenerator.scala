@@ -32,7 +32,7 @@ extends
 
         def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
         {
-            val solargeneratingunits = node.eea.map((x) ⇒ { x.solar }).toList
+            val solargeneratingunits = node.eea.map(x ⇒ { x.solar }).toList
             emit_pv (solargeneratingunits, node)
         }
 

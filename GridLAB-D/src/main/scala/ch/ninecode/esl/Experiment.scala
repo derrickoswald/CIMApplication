@@ -46,7 +46,7 @@ case class Experiment(
     override def toString: String = "Experiment(" +
         trafo + "," +
         house + "," +
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime ()) + "[" + t0.getTimeInMillis + "]," +
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
         slot + "," +
         window + "," +
         interval + "," +

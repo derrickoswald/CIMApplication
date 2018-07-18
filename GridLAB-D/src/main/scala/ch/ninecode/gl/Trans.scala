@@ -19,7 +19,7 @@ class Trans (one_phase: Boolean) extends Serializable
         val power_rating = transformer.power_rating
         val (total_impedance, default) = transformer.total_impedance_per_unit
         "\n" +
-        (if (default) "#warning WARNING: using default impedance for " + config + "\n" else "\n") +
+        (if (default) "#warning WARNING: using default impedance for " + config + "\n" else "") +
         "        object transformer_configuration\n" +
         "        {\n" +
         "            name \"" + config + "\";\n" +

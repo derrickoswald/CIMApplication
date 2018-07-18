@@ -3,7 +3,6 @@ package ch.ninecode.esl
 import java.util.Calendar
 
 import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.Problem
 import ch.ninecode.gl.TransformerSet
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -29,10 +28,7 @@ case class Trafokreis
     houses: Iterable[MaxPowerFeedingNodeEEA],
     options: EinspeiseleistungOptions
 )
-extends
-    Problem
 {
-
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     val window: Int = 3 * 60 // window size in simulated seconds per experiment

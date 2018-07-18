@@ -261,13 +261,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             val experiments = trafo._2._2._2
 
-            val v = voltcheck(experiments, complexDataElements, max)
-            val i = ampcheck(experiments, complexDataElements, cdata)
+            val v = voltcheck (experiments, complexDataElements, max)
+            val i = ampcheck (experiments, complexDataElements, cdata)
             val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
 
             // establish a "no limit found" default
             val s = experiments.map(
-                (x) ⇒
+                x ⇒
                     {
                         (
                             x,
@@ -281,7 +281,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
-            trafo._2._2._2.map ((e) => MaxEinspeiseleistung (e.trafo, e.house, None, "gridlab failed", "no results")).toList
+            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.house, None, "gridlab failed", "no results")).toList
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
@@ -305,34 +305,36 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
     {
-        val ret = new StringBuilder()
-        def addrow(time: Calendar, power: Double, angle: Double): Unit =
+        val ret = new StringBuilder ()
+        def addrow (time: Calendar, power: Double, angle: Double): Unit =
         {
-            ret.append(_DateFormat.format(time.getTime))
-            ret.append(",")
-            if (!options.three) {
-                ret.append(-power)
-                ret.append("\n")
+            ret.append (_DateFormat.format(time.getTime))
+            ret.append (",")
+            if (!options.three)
+            {
+                ret.append (-power)
+                ret.append ("\n")
             }
-            else {
-                ret.append(-power / 3) // negative load injects power, 1/3 per phase
-                ret.append("<")
-                ret.append(angle)
-                ret.append("d\n")
+            else
+            {
+                ret.append (-power / 3) // negative load injects power, 1/3 per phase
+                ret.append ("<")
+                ret.append (angle)
+                ret.append ("d\n")
             }
-            time.add(Calendar.SECOND, exp.interval)
+            time.add (Calendar.SECOND, exp.interval)
         }
         val time = exp.t1
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+        addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
         var power = exp.from
         while (power <= exp.to)
         {
-            addrow(time, power, angle)
+            addrow (time, power, angle)
             power = power + exp.step
         }
-        addrow(time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
+        addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
 
-        ret.toString().getBytes(StandardCharsets.UTF_8)
+        ret.toString.getBytes (StandardCharsets.UTF_8)
     }
 
     def generate_player_file (gridlabd: GridLABD) (experiment: Experiment): Int =
@@ -375,7 +377,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             val reduced_trafos = trafokreise.map (t ⇒ {
                 val transformers = t.transformers.power_rating
-                val cdata_iter = t.edges.filter(_.ratedCurrent < Double.PositiveInfinity).map(e ⇒ (e.element.id, e.ratedCurrent))
+                val cdata_iter = t.edges.filter (_.ratedCurrent < Double.PositiveInfinity).map (e ⇒ (e.element.id, e.ratedCurrent))
                 (t.trafo, (transformers, cdata_iter))
             }).cache
 
