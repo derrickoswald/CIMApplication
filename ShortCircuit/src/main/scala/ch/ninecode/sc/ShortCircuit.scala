@@ -414,7 +414,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // but this doesn't include the transformer primary node - it's not part of the topology
         // ToDo: fix this 1kV multiplier on the voltages
         val nodes = islands_trafos.join (equipment_terminals.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
-            node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, node._2.nominalVoltage * 1000.0))
+            node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, node._2.nominalVoltage * 1000.0, node._1._2.Equipment.PowerSystemResource.PSRType))
         ).groupBy (_._2.id_seq).values.map (pickone (singles))).values // (transformersetid, node)
         // get equipment in the transformer service area
         val equipment = equipment_terminals.map (x ⇒ (x._1, (x._2, x._3))).join (islands_trafos)

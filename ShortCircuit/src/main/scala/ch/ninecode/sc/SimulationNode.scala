@@ -11,10 +11,11 @@ import ch.ninecode.gl.Graphable
  * @param voltage Node voltage (V).
  */
 case class SimulationNode (
-        id_seq: String,
-        equipment: String,
-        voltage: Double
-    ) extends GLMNode with Graphable
+    id_seq: String,
+    equipment: String,
+    voltage: Double,
+    psrtype: String
+) extends GLMNode with Graphable
 {
     override def id: String = id_seq
     override def nominal_voltage: Double = voltage
