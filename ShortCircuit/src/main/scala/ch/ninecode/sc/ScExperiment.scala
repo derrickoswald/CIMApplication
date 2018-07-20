@@ -17,10 +17,12 @@ import ch.ninecode.gl.Complex
  */
 case class ScExperiment (
     trafo: String,
+    mrid: String,
     house: String,
     t0: Calendar,
     slot: Int,
     window: Int,
+    voltage: Double,
     impedance: Complex)
 {
     /**

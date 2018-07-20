@@ -202,18 +202,6 @@ class GridLABD (
         PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
     }
 
-    def base_name (s: String): String =
-    {
-        if (s.endsWith ("_topo_fuse"))
-            s.substring (0, s.length - "_topo_fuse".length)
-        else if (s.endsWith ("_fuse_topo"))
-            s.substring (0, s.length - "_fuse_topo".length)
-        else if (s.endsWith ("_topo"))
-            s.substring (0, s.length - "_topo".length)
-        else
-            s
-    }
-
     def exists(filename: String): Boolean =
     {
         val f = new File(filename)
@@ -401,7 +389,7 @@ class GridLABD (
         out.map (check).fold (true)(_ && _)
     }
 
-    def read_output_files (one_phase: Boolean, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))]): RDD[(String, ThreePhaseComplexDataElement)] =
+    def read_output_files (one_phase: Boolean): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
         def toTimeStamp (string: String): Long =

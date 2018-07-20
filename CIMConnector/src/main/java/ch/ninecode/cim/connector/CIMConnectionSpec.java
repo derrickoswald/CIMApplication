@@ -49,7 +49,7 @@ public class CIMConnectionSpec implements ConnectionSpec
 
     /** Returns the hashCode of the ConnectionRequestInfo.
      *
-     *  @return hash code os this instance
+     *  @return hash code of this instance
      **/
     public int hashCode ()
     {

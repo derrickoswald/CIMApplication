@@ -1,6 +1,7 @@
 package ch.ninecode.cim.cimweb
 
 import java.util.Properties
+
 import javax.annotation.Resource
 import javax.naming.Context
 import javax.naming.InitialContext
@@ -8,9 +9,9 @@ import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
-
 import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMConnectionFactory
+import ch.ninecode.cim.connector.CIMConnectionSpec
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
@@ -27,7 +28,9 @@ class RESTful ()
             result.message = out.toString
         if (null != factory)
         {
-            val specification = factory.getDefaultConnectionSpec
+            val specification: CIMConnectionSpec = factory.getDefaultConnectionSpec
+            specification.getProperties.put ("spark.driver.memory", "1g")
+            specification.getProperties.put ("spark.executor.memory", "1g")
             factory.getConnection (specification).asInstanceOf[CIMConnection]
         }
         else

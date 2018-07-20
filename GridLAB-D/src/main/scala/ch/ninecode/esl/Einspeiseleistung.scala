@@ -293,7 +293,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds successful")
         else
             log.error ("solve: " + (solved - b4_solve) / 1e9 + " seconds failed")
-        val output = gridlabd.read_output_files (!options.three, reduced_trafos)
+        val output = gridlabd.read_output_files (!options.three)
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
         val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
