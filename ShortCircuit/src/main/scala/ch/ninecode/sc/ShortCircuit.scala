@@ -448,11 +448,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         nodes.groupByKey.join (edges.groupByKey).cache
     }
 
-    def toImpedance (gg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, (String, Complex)) =
+    def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex) =
     {
-        val trafo = gg._1.trafo
-        val mrid = gg._1.house
-        val z: Complex = gg._2 match
+        val z: Complex = arg._2 match
         {
             case Some (data) ⇒
                 val voltage: Option[(String, ThreePhaseComplexDataElement)] = data.find (_._2.units == "Volts")
@@ -462,17 +460,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     case (Some (volts), Some (amps)) ⇒
                         val v = volts._2.value_a
                         val i = amps._2.value_a
-                        (gg._1.voltage - v) / i
+                        (arg._1.voltage - v) / i
                     case _ ⇒
                         null
                 }
             case _ ⇒
                 null
         }
-        (trafo, (mrid, z))
+        (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z)
     }
 
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, (String, Complex))] =
+    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos: RDD[String] = experiments.map (_.trafo).distinct
@@ -482,20 +480,19 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds successful")
         else
             log.error ("solve: " + (solved - b4_solve) / 1e9 + " seconds failed")
-        val output: RDD[(String, ThreePhaseComplexDataElement)] = gridlabd.read_output_files (one_phase)
+        val output = gridlabd.read_output_files (one_phase) // (trafoid, value_3ph)
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
-        // key by trafo&mrid&time to join
-        val values: RDD[(String, Iterable[(String, ThreePhaseComplexDataElement)])] = output.keyBy (x ⇒ x._1 + "_" + x._2.element + "_" + x._2.millis.toString).groupByKey
-        val exp: RDD[(String, ScExperiment)] = experiments.keyBy (x ⇒ x.trafo + "_" + x.house.substring (0, x.house.indexOf ("_")) + "_" + x.t1.getTimeInMillis.toString)
-        val dd = exp.leftOuterJoin (values)
-        val z: RDD[(String, (String, Complex))] = dd.values.map (toImpedance)
+        // key by trafo_mrid_time to join
+        val values = output.keyBy (x ⇒ x._1 + "_" + x._2.element + "_" + x._2.millis.toString).groupByKey
+        val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.equipment + "_" + x.t1.getTimeInMillis.toString)
+        val z = exp.leftOuterJoin (values).values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance))
         val anal = System.nanoTime ()
         log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
         z
     }
 
-    def remedial (simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, (String, Complex))] =
+    def remedial (simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex)] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -513,11 +510,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def generate (gridlabd: GridLABD, trafokreis: SimulationTransformerServiceArea): Unit =
         {
-            val start = System.nanoTime()
             val generator = ScGLMGenerator (one_phase = true, date_format = _DateFormat, trafokreis)
             gridlabd.export (generator)
         }
-        // ToDo: where to get the directory?
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = StorageLevel.MEMORY_AND_DISK_SER, workdir = options.workdir)
         val experiments = simulations.flatMap (
             x ⇒
@@ -549,19 +544,74 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             if (false)
             {
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_R.csv", short (experiment))
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_S.csv", short (experiment))
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_T.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_R.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_S.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_T.csv", short (experiment))
             }
             else
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + ".csv", short (experiment))
             1
         }
-        val m = experiments.count
         val n = experiments.map (generate_player_file (gridlabd)).count
-        println ("%s/%s experiments".format (m, n))
+        log.info ("""running %s experiments""".format (n))
 
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments: RDD[ScExperiment])
+    }
+
+    // execute GridLAB-D to approximate the impedances and replace the error records
+    def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
+    {
+        // transformer area calculations
+        val tsa = TransformerServiceArea (session)
+        val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
+        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+        val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
+        // set up simulations
+        val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
+        val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
+            .map (
+                x ⇒
+                SimulationTransformerServiceArea (
+                    simulation = x._1,
+                    island = x._1,
+                    transformer = x._2,
+                    nodes = x._3,
+                    edges = x._4,
+                    start_time = now,
+                    directory = x._2.transformer_name)
+        )
+        // perform remedial simulations
+        val z: RDD[(String, String, String, Double, Complex)] = remedial (simulations) // (trafoid, nodeid, equipment, voltage, Z)
+        // map to the type returned by the trace, use the existing value where possible
+        val original_keyed = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
+        val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
+            x ⇒
+            {
+                val v = x._1._4
+                val z1 = x._1._5
+                val z0 = z1 * 4.0 // approximately four times
+                val z = Impedanzen (z1, z0, z1, z0)
+                x._2 match
+                {
+                    case Some (original) ⇒
+                        (
+                            ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, "INFO: computed by load-flow"))), // replace the errors
+                            original.terminal, original.equipment, original.container
+                        )
+                    case None ⇒
+                        (
+                            ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
+                            1, x._1._2, ""
+                        )
+                }
+            }
+        )
+        // calculate new short circuit result records
+        val replacements = new_nodes.map (calculate_short_circuit)
+        // merge them into the existing set
+        val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.equipment)
+        // ToDo: should we remove all records from the problem transformers?
+        original_keyed.subtract (replacements_keyed).union (replacements_keyed).values
     }
 
     def run (): RDD[ScResult] =
@@ -589,7 +639,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
 
-        val starting_nodes = transformers.map (txs ⇒ trafo_mapping (TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance)))
+        val transformersets = transformers.map (txs ⇒ TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance))
+        val starting_nodes = transformersets.map (trafo_mapping)
 
         // create the initial Graph with ScNode vertices
         def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =
@@ -640,21 +691,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
             }
         }
-        val g = f.map (station_fn)
+        val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
 
         // compute results
-        val results = g.map (calculate_short_circuit)
+        var results: RDD[ScResult] = g.map (calculate_short_circuit)
 
         // find transformers where there are non-radial networks
-        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct
+        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct.cache
+        def toTransformerSet (trafo: String): TransformerSet = transformersets.find (_.transformer_name == trafo).get
+        val problem_trafosets = problem_trafos.map (toTransformerSet)
         if (0 != problem_trafos.count)
-        {
-            // execute GridLAB-D to get the actual impedances
-            val tsa = TransformerServiceArea (session)
-            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
-            val problem_trafos_islands = problem_trafos.keyBy (x ⇒ x).join (trafos_islands).values // (trafosetid, islandid)
-            val simulations = queryNetwork (problem_trafos_islands)
-        }
+            results = fix (problem_trafosets, results)
 
         results
     }

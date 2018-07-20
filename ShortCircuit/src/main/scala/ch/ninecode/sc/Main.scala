@@ -274,7 +274,13 @@ object Main
         parser.parse (args, Arguments ()) match {
             case Some (arguments) ⇒
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet)
+                {
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main$").setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.ShortCircuit").setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.TransformerServiceArea").setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Database").setLevel (org.apache.log4j.Level.INFO)
+                }
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 

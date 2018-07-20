@@ -55,17 +55,6 @@ class TransformerSuite
             val topo = System.nanoTime ()
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
-            // transformer area calculations
-            val debug = false
-            val tsa = if (debug)
-            {
-                org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.TransformerServiceArea").setLevel (org.apache.log4j.Level.DEBUG)
-                TransformerServiceArea (session, true)
-            }
-            else
-                TransformerServiceArea (session)
-            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
-
             val _transformers = new Transformers (session, StorageLevel.MEMORY_AND_DISK_SER)
             val tdata = _transformers.getTransformerData (true)
 
@@ -74,28 +63,23 @@ class TransformerSuite
             val niederspannug = tdata.filter (td ⇒ td.voltage0 != 0.4 && td.voltage1 == 0.4)
             val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
 
-            val scopt = ShortCircuitOptions (workdir = "./results/")
-            val short_circuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, scopt)
-            val areas = short_circuit.queryNetwork (trafos_islands)
-            val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
-            val simulations = areas.join (transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
-                .map (x ⇒
-                    SimulationTransformerServiceArea (
-                        simulation = x._1,
-                        island = x._1,
-                        transformer = x._2,
-                        nodes = x._3,
-                        edges = x._4,
-                        start_time = now,
-                        directory = x._2.transformer_name)
-                )
+            val trafo = System.nanoTime ()
+            println ("transformers: " + (trafo - topo) / 1e9 + " seconds")
+
+            val sc_options = ShortCircuitOptions (workdir = "./results/")
+            val short_circuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val results = short_circuit.fix (transformers, session.sparkContext.emptyRDD)
+
             val sc = System.nanoTime ()
-            println ("transformer service areas: " + (sc - topo) / 1e9 + " seconds")
+            println ("fix: " + (sc - trafo) / 1e9 + " seconds")
 
-            val z = short_circuit.remedial (simulations)
-            println (z.collect.mkString ("\n"))
+            // output SQLite database
+            Database.store (sc_options) (results)
 
-            val sim = System.nanoTime ()
-            println ("total: " + (sim - start) / 1e9 + " seconds")
+            val db = System.nanoTime ()
+            println ("database: " + (db - sc) / 1e9 + " seconds")
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - start) / 1e9 + " seconds")
     }
 }

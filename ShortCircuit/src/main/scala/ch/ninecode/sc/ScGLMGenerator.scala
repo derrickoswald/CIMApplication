@@ -105,60 +105,60 @@ extends
     {
         val meter = super.emit_node (node)
         val id = node.id
-        val players_and_recorders = if (experiments.map (_.house).contains (id))
+        val players_and_recorders = experiments.find (_.mrid == id) match
         {
-            val phase = if (one_phase) "AN" else "ABCN"
-            val load =
-                """
-                |        object load
-                |        {
-                |            name "%s_load";
-                |            parent "%s";
-                |            phases %s;
-                |            nominal_voltage %sV;
-                |            object player
-                |            {
-                |                property "constant_impedance_A";
-                |                file "input_data/%s.csv";
-                |            };
-                |        };
-                """.stripMargin.format (id, id, phase, node.nominal_voltage, id)
-            val recorder1 =
-                """
-                  |
-                  |        object recorder
-                  |        {
-                  |            name "%s_voltage_recorder";
-                  |            parent "%s";
-                  |            property voltage_A.real,voltage_A.imag;
-                  |            interval 5;
-                  |            file "output_data/%s_voltage.csv";
-                  |        };
-                """.stripMargin.format (id, id, id)
-            // this will normally find the house fuse, but for other CIM files it could be an overhead or underground line
-            val lines = area.edges.flatMap (x ⇒ x.filter (y ⇒ (y.cn1 == id) || (y.cn2 == id)))
-            // if there are more than two edges (one in, one out) the current in the head element might not be the total current
-            val warn = if (lines.size > 2)
-                """#warning WARNING: node %s has more than 2 edges (%s), current recorder %s_current_recorder using %s may be incorrect""".format (id, lines.map (_.id).mkString (","), id, lines.head.id)
-            else
-                ""
-            val line = lines.head.id
-            val recorder2 =
-                """
-                |%s
-                |        object recorder
-                |        {
-                |            name "%s_current_recorder";
-                |            parent "%s";
-                |            property current_out_A.real,current_out_A.imag;
-                |            interval 5;
-                |            file "output_data/%s_current.csv";
-                |        };
-                """.stripMargin.format (warn, id, line, id)
-            load + recorder1 + recorder2
+            case Some (experiment) ⇒
+                val phase = if (one_phase) "AN" else "ABCN"
+                val load =
+                    """
+                    |        object load
+                    |        {
+                    |            name "%s_load";
+                    |            parent "%s";
+                    |            phases %s;
+                    |            nominal_voltage %sV;
+                    |            object player
+                    |            {
+                    |                property "constant_impedance_A";
+                    |                file "input_data/%s.csv";
+                    |            };
+                    |        };
+                    """.stripMargin.format (id, id, phase, node.nominal_voltage, experiment.equipment)
+                val recorder1 =
+                    """
+                      |
+                      |        object recorder
+                      |        {
+                      |            name "%s_voltage_recorder";
+                      |            parent "%s";
+                      |            property voltage_A.real,voltage_A.imag;
+                      |            interval 5;
+                      |            file "output_data/%s_voltage.csv";
+                      |        };
+                    """.stripMargin.format (id, id, experiment.equipment)
+                // this will normally find the house fuse, but for other CIM files it could be an overhead or underground line
+                val lines = area.edges.flatMap (x ⇒ x.filter (y ⇒ (y.cn1 == id) || (y.cn2 == id)))
+                // if there are more than two edges (one in, one out) the current in the head element might not be the total current
+                val warn = if (lines.size > 2)
+                    """#warning WARNING: node %s has more than 2 edges (%s), current recorder %s_current_recorder using %s may be incorrect""".format (id, lines.map (_.id).mkString (","), id, lines.head.id)
+                else
+                    ""
+                val line = lines.head.id
+                val recorder2 =
+                    """
+                    |%s
+                    |        object recorder
+                    |        {
+                    |            name "%s_current_recorder";
+                    |            parent "%s";
+                    |            property current_out_A.real,current_out_A.imag;
+                    |            interval 5;
+                    |            file "output_data/%s_current.csv";
+                    |        };
+                    """.stripMargin.format (warn, id, line, experiment.equipment)
+                load + recorder1 + recorder2
+            case None ⇒ ""
         }
-        else
-            ""
         meter + players_and_recorders
     }
 }

@@ -9,16 +9,18 @@ import ch.ninecode.gl.Complex
  * Experiment parameters.
  *
  * @param trafo CIM MRID of the transformer feeding the house.
- * @param house CIM MRID of house being experimented on.
+ * @param mrid CIM MRID of the node to apply the short circuit to.
+ * @param equipment CIM MRID of equipment (house) being experimented on.
  * @param t0 Origin for all experiments.
  * @param slot Unique experiment number (slot in windowed time).
  * @param window Duration of the experiment (seconds).
+ * @param voltage The node nominal voltage.
  * @param impedance The impedance (short circuit value) to apply.
  */
 case class ScExperiment (
     trafo: String,
     mrid: String,
-    house: String,
+    equipment: String,
     t0: Calendar,
     slot: Int,
     window: Int,
@@ -28,8 +30,9 @@ case class ScExperiment (
     /**
      * Calendar duplication utility function.
      * @param c The Calendar value to be cloned.
+     * @return A clone of the calendar.
      */
-    def dup(c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
 
     /**
      * The start time of the experiment.
@@ -43,7 +46,7 @@ case class ScExperiment (
 
     override def toString: String = "Experiment(" +
         trafo + "," +
-        house + "," +
+        equipment + "," +
         new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
         slot + "," +
         window + ")"

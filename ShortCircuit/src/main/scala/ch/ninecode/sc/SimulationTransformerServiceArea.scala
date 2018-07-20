@@ -39,7 +39,13 @@ case class SimulationTransformerServiceArea (
 
     // generate experiments as 5 seconds short circuits at each node
     lazy val experiments: Array[ScExperiment] = n.zipWithIndex // (node, index)
-        .map (x ⇒ ScExperiment (simulation, x._1.asInstanceOf[SimulationNode].id_seq, x._1.id, start_time, x._2, 5, x._1.nominal_voltage, Complex (10.0, 0))).toArray
+        .map (
+            x ⇒
+            {
+                val node = x._1.asInstanceOf[SimulationNode]
+                ScExperiment (simulation, node.id_seq, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (10.0, 0))
+            }
+        ).toArray
 
     /**
      * Calendar duplication utility function.
