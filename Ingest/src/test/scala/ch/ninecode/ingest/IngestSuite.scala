@@ -184,7 +184,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     override def beforeAll ()
     {
         setLocalIP ()
-        setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.3/etc/hadoop")
+        setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.6/etc/hadoop")
     }
 
     test ("Help")
@@ -196,7 +196,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     {
         main (Array ("--unittest", "--verbose",
             "--master", "spark://sandbox:7077",
-            "--host", "sandbox",
+            "--host", "beach",
             "--mapping", FILE_DEPOT + FILENAME1,
             "--mintime", "2017-10-22 00:00:00", "--maxtime", "2018-02-14 00:00:00",
             FILE_DEPOT + FILENAME2,
@@ -220,7 +220,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         val args = concat (Array (
             "--unittest", "--verbose",
             "--master", "spark://sandbox:7077",
-            "--host", "sandbox",
+            "--host", "beach",
             "--mapping", prefix + "Messdaten_20180424/Steuerung_Messstellen2.csv"),
             files)
         main (args)

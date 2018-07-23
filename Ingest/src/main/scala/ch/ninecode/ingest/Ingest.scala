@@ -257,7 +257,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val parent = if (path.endsWith ("/")) file else file.getParent
             hdfs.mkdirs (parent, new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
+            if (!parent.isRoot)
+                hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
 
             if (0 != data.length && !path.endsWith ("/"))
             {
@@ -368,22 +369,25 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val begin = System.nanoTime ()
 
         val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
-        val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-        val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
+        if (mapping_files.nonEmpty)
+        {
+            val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
+            val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
-        val read = System.nanoTime ()
-        log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
+            val read = System.nanoTime ()
+            log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
 
-        val ch_number = dataframe.schema.fieldIndex (options.metercol)
-        val nis_number = dataframe.schema.fieldIndex (options.mridcol)
-        val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+            val ch_number = dataframe.schema.fieldIndex (options.metercol)
+            val nis_number = dataframe.schema.fieldIndex (options.mridcol)
+            val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
 
-        val map = System.nanoTime ()
-        log.info ("map: %s seconds".format ((map - read) / 1e9))
+            val map = System.nanoTime ()
+            log.info ("map: %s seconds".format ((map - read) / 1e9))
 
-        // dumpHeap ()
-        options.belvis.foreach (process (measurement_csv_options, join_table))
+            // dumpHeap ()
+            options.belvis.foreach (process (measurement_csv_options, join_table))
 
-        hdfs.delete (new Path (filename), false)
+            hdfs.delete (new Path (filename), false)
+        }
     }
 }
