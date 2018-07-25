@@ -7,6 +7,7 @@ import java.util.TimeZone
 
 import scala.collection.Map
 import scala.io.Source
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -17,6 +18,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
@@ -25,12 +27,12 @@ import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
-import ch.ninecode.model._
 import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.model._
 
 /**
  * Short circuit calculation.
- * Uses GraphX to trace the topology and generate the short ciruit ressults at each node.
+ * Uses GraphX to trace the topology and generate the short circuit results at each node.
  *
  * @param session the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
@@ -453,14 +455,21 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val z: Complex = arg._2 match
         {
             case Some (data) ⇒
-                val voltage: Option[(String, ThreePhaseComplexDataElement)] = data.find (_._2.units == "Volts")
-                val current: Option[(String, ThreePhaseComplexDataElement)] = data.find (_._2.units == "Amps")
-                (current, voltage) match
+                val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (_.units == "Volts")
+                val current: Iterable[Complex] = data.filter (_._2.units == "Amps").map (_._2.value_a)
+                voltage match
                 {
-                    case (Some (volts), Some (amps)) ⇒
-                        val v = volts._2.value_a
-                        val i = amps._2.value_a
-                        (arg._1.voltage - v) / i
+                    case Some (volts) ⇒
+                        val v = volts.value_a
+                        // ToDo: implement Numeric[Complex] so we can use sum()
+                        val i = current.foldLeft (Complex (0))(_ + _)
+                        if (i == Complex (0.0))
+                        {
+                            log.error ("""zero current at %s %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                            Complex (Double.PositiveInfinity)
+                        }
+                        else
+                            (arg._1.voltage - v) / i
                     case _ ⇒
                         null
                 }
@@ -470,25 +479,36 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z)
     }
 
+    def special_filenameparser (filename: String): (String, String) =
+    {
+        val elementindex = filename.indexOf ("%")
+        val element = if (-1 == elementindex) filename.substring (0, filename.lastIndexOf ("_")) else filename.substring (0, elementindex)
+        val units = if (filename.endsWith ("_voltage.csv"))
+            "Volts"
+        else if (filename.endsWith ("_current.csv"))
+            "Amps"
+        else
+            ""
+        (element, units)
+    }
+
     def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos: RDD[String] = experiments.map (_.trafo).distinct
         val success = gridlabd.solve (trafos)
         val solved = System.nanoTime ()
-        if (success)
-            log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds successful")
-        else
-            log.error ("solve: " + (solved - b4_solve) / 1e9 + " seconds failed")
-        val output = gridlabd.read_output_files (one_phase) // (trafoid, value_3ph)
+        log.info ("solve: %s seconds %s".format ((solved - b4_solve) / 1e9, if (success) "successful" else "failed"))
+        val output = gridlabd.read_output_files (one_phase, special_filenameparser) // (trafoid, value_3ph)
         val read = System.nanoTime ()
-        log.info ("read: " + (read - solved) / 1e9 + " seconds")
+        log.info ("read: %s seconds".format ((read - solved) / 1e9))
         // key by trafo_mrid_time to join
         val values = output.keyBy (x ⇒ x._1 + "_" + x._2.element + "_" + x._2.millis.toString).groupByKey
-        val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.equipment + "_" + x.t1.getTimeInMillis.toString)
-        val z = exp.leftOuterJoin (values).values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance))
+        val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.mrid + "_" + x.t1.getTimeInMillis.toString)
+        val dd = exp.leftOuterJoin (values)
+        val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance))
         val anal = System.nanoTime ()
-        log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
+        log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
     }
 
@@ -544,12 +564,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             if (false)
             {
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_R.csv", short (experiment))
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_S.csv", short (experiment))
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + "_T.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.mrid + "_R.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.mrid + "_S.csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.mrid + "_T.csv", short (experiment))
             }
             else
-                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.equipment + ".csv", short (experiment))
+                gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.mrid + ".csv", short (experiment))
             1
         }
         val n = experiments.map (generate_player_file (gridlabd)).count

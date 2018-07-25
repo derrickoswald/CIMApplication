@@ -5,10 +5,10 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.text.ParseException
 import java.text.SimpleDateFormat
 
 import scala.collection.Map
-
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -22,7 +22,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.model._
 
 /**
@@ -389,17 +388,47 @@ class GridLABD (
         out.map (check).fold (true)(_ && _)
     }
 
-    def read_output_files (one_phase: Boolean): RDD[(String, ThreePhaseComplexDataElement)] =
+    def default_filenameparser (filename: String): (String, String) =
+    {
+        val element = filename.substring (0, filename.indexOf ("_"))
+        val units = if (filename.endsWith ("_voltage.csv"))
+            "Volts"
+        else if (filename.endsWith ("_current.csv"))
+            "Amps"
+        else
+            ""
+        (element, units)
+    }
+
+    def read_output_files (
+        one_phase: Boolean,
+        filenameparser: String ⇒ (String, String) = default_filenameparser): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
         def toTimeStamp (string: String): Long =
         {
-            date_format.parse (string).getTime
+            try
+            {
+                date_format.parse (string).getTime
+            }
+            catch
+            {
+                // so this is a thing
+                //    2018-07-19 10:15:20 UTC,+400,-2.72146e-06
+                //    2018-07-19 10:15:25 UTC,+395.948,-3.67446
+                //    20107-19 10:15:30 UTC,+395.911,-3.70541
+                //    2018-07-19 10:15:35 UTC,+398.857,-1.06614
+                //    2018-07-19 10:15:40 UTC,+396.66,-3.06917
+                // sometimes GridLAB-D emits a bogus date
+                case pe: ParseException ⇒
+                    log.warn (pe.getMessage)
+                    0L
+            }
         }
 
         val path = workdir_slash + "*/output.txt"
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-        val files = session.sparkContext.wholeTextFiles(path, executors)
+        val files = session.sparkContext.wholeTextFiles (path, executors)
 
         // extract TRAxxx from the path name
         def extract_trafo (k: (String, String)): (String, String) =
@@ -420,20 +449,40 @@ class GridLABD (
                 {
                     val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
                     val filename = c.replaceAll (filename_pattern, "$1")
-                    element = filename.substring (0, filename.indexOf("_"))
-                    if (filename.endsWith ("_voltage.csv"))
-                        units = "Volts"
-                    else if (filename.endsWith ("_current.csv"))
-                        units = "Amps"
-                    null.asInstanceOf[ThreePhaseComplexDataElement]
+                    val (e, u) = filenameparser (filename)
+                    element = e
+                    units = u
+                    null
                 }
                 else
                 {
-                    val c_arr = c.split(",")
+                    val c_arr = c.split (",")
                     if (one_phase)
-                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0), Complex(0.0), units)
+                        if (c_arr.length > 3)
+                        {
+                            val fd = FlowDirection (c_arr(3))
+                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr(0)), fd.a * Complex (c_arr(1).toDouble, c_arr(2).toDouble), Complex (0.0), Complex (0.0), units)
+                        }
+                        else if (c_arr.length == 3)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr(0)), Complex (c_arr(1).toDouble, c_arr(2).toDouble), Complex (0.0), Complex (0.0), units)
+                        else
+                        {
+                            log.error ("""%s recorder text "%s" cannot be interpreted as one phase complex %s""".format (element, c, units))
+                            null
+                        }
                     else
-                        ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+                        if (c_arr.length > 7)
+                        {
+                            val fd = FlowDirection (c_arr(7))
+                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr(0)), fd.a * Complex (c_arr(1).toDouble, c_arr(2).toDouble), fd.b * Complex (c_arr(3).toDouble, c_arr(4).toDouble), fd.c * Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+                        }
+                        else if (c_arr.length == 7)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr(0)), Complex (c_arr(1).toDouble, c_arr(2).toDouble), Complex (c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units)
+                        else
+                        {
+                            log.error ("""%s recorder text "%s" cannot be interpreted as three phase complex %s""".format (element, c, units))
+                            null
+                        }
                 }
             }
             content.map (makeResult).filter (_ != null)

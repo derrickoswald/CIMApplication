@@ -123,42 +123,61 @@ extends
                     |                file "input_data/%s.csv";
                     |            };
                     |        };
-                    """.stripMargin.format (id, id, phase, node.nominal_voltage, experiment.equipment)
+                    """.stripMargin.format (id, id, phase, node.nominal_voltage, id)
                 val recorder1 =
                     """
-                      |
-                      |        object recorder
-                      |        {
-                      |            name "%s_voltage_recorder";
-                      |            parent "%s";
-                      |            property voltage_A.real,voltage_A.imag;
-                      |            interval 5;
-                      |            file "output_data/%s_voltage.csv";
-                      |        };
-                    """.stripMargin.format (id, id, experiment.equipment)
-                // this will normally find the house fuse, but for other CIM files it could be an overhead or underground line
-                val lines = area.edges.flatMap (x ⇒ x.filter (y ⇒ (y.cn1 == id) || (y.cn2 == id)))
-                // if there are more than two edges (one in, one out) the current in the head element might not be the total current
-                val warn = if (lines.size > 2)
-                    """#warning WARNING: node %s has more than 2 edges (%s), current recorder %s_current_recorder using %s may be incorrect""".format (id, lines.map (_.id).mkString (","), id, lines.head.id)
-                else
-                    ""
-                val line = lines.head.id
-                val recorder2 =
-                    """
-                    |%s
+                    |
                     |        object recorder
                     |        {
-                    |            name "%s_current_recorder";
+                    |            name "%s_voltage_recorder";
                     |            parent "%s";
-                    |            property current_out_A.real,current_out_A.imag;
+                    |            property voltage_A.real,voltage_A.imag;
                     |            interval 5;
-                    |            file "output_data/%s_current.csv";
+                    |            file "output_data/%s_voltage.csv";
                     |        };
-                    """.stripMargin.format (warn, id, line, experiment.equipment)
-                load + recorder1 + recorder2
+                    """.stripMargin.format (id, id, id)
+                load + recorder1
+
             case None ⇒ ""
         }
         meter + players_and_recorders
+    }
+
+    /**
+     * Emit one GridLAB-D edge.
+     *
+     * Generate the text for an edge.
+     * Uses the Line and SwitchDevice handlers to create the text,
+     * using possibly parallel edges for lines but only the head element for switch edges.
+     * Transformers are handled separately.
+     *
+     * @param edges The edge element(s).
+     * @return The .glm file text for the edge.
+     */
+    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    {
+        val link = super.emit_edge (edges)
+        val edge = edges.head.asInstanceOf[SimulationEdge]
+        val recorders =
+            """
+            |        object recorder
+            |        {
+            |            name "%s_%s_current_recorder";
+            |            parent "%s";
+            |            property current_in_A.real,current_in_A.imag,flow_direction;
+            |            interval 5;
+            |            file "output_data/%s%%%s_current.csv";
+            |        };
+            |
+            |        object recorder
+            |        {
+            |            name "%s_%s_current_recorder";
+            |            parent "%s";
+            |            property current_out_A.real,current_out_A.imag,flow_direction;
+            |            interval 5;
+            |            file "output_data/%s%%%s_current.csv";
+            |        };
+            """.stripMargin.format (edge.id_cn_1, edge.id, edge.id, edge.id_cn_1, edge.id, edge.id_cn_2, edge.id, edge.id, edge.id_cn_2, edge.id)
+        link + recorders
     }
 }

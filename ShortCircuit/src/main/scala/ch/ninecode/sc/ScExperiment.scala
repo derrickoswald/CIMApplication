@@ -37,12 +37,12 @@ case class ScExperiment (
     /**
      * The start time of the experiment.
      */
-    def t1: Calendar = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
+    lazy val t1 : Calendar = { val t = dup (t0); t.add (Calendar.SECOND, slot * window); t }
 
     /**
      * The end time of the experiment.
      */
-    def t2: Calendar = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
+    lazy val t2: Calendar = { val t = dup (t0); t.add (Calendar.SECOND, (slot + 1) * window); t }
 
     override def toString: String = "Experiment(" +
         trafo + "," +
