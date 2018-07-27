@@ -208,7 +208,7 @@ object ScEdge
     val alpha: Double = 0.004
 
     /**
-     * Temperature adjusted resitance.
+     * Temperature adjusted resistance.
      *
      * @param temperature target temperature (°C)
      * @param base temperature for the given resistance (°C)

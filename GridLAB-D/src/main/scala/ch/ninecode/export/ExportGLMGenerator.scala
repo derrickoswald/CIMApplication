@@ -204,6 +204,24 @@ extends
         )
     }
 
+    /**
+     * Get the NIS database id of a node.
+     *
+     * The NIS id is suffixed with "_node" or "_topo", and this just gets the prefix.
+     * For example "ABG123401_node" is converted to "ABG123401".
+     *
+     * @param string The node id to split.
+     * @return The NIS number from the node id.
+     */
+    def nis_number (string: String): String =
+    {
+        val n = string.indexOf ("_")
+        if (0 < n)
+            string.substring (0, n)
+        else
+            string
+    }
+
     def generate_recorder (node: GLMNode): String =
     {
         val experiments = trafokreis.experiments

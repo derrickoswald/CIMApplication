@@ -13,25 +13,25 @@ import ch.ninecode.model.Switch
  * simulation start and stop times, etc.
  *
  * @param one_phase If <code>true</code> generate a single phase .glm file.
- * @param date_format The date format to use in
+ * @param date_format The date format to use within the .glm file
  * @param emit_voltage_dump if <code>true</code> add a voltage dump element to the .glm prefix text
  * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
  */
-class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_voltage_dump: Boolean = false, emit_impedance_dump: Boolean = false) extends Serializable
+class GLMGenerator (
+    one_phase: Boolean = true,
+    date_format: SimpleDateFormat =
+    {
+        val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+        format
+    },
+    emit_voltage_dump: Boolean = false,
+    emit_impedance_dump: Boolean = false)
+extends
+    Serializable
 {
     /**
-     * The internal name of the generated GLM file.
-     *
-     * Currently, this name is used as metadata for a file name within the generated .glm file,
-     * and as the hard-coded name of a voltage dump file at t0 (the start of simulation).
-     *
-     * This metadata file name is an erroneous holdover from a CVS keyword expansion of \$Id\$ observed
-     * in supplied .glm samples, and therefore should be removed.
-     *
-     * Unfortunately, other code in uses this name as the name of the directory in which to
-     * save the .glm file and as the name of the .glm file ganerated.
-     *
-     * @todo Remove this def and the \$Id: name comment from the header.
+     * The name of the generated GLM file.
      *
      * @return The unique name for the generated file and directory structure.
      */
@@ -82,56 +82,60 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
      */
     def prefix: String =
     {
-        val t0 = start_time
-        val t1 = finish_time
+        val t0 = date_format.format (start_time.getTime)
+        val t1 = date_format.format (finish_time.getTime)
+        val preamble =
+          """// %s.glm
+            |// %s
+            |//*********************************************
+            |
+            |        module tape;
+            |
+            |        module powerflow
+            |        {
+            |            solver_method NR;
+            |            default_maximum_voltage_error 10e-6;
+            |            NR_iteration_limit 5000;
+            |            NR_superLU_procs 16;
+            |            nominal_frequency 50;
+            |        };
+            |
+            |        clock
+            |        {
+            |            timezone "%s";
+            |            starttime "%s";
+            |            stoptime "%s";
+            |        };
+            |
+            |        class player
+            |        {
+            |            complex value;
+            |        };
+            |""".stripMargin.format (name, header, tzString, t0, t1)
         val voltage_dump =
             if (emit_voltage_dump)
-                "\n" +
-                "        object voltdump\n" +
-                "        {\n" +
-                "            filename \"output_data/" + name + "_voltdump.csv\";\n" +
-                "            mode polar;\n" +
-                "            runtime \"" + date_format.format (t0.getTime) + "\";\n" +
-                "        };\n"
+                """
+                  |        object voltdump
+                  |        {
+                  |            filename "output_data/%s_voltdump.csv";
+                  |            mode polar;
+                  |            runtime "%s";
+                  |        };
+                  |""".stripMargin.format (name, t0)
             else
                 ""
         val impedance_dump =
             if (emit_impedance_dump)
-                "\n" +
-                "        object impedance_dump\n" +
-                "        {\n" +
-                "            filename \"output_data/" + name + "_impedancedump.xml\";\n" +
-                "        };\n"
+                """
+                  |        object impedance_dump
+                  |        {
+                  |            filename "output_data/%s_impedancedump.xml";
+                  |        };
+                  |""".stripMargin.format (name)
             else
                 ""
 
-
-        "// $Id: " + name + ".glm\n" +
-        "// " + header + "\n" +
-        "//*********************************************\n" +
-        "\n" +
-        "        module tape;\n" +
-        "\n" +
-        "        module powerflow\n" +
-        "        {\n" +
-        "            solver_method NR;\n" +
-        "            default_maximum_voltage_error 10e-6;\n" +
-        "            NR_iteration_limit 5000;\n" +
-        "            NR_superLU_procs 16;\n" +
-        "            nominal_frequency 50;\n" +
-        "        };\n" +
-        "\n" +
-        "        clock\n" +
-        "        {\n" +
-        "            timezone \"" + tzString + "\";\n" +
-        "            starttime \"" + date_format.format (t0.getTime) + "\";\n" +
-        "            stoptime \"" + date_format.format (t1.getTime) + "\";\n" +
-        "        };\n" +
-        "\n" +
-        "        class player\n" +
-        "        {\n" +
-        "            complex value;\n" +
-        "        };\n" +
+        preamble +
         voltage_dump +
         impedance_dump
     }
@@ -208,24 +212,6 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
         }
     }
 
-    /**
-     * Get the NIS database id of a node.
-     *
-     * The NIS id is suffixed with "_node" or "_topo", and this just gets the prefix.
-     * For example "ABG123401_node" is converted to "ABG123401".
-     *
-     * @param string The node id to split.
-     * @return The NIS number from the node id.
-     */
-    def nis_number (string: String): String =
-    {
-        val n = string.indexOf ("_")
-        if (0 < n)
-            string.substring (0, n)
-        else
-            string
-    }
-
     // emitting classes
     var line = new Line (one_phase)
     var trans = new Trans (one_phase)
@@ -234,7 +220,7 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
     /**
      * Combine the iterable over strings into one string.
      *
-     * Note: This is very inifficient for large numbers of text strings.
+     * Note: This is very inefficient for large numbers of text strings.
      *
      * @param rdd The elements to gather.
      * @return The combined string.
@@ -280,16 +266,16 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
                 switch.emit (edge, edge.el.sup.sup.asInstanceOf[Switch])
             case "Fuse" ⇒
                 switch.emit (edge, edge.el.sup.asInstanceOf[Switch], fuse = true)
-            case _ ⇒
-                // by default, make a link
-                "\n" +
-                "        object link\n" +
-                "        {\n" +
-                "            name \"" + edge.id + "\";\n" +
-                "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                "            from \"" + edge.cn1 + "\";\n" +
-                "            to \"" + edge.cn2 + "\";\n" +
-                "        };\n"
+            case _ ⇒ // by default, make a link
+              """
+                |        object link
+                |        {
+                |            name "%s";
+                |            phases %s;
+                |            from "%s";
+                |            to "%s";
+                |        };
+                |""".stripMargin.format (edge.id, if (one_phase) "AN" else "ABCN", edge.cn1, edge.cn2)
         }
     }
 
@@ -303,14 +289,15 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
      */
     def emit_node (node: GLMNode): String =
     {
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + node.id + "\";\n" +
-        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            bustype PQ;\n" +
-        "            nominal_voltage " + node.nominal_voltage + "V;\n" +
-        "        };\n"
+        """
+        |        object meter
+        |        {
+        |            name "%s";
+        |            phases %s;
+        |            bustype PQ;
+        |            nominal_voltage %sV;
+        |        };
+        |""".stripMargin.format (node.id, if (one_phase) "AN" else "ABCN", node.nominal_voltage)
     }
 
     /**
@@ -323,21 +310,27 @@ class GLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, emit_volt
     {
         val name = node.id
         val voltage = node.nominal_voltage
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + name + "\";\n" +
-        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            bustype SWING;\n" +
-        "            nominal_voltage " + voltage + "V;\n" +
-        (if (one_phase)
-            "            voltage_A " + voltage + ";\n"
-        else
-            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-            "            voltage_A " + voltage + "+30.0d;\n" +
-            "            voltage_B " + voltage + "-90.0d;\n" +
-            "            voltage_C " + voltage + "+150.0d;\n") +
-        "        };\n"
+        val swing =
+            if (one_phase)
+                """            voltage_A %s;
+                  |""".stripMargin.format (voltage)
+            else
+                // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+                """            voltage_A %s+30.0d;
+                  |            voltage_B %s-90.0d;
+                  |            voltage_C %s+150.0d;
+                  |""".stripMargin.format (voltage, voltage, voltage)
+
+        """
+        |        object meter
+        |        {
+        |            name "%s";
+        |            phases %s;
+        |            bustype SWING;
+        |            nominal_voltage %sV;
+        |%s
+        |        };
+        |""".stripMargin.format (name, if (one_phase) "AN" else "ABCN", voltage, swing)
 
     }
 
