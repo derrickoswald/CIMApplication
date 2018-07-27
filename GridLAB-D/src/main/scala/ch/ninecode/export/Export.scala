@@ -216,7 +216,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, topological_nodes, storage_level)
-        val sdata = solar.getSolarInstallations ()
+        val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)

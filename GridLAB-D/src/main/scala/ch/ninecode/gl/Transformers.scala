@@ -242,10 +242,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         val transformers_stations_plus_ends_plus_terminals = transformers_stations_plus_ends.leftOuterJoin (terms).flatMap (addTerminals)
 
         // get equivalent injection values, if any
-        val injections = if (null != get[EquivalentInjection])
-            get[EquivalentInjection]
-        else
-            session.sparkContext.parallelize (List[EquivalentInjection] ())
+        val injections = getOrElse[EquivalentInjection]
         val injections_by_node = injections.keyBy (_.id).join (terms).values.map (x ⇒ (x._2.head.ConnectivityNode, x._1)) // ToDo: could be TopologicalNode?
 
         val transformers_stations_plus_ends_plus_terminals_plus_sc =

@@ -14,8 +14,6 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.GridLABD
-
 object Database
 {
     val log = LoggerFactory.getLogger (getClass)
@@ -200,7 +198,7 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar, gridlabd: GridLABD) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")

@@ -190,7 +190,7 @@ object PowerFeeding
             }
         })
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), gridlabd) (has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
