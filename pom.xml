@@ -30,8 +30,10 @@
         <version.dependency.cimreader>2.11-2.3.1-3.0.0</version.dependency.cimreader>
 
         <!-- Component versions -->
+        <version.dependency.json>1.1.2</version.dependency.json>
         <version.dependency.cassandra_java>3.5.1</version.dependency.cassandra_java>
         <version.dependency.sqlite>3.21.0.1</version.dependency.sqlite>
+        <version.dependency.scopt>3.7.0</version.dependency.scopt>
 
         <!-- test versions -->
         <version.dependency.junit>4.12</version.dependency.junit>

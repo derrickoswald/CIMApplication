@@ -17,14 +17,6 @@
     <inceptionYear>2018</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/Simulation</url>
 
-    <properties>
-        <!-- component versions -->
-        <version.dependency.json>1.1.2</version.dependency.json>
-
-        <!-- test dependencies versions -->
-        <version.dependency.scopt>3.5.0</version.dependency.scopt>
-    </properties>
-
     <dependencies>
 
         <dependency>
