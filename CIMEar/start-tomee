@@ -42,12 +42,8 @@ done;
 if [[ -n "${2}" ]]; then
     export CASSANDRANODE=${2}
 else
-    export CASSANDRANODE=$NAMENODE
+    export CASSANDRANODE=localhost
 fi
-
-sed -i "s|cluster_name: 'Test Cluster'|cluster_name: 'sandbox'|g" /etc/cassandra/cassandra.yaml
-seed=$(getent ahosts $CASSANDRANODE | grep $CASSANDRANODE | cut --delimiter " " --fields 1) && sed -i "s|- seeds: \"127.0.0.1\"|- seeds: \"$seed\"|g" /etc/cassandra/cassandra.yaml
-me=$(hostname -i) && sed -i "s|listen_address: localhost|listen_address: $me|g" /etc/cassandra/cassandra.yaml
 
 # if localhost, start Cassandra
 if [[ "localhost" == "$CASSANDRANODE" ]]; then
@@ -84,13 +80,10 @@ if [[ "localhost" == "$CASSANDRANODE" ]]; then
             break
         fi
     done
-    rpc_host=localhost
-else
-    rpc_host=$CASSANDRANODE
+    # load Cassandra schema (for a single node)
+    sed -i "s|'replication_factor': 2|'replication_factor': 1|g" /opt/util/bin/schema.sql
+    cqlsh --file /opt/util/bin/schema.sql $CASSANDRANODE
 fi
-
-# load Cassandra schema
-cqlsh --file /opt/util/bin/schema.sql $rpc_host
 
 # add Spark and Hadoop configuration directories to shared classpath
 sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/conf,${HADOOP_CONF_DIR}|g" /usr/local/tomee/conf/catalina.properties
