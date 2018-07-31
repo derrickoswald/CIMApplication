@@ -1,35 +1,44 @@
 package ch.ninecode.sc
 
-import java.nio.charset.StandardCharsets
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.io.File
 import java.util.HashMap
 import java.util.Map
-import java.util.TimeZone
 
-import org.apache.spark.rdd.RDD
+import org.scalatest.BeforeAndAfter
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.gl.Complex
-import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 
 class TransformerSuite
     extends
         SparkSuite
+    with
+        BeforeAndAfter
 {
     val PRIVATE_FILE_DEPOT = "private_data/"
     val log: Logger = LoggerFactory.getLogger (getClass)
 
+    val FILE_DEPOT = "data/"
+
+    val FILENAME1 = "DemoData.rdf"
+
+    before
+    {
+        // unpack the zip files
+        if (!new File (FILE_DEPOT + FILENAME1).exists)
+            new Unzip ().unzip (FILE_DEPOT + "DemoData.zip", FILE_DEPOT)
+    }
+
     test ("transformer area")
     {
         session: SparkSession ⇒
-            val filename = PRIVATE_FILE_DEPOT + "bkw_cim_export_schopfen_all" + ".rdf"
+            val filename = FILE_DEPOT + FILENAME1
 
             val start = System.nanoTime
             val files = filename.split (",")

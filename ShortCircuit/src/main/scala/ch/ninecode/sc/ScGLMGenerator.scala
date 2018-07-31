@@ -126,7 +126,6 @@ extends
                     """.stripMargin.format (id, id, phase, node.nominal_voltage, id)
                 val recorder1 =
                     """
-                    |
                     |        object recorder
                     |        {
                     |            name "%s_voltage_recorder";
@@ -179,5 +178,23 @@ extends
             |        };
             """.stripMargin.format (edge.id_cn_1, edge.id, edge.id, edge.id_cn_1, edge.id, edge.id_cn_2, edge.id, edge.id, edge.id_cn_2, edge.id)
         link + recorders
+    }
+
+
+    override def emit_transformer (transformer: TransformerSet): String =
+    {
+        val t = super.emit_transformer (transformer)
+        val recorder =
+            """
+              |        object recorder
+              |        {
+              |            name "%s_%s_current_recorder";
+              |            parent "%s";
+              |            property current_out_A.real,current_out_A.imag,flow_direction;
+              |            interval 5;
+              |            file "output_data/%s%%%s_current.csv";
+              |        };
+            """.stripMargin.format (transformer.node1, transformer.transformer_name, transformer.transformer_name, transformer.node1, transformer.transformer_name)
+        t + recorder
     }
 }

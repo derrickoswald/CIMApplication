@@ -21,5 +21,6 @@ import org.scalatest.Suites
 class TestSuite extends Suites (
     new FDataSuite,
     new MaximumStartingCurrentSuite,
-    new ShortCircuitSuite
+    new ShortCircuitSuite,
+    new TransformerSuite
 )

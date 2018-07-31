@@ -465,7 +465,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         val i = current.foldLeft (Complex (0))(_ + _)
                         if (i == Complex (0.0))
                         {
-                            log.error ("""zero current at %s %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                            log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
                             Complex (Double.PositiveInfinity)
                         }
                         else
