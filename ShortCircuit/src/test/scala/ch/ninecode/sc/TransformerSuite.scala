@@ -1,17 +1,18 @@
 package ch.ninecode.sc
 
 import java.io.File
+import java.sql.Connection
+import java.sql.DriverManager
 import java.util.HashMap
 import java.util.Map
 
 import org.scalatest.BeforeAndAfter
-
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 
@@ -21,21 +22,128 @@ class TransformerSuite
     with
         BeforeAndAfter
 {
-    val PRIVATE_FILE_DEPOT = "private_data/"
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val FILE_DEPOT = "data/"
+    val FILE_DEPOT = "private_data/"
 
-    val FILENAME1 = "DemoData.rdf"
+    val FILENAME1 = "bkw_cim_export_schopfen_all.rdf"
+
+    var run_one = 1
+    var run_two = 2
 
     before
     {
-        // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + "DemoData.zip", FILE_DEPOT)
+//        // unpack the zip files
+//        if (!new File (FILE_DEPOT + FILENAME1).exists)
+//            new Unzip ().unzip (FILE_DEPOT + "DemoData.zip", FILE_DEPOT)
     }
 
-    test ("transformer area")
+    test ("Basic")
+    {
+        session: SparkSession ⇒
+            val filename = FILE_DEPOT + FILENAME1
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            options.put ("ch.ninecode.cim.make_edges", "false")
+            options.put ("ch.ninecode.cim.do_join", "false")
+            options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+            options.put ("ch.ninecode.cim.do_topo_islands", "false")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
+            val ele = ntp.process (false)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (description = "Basic", trafos = FILE_DEPOT + "trafo.txt")
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val results = shortcircuit.run ()
+
+            val sc = System.nanoTime ()
+            println ("short circuit: " + (sc - topo) / 1e9 + " seconds")
+
+            // output SQLite database
+            run_one = Database.store (sc_options) (results)
+
+            val db = System.nanoTime ()
+            println ("database: " + (db - sc) / 1e9 + " seconds")
+
+            println ("total: " + (db - start) / 1e9 + " seconds")
+    }
+
+    def check_impedances (percent: Double = 5.0): Unit =
+    {
+        // load the sqlite-JDBC driver using the current class loader
+        Class.forName ("org.sqlite.JDBC")
+        // create a database connection
+        val connection = DriverManager.getConnection ("jdbc:sqlite:results/shortcircuit.db")
+
+        val s = connection.prepareStatement ("select distinct node from shortcircuit where run = ? and node like 'HAS%'")
+        s.setInt (1, run_two)
+        val r = s.executeQuery ()
+        var nodes = List[String] ()
+        while (r.next)
+            nodes = r.getString (1) :: nodes
+        r.close ()
+        s.close ()
+
+        case class Z (run: Int, node: String, equipment: String, z: Complex)
+        {
+            def near (that: Z, percentage: Double = percent): Boolean =
+            {
+                val diff = z - that.z
+                val pct = diff.modulus / z.modulus * 100.0
+                if (pct >= percentage) println ("""%s vs. %s %s %s%% (%s)""".format (this, that, if (pct >= percentage) ">" else "<", percentage, pct))
+                pct < percentage
+            }
+        }
+
+        for (node ← nodes)
+        {
+            // loop through the path from leaf to transformer checking the first run against the second
+            val statement = connection.prepareStatement ("select run,node,equipment,r,x,prev from shortcircuit where node = ? and run in (?, ?)")
+            var prev: String = node
+            while ((null != prev) && ("self" != prev))
+            {
+                var data = List[Z] ()
+                statement.setString (1, prev)
+                statement.setInt (2, run_one)
+                statement.setInt (3, run_two)
+                prev = null
+                val resultset = statement.executeQuery ()
+                while (resultset.next)
+                {
+                    val datum = Z (resultset.getInt (1), resultset.getString (2), resultset.getString (3), Complex (resultset.getDouble (4), resultset.getDouble (5)))
+                    data = datum :: data
+                    val p = resultset.getString (6)
+                    if (!resultset.wasNull) prev = p
+                }
+                resultset.close ()
+                data.tail.foreach (x ⇒ assert (x.near (data.head, percent), "impedance difference"))
+            }
+            statement.close ()
+        }
+    }
+
+//    test ("dummy")
+//    {
+//        session: SparkSession ⇒
+//            check_impedances ()
+//    }
+
+    test ("Transformer Area")
     {
         session: SparkSession ⇒
             val filename = FILE_DEPOT + FILENAME1
@@ -83,12 +191,14 @@ class TransformerSuite
             println ("fix: " + (sc - trafo) / 1e9 + " seconds")
 
             // output SQLite database
-            Database.store (sc_options) (results)
+            run_two = Database.store (sc_options) (results)
 
             val db = System.nanoTime ()
             println ("database: " + (db - sc) / 1e9 + " seconds")
 
             val total = System.nanoTime ()
             println ("total: " + (total - start) / 1e9 + " seconds")
+
+            check_impedances (percent = 15.0) // ToDo: find out why the discrepancy is so large
     }
 }

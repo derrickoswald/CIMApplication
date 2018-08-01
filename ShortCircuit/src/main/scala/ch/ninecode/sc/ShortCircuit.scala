@@ -621,7 +621,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     case None ⇒
                         (
                             ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
-                            1, x._1._2, ""
+                            1, x._1._3, ""
                         )
                 }
             }

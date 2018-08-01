@@ -61,7 +61,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
         bd = bd.setScale (digits, java.math.RoundingMode.HALF_UP)
         bd.doubleValue ()
     }
-    override def toString: String = toString (5)
+    override def toString: String = toString (8)
     def numberformat (number: Double, digits: Int, leading_sign: Boolean = false): String =
     {
         number match

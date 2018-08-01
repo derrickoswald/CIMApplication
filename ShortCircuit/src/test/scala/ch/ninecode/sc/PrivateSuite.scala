@@ -16,52 +16,6 @@ class PrivateSuite
 {
     val PRIVATE_FILE_DEPOT = "private_data/"
 
-    test ("Basic")
-    {
-        session: SparkSession ⇒
-
-            val filename = PRIVATE_FILE_DEPOT + "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355_or_EEA5287" + ".rdf"
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.make_edges", "false")
-            options.put ("ch.ninecode.cim.do_join", "false")
-            options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
-            options.put ("ch.ninecode.cim.do_topo_islands", "false")
-
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
-
-            // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
-            val ele = ntp.process (false)
-            println (ele.count () + " elements")
-
-            val topo = System.nanoTime ()
-            println ("topology: " + (topo - read) / 1e9 + " seconds")
-
-            // short circuit calculations
-            val sc_options = ShortCircuitOptions (description = "Basic", trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
-            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-            val results = shortcircuit.run ()
-
-            val sc = System.nanoTime ()
-            println ("short circuit: " + (sc - topo) / 1e9 + " seconds")
-
-            // output SQLite database
-            Database.store (sc_options) (results)
-
-            val db = System.nanoTime ()
-            println ("database: " + (db - sc) / 1e9 + " seconds")
-
-            println ("total: " + (db - start) / 1e9 + " seconds")
-    }
-
     test ("Extended")
     {
         session: SparkSession ⇒

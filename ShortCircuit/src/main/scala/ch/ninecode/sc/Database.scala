@@ -103,7 +103,7 @@ object Database
                   |    x double,                             -- aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
                   |    r0 double,                            -- aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
                   |    x0 double,                            -- aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
-                  |    ik double,                            -- one phase short bolted circuit current (A)
+                  |    ik double,                            -- one phase bolted short circuit current (A)
                   |    ik3pol double,                        -- three phase bolted short circuit current (A)
                   |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
                   |    sk double,                            -- short-circuit power at the point of common coupling (VA)
