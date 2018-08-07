@@ -1,23 +1,20 @@
 package ch.ninecode.sc
 
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.Graphable
 
 /**
  * Vertex data.
  *
- * @param id_seq TopologicalNode mRID.
+ * @param id TopologicalNode mRID.
  * @param equipment ConductingEquipment mRID.
- * @param voltage Node voltage (V).
+ * @param nominal_voltage Node voltage (V).
+ * @param psrtype The type of node according to the power system resource type.
  */
 case class SimulationNode (
-    id_seq: String,
+    id: String,
     equipment: String,
-    voltage: Double,
+    nominal_voltage: Double,
     psrtype: String
-) extends GLMNode with Graphable
-{
-    override def id: String = id_seq
-    override def nominal_voltage: Double = voltage
-}
+)
+extends GLMNode
 

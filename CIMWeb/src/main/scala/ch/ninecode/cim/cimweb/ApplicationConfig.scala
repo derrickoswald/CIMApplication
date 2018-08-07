@@ -46,7 +46,6 @@ class ApplicationConfig extends Application
             classOf[Export],
             classOf[View],
             classOf[EnergyConsumer],
-            classOf[GridLAB],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
             classOf[TimeSeries],

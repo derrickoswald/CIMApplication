@@ -11,7 +11,7 @@ case class SimulationTask
     start: Calendar,
     end: Calendar,
     nodes: Iterable[GLMNode],
-    edges: Iterable[Iterable[GLMEdge]],
+    edges: Iterable[GLMEdge],
     players: Array[SimulationPlayer],
     recorders: Array[SimulationRecorder]
 )

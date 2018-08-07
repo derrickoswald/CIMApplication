@@ -19,7 +19,7 @@ case class SimulationGLMGenerator (
 
     override def finish_time: Calendar = kreis.finish_time
 
-    override def edge_groups: Iterable[Iterable[SimulationEdge]] = kreis.edges
+    override def edges: Iterable[SimulationEdge] = kreis.edges
 
     override def transformers: Array[TransformerSet] = Array(kreis.transformer)
 
@@ -45,7 +45,7 @@ case class SimulationGLMGenerator (
         """.stripMargin.format (recorder.name, recorder.parent, property, recorder.interval, recorder.file)
     }
 
-    def emit_edge_player (edge: Iterable[SimulationEdge]) (player: SimulationPlayer): String =
+    def emit_edge_player (player: SimulationPlayer): String =
     {
         // ToDo: do all players need "_A" for one phase ?
         val property = if (one_phase) player.property + "_A" else player.property
@@ -100,12 +100,12 @@ case class SimulationGLMGenerator (
             """.stripMargin.format (player.name, player.parent, property, player.file)
     }
 
-    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    override def emit_edge (edge: GLMEdge): String =
     {
-        val e = edges.asInstanceOf[Iterable[SimulationEdge]]
-        val recorders = e.map (edge ⇒ edge.recorders.map (emit_recorder).mkString ("")).mkString ("")
-        val players = e.map (edge ⇒ edge.players.map (emit_edge_player (e)).mkString ("")).mkString ("")
-        super.emit_edge (edges) + recorders + players
+        val e = edge.asInstanceOf[SimulationEdge]
+        val recorders = e.recorders.map (emit_recorder).mkString ("")
+        val players = e.players.map (emit_edge_player).mkString ("")
+        super.emit_edge (edge) + recorders + players
     }
 
     override def emit_node (node: GLMNode): String =

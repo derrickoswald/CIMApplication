@@ -11,8 +11,7 @@ class ExportGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     trafokreis: Trafokreis)
-extends
-    GLMGenerator (one_phase, date_format)
+extends GLMGenerator (one_phase, date_format)
 {
     /**
      * Calendar duplication utility function.
@@ -28,7 +27,7 @@ extends
 
     override def finish_time: Calendar = { val t = dup (start_time); t.add (Calendar.HOUR, 24); t }
 
-    override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy (_.key).values
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Array[TransformerSet] = Array(trafokreis.transformers)
 
@@ -61,11 +60,8 @@ extends
             "")
     }
 
-    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    override def emit_edge (edge: GLMEdge): String =
     {
-        val edge = edges.head
-        val cls = edge.el.getClass.getName
-        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
         def recorders: String =
         {
             "\n" +
@@ -97,15 +93,7 @@ extends
             "        };\n"
         }
 
-        val t = super.emit_edge (edges)
-        val r = clazz match
-        {
-            case "ACLineSegment" ⇒
-                recorders
-            case _ ⇒
-                ""
-        }
-        t + r
+        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
     }
 
     override def emit_slack (node: GLMNode): String =
@@ -247,8 +235,7 @@ extends
             "            property " + ( if (one_phase) "power_A.real,power_A.imag" else "power_A.real,power_A.imag,power_B.real,power_B.imag,power_C.real,power_C.imag") + ";\n" +
             "            interval 300;\n" +
             "            file \"output_data/" + node.id + "_power.csv\";\n" +
-            "        };\n" +
-            "\n"
+            "        };\n"
         else
             ""
     }

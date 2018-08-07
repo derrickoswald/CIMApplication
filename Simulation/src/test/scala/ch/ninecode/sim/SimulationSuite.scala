@@ -177,7 +177,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--help"))
     }
 
-    test ("Basic")
+    ignore ("Basic")
     {
         val json = FILE_DEPOT + "basic.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -261,10 +261,10 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
-    test ("Transformers")
+    ignore ("Transformers")
     {
         val json = FILE_DEPOT + "transformers.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -386,7 +386,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
     test ("Typical")
@@ -497,15 +497,15 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "spark://sandbox:7077", "--verbose", "--keep", "--batchsize", "32767", "--host", "sandbox", json))
+        Main.main (Array ("--unittest", "--master", "spark://sandbox:7077", "--verbose", "--keep", "--batchsize", "32767", "--host", "beach", json))
     }
 
-    test ("Summarize")
+    ignore ("Summarize")
     {
         Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "sandbox", "--summarize"))
     }
 
-    test ("DemoData")
+    ignore ("DemoData")
     {
         val json = FILE_DEPOT + "basic.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -588,6 +588,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "sandbox", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 }

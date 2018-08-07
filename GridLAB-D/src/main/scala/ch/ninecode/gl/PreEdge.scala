@@ -18,41 +18,28 @@ import ch.ninecode.model.Switch
  * Edge data.
  *
  * @param id_seq_1 Terminal 1 MRID.
- * @param id_cn_1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
+ * @param cn1 Terminal 1 ConnectivityNode or TopologicalNode MRID.
  * @param v1 Terminal 1 voltage
  * @param id_seq_2 Terminal 2 MRID.
- * @param id_cn_2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
+ * @param cn2 Terminal 2 ConnectivityNode or TopologicalNode MRID.
  * @param v2 Terminal 2 voltage
- * @param id_equ ConductingEquipment MRID.
+ * @param id ConductingEquipment MRID.
  * @param ratedCurrent Cable rated current (A).
  * @param element Element object for the edge.
  */
 case class PreEdge(
     id_seq_1: String,
-    id_cn_1: String,
+    cn1: String,
     v1: Double,
     id_seq_2: String,
-    id_cn_2: String,
+    cn2: String,
     v2: Double,
-    id_equ: String,
+    id: String,
     ratedCurrent: Double,
     element: Element)
-extends
-    GLMEdge
-with
-    Graphable
-with
-    Serializable
+extends GLMEdge
 {
-    /**
-     * Ordered key.
-     * Provide a key on the two connections, independent of to-from from-to ordering.
-     */
-    def key: String = if (id_cn_1 < id_cn_2) id_cn_1 + id_cn_2 else id_cn_2 + id_cn_1
-    override def id: String = id_equ
-    override def cn1: String = id_cn_1
-    override def cn2: String = id_cn_2
-    override def el: Element = element
+    override def emit (one_phase: Boolean): String = "" // there isn't anything emitted by PreEdges
 
     /**
      * Flag indicating if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.

@@ -3,8 +3,6 @@ package ch.ninecode.gl
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
 
-import ch.ninecode.model.Switch
-
 /**
  * The .glm file generator.
  *
@@ -16,6 +14,7 @@ import ch.ninecode.model.Switch
  * @param date_format The date format to use within the .glm file
  * @param emit_voltage_dump if <code>true</code> add a voltage dump element to the .glm prefix text
  * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
+ * @param emit_fault_check if <code>true</code> add a fault check element to the .glm prefix text
  */
 class GLMGenerator (
     one_phase: Boolean = true,
@@ -26,9 +25,9 @@ class GLMGenerator (
         format
     },
     emit_voltage_dump: Boolean = false,
-    emit_impedance_dump: Boolean = false)
-extends
-    Serializable
+    emit_impedance_dump: Boolean = false,
+    emit_fault_check: Boolean = false)
+extends Serializable
 {
     /**
      * The name of the generated GLM file.
@@ -134,24 +133,30 @@ extends
                   |""".stripMargin.format (name)
             else
                 ""
+        val fault_check =
+            if (emit_fault_check)
+                """
+                  |        object fault_check
+                  |        {
+                  |            name fault_check_obj;
+                  |            output_filename "output_data/%s_faultcheck.txt";
+                  |        };
+                  |""".stripMargin.format (name)
+            else
+                ""
 
         preamble +
         voltage_dump +
-        impedance_dump
+        impedance_dump +
+        fault_check
     }
 
     /**
      * The edges to include in the .glm file.
      *
-     * The edges may have parallel elements, and thus this is a "list of lists"
-     * in the form of the generic Scala trait Iterable for iterable collections.
-     *
-     * Only edges defined by this method are exported, so it is important to include
-     * exactly the edges required by the network, no more, no less.
-     *
      * @return The edges to be included in the export.
      */
-    def edge_groups: Iterable[Iterable[GLMEdge]] = List(List[GLMEdge]())
+    def edges: Iterable[GLMEdge] = List()
 
     /**
      * The nodes to be included in the .glm file.
@@ -213,9 +218,20 @@ extends
     }
 
     // emitting classes
-    var line = new Line (one_phase)
     var trans = new Trans (one_phase)
-    var switch = new SwitchDevice (one_phase)
+
+    /**
+     * Emit configurations for all groups of edges that are ACLineSegments.
+     *
+     * Get one of each type of ACLineSegment and emit a configuration for each of them.
+     *
+     * @param edges The edges in the model.
+     * @return The configuration elements as a single string.
+     */
+    def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
+    {
+        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (one_phase))
+    }
 
     /**
      * Combine the iterable over strings into one string.
@@ -234,70 +250,26 @@ extends
      * Emit one GridLAB-D edge.
      *
      * Generate the text for an edge.
-     * Uses the Line and SwitchDevice handlers to create the text,
-     * using possibly parallel edges for lines but only the head element for switch edges.
-     * Transformers are handled separately.
      *
-     * @param edges The edge element(s).
+     * @param edge The edge element.
      * @return The .glm file text for the edge.
      */
-    def emit_edge (edges: Iterable[GLMEdge]): String =
+    def emit_edge (edge: GLMEdge): String =
     {
-        val edge = edges.head
-        val cls = edge.el.getClass.getName
-        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
-        clazz match {
-            case "ACLineSegment" ⇒
-                line.emit (edges)
-            case "PowerTransformer" ⇒
-                "" // handled specially
-            case "Switch" ⇒
-                switch.emit (edge, edge.el.asInstanceOf[Switch])
-            case "Cut" |
-                "Disconnector" |
-                "GroundDisconnector" |
-                "Jumper" |
-                "ProtectedSwitch" |
-                "Sectionaliser" ⇒
-                switch.emit (edge, edge.el.sup.asInstanceOf[Switch])
-            case "Breaker" |
-                "LoadBreakSwitch" |
-                "Recloser" ⇒
-                switch.emit (edge, edge.el.sup.sup.asInstanceOf[Switch])
-            case "Fuse" ⇒
-                switch.emit (edge, edge.el.sup.asInstanceOf[Switch], fuse = true)
-            case _ ⇒ // by default, make a link
-              """
-                |        object link
-                |        {
-                |            name "%s";
-                |            phases %s;
-                |            from "%s";
-                |            to "%s";
-                |        };
-                |""".stripMargin.format (edge.id, if (one_phase) "AN" else "ABCN", edge.cn1, edge.cn2)
-        }
+        edge.emit (one_phase)
     }
 
     /**
      * Emit one GridLAB-D node.
      *
-     * Emits a meter object for the node.
+     * Generate the text for a node.
      *
      * @param node The node element.
      * @return The .glm file text for the node.
      */
     def emit_node (node: GLMNode): String =
     {
-        """
-        |        object meter
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            bustype PQ;
-        |            nominal_voltage %sV;
-        |        };
-        |""".stripMargin.format (node.id, if (one_phase) "AN" else "ABCN", node.nominal_voltage)
+        node.emit (one_phase)
     }
 
     /**
@@ -349,14 +321,11 @@ extends
      */
     def make_glm (): String =
     {
-        // GridLAB-D doesn't understand parallel admittance paths, so we have to do it
-        val combined_edges = edge_groups
-
         // get the transformer configurations
         val t_string = trans.getTransformerConfigurations (transformers)
 
         // get a configuration for each type of ACLineSegment
-        val l_strings = line.getACLineSegmentConfigurations (combined_edges)
+        val l_strings = getACLineSegmentConfigurations (edges)
 
         // emit the swing node
         val o_strings = swing_nodes.map (emit_slack)
@@ -368,7 +337,7 @@ extends
         val t_edges = transformers.map (emit_transformer)
 
         // get the edge strings
-        val l_edges = combined_edges.map (emit_edge)
+        val l_edges = edges.map (emit_edge)
 
         // get the extra strings
         val e_strings = extra

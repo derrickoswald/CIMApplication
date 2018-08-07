@@ -5,8 +5,12 @@ import java.util.regex.Pattern
 import scala.math._
 import scala.language.implicitConversions
 
-// from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
-case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
+/**
+ * Complex number implementation.
+ *
+ * Derived from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
+ */
+case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with Numeric[Complex]
 {
     def this (complex: Complex) = this (complex.re, complex.im)
 
@@ -25,7 +29,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
     // arithmetic operations
     def + (c: Complex): Complex = Complex (re + c.re, im + c.im)
     def - (c: Complex): Complex = this + -c
-    def * (c: Complex) = Complex (re * c.re - im * c.im, im * c.re + re * c.im)
+    def * (c: Complex): Complex = Complex (re * c.re - im * c.im, im * c.re + re * c.im)
     def / (c: Complex): Complex =
     {
         require (c.re != 0.0 || c.im != 0.0)
@@ -86,6 +90,28 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex]
     private def asString (digits: Int) =
         numberformat (re, digits) + numberformat (im, digits, true) + "j"
     def asPair: (Double, Double) = (re, im)
+
+    // Numeric[Complex]
+
+    override def plus (x: Complex, y: Complex): Complex = x + y
+
+    override def minus (x: Complex, y: Complex): Complex = x - y
+
+    override def times (x: Complex, y: Complex): Complex = x * y
+
+    override def negate (x: Complex): Complex = -x
+
+    override def fromInt (x: Int): Complex = new Complex (x)
+
+    override def toInt (x: Complex): Int = x.abs.toInt
+
+    override def toLong (x: Complex): Long = x.abs.toLong
+
+    override def toFloat (x: Complex): Float = x.abs.toFloat
+
+    override def toDouble (x: Complex): Double = x.abs
+
+    override def compare (x: Complex, y: Complex): Int = x.compare (y)
 }
 
 object Complex {
@@ -95,7 +121,8 @@ object Complex {
     val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
 
     // factory methods
-    def apply (re: Double) = new Complex (re)
+    def apply (re: Double): Complex = new Complex (re)
+    def apply (s: String): Complex = Complex.parseString (s)
 
     // to/from polar coordinates
     def fromPolar (magnitude: Double, angle: Double, degrees: Boolean = false): Complex =
@@ -122,9 +149,11 @@ object Complex {
         if (matcher.find)
         {
             val re = matcher.group (1)
+            val real = java.lang.Double.parseDouble (re)
             val sign = matcher.group (2)
             val im = matcher.group (3)
-            Complex (re.toDouble, im.toDouble * (if (sign == "-") -1.0 else 1.0))
+            val imaginary = java.lang.Double.parseDouble (im)
+            Complex (real, imaginary * (if (sign == "-") -1.0 else 1.0))
         }
         else
             Complex (0.0) // ToDo: warning

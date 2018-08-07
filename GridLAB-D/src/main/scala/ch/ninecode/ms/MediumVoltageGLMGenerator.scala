@@ -17,7 +17,7 @@ case class MediumVoltageGLMGenerator (
 
     override def finish_time: Calendar = ust.finish_time
 
-    override def edge_groups: Iterable[Iterable[PreEdge]] = ust.edges
+    override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Array[TransformerSet] = ust.transformers
 
@@ -28,11 +28,8 @@ case class MediumVoltageGLMGenerator (
 
     override def extra: Iterable[String] = List ("")
 
-    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    override def emit_edge (edge: GLMEdge): String =
     {
-        val edge = edges.head
-        val cls = edge.el.getClass.getName
-        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
         def recorders: String =
         {
             "\n" +
@@ -63,13 +60,7 @@ case class MediumVoltageGLMGenerator (
                 "            file \"output_data/" + edge.id + "_losses.csv\";\n" +
                 "        };\n"
         }
-        val line_recorders = clazz match {
-            case "ACLineSegment" ⇒
-                recorders
-            case _ ⇒
-                ""
-        }
-        super.emit_edge (edges) + line_recorders
+        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
     }
 
     override def emit_node (node: GLMNode): String =

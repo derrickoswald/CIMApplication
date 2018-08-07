@@ -10,7 +10,7 @@ import ch.ninecode.gl.TransformerSet
 case class USTKreis (
     hv_transformers: Array[TransformerSet],
     raw_nodes: Iterable[PreNode],
-    edges: Iterable[Iterable[PreEdge]],
+    edges: Iterable[PreEdge],
     loads: Array[TransformerSet])
 {
     val start_time: Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04T12:00:00")
@@ -22,8 +22,8 @@ case class USTKreis (
     {
         loads.find (_.node1 == raw.id) match
         {
-            case Some (load) ⇒ USTNode (raw.id, raw.voltage, load)
-            case None ⇒ USTNode (raw.id, raw.voltage, null)
+            case Some (load) ⇒ USTNode (raw.id, raw.nominal_voltage, load)
+            case None ⇒ USTNode (raw.id, raw.nominal_voltage, null)
         }
     }
     val nodes: Iterable[USTNode] = raw_nodes.map (addLoad)

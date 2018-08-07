@@ -92,23 +92,4 @@ class ExportSuite extends FunSuite
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " UST\n")
     }
-
-    test ("Island")
-    {
-        session: SparkSession ⇒
-
-            val begin = System.nanoTime ()
-
-            val root = "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355_or_EEA5287_with_topology" // "NIS_CIM_Export_SAK_sias_current_20170922_with_topology"
-            val filename =
-                FILE_DEPOT + root + ".rdf"
-
-            val elements = readFile (session, filename)
-            val island = GridLABExportFunction ("TRA5200_terminal_2_island") // "TRA2757_terminal_2_island")
-            val text = island.executeString (session)
-
-            println (text)
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds\n")
-    }
 }

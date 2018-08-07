@@ -160,7 +160,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
             val (nodes, edges) = trace.run (starting_nodes)
             // form the USTKreis data packet to send to the executor
             val ynodes = nodes.collect
-            val yedges = edges.groupBy (_.key).values.collect
+            val yedges = edges.collect
             val ust = USTKreis (transformers.toArray, ynodes, yedges, lv.collect)
             println (ust.trafokreis_key + " traced " + ynodes.length + " nodes and " + yedges.length + " edges")
 

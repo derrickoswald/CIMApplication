@@ -26,7 +26,7 @@ case class SimulationTransformerServiceArea (
     island: String,
     transformer: TransformerSet,
     nodes: Iterable[GLMNode],
-    edges: Iterable[Iterable[GLMEdge]],
+    edges: Iterable[GLMEdge],
     start_time: Calendar,
     directory: String) extends Serializable
 {
@@ -43,7 +43,7 @@ case class SimulationTransformerServiceArea (
             x ⇒
             {
                 val node = x._1.asInstanceOf[SimulationNode]
-                ScExperiment (simulation, node.id_seq, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (10.0, 0))
+                ScExperiment (simulation, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (10.0, 0))
             }
         ).toArray
 

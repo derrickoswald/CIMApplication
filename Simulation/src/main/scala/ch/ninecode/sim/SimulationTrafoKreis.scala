@@ -28,7 +28,7 @@ case class SimulationTrafoKreis (
     island: String,
     transformer: TransformerSet,
     raw_nodes: Iterable[GLMNode],
-    raw_edges: Iterable[Iterable[GLMEdge]],
+    raw_edges: Iterable[GLMEdge],
     start_time: Calendar,
     finish_time: Calendar,
     players: Array[SimulationPlayer],
@@ -45,10 +45,10 @@ case class SimulationTrafoKreis (
             {
                 val node = raw.asInstanceOf[SimulationNode]
                 SimulationNode (
-                    node.id_seq,
+                    node.id,
                     node.equipment,
                     node.position,
-                    node.voltage,
+                    node.nominal_voltage,
                     players.filter (_.parent == raw.id),
                     recorders.filter (_.parent == raw.id)
                 )
@@ -56,31 +56,22 @@ case class SimulationTrafoKreis (
         )
 
     // add players and recorders to the raw edges
-    val edges: Iterable[Iterable[SimulationEdge]] =
+    val edges: Iterable[SimulationEdge] =
         raw_edges.map (
             raw ⇒
             {
-                val edges: Iterable[SimulationEdge] = raw.asInstanceOf[Iterable[SimulationEdge]]
-                val id = edges.head.id
+                val edge: SimulationEdge = raw.asInstanceOf[SimulationEdge]
+                val id = edge.id
                 var these_recorders = recorders.filter (_.parent == id) // keep only recorders for primary edge
                 var these_players = players.filter (_.parent == id)
-                edges.map (
-                    edge ⇒
-                    {
-                        val ret = SimulationEdge (
-                            edge.id_equ,
-                            edge.id_cn_1,
-                            edge.id_cn_2,
-                            edge.element,
-                            edge.position,
-                            these_players,
-                            these_recorders
-                        )
-                        // only add the recorders and players to the first edge
-                        these_recorders = Array()
-                        these_players = Array ()
-                        ret
-                    }
+                SimulationEdge (
+                    edge.id,
+                    edge.cn1,
+                    edge.cn2,
+                    edge.rawedge,
+                    edge.position,
+                    these_players,
+                    these_recorders
                 )
             }
         )

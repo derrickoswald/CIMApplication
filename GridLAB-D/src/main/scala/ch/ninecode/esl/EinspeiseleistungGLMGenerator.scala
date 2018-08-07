@@ -7,8 +7,7 @@ import ch.ninecode.gl._
 import ch.ninecode.model.SolarGeneratingUnit
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
-extends
-    GLMGenerator (one_phase, date_format)
+extends GLMGenerator (one_phase, date_format)
 {
     override def name: String = trafokreis.name
 
@@ -18,7 +17,7 @@ extends
 
     override def finish_time: Calendar = trafokreis.finish_time
 
-    override def edge_groups: Iterable[Iterable[PreEdge]] = trafokreis.edges.groupBy(_.key).values
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Array[TransformerSet] = Array (trafokreis.transformers)
 
@@ -45,11 +44,8 @@ extends
         super.emit_node (node) + generate_load (node)
     }
 
-    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    override def emit_edge (edge: GLMEdge): String =
     {
-        val edge = edges.head
-        val cls = edge.el.getClass.getName
-        val clazz = cls.substring (cls.lastIndexOf(".") + 1)
         def current_recorder: String =
         {
             "\n" +
@@ -63,15 +59,7 @@ extends
             "        };\n"
         }
 
-        val t = super.emit_edge (edges)
-        val r = clazz match
-        {
-            case "ACLineSegment" ⇒
-                current_recorder
-            case _ ⇒
-                ""
-        }
-        t + r
+        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) current_recorder else "")
     }
 
     override def emit_transformer (transformer: TransformerSet): String =

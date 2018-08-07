@@ -1,22 +1,35 @@
 package ch.ninecode.sc
 
+import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.Encoders
+import org.apache.spark.sql.KeyValueGroupedDataset
+import org.apache.spark.sql.RelationalGroupedDataset
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+
+import scala.reflect.runtime.universe
 
 /**
  * Identify the islands in each transformer service area.
  *
- * Use the same technique as the CIMNetworkTopologyProcessor.
+ * Use GraphX to label islands connected together &mdash;
+ * basically everything not on the other side of an open switch or transformer core.
+ * Identifies island clusters sharing a (group of ganged) transformer(s) low voltage winding.
  *
  * @param session the Spark session object
  * @param debug flag to turn on debug output
@@ -25,6 +38,8 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
     extends CIMRDD
     with Serializable
 {
+    import session.sqlContext.implicits._
+
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -116,6 +131,22 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
      */
     case class EdgeData (id: String, isConnected: Boolean) extends Serializable
 
+    /**
+     * Create a mapping between TopologicalIsland and PowerTransformer(s) with secondary windings in the island.
+     *
+     * This is just the first phase of identifying transformer service areas because a transformer service area
+     * may comprise many TopologicalIsland.
+     * For example when a Switch has normalOpen=false and retain=true
+     * (or the NetworkTopologyProcessor is instructed to retain all switches)
+     * there will be two TopologicalIsland, one on each side of the switch, that both belong to the same
+     * transformer service area.
+     *
+     * @return a mapping between TopologicalIsland.id and PowerTransformer.id, e.g. ("PIN123_node_island", "TRA123")
+     * Where there are ganged transformers with connected secondary windings, the PowerTransformer.id
+     * is the concatenation of the sorted PowerTransformer.id values of all connected transformers,
+     * e.g. TRA1234_TRA5678.
+     * Any TopologicalIsland without a transformer secondary node is not included.
+     */
     def island_trafoset_rdd: RDD[(String, String)] =
     {
         // get all transformer set secondary TopologicalIsland names
@@ -127,13 +158,18 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-            get[TopologicalNode]
-                .keyBy (_.id))
+                get[TopologicalNode]
+                    .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
-        islands_trafos
+        islands_trafos.cache
     }
 
+    /**
+     * Get the list of nodes in the transformer service area.
+     *
+     * @return An RDD suitable for GraphX initialization.
+     */
     def nodes: RDD[(VertexId, VertexData)] =
     {
         get[TopologicalIsland].keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
@@ -151,6 +187,11 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
             )
     }
 
+    /**
+     * Get the list of edges in the transformer service area.
+     *
+     * @return An RDD suitable for GraphX initialization,
+     */
     def edges: RDD[Edge[EdgeData]] =
     {
         // get nodes by TopologicalIsland
@@ -170,6 +211,18 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
                 }) // Edge[EdgeData]
     }
 
+    /**
+     * Trace through the connected TopologicalIsland graph to identify transformer service areas.
+     *
+     * Processing basically consists of propagating the area label to all connected islands,
+     * where the area label is initially set by the list of nodes in the same island as the transformer secondary,
+     * and "connected" is defined by switch status.
+     *
+     * @see island_trafoset_rdd
+     * @see isSameArea (Element)
+     *
+     * @return a processed graph with nodes (vertices) identified by transformer service area.
+     */
     def identifyTransformerServiceAreas: Graph[VertexData, EdgeData] =
     {
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
@@ -219,6 +272,8 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
         val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges).cache ()
         graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
     }
+
+    def hasIslands: Boolean = !getOrElse[TopologicalIsland].isEmpty
 
     /**
      * Get a mapping between TopologicalIsland id and transformer set name.

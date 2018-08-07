@@ -9,6 +9,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 
 import scala.collection.Map
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -22,6 +23,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.model._
 
 /**
@@ -207,14 +209,14 @@ class GridLABD (
         f.exists
     }
 
-    def make_graph_vertices(v: PreNode): (VertexId, PreNode) =
+    def make_graph_vertices (v: PreNode): (VertexId, PreNode) =
     {
-        (v.vertex_id(v.id_seq), v)
+        (v.vertex_id (v.id), v)
     }
 
-    def make_graph_edges(e: PreEdge): Edge[PreEdge] =
+    def make_graph_edges (e: PreEdge): Edge[PreEdge] =
     {
-        Edge(e.vertex_id(e.id_cn_1), e.vertex_id(e.id_cn_2), e)
+        Edge (e.vertex_id (e.cn1), e.vertex_id (e.cn2), e)
     }
 
     /**
@@ -273,7 +275,7 @@ class GridLABD (
         val edges = elementsplus.join(terms).flatMapValues (edge_operator (voltages)).values
 
         // eliminate edges with only one connectivity node, or the same connectivity node
-        val real_edges = edges.filter(x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
+        val real_edges = edges.filter (x ⇒ null != x.cn1 && null != x.cn2 && "" != x.cn1 && "" != x.cn2 && x.cn1 != x.cn2)
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy(_.id_seq_1).union(edges.keyBy(_.id_seq_2)).distinct

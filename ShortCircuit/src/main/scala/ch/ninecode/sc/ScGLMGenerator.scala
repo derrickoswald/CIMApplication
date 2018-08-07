@@ -9,8 +9,7 @@ case class ScGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     area: SimulationTransformerServiceArea)
-extends
-    GLMGenerator (one_phase, date_format)
+extends GLMGenerator (one_phase, date_format)
 {
     override def name: String = area.name
 
@@ -18,7 +17,7 @@ extends
 
     override def start_time: Calendar = area.start_time
 
-    override def edge_groups: Iterable[Iterable[GLMEdge]] = area.edges
+    override def edges: Iterable[GLMEdge] = area.edges
 
     override def transformers: Array[TransformerSet] = Array(area.transformer)
 
@@ -31,9 +30,6 @@ extends
     override def extra: Iterable[String] = List ("")
 
     val experiments: Array[ScExperiment] = area.experiments
-
-    // override to set current_limit to 9999.0A
-    switch = new ScSwitchDevice (one_phase)
 
     /**
      * Emit the swing node(s).
@@ -60,6 +56,7 @@ extends
             |""".stripMargin.format (phase, voltage, voltage)
 
         val z = area.transformer.network_short_circuit_impedance
+        val line = LineEdge ("N5", node.id, List())
         val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0)
 
         val name = node.id
@@ -146,17 +143,13 @@ extends
      * Emit one GridLAB-D edge.
      *
      * Generate the text for an edge.
-     * Uses the Line and SwitchDevice handlers to create the text,
-     * using possibly parallel edges for lines but only the head element for switch edges.
-     * Transformers are handled separately.
      *
-     * @param edges The edge element(s).
+     * @param edge The edge to emit.
      * @return The .glm file text for the edge.
      */
-    override def emit_edge (edges: Iterable[GLMEdge]): String =
+    override def emit_edge (edge: GLMEdge): String =
     {
-        val link = super.emit_edge (edges)
-        val edge = edges.head.asInstanceOf[SimulationEdge]
+        val link = super.emit_edge (edge)
         val recorders =
             """
             |        object recorder
@@ -176,11 +169,16 @@ extends
             |            interval 5;
             |            file "output_data/%s%%%s_current.csv";
             |        };
-            """.stripMargin.format (edge.id_cn_1, edge.id, edge.id, edge.id_cn_1, edge.id, edge.id_cn_2, edge.id, edge.id, edge.id_cn_2, edge.id)
+            """.stripMargin.format (edge.cn1, edge.id, edge.id, edge.cn1, edge.id, edge.cn2, edge.id, edge.id, edge.cn2, edge.id)
         link + recorders
     }
 
-
+    /**
+     * Emit one transformer edge.
+     *
+     * @param transformer The transformer specifics.
+     * @return The .glm file text for the transformer.
+     */
     override def emit_transformer (transformer: TransformerSet): String =
     {
         val t = super.emit_transformer (transformer)

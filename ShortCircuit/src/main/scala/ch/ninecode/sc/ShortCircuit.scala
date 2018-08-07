@@ -7,7 +7,6 @@ import java.util.TimeZone
 
 import scala.collection.Map
 import scala.io.Source
-
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -18,17 +17,22 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
+import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.model._
+import org.apache.spark.sql.DataFrame
 
 /**
  * Short circuit calculation.
@@ -39,10 +43,8 @@ import ch.ninecode.model._
  * @param options options for short-circuit processing
  */
 case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions)
-    extends
-        CIMRDD
-    with
-        Serializable
+extends CIMRDD
+with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -404,12 +406,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
-    def queryNetwork (trafos_islands: RDD[(String, String)]): RDD[(String, (Iterable[SimulationNode], Iterable[Iterable[SimulationEdge]]))] =
+    def queryNetwork (trafos_islands: RDD[(String, String)]): RDD[(String, (Iterable[SimulationNode], Iterable[GLMEdge]))] =
     {
         log.info ("""resolving nodes and edges by transformer service area""")
 
         // the mapping between island and transformer service area
-        val islands_trafos = trafos_islands.map (x ⇒ (x._2, x._1)) // (islandid, transformersetid)
+        val islands_trafos = trafos_islands.map (_.swap) // (islandid, transformersetid)
         // get nodes by TopologicalIsland
         val members = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
         // get terminals by TopologicalIsland
@@ -423,7 +425,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // ToDo: fix this 1kV multiplier on the voltages
         val nodes = islands_trafos.join (equipment_terminals.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
             node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, node._2.nominalVoltage * 1000.0, node._1._2.Equipment.PowerSystemResource.PSRType))
-        ).groupBy (_._2.id_seq).values.map (pickone (singles))).values // (transformersetid, node)
+        ).groupBy (_._2.id).values.map (pickone (singles))).values // (transformersetid, node)
         // get equipment in the transformer service area
         val equipment = equipment_terminals.map (x ⇒ (x._1, (x._2, x._3))).join (islands_trafos)
             .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (transformersetid, (islandid, equipment, terminal))
@@ -433,19 +435,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             edge ⇒ edge._2.size > 1 && (edge._2.head._1 == edge._2.tail.head._1) && (edge._2.head._2._3.TopologicalNode != edge._2.tail.head._2._3.TopologicalNode)
         ) // (equipmentid, [(txarea, (islandid, equipment, terminal))])
         // convert ConductingEquipment to Element with Terminal(s)
-        val elements = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
+        val elements: RDD[(String, (Element, Iterable[Terminal]))] = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
             .values.map (x ⇒ (x._2.head._1, (x._1, x._2.map (x ⇒ x._2._3)))) // (txarea, (element, [terminals]))
         // combine parallel equipment
-        val eq3 = elements.keyBy (_._2._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        val eq3: RDD[Iterable[(String, (Element, Iterable[Terminal]))]] = elements.keyBy (_._2._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(txarea, (element, [terminals]))]
         // the transformer service area is the same, so pull it out of the Iterator
-        val eq4 = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2)))
+        val eq4: RDD[(String, Iterable[(Element, Iterable[Terminal])])] = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2))) // (txarea, [(element, [terminals])]
         // create the edges keyed by transformersetid
         val edges = eq4.map (v ⇒
-            (v._1,
-                v._2.map (
-                    edge ⇒ SimulationEdge (edge._1.id, edge._2.head.TopologicalNode, edge._2.tail.head.TopologicalNode, edge._1)
-                )
-            )
+            {
+                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
+                val id_cn_1 = v._2.head._2.head.TopologicalNode
+                val id_cn_2 = v._2.head._2.tail.head.TopologicalNode
+                (v._1, GLMEdge.toGLMEdge (v._2.map (x ⇒ x._1), id_cn_1, id_cn_2))
+            }
         )
         nodes.groupByKey.join (edges.groupByKey).cache
     }
@@ -461,9 +464,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 {
                     case Some (volts) ⇒
                         val v = volts.value_a
-                        // ToDo: implement Numeric[Complex] so we can use sum()
-                        val i = current.foldLeft (Complex (0))(_ + _)
-                        if (i == Complex (0.0))
+                        implicit val zero: Complex = Complex(0)
+                        val i = current.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
+                        if (i == zero)
                         {
                             log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
                             Complex (Double.PositiveInfinity)
@@ -583,55 +586,64 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         // transformer area calculations
         val tsa = TransformerServiceArea (session)
-        val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
-        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-        val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
-        // set up simulations
-        val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
-        val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
-            .map (
+        // only proceed if topological processing was done (there are TopologicalIslands)
+        if (tsa.hasIslands)
+        {
+            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
+            val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+            val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
+            // set up simulations
+            val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
+            val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
+                .map (
+                    x ⇒
+                    SimulationTransformerServiceArea (
+                        simulation = x._1,
+                        island = x._1,
+                        transformer = x._2,
+                        nodes = x._3,
+                        edges = x._4,
+                        start_time = now,
+                        directory = x._2.transformer_name)
+            )
+            // perform remedial simulations
+            val z: RDD[(String, String, String, Double, Complex)] = remedial (simulations) // (trafoid, nodeid, equipment, voltage, Z)
+            // map to the type returned by the trace, use the existing value where possible
+            val original_keyed = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
+            val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
-                SimulationTransformerServiceArea (
-                    simulation = x._1,
-                    island = x._1,
-                    transformer = x._2,
-                    nodes = x._3,
-                    edges = x._4,
-                    start_time = now,
-                    directory = x._2.transformer_name)
-        )
-        // perform remedial simulations
-        val z: RDD[(String, String, String, Double, Complex)] = remedial (simulations) // (trafoid, nodeid, equipment, voltage, Z)
-        // map to the type returned by the trace, use the existing value where possible
-        val original_keyed = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
-        val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
-            x ⇒
-            {
-                val v = x._1._4
-                val z1 = x._1._5
-                val z0 = z1 * 4.0 // approximately four times
-                val z = Impedanzen (z1, z0, z1, z0)
-                x._2 match
                 {
-                    case Some (original) ⇒
-                        (
-                            ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, "INFO: computed by load-flow"))), // replace the errors
-                            original.terminal, original.equipment, original.container
-                        )
-                    case None ⇒
-                        (
-                            ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
-                            1, x._1._3, ""
-                        )
+                    val v = x._1._4
+                    val z1 = x._1._5
+                    val z0 = z1 * 4.0 // approximately four times
+                    val z = Impedanzen (z1, z0, z1, z0)
+                    x._2 match
+                    {
+                        case Some (original) ⇒
+                            (
+                                ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, "INFO: computed by load-flow"))), // replace the errors
+                                original.terminal, original.equipment, original.container
+                            )
+                        case None ⇒
+                            (
+                                ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
+                                1, x._1._3, ""
+                            )
+                    }
                 }
-            }
-        )
-        // calculate new short circuit result records
-        val replacements = new_nodes.map (calculate_short_circuit)
-        // merge them into the existing set
-        val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.equipment)
-        // ToDo: should we remove all records from the problem transformers?
-        original_keyed.subtract (replacements_keyed).union (replacements_keyed).values
+            )
+            // calculate new short circuit result records
+            val replacements = new_nodes.map (calculate_short_circuit)
+            // merge them into the existing set
+            val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.equipment)
+            // ToDo: should we remove all records from the problem transformers?
+            original_keyed.subtract (replacements_keyed).union (replacements_keyed).values
+        }
+        else
+        {
+            log.info ("TopologicalIsland elements not found, cannot use GridLAB-D to fix radial network errors")
+            original_results
+        }
     }
 
     def run (): RDD[ScResult] =

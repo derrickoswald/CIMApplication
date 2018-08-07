@@ -102,9 +102,9 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
             starting_nodes.find (s ⇒ s.nsPin == id) match
             {
                 case Some (node) =>
-                    PowerFeedingNode (v.id_seq, v.voltage, node, 0.0, Double.PositiveInfinity, false)
+                    PowerFeedingNode (v.id, v.nominal_voltage, node, 0.0, Double.PositiveInfinity, false)
                 case None =>
-                    PowerFeedingNode(v.id_seq, v.voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
+                    PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
             }
         }
         val graph = initial.mapVertices (starting_map)

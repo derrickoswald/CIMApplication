@@ -96,14 +96,14 @@ case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
         // singly-connected edges that are not transformers.
 
         // get the edges with their connected nodes
-        val one = edges.keyBy ((x) => x.vertex_id (x.id_cn_1)).leftOuterJoin (traced_nodes).values
-        val two = one.keyBy ((x) => x._1.vertex_id (x._1.id_cn_2)).leftOuterJoin (traced_nodes).values.map ((x) => (x._1._1, x._1._2, x._2))
+        val one = edges.keyBy (x => x.vertex_id (x.cn1)).leftOuterJoin (traced_nodes).values
+        val two = one.keyBy (x => x._1.vertex_id (x._1.cn2)).leftOuterJoin (traced_nodes).values.map (x => (x._1._1, x._1._2, x._2))
 
         // filter out non-transformer leaf edges
         val traced_edges = two.filter (keep).map (_._1)
 
         // create a more complete list of traced nodes using the edge list
-        val all_traced_nodes = traced_edges.keyBy (_.id_cn_1).union (traced_edges.keyBy (_.id_cn_2)).join (initial.vertices.values.keyBy (_.id_seq)).reduceByKey ((a, b) ⇒ a).values.values
+        val all_traced_nodes = traced_edges.keyBy (_.cn1).union (traced_edges.keyBy (_.cn2)).join (initial.vertices.values.keyBy (_.id)).reduceByKey ((a, b) ⇒ a).values.values
 
         val read = System.nanoTime ()
         log.info ("trace([" + starting_nodes.mkString (",") +"]) end " + ((read - begin) / 1e9) + " seconds")

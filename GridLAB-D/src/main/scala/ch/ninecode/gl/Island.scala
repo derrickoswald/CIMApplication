@@ -1,16 +1,14 @@
 package ch.ninecode.gl
 
+import scala.collection.Map
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.collection.Map
-
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
@@ -120,7 +118,7 @@ class Island (
      */
     def edgefilter (edge: PreEdge): Boolean =
     {
-        (null != edge.id_cn_1) && (null != edge.id_cn_2) && ("" != edge.id_cn_1) && ("" != edge.id_cn_2) && (edge.id_cn_1 != edge.id_cn_2)
+        (null != edge.cn1) && (null != edge.cn2) && ("" != edge.cn1) && ("" != edge.cn2) && (edge.cn1 != edge.cn2)
     }
 
     /**
@@ -213,7 +211,7 @@ class Island (
         val edges = equipment.flatMap (edge_operator).filter (edgefilter)
 
         // make nodes from the edges
-        val nodes = edges.flatMap (e ⇒ if (e.id_cn_2 != "") List (PreNode (e.id_cn_1, e.v1), PreNode (e.id_cn_2, e.v2)) else List (PreNode (e.id_cn_1, e.v1))).distinct
+        val nodes = edges.flatMap (e ⇒ if (e.cn2 != "") List (PreNode (e.cn1, e.v1), PreNode (e.cn2, e.v2)) else List (PreNode (e.cn1, e.v1))).distinct
 
         (edges, nodes)
     }
@@ -230,8 +228,8 @@ class Island (
         val (edges, nodes) = prepare (island)
 
         // persist edges and nodes to avoid recompute
-        val xedges = edges.map (e ⇒ Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e))
-        val xnodes = nodes.map (v ⇒ (v.vertex_id (v.id_seq), v))
+        val xedges = edges.map (e ⇒ Edge (e.vertex_id (e.cn1), e.vertex_id (e.cn2), e))
+        val xnodes = nodes.map (v ⇒ (v.vertex_id (v.id), v))
         val e = xedges.count
         xedges.name = "xedges"
         xedges.persist (storage_level)

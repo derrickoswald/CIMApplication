@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.Transformers
@@ -253,7 +254,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def queryNetwork: RDD[(String, (Iterable[SimulationNode], Iterable[Iterable[SimulationEdge]]))] =
+    def queryNetwork: RDD[(String, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
     {
         log.info ("""resolving nodes and edges by topological island""")
 
@@ -273,7 +274,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         // ToDo: fix this 1kV multiplier on the voltages
         val nodes = equipment.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
             node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, toCoordinate (node._1._3.ACDCTerminal.sequenceNumber, node._1._4), node._2.nominalVoltage * 1000.0))
-        ).groupBy (_._2.id_seq).values.map (pickone (singles)) // (islandid, node)
+        ).groupBy (_._2.id).values.map (pickone (singles)) // (islandid, node)
         // get all equipment with two nodes in the island that separate different TopologicalNode (these are the edges)
         val two_terminal_equipment = equipment.groupBy (_._2.id).filter (
             edge ⇒ edge._2.size > 1 && (edge._2.head._1 == edge._2.tail.head._1) && (edge._2.head._3.TopologicalNode != edge._2.tail.head._3.TopologicalNode)
@@ -288,11 +289,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val eq4 = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2)))
         // create the edges keyed by island
         val edges = eq4.map (v ⇒
-            (v._1,
-                v._2.map (
-                    edge ⇒ SimulationEdge (edge._1.id, edge._2.head.TopologicalNode, edge._2.tail.head.TopologicalNode, edge._1, toCoordinates (edge._3))
-                )
-            )
+            {
+                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
+                val id_cn_1 = v._2.head._2.head.TopologicalNode
+                val id_cn_2 = v._2.head._2.tail.head.TopologicalNode
+                val raw = GLMEdge.toGLMEdge (v._2.map (x ⇒ x._1), id_cn_1, id_cn_2)
+                (v._1, SimulationEdge (raw.id, raw.cn1, raw.cn2, raw, toCoordinates (v._2.head._3)))
+            }
         )
         nodes.groupByKey.join (edges.groupByKey).cache
     }
