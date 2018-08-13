@@ -17,6 +17,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+
 import com.datastax.driver.core.Cluster
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
@@ -28,6 +29,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
@@ -39,9 +41,9 @@ import ch.ninecode.gl.TData
 import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
-import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
+import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
@@ -222,21 +224,51 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
+    def toCoordinates (points: Option[Iterable[PositionPoint]]): Array[(Double, Double)] =
+    {
+        points match
+        {
+            case Some (positions) ⇒
+                positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p ⇒ (p.xPosition.toDouble, p.yPosition.toDouble))
+            case _ ⇒
+                null
+        }
+    }
+
+    def toCoordinate (terminal: Int, points: Option[Iterable[PositionPoint]]): (Double, Double) =
+    {
+        val coordinates = toCoordinates (points)
+        if (null != coordinates)
+        {
+            if (terminal == 1)
+                coordinates(0)
+            else
+                coordinates(coordinates.length - 1)
+        }
+        else
+            null
+    }
+
     def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
     {
-        rdd.map (args ⇒ (args._2.head._1, SimulationNode (args._1, args._2.head._2._3.nominalVoltage * 1000.0, args._2.head._2._2.id)))
+        val just_one: RDD[(node_id, (transformerset_id, (Terminal, Element, BaseVoltage)))] = rdd.map (x ⇒ (x._1, x._2.head))
+        val with_psr: RDD[((node_id, (transformerset_id, (Terminal, Element, BaseVoltage))), PowerSystemResource)] = just_one.keyBy (_._2._2._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_coordinates: RDD[((node_id, (transformerset_id, (Terminal, Element, BaseVoltage))), Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
+        with_coordinates.map (x ⇒ (x._1._2._1, SimulationNode (x._1._2._2._1.TopologicalNode, x._1._2._2._3.nominalVoltage * 1000.0, x._1._2._2._2.id, toCoordinates (x._2) (0))))  // ToDo check for null coordinates
     }
 
     def edge_maker (rdd: RDD[Iterable[(Iterable[(transformerset_id, Terminal)], Element)]]): RDD[(transformerset_id, GLMEdge)] =
     {
-        rdd.map (
-            args ⇒
+        // the terminals may be different for each element, but their TopologicalNode values are the same, and the geometry should be similar, so use the head
+        val with_psr: RDD[(Iterable[(Iterable[(transformerset_id, Terminal)], Element)], PowerSystemResource)] = rdd.keyBy (_.head._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_coordinates: RDD[(Iterable[(Iterable[(transformerset_id, Terminal)], Element)], Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
+        with_coordinates.map (
+            x ⇒
             {
-                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
-                val id_cn_1 = args.head._1.head._2.TopologicalNode
-                val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-                val raw = GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2)
-                (args.head._1.head._1, SimulationEdge (args.head._2.id, id_cn_1, id_cn_2, raw, Array(), null, null)) // need the position points
+                val id_cn_1 = x._1.head._1.head._2.TopologicalNode
+                val id_cn_2 = x._1.head._1.tail.head._2.TopologicalNode
+                val raw = GLMEdge.toGLMEdge (x._1.map (_._2), id_cn_1, id_cn_2)
+                (x._1.head._1.head._1, SimulationEdge (x._1.head._2.id, id_cn_1, id_cn_2, raw, toCoordinates (x._2), null, null))
             }
         )
     }
@@ -289,11 +321,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val islands_to_do: RDD[(transformerset_id, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
 
             val island_helper = new Island (session, StorageLevel.fromString (options.storage)) //T ToDo: fix this storage
-            val graph_stuff = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker) // (trafosetid, ([nodes], [edges]))
+            val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
             val areas: RDD[(transformerset_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
 
             // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
-            val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (x ⇒ (x._2, x._1))
+            val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (_.swap)
 
             val rdd2 = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache  // (island, ([nodes], [edges], [players]))
             val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache  // (island, [nodes], [edges], [players], [recorders])

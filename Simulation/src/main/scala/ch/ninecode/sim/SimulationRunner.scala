@@ -126,17 +126,17 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         val statement = prepared.bind ()
         for (raw <- trafo.edges)
         {
-            val edge = raw.asInstanceOf[Iterable[SimulationEdge]].head // ToDo: parallel edges?
-        val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
-        val properties = extra.collect (
-            {
-                case (query, id, value) if id == edge.id =>
-                    (query, value)
-            }
-        ).map (
-            pair ⇒
-                """"%s": "%s"""".format (pair._1, pair._2)
-        ).mkString ("{", ",", "}")
+            val edge = raw.asInstanceOf[SimulationEdge]
+            val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
+            val properties = extra.collect (
+                {
+                    case (query, id, value) if id == edge.id =>
+                        (query, value)
+                }
+            ).map (
+                pair ⇒
+                    """"%s": "%s"""".format (pair._1, pair._2)
+            ).mkString ("{", ",", "}")
             val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
                 .format (trafo.simulation, edge.rawedge.id, trafo.transformer.transformer_name, coordinates, properties)
             statement.setString (0, json)
@@ -151,7 +151,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             for (raw <- trafo.nodes)
                 yield raw.asInstanceOf[SimulationNode].position
         for (raw <- trafo.edges)
-            points = points ++ raw.asInstanceOf[Iterable[SimulationEdge]].head.position.toIterable
+            points = points ++ raw.asInstanceOf[SimulationEdge].position.toIterable
         points
     }
 
