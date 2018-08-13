@@ -278,7 +278,6 @@ object Main
                 {
                     org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main$").setLevel (org.apache.log4j.Level.INFO)
                     org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.ShortCircuit").setLevel (org.apache.log4j.Level.INFO)
-                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.TransformerServiceArea").setLevel (org.apache.log4j.Level.INFO)
                     org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Database").setLevel (org.apache.log4j.Level.INFO)
                 }
                 val log = LoggerFactory.getLogger (getClass)

@@ -105,7 +105,7 @@ case class SimulationGLMGenerator (
         val e = edge.asInstanceOf[SimulationEdge]
         val recorders = e.recorders.map (emit_recorder).mkString ("")
         val players = e.players.map (emit_edge_player).mkString ("")
-        super.emit_edge (edge) + recorders + players
+        super.emit_edge (e.rawedge) + recorders + players
     }
 
     override def emit_node (node: GLMNode): String =
@@ -128,5 +128,18 @@ case class SimulationGLMGenerator (
         )
         .map (_.copy (parent = transformer.transformer_name)) // alter the parent to the transformer set name
         .map (emit_recorder).mkString
+    }
+
+    /**
+     * Emit configurations for all groups of edges that are ACLineSegments.
+     *
+     * Get one of each type of ACLineSegment and emit a configuration for each of them.
+     *
+     * @param edges The edges in the model.
+     * @return The configuration elements as a single string.
+     */
+    override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
+    {
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (one_phase))
     }
 }

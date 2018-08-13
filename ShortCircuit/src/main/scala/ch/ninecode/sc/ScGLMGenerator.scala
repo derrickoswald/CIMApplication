@@ -120,7 +120,7 @@ extends GLMGenerator (one_phase, date_format)
                     |                file "input_data/%s.csv";
                     |            };
                     |        };
-                    """.stripMargin.format (id, id, phase, node.nominal_voltage, id)
+                    |""".stripMargin.format (id, id, phase, node.nominal_voltage, id)
                 val recorder1 =
                     """
                     |        object recorder
@@ -131,7 +131,7 @@ extends GLMGenerator (one_phase, date_format)
                     |            interval 5;
                     |            file "output_data/%s_voltage.csv";
                     |        };
-                    """.stripMargin.format (id, id, id)
+                    |""".stripMargin.format (id, id, id)
                 load + recorder1
 
             case None ⇒ ""

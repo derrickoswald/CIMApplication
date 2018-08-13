@@ -1,7 +1,4 @@
-package ch.ninecode.sc
-
-import scala.reflect.runtime.universe._
-import scala.reflect.runtime.universe.TypeTag
+package ch.ninecode.gl
 
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
@@ -9,20 +6,12 @@ import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.Encoders
-import org.apache.spark.sql.KeyValueGroupedDataset
-import org.apache.spark.sql.RelationalGroupedDataset
-import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-
-import scala.reflect.runtime.universe
 
 /**
  * Identify the islands in each transformer service area.
@@ -36,7 +25,7 @@ import scala.reflect.runtime.universe
  */
 case class TransformerServiceArea (session: SparkSession, debug: Boolean = false)
     extends CIMRDD
-    with Serializable
+        with Serializable
 {
     import session.sqlContext.implicits._
 
@@ -158,8 +147,8 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-                get[TopologicalNode]
-                    .keyBy (_.id))
+            get[TopologicalNode]
+                .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
         islands_trafos.cache
@@ -174,17 +163,17 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
     {
         get[TopologicalIsland].keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
             .map (
-                x ⇒
+            x ⇒
+            {
+                val hash = vertex_id (x._1.id)
+                val data = x._2 match
                 {
-                    val hash = vertex_id (x._1.id)
-                    val data = x._2 match
-                    {
-                        case Some (trafosetname) ⇒ VertexData (trafosetname, hash, x._1.id)
-                        case None ⇒ VertexData (null, hash, x._1.id)
-                    }
-                    (hash, data)
+                    case Some (trafosetname) ⇒ VertexData (trafosetname, hash, x._1.id)
+                    case None ⇒ VertexData (null, hash, x._1.id)
                 }
-            )
+                (hash, data)
+            }
+        )
     }
 
     /**
@@ -203,12 +192,12 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
             .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, (islandid, terminal)))
             .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
             .map (
-                x ⇒
-                {
-                    val equipment = x.head._1
-                    val connected = isSameArea (x.head._1)
-                    Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (x.head._1.id, connected))
-                }) // Edge[EdgeData]
+            x ⇒
+            {
+                val equipment = x.head._1
+                val connected = isSameArea (x.head._1)
+                Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (x.head._1.id, connected))
+            }) // Edge[EdgeData]
     }
 
     /**
@@ -286,8 +275,7 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
         val graph = identifyTransformerServiceAreas
         log.info ("mapping islands to transformer service areas")
         val pairs = graph.vertices.map (v ⇒ (v._2.island_label, v._2.area_label)) // (islandid, areaid)
-        val areas = island_trafoset_rdd.join (pairs).values.map (x ⇒ (x._2, x._1)) // (areaid, trafosetname)
-        pairs.map (x ⇒ (x._2, x._1)).join (areas).values // (islandid, trafosetname)
+        val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
+        pairs.map (_.swap).join (areas).values.cache // (islandid, trafosetname)
     }
 }
-

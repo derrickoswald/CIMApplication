@@ -359,7 +359,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                         new File (workdir + trafo.directory + "output_data/").mkdirs
                         ret = gridlabd (trafo, workdir)
                         val insert = SimulationCassandraInsert (session, keyspace, batchsize)
-                        val resultsets = if (ret._1)
+                        val resultsets: Array[(String, List[ResultSetFuture])] = if (ret._1)
                         {
                             var undone = List[(String, List[ResultSetFuture])] ()
                             for (index ← trafo.recorders.indices)

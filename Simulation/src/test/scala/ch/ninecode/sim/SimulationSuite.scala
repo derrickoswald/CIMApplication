@@ -177,7 +177,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--help"))
     }
 
-    ignore ("Basic")
+    test ("Basic")
     {
         val json = FILE_DEPOT + "basic.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -261,7 +261,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
     ignore ("Transformers")
@@ -389,7 +389,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
     }
 
-    test ("Typical")
+    ignore ("Typical")
     {
         val json = FILE_DEPOT + "typical.json"
         using (new PrintWriter (new File (json), "UTF-8"))

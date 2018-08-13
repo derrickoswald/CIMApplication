@@ -17,7 +17,6 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-
 import com.datastax.driver.core.Cluster
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
@@ -29,12 +28,15 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.Island
+import ch.ninecode.gl.Island._
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.TData
+import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
@@ -220,84 +222,23 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
-    def toCoordinates (points: Option[Iterable[PositionPoint]]): Array[(Double, Double)] =
+    def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
     {
-        points match
-        {
-            case Some (positions) ⇒
-                positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p ⇒ (p.xPosition.toDouble, p.yPosition.toDouble))
-            case _ ⇒
-                null
-        }
+        rdd.map (args ⇒ (args._2.head._1, SimulationNode (args._1, args._2.head._2._3.nominalVoltage * 1000.0, args._2.head._2._2.id)))
     }
 
-    def toCoordinate (terminal: Int, points: Option[Iterable[PositionPoint]]): (Double, Double) =
+    def edge_maker (rdd: RDD[Iterable[(Iterable[(transformerset_id, Terminal)], Element)]]): RDD[(transformerset_id, GLMEdge)] =
     {
-        val coordinates = toCoordinates (points)
-        if (null != coordinates)
-        {
-            if (terminal == 1)
-                coordinates(0)
-            else
-                coordinates(coordinates.length - 1)
-        }
-        else
-            null
-    }
-
-    def pickone (singles: Array[String]) (nodes: Iterable[(String, ch.ninecode.sim.SimulationNode)]): (String, SimulationNode) =
-    {
-        nodes.find (node ⇒ singles.contains (node._2.equipment)) match
-        {
-            case Some (node) ⇒ node
-            case _ ⇒ nodes.head // just take the first
-        }
-    }
-
-    def queryNetwork: RDD[(String, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
-    {
-        log.info ("""resolving nodes and edges by topological island""")
-
-        // get nodes by TopologicalIsland
-        val members = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
-        // get terminals by TopologicalIsland
-        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
-        // get equipment in the TopologicalIsland and associated Terminal
-        val equipment_terminals = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_._2.ConductingEquipment)).values.map (x ⇒ (x._2._1, x._1, x._2._2)) // (island, equipment, terminal)
-        // make a list of all single terminal equipment as the preferred association to the node
-        val singles = equipment_terminals.groupBy (_._3.ConductingEquipment).filter (1 == _._2.size).map (_._2.head._2.id).collect
-        // compose Island, ConductingEquipment, Terminal, and PositionPoint(s)
-        val equipment = equipment_terminals.keyBy (_._2.Equipment.PowerSystemResource.Location).leftOuterJoin (get[PositionPoint].groupBy (_.Location))
-            .map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2)).distinct // (islandid, equipment, terminal, [points])
-        // get all nodes with their voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
-        // but this doesn't include the transformer primary node - it's not part of the topology
-        // ToDo: fix this 1kV multiplier on the voltages
-        val nodes = equipment.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
-            node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, toCoordinate (node._1._3.ACDCTerminal.sequenceNumber, node._1._4), node._2.nominalVoltage * 1000.0))
-        ).groupBy (_._2.id).values.map (pickone (singles)) // (islandid, node)
-        // get all equipment with two nodes in the island that separate different TopologicalNode (these are the edges)
-        val two_terminal_equipment = equipment.groupBy (_._2.id).filter (
-            edge ⇒ edge._2.size > 1 && (edge._2.head._1 == edge._2.tail.head._1) && (edge._2.head._3.TopologicalNode != edge._2.tail.head._3.TopologicalNode)
-        )
-        // convert ConductingEquipment to Element with Terminal(s) and PositionPoints
-        // all copies of the PositionPoints will be the same or just parallel conductors, so we arbitrarily take the head
-        val elements = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
-            .values.map (x ⇒ (x._2.head._1, (x._1, x._2.map (_._3), x._2.head._4)))
-        // combine parallel equipment
-        val eq3 = elements.keyBy (_._2._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
-        // the island is the same, so pull it out of the Iterator
-        val eq4 = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2)))
-        // create the edges keyed by island
-        val edges = eq4.map (v ⇒
+        rdd.map (
+            args ⇒
             {
                 // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
-                val id_cn_1 = v._2.head._2.head.TopologicalNode
-                val id_cn_2 = v._2.head._2.tail.head.TopologicalNode
-                val raw = GLMEdge.toGLMEdge (v._2.map (x ⇒ x._1), id_cn_1, id_cn_2)
-                (v._1, SimulationEdge (raw.id, raw.cn1, raw.cn2, raw, toCoordinates (v._2.head._3)))
+                val id_cn_1 = args.head._1.head._2.TopologicalNode
+                val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
+                val raw = GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2)
+                (args.head._1.head._1, SimulationEdge (args.head._2.id, id_cn_1, id_cn_2, raw, Array(), null, null)) // need the position points
             }
         )
-        nodes.groupByKey.join (edges.groupByKey).cache
     }
 
     def make_tasks (job: SimulationJob): RDD[SimulationTask] =
@@ -320,41 +261,62 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val numtrafos = islands_trafos.count
         log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
-        val q = SimulationSparkQuery (session, options.verbose)
+        // transformer area calculations
+        val tsa = TransformerServiceArea (session)
+        // only proceed if topological processing was done (there are TopologicalIslands)
+        if (tsa.hasIslands)
+        {
+            val islands_trafos: RDD[(island_id, transformerset_id)] = tsa.getTransformerServiceAreas
+            val trafos_islands: RDD[(transformerset_id, island_id)] = islands_trafos.map (_.swap)
 
-        // query the players
-        val emptyPlayers = session.sparkContext.emptyRDD[(String, SimulationPlayerResult)]
-        def combinePlayers (acc: RDD[(String, SimulationPlayerResult)], query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] = acc.union (q.executePlayerQuery (query))
-        val playersets = job.players.foldLeft (emptyPlayers) (combinePlayers).groupByKey.flatMapValues (List (_)).cache
+            val q = SimulationSparkQuery (session, options.verbose)
 
-        // query the recorders
-        val emptyRecorders = session.sparkContext.emptyRDD[(String, SimulationRecorderResult)]
-        def combineRecorders (acc: RDD[(String, SimulationRecorderResult)], query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] = acc.union (q.executeRecorderQuery (query))
-        val recordersets = job.recorders.foldLeft (emptyRecorders) (combineRecorders).groupByKey.flatMapValues (List (_)).cache
+            // query the players
+            val emptyPlayers = session.sparkContext.emptyRDD[(String, SimulationPlayerResult)]
+            def combinePlayers (acc: RDD[(String, SimulationPlayerResult)], query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] = acc.union (q.executePlayerQuery (query))
+            val playersets = job.players.foldLeft (emptyPlayers) (combinePlayers).groupByKey.flatMapValues (List (_)).cache
 
-        // get the starting and ending times
-        val start = iso_parse (job.interval("start"))
-        val end = iso_parse (job.interval("end"))
+            // query the recorders
+            val emptyRecorders = session.sparkContext.emptyRDD[(String, SimulationRecorderResult)]
+            def combineRecorders (acc: RDD[(String, SimulationRecorderResult)], query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] = acc.union (q.executeRecorderQuery (query))
+            val recordersets = job.recorders.foldLeft (emptyRecorders) (combineRecorders).groupByKey.flatMapValues (List (_)).cache
 
-        // process the list of islands
-        val islands = (if (0 != job.transformers.size) islands_trafos.filter (island ⇒ job.transformers.contains (island._2)) else islands_trafos).map (_._1)
-        val rdd1 = queryNetwork.join (islands.keyBy (x ⇒ x)).map (x ⇒ (x._1,  x._2._1))  // (island, ([nodes], [edges]))
-        val rdd2 = rdd1.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache  // (island, ([nodes], [edges], [players]))
-        val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache  // (island, [nodes], [edges], [players], [recorders])
-        rdd3.map (l ⇒
-            {
-                val players = l._4.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
-                val recorders = l._5.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
-                SimulationTask (
-                    l._1, // island
-                    start.clone.asInstanceOf[Calendar],
-                    end.clone.asInstanceOf[Calendar],
-                    l._2, // nodes
-                    l._3, // edges
-                    players,
-                    recorders)
-            }
-        ).cache
+            // get the starting and ending times
+            val start = iso_parse (job.interval("start"))
+            val end = iso_parse (job.interval("end"))
+
+            // maybe reduce the set of islands
+            val islands_to_do: RDD[(transformerset_id, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
+
+            val island_helper = new Island (session, StorageLevel.fromString (options.storage)) //T ToDo: fix this storage
+            val graph_stuff = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker) // (trafosetid, ([nodes], [edges]))
+            val areas: RDD[(transformerset_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
+
+            // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
+            val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (x ⇒ (x._2, x._1))
+
+            val rdd2 = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache  // (island, ([nodes], [edges], [players]))
+            val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache  // (island, [nodes], [edges], [players], [recorders])
+            rdd3.map (l ⇒
+                {
+                    val players = l._4.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                    val recorders = l._5.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                    SimulationTask (
+                        l._1, // island
+                        start.clone.asInstanceOf[Calendar],
+                        end.clone.asInstanceOf[Calendar],
+                        l._2, // nodes
+                        l._3, // edges
+                        players,
+                        recorders)
+                }
+            ).cache
+        }
+        else
+        {
+            log.error ("""topology without islands""")
+            session.sparkContext.emptyRDD
+        }
     }
 
     def process (batch: Seq[SimulationJob]): String =

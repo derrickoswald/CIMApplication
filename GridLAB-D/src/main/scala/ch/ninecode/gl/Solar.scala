@@ -85,7 +85,7 @@ with Serializable
         val pairs = attributes.keyBy (_.value).join (strings.keyBy (_.id)).values.map (x ⇒ (x._1.name, x._2.value))
 
         // get a simple list of house to pv id pairs
-        val links = pairs.join (pairs.map (x ⇒ (x._2, x._1))).values
+        val links = pairs.join (pairs.map (_.swap)).values
 
         // get the pv stations
         val solars = get[SolarGeneratingUnit]
@@ -94,7 +94,7 @@ with Serializable
         val house_solars = links.map (x ⇒ (x._2, x._1)).join (solars.keyBy (_.id)).values
 
         // get the terminals
-        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]]
+        val terminals = get[Terminal]
 
         // link to the connectivity/topological node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (

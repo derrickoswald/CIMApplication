@@ -156,7 +156,7 @@ class GridLABD (
                     case 1 ⇒
                         ret :+
                             PreEdge(
-                                terminals(0).ACDCTerminal.id,
+                                terminals(0).id,
                                 node_name(terminals(0)),
                                 volts(0),
                                 "",
@@ -169,10 +169,10 @@ class GridLABD (
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ PreEdge(
-                                terminals(0).ACDCTerminal.id,
+                                terminals(0).id,
                                 node_name(terminals(0)),
                                 volts(0),
-                                terminals(i).ACDCTerminal.id,
+                                terminals(i).id,
                                 node_name(terminals(i)),
                                 volts(i),
                                 terminals(0).ConductingEquipment,

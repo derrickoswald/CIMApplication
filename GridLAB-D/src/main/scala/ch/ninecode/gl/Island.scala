@@ -28,10 +28,13 @@ import ch.ninecode.model.WireInfo
  */
 class Island (
     spark: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+extends CIMRDD
+with Serializable
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    import Island._
 
     def edge_operator (arg: (Element, Iterable[(Terminal, Double)], Double)): List[PreEdge] =
     {
@@ -58,7 +61,7 @@ class Island (
                     case 1 ⇒
                         ret :+
                             PreEdge (
-                                terminals(0)._1.ACDCTerminal.id,
+                                terminals(0)._1.id,
                                 terminals(0)._1.TopologicalNode,
                                 terminals(0)._2,
                                 "",
@@ -71,10 +74,10 @@ class Island (
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ PreEdge (
-                                terminals(0)._1.ACDCTerminal.id,
+                                terminals(0)._1.id,
                                 terminals(0)._1.TopologicalNode,
                                 terminals(0)._2,
-                                terminals(i)._1.ACDCTerminal.id,
+                                terminals(i)._1.id,
                                 terminals(i)._1.TopologicalNode,
                                 terminals(i)._2,
                                 terminals(0)._1.ConductingEquipment,
@@ -130,7 +133,7 @@ class Island (
      * Otherwise the base voltage for the conducting equipment is associated to each terminal.
      *
      * @param voltages The list of base voltage names with voltage value
-     * @param arg Equipment ID, element and associated terminals, transformer ends and associated termianls (only for transformers)
+     * @param arg Equipment ID, element and associated terminals, transformer ends and associated terminals (only for transformers)
      * @return (mRID, (ConductingEquipment, Terminals&Voltages))
      */
     def attach_voltages  (voltages: Map[String, Double]) (arg: (String, (Iterable[(Element, Terminal)], Option[Iterable[(PowerTransformerEnd, Terminal)]]))): (String, (Element, Iterable[(Terminal, Double)])) =
@@ -178,7 +181,8 @@ class Island (
         val element: Element = arg._2._1._1
         val terminals_voltages: Iterable[(Terminal, Double)] = arg._2._1._2
         val maybe_current: Option[Double] = arg._2._2
-        (element, terminals_voltages, maybe_current match { case Some (i) ⇒ i case None ⇒ Double.PositiveInfinity })
+        val max: Double = Double.PositiveInfinity
+        (element, terminals_voltages, maybe_current match { case Some (i) ⇒ i case None ⇒ max })
     }
 
     /**
@@ -190,7 +194,7 @@ class Island (
     def prepare (island: String): (RDD[PreEdge], RDD[PreNode]) =
     {
         // get a map of voltages
-        val voltages = get[BaseVoltage].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get[BaseVoltage].map(v ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the island terminals keyed by equipment
         val terminals = get[Terminal].keyBy (_.TopologicalNode).join (get[TopologicalNode].keyBy (_.id)).filter (island == _._2._2.TopologicalIsland).map (_._2._1).keyBy (_.ConductingEquipment)
@@ -244,9 +248,65 @@ class Island (
             case None ⇒
         }
 
-        (xedges, xnodes)
-
         // construct the initial graph from the edges and nodes
         Graph.apply[PreNode, PreEdge] (xnodes, xedges, vertex_data, storage_level, storage_level)
     }
+
+    def queryNetwork (
+         trafos_islands: IslandMap,
+         node_maker: RDD[NodeParts] ⇒ RDD[(transformerset_id, GLMNode)],
+         edge_maker: RDD[EdgeParts] ⇒ RDD[(transformerset_id, GLMEdge)]): (Nodes, Edges) =
+    {
+        // the mapping between island and transformer service area
+        val islands_trafos: RDD[(island_id, transformerset_id)] = trafos_islands.map (_.swap)
+        // get nodes by TopologicalIsland
+        val members: RDD[(node_id, island_id)] = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland))
+        // get terminals by TopologicalIsland
+        val terminals: RDD[(island_id, Terminal)] = get[Terminal].keyBy (_.TopologicalNode).join (members).map (_._2.swap)
+        // map terminals to transformer service areas
+        val transformers_terminals: RDD[(transformerset_id, Terminal)] = terminals.join (islands_trafos).values.map (_.swap)
+        // get equipment attached to each terminal
+        val terminals_equipment: RDD[(Iterable[(transformerset_id, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).values
+
+        // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSgment
+        val one_terminal_equipment: RDD[(String, ((transformerset_id, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
+        val all_equipment: RDD[(String, ((transformerset_id, Terminal), ConductingEquipment))] = terminals_equipment.flatMap (x ⇒ x._1.map (y ⇒ (y, x._2))).keyBy (_._1._2.TopologicalNode)
+        // preferentially take the single terminal equipment, but in all cases keep only one equipment
+        val t_e: RDD[((transformerset_id, Terminal), ConductingEquipment)] = all_equipment.leftOuterJoin (one_terminal_equipment).values.map (
+            {
+                case (_, Some (single)) ⇒ single
+                case (multiple, None) ⇒ multiple
+            }
+        )
+
+        // make nodes
+        val m: RDD[(transformerset_id, (Terminal, ConductingEquipment))] = t_e.map (x ⇒ (x._1._1, (x._1._2, x._2)))
+        val n: RDD[(transformerset_id, (Terminal, ConductingEquipment, BaseVoltage))] = m.keyBy (_._2._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
+        val nn: RDD[(transformerset_id, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
+
+        val o: RDD[NodeParts] = nn.groupBy (_._2._1.TopologicalNode)
+        val nodes: RDD[(transformerset_id, GLMNode)] = node_maker (o)
+
+        // get all equipment with two nodes in the transformer service area that separate different TopologicalIsland (these are the edges)
+        val ff: RDD[(Iterable[(transformerset_id, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2))
+        val tte: RDD[(Iterable[(transformerset_id, Terminal)], Element)] = ff.filter (x ⇒ x._1.size > 1 && (x._1.head._1 == x._1.tail.head._1) && (x._1.head._2.TopologicalNode != x._1.tail.head._2.TopologicalNode))
+        // combine parallel edges
+        val eq: RDD[EdgeParts] = tte.keyBy (_._1.map (_._2.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
+        // make edges
+        val edges: RDD[(transformerset_id, GLMEdge)] = edge_maker (eq)
+
+        (nodes, edges)
+    }
+}
+
+object Island
+{
+    type transformerset_id = String
+    type island_id = String
+    type node_id = String
+    type IslandMap = RDD[(transformerset_id, island_id)]
+    type Nodes = RDD[(transformerset_id, GLMNode)]
+    type Edges = RDD[(transformerset_id, GLMEdge)]
+    type NodeParts = (node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])
+    type EdgeParts = Iterable[(Iterable[(transformerset_id, Terminal)], Element)]
 }

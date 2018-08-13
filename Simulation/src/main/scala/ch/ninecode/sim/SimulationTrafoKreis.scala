@@ -46,9 +46,9 @@ case class SimulationTrafoKreis (
                 val node = raw.asInstanceOf[SimulationNode]
                 SimulationNode (
                     node.id,
+                    node.nominal_voltage,
                     node.equipment,
                     node.position,
-                    node.nominal_voltage,
                     players.filter (_.parent == raw.id),
                     recorders.filter (_.parent == raw.id)
                 )

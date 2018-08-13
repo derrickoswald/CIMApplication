@@ -5,6 +5,7 @@ import java.util.Calendar
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerSet
 

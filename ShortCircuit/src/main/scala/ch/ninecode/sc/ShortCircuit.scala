@@ -7,6 +7,7 @@ import java.util.TimeZone
 
 import scala.collection.Map
 import scala.io.Source
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -17,22 +18,22 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.SwitchEdge
+import ch.ninecode.gl.Island
+import ch.ninecode.gl.Island._
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.model._
-import org.apache.spark.sql.DataFrame
 
 /**
  * Short circuit calculation.
@@ -397,62 +398,6 @@ with Serializable
             node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
     }
 
-    def pickone (singles: Array[String]) (nodes: Iterable[(String, SimulationNode)]): (String, SimulationNode) =
-    {
-        nodes.find (node ⇒ singles.contains (node._2.equipment)) match
-        {
-            case Some (node) ⇒ node
-            case _ ⇒ nodes.head // just take the first
-        }
-    }
-
-    def queryNetwork (trafos_islands: RDD[(String, String)]): RDD[(String, (Iterable[SimulationNode], Iterable[GLMEdge]))] =
-    {
-        log.info ("""resolving nodes and edges by transformer service area""")
-
-        // the mapping between island and transformer service area
-        val islands_trafos = trafos_islands.map (_.swap) // (islandid, transformersetid)
-        // get nodes by TopologicalIsland
-        val members = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
-        // get terminals by TopologicalIsland
-        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
-        // get equipment in the TopologicalIsland and associated Terminal
-        val equipment_terminals = get[ConductingEquipment].keyBy (_.id).join (terminals.keyBy (_._2.ConductingEquipment)).values.map (x ⇒ (x._2._1, x._1, x._2._2)) // (island, equipment, terminal)
-        // make a list of all single terminal equipment as the preferred association to the node
-        val singles = equipment_terminals.groupBy (_._3.ConductingEquipment).filter (1 == _._2.size).map (_._2.head._2.id).collect
-        // get all nodes with their voltage - it is assumed that some equipment on the transformer secondary (secondaries) has a voltage
-        // but this doesn't include the transformer primary node - it's not part of the topology
-        // ToDo: fix this 1kV multiplier on the voltages
-        val nodes = islands_trafos.join (equipment_terminals.keyBy (_._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (
-            node ⇒ (node._1._1, SimulationNode (node._1._3.TopologicalNode, node._1._2.id, node._2.nominalVoltage * 1000.0, node._1._2.Equipment.PowerSystemResource.PSRType))
-        ).groupBy (_._2.id).values.map (pickone (singles))).values // (transformersetid, node)
-        // get equipment in the transformer service area
-        val equipment = equipment_terminals.map (x ⇒ (x._1, (x._2, x._3))).join (islands_trafos)
-            .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (transformersetid, (islandid, equipment, terminal))
-
-        // get all equipment with two nodes in the transformer service area that separate different TopologicalIsland (these are the edges)
-        val two_terminal_equipment = equipment.groupBy (x ⇒ x._2._2.id).filter (
-            edge ⇒ edge._2.size > 1 && (edge._2.head._1 == edge._2.tail.head._1) && (edge._2.head._2._3.TopologicalNode != edge._2.tail.head._2._3.TopologicalNode)
-        ) // (equipmentid, [(txarea, (islandid, equipment, terminal))])
-        // convert ConductingEquipment to Element with Terminal(s)
-        val elements: RDD[(String, (Element, Iterable[Terminal]))] = get[Element]("Elements").keyBy (_.id).join (two_terminal_equipment)
-            .values.map (x ⇒ (x._2.head._1, (x._1, x._2.map (x ⇒ x._2._3)))) // (txarea, (element, [terminals]))
-        // combine parallel equipment
-        val eq3: RDD[Iterable[(String, (Element, Iterable[Terminal]))]] = elements.keyBy (_._2._2.map (_.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(txarea, (element, [terminals]))]
-        // the transformer service area is the same, so pull it out of the Iterator
-        val eq4: RDD[(String, Iterable[(Element, Iterable[Terminal])])] = eq3.map (x ⇒ (x.head._1, x.map (y ⇒ y._2))) // (txarea, [(element, [terminals])]
-        // create the edges keyed by transformersetid
-        val edges = eq4.map (v ⇒
-            {
-                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
-                val id_cn_1 = v._2.head._2.head.TopologicalNode
-                val id_cn_2 = v._2.head._2.tail.head.TopologicalNode
-                (v._1, GLMEdge.toGLMEdge (v._2.map (x ⇒ x._1), id_cn_1, id_cn_2))
-            }
-        )
-        nodes.groupByKey.join (edges.groupByKey).cache
-    }
-
     def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex) =
     {
         val z: Complex = arg._2 match
@@ -469,7 +414,7 @@ with Serializable
                         if (i == zero)
                         {
                             log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
-                            Complex (Double.PositiveInfinity)
+                            Complex (Double.PositiveInfinity, 0.0)
                         }
                         else
                             (arg._1.voltage - v) / i
@@ -581,6 +526,25 @@ with Serializable
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments: RDD[ScExperiment])
     }
 
+    def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
+    {
+        val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values.map (x ⇒ (x._1._1, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
+        ss.map (args ⇒ (args._2.head._1, SimulationNode (args._1, args._2.head._2._3.nominalVoltage * 1000.0, args._2.head._2._2.id, args._2.head._2._2.Equipment.PowerSystemResource.PSRType)))
+    }
+
+    def edge_maker (rdd: RDD[Iterable[(Iterable[(transformerset_id, Terminal)], Element)]]): RDD[(transformerset_id, GLMEdge)] =
+    {
+        rdd.map (
+            args ⇒
+            {
+                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
+                val id_cn_1 = args.head._1.head._2.TopologicalNode
+                val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
+                (args.head._1.head._1, GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2))
+            }
+        )
+    }
+
     // execute GridLAB-D to approximate the impedances and replace the error records
     def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
     {
@@ -589,9 +553,12 @@ with Serializable
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {
-            val trafos_islands = tsa.getTransformerServiceAreas.map (x ⇒ (x._2, x._1)) // (trafosetid, islandid)
+            val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-            val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
+//val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
+            val island_helper = new Island (session, storage_level)
+            val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // (trafosetid, ([nodes], [edges]))
+            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])

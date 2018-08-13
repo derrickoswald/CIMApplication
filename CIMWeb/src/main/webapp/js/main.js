@@ -4,8 +4,8 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimexport", "cimsimulate"],
-    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimexport, cimsimulate)
+    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimsimulate"],
+    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimsimulate)
     {
         /**
          * Get the hash portion of the url.
@@ -96,7 +96,6 @@ requirejs
                         case "map": cimmap.initialize (event); break;
                         case "analysis": cimanalysis.initialize (event); break;
                         case "simulate": cimsimulate.initialize (event); break;
-                        case "export": cimexport.initialize (event); break;
                         case "query": cimquery.initialize (event); break;
                     }
                     initialized[next] = true;
