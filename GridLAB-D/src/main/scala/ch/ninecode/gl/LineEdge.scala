@@ -8,7 +8,7 @@ case class LineEdge
     node2: String,
     lines: Iterable[ACLineSegment],
     base_temperature: Double = 20.0,
-    target_temperature: Double = 20.0,
+    target_temperature: Double = 60.0,
     DEFAULT_R: Double = 0.225,
     DEFAULT_X: Double = 0.068
 )
@@ -187,12 +187,12 @@ extends GLMEdge
     {
         if ((0.0 != r) && (0.0 != x))
         {
-            val z1 = Complex (resistanceAt (base_temperature, target_temperature, r), x)
+            val z1 = Complex (resistanceAt (target_temperature, base_temperature, r), x)
             if (one_phase)
                 (z1, zero, false)
             else
             {
-                val z0 = Complex (resistanceAt (base_temperature, target_temperature, r0), x0)
+                val z0 = Complex (resistanceAt (target_temperature, base_temperature, r0), x0)
                 val (diag, off) = sequence2z (z0, z1)
                 (diag, off, false)
             }

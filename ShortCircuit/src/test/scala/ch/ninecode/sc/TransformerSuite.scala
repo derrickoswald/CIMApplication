@@ -199,6 +199,6 @@ class TransformerSuite
             val total = System.nanoTime ()
             println ("total: " + (total - start) / 1e9 + " seconds")
 
-            check_impedances (percent = 15.0) // ToDo: find out why the discrepancy is so large
+            check_impedances (percent = 2.0)
     }
 }
