@@ -398,6 +398,15 @@ with Serializable
             node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
     }
 
+    /**
+     * Convert current and voltage at a node into impedance.
+     *
+     * Computes the sum of currents into a node, to get the current flowing from the node to neutral,
+     * and from this, and the voltage at the node, computes the impedance at the node.
+     *
+     * @param arg a tuple of the experimental conditions and the results (both voltage and current in the same Iterable)
+     * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
+     */
     def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex) =
     {
         val z: Complex = arg._2 match
@@ -427,6 +436,26 @@ with Serializable
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z)
     }
 
+    /**
+     * Demultiplex file names into element and type.
+     *
+     * Converts a filename into the node mrid and type of recording - current or voltage.
+     * For example, for a node called PIN767 with a node id of PIN767_topo, there may be files with names like:
+     * <ul>
+     * <li>PIN767_topo%FLE7941_current.csv</li>
+     * <li>PIN767_topo%FLT1024_current.csv</li>
+     * <li>PIN767_topo_voltage.csv</li>
+     * </ul>
+     * which would produce the pairs:
+     * <ul>
+     * <li>("PIN767_topo", "Amps)</li>
+     * <li>("PIN767_topo", "Amps)</li>
+     * <li>("PIN767_topo", "Volts)</li>
+     * </ul>
+     *
+     * @param filename the filename to demultiplex
+     * @return the pair of node id and type of recorder
+     */
     def special_filenameparser (filename: String): (String, String) =
     {
         val elementindex = filename.indexOf ("%")
@@ -440,6 +469,14 @@ with Serializable
         (element, units)
     }
 
+    /**
+     * Perform gridlabd via Spark pipe() and collect the experimental results.
+     *
+     * @param gridlabd the object to solve the .glm files and read the recorders
+     * @param one_phase if <code>true</code>, create single phase results, otherwise three phase results
+     * @param experiments the experiments contained in the players, that can be extracted from the recorders
+     * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
+     */
     def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex)] =
     {
         val b4_solve = System.nanoTime ()
@@ -460,7 +497,18 @@ with Serializable
         z
     }
 
-    def remedial (simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex)] =
+    /**
+     * Apply a GridLAB-D load flow analysis as a remedial work-around for mesh (non-radial) networks.
+     *
+     * Exports GridLAB-D model files, adding player files of short-circuits (actually just a low impedance)
+     * for each node of interest ina time-multiplexed window of "experiments". It then executes the load-flow
+     * and time demultuplexes each experiment to generate the impedance of the network as seen at each node (of interest).
+     *
+     * @param simulations the RDD of transformer service areas to which this analysis should be applied
+     * @param temperature the temerature at which to evaluate the impedances (°C)
+     * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
+     */
+    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double): RDD[(String, String, String, Double, Complex)] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -478,7 +526,7 @@ with Serializable
 
         def generate (gridlabd: GridLABD, trafokreis: SimulationTransformerServiceArea): Unit =
         {
-            val generator = ScGLMGenerator (one_phase = true, temperature = options.low_temperature, date_format = _DateFormat, trafokreis)
+            val generator = ScGLMGenerator (one_phase = true, temperature = temperature, date_format = _DateFormat, trafokreis)
             gridlabd.export (generator)
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = StorageLevel.MEMORY_AND_DISK_SER, workdir = options.workdir)
@@ -521,9 +569,9 @@ with Serializable
             1
         }
         val n = experiments.map (generate_player_file (gridlabd)).count
-        log.info ("""running %s experiments""".format (n))
+        log.info ("""running %s experiments at %s°C""".format (n, temperature))
 
-        solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments: RDD[ScExperiment])
+        solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments)
     }
 
     def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
@@ -555,7 +603,6 @@ with Serializable
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-//val areas = queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2))) // (trafosetid, ([nodes], [edges]))
             val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // (trafosetid, ([nodes], [edges]))
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
@@ -574,16 +621,23 @@ with Serializable
                         directory = x._2.transformer_name)
             )
             // perform remedial simulations
-            val z: RDD[(String, String, String, Double, Complex)] = remedial (simulations) // (trafoid, nodeid, equipment, voltage, Z)
+            val zlo: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.low_temperature).cache // (trafoid, nodeid, equipment, voltage, Z)
+            log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
+            val zhi: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.high_temperature).cache // (trafoid, nodeid, equipment, voltage, Z)
+            log.info ("""ran %s experiments at high temperature""".format (zhi.count ()))
+            val z: RDD[(String, String, String, Double, (Complex, Complex))] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
+                .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5)))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
+            val original_keyed: RDD[(transformerset_id, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
             val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
                 {
                     val v = x._1._4
-                    val z1 = x._1._5
-                    val z0 = z1 * 4.0 // approximately four times
-                    val z = Impedanzen (z1, z0, z1, z0)
+                    val z1_low = x._1._5._1
+                    val z0_low = z1_low * 4.0 // approximately four times
+                    val z1_hi = x._1._5._2
+                    val z0_hi = z1_hi * 4.0 // approximately four times
+                    val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
                     x._2 match
                     {
                         case Some (original) ⇒
