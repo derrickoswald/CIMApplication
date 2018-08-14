@@ -56,7 +56,7 @@ with Serializable
      * @param one_phase If <code>true</code>, emit a single phase node, otherwise emit a three phase node.
      * @return The string value to be included in the .glm file for this edge.
      */
-    def emit (one_phase: Boolean = false): String =
+    def emit (generator: GLMGenerator): String =
         // by default, make a link
         """
           |        object link
@@ -66,7 +66,7 @@ with Serializable
           |            from "%s";
           |            to "%s";
           |        };
-          |""".stripMargin.format (id, if (one_phase) "AN" else "ABCN", cn1, cn2)
+          |""".stripMargin.format (id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2)
 }
 
 object GLMEdge

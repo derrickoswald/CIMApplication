@@ -8,7 +8,6 @@ case class LineEdge
     node2: String,
     lines: Iterable[ACLineSegment],
     base_temperature: Double = 20.0,
-    target_temperature: Double = 60.0,
     DEFAULT_R: Double = 0.225,
     DEFAULT_X: Double = 0.068
 )
@@ -34,10 +33,10 @@ extends GLMEdge
     /**
      * Emit a overhead or underground line.
      *
-     * @param one_phase If <code>true</code>, emit a single phase node, otherwise emit a three phase node.
+     * @param generator the driver program
      * @return A line string (.glm text) for this edge.
      */
-    override def emit (one_phase: Boolean = false): String =
+    override def emit (generator: GLMGenerator): String =
     {
         // ToDo: with parallel cables of different length or type this is a problem:
         val conductor = lines.head.Conductor
@@ -58,7 +57,7 @@ extends GLMEdge
           |            length %sm;
           |            configuration "%s";
           |        };
-          |""".stripMargin.format (typ,id, if (one_phase) "AN" else "ABCN", cn1, cn2, length, config)
+          |""".stripMargin.format (typ,id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, length, config)
     }
 
     /**
@@ -78,11 +77,6 @@ extends GLMEdge
      * Zero ohms.
      */
     lazy val zero = Complex (0.0, 0.0)
-
-    /**
-     * Default impedance at the target temperature.
-     */
-    lazy val DEFAULT_Z = Complex (resistanceAt (base_temperature, target_temperature, DEFAULT_R), DEFAULT_X)
 
     /**
      * Get the cable/wire type.
@@ -179,26 +173,26 @@ extends GLMEdge
      * @param x ACLineSegment.x value
      * @param r0 ACLineSegment.r0 value
      * @param x0 ACLineSegment.x0 value
-     * @param one_phase If <code>true</code>, calculate a single phase matrix, otherwise calculate a three phase matrix.
+     * @param generator the driver program
      * @return The diagonal and off-diagonal values for the Z matrix representation of line impedance,
      * plus a boolean flag indicating whether the values are the default <code>true</code> or not <code>false</code>.
      */
-    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double, one_phase: Boolean = false): (Complex, Complex, Boolean) =
+    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double, generator: GLMGenerator): (Complex, Complex, Boolean) =
     {
         if ((0.0 != r) && (0.0 != x))
         {
-            val z1 = Complex (resistanceAt (target_temperature, base_temperature, r), x)
-            if (one_phase)
+            val z1 = Complex (resistanceAt (generator.targetTemperature, base_temperature, r), x)
+            if (generator.isSinglePhase)
                 (z1, zero, false)
             else
             {
-                val z0 = Complex (resistanceAt (target_temperature, base_temperature, r0), x0)
+                val z0 = Complex (resistanceAt (generator.targetTemperature, base_temperature, r0), x0)
                 val (diag, off) = sequence2z (z0, z1)
                 (diag, off, false)
             }
         }
         else
-            (DEFAULT_Z, zero, true)
+            (Complex (resistanceAt (base_temperature, generator.targetTemperature, DEFAULT_R), DEFAULT_X), zero, true)
     }
 
     /**
@@ -209,12 +203,12 @@ extends GLMEdge
      * @param x ACLineSegment.x value
      * @param r0 ACLineSegment.r0 value
      * @param x0 ACLineSegment.x0 value
-     * @param one_phase If <code>true</code>, emit a single phase configuration, otherwise emit a three phase configuration.
+     * @param generator the driver program
      * @return A string suitable for inclusion in the .glm file.
      */
-    def make_line_configuration (config: String, r: Double, x: Double, r0: Double, x0: Double, one_phase: Boolean = false): String =
+    def make_line_configuration (config: String, r: Double, x: Double, r0: Double, x0: Double, generator: GLMGenerator): String =
     {
-        val (diag, offd, default) = zMatrixValues (r, x, r0, x0, one_phase)
+        val (diag, offd, default) = zMatrixValues (r, x, r0, x0, generator)
         // ToDo: fix this /km multiplier on the impedance
         val dia = diag.toString () + " Ohm/km"
         val off = offd.toString () + " Ohm/km"
@@ -262,10 +256,10 @@ extends GLMEdge
     /**
      * Emit the configuration for the edge.
      *
-     * @param one_phase If <code>true</code>, emit a single phase configuration, otherwise emit a three phase configuration.
+     * @param generator the driver program
      * @return The configuration .glm element.
      */
-    def configuration (one_phase: Boolean = false): String =
+    def configuration (generator: GLMGenerator): String =
     {
         val line = lines.head
         var rt = if (0 == line.r) DEFAULT_R else line.r
@@ -285,6 +279,6 @@ extends GLMEdge
             r0t = r0
             x0t = x0
         }
-        make_line_configuration (configurationName, rt, xt, r0t, x0t, one_phase)
+        make_line_configuration (configurationName, rt, xt, r0t, x0t, generator)
     }
 }

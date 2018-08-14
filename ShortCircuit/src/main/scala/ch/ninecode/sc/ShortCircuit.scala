@@ -478,7 +478,7 @@ with Serializable
 
         def generate (gridlabd: GridLABD, trafokreis: SimulationTransformerServiceArea): Unit =
         {
-            val generator = ScGLMGenerator (one_phase = true, date_format = _DateFormat, trafokreis)
+            val generator = ScGLMGenerator (one_phase = true, temperature = options.low_temperature, date_format = _DateFormat, trafokreis)
             gridlabd.export (generator)
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = StorageLevel.MEMORY_AND_DISK_SER, workdir = options.workdir)

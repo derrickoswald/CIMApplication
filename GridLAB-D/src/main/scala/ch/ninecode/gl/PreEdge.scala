@@ -39,7 +39,7 @@ case class PreEdge(
     element: Element)
 extends GLMEdge
 {
-    override def emit (one_phase: Boolean): String = "" // there isn't anything emitted by PreEdges
+    override def emit (generator: GLMGenerator): String = "" // there isn't anything emitted by PreEdges
 
     /**
      * Flag indicating if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.

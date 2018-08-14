@@ -27,10 +27,10 @@ case class TransformerEdge
     /**
      * Emit a transformer.
      *
-     * @param one_phase If <code>true</code>, emit a single phase transformer, otherwise emit a three phase transformer.
+     * @param generator the driver program
      * @return A transformer string (.glm text) for this edge.
      */
-    override def emit (one_phase: Boolean): String =
+    override def emit (generator: GLMGenerator): String =
     {
         """
         |        object transformer
@@ -41,7 +41,7 @@ case class TransformerEdge
         |            to "%s";
         |            configuration "%s";
         |        };
-        |""".stripMargin.format (transformer.transformer_name, if (one_phase) "AN" else "ABCN", cn1, cn2, transformer.configurationName)
+        |""".stripMargin.format (transformer.transformer_name, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, transformer.configurationName)
         // ToDo: was transformer.node0, transformer.node1: can we get rid of those
     }
 }

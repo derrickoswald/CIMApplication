@@ -7,9 +7,10 @@ import ch.ninecode.gl._
 
 case class ScGLMGenerator (
     one_phase: Boolean,
+    temperature: Double,
     date_format: SimpleDateFormat,
     area: SimulationTransformerServiceArea)
-extends GLMGenerator (one_phase, date_format)
+extends GLMGenerator (one_phase, temperature, date_format)
 {
     override def name: String = area.name
 
@@ -57,7 +58,7 @@ extends GLMGenerator (one_phase, date_format)
 
         val z = area.transformer.network_short_circuit_impedance
         val line = LineEdge ("N5", node.id, List())
-        val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0)
+        val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0, this)
 
         val name = node.id
         val cable =

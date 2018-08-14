@@ -8,7 +8,7 @@ import ch.ninecode.gl._
 case class MediumVoltageGLMGenerator (
         one_phase: Boolean,
         date_format: SimpleDateFormat,
-        ust: USTKreis) extends GLMGenerator (one_phase, date_format)
+        ust: USTKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
 
     override def name: String = ust.trafokreis_key

@@ -30,10 +30,10 @@ extends GLMEdge
     /**
      * Emit a switch or fuse.
      *
-     * @param one_phase If <code>true</code>, emit a single phase switch, otherwise emit a three phase switch.
+     * @param generator the driver program
      * @return A switch string (.glm text) for this edge.
      */
-    override def emit (one_phase: Boolean): String =
+    override def emit (generator: GLMGenerator): String =
     {
         val status = if (switch.normalOpen) "OPEN" else "CLOSED"
         var current = switch.ratedCurrent
@@ -56,6 +56,6 @@ extends GLMEdge
         |            to "%s";
         |            status "%s";%s
         |        };
-        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (one_phase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
+        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
     }
 }

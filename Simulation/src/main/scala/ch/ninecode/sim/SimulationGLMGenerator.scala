@@ -8,7 +8,7 @@ import ch.ninecode.gl._
 case class SimulationGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, date_format)
+    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get simulation temparature from json file
 {
 
     override def name: String = kreis.name
@@ -140,6 +140,6 @@ case class SimulationGLMGenerator (
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (one_phase))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

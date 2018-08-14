@@ -11,13 +11,15 @@ import java.util.{Calendar, TimeZone}
  * simulation start and stop times, etc.
  *
  * @param one_phase If <code>true</code> generate a single phase .glm file.
- * @param date_format The date format to use within the .glm file
+ * @param temperature The temperature of the elements in the .glm file (°C).
+ * @param date_format The date format to use within the .glm file.
  * @param emit_voltage_dump if <code>true</code> add a voltage dump element to the .glm prefix text
  * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
  * @param emit_fault_check if <code>true</code> add a fault check element to the .glm prefix text
  */
 class GLMGenerator (
     one_phase: Boolean = true,
+    temperature: Double = 60.0,
     date_format: SimpleDateFormat =
     {
         val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
@@ -217,6 +219,20 @@ extends Serializable
         }
     }
 
+    /**
+     * Create a one phase .glm file.
+     *
+     * @return <code>true</code> if there should only be the A phase (and neutral) in the model, <code>false</code> otherwise.
+     */
+    def isSinglePhase: Boolean = one_phase
+
+    /**
+     * Create a .glm file at this target temperature.
+     *
+     * @return the temperature of the components in the model (°C).
+     */
+    def targetTemperature: Double = temperature
+
     // emitting classes
     var trans = new Trans (one_phase)
 
@@ -230,7 +246,7 @@ extends Serializable
      */
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (one_phase))
+        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
     /**
@@ -256,7 +272,7 @@ extends Serializable
      */
     def emit_edge (edge: GLMEdge): String =
     {
-        edge.emit (one_phase)
+        edge.emit (this)
     }
 
     /**
@@ -269,7 +285,7 @@ extends Serializable
      */
     def emit_node (node: GLMNode): String =
     {
-        node.emit (one_phase)
+        node.emit (this)
     }
 
     /**

@@ -11,7 +11,7 @@ class ExportGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     trafokreis: Trafokreis)
-extends GLMGenerator (one_phase, date_format)
+extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
     /**
      * Calendar duplication utility function.

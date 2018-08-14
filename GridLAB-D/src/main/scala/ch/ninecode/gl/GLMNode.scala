@@ -27,7 +27,7 @@ trait GLMNode extends Graphable with Serializable
      * @param one_phase If <code>true</code>, emit a single phase node, otherwise emit a three phase node.
      * @return The string value to be included in the .glm file for this node.
      */
-    def emit (one_phase: Boolean = false): String =
+    def emit (generator: GLMGenerator): String =
         """
           |        object meter
           |        {
@@ -36,7 +36,7 @@ trait GLMNode extends Graphable with Serializable
           |            bustype PQ;
           |            nominal_voltage %sV;
           |        };
-          |""".stripMargin.format (id, if (one_phase) "AN" else "ABCN", nominal_voltage)
+          |""".stripMargin.format (id, if (generator.isSinglePhase) "AN" else "ABCN", nominal_voltage)
 }
 
 object GLMNode
