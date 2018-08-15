@@ -628,7 +628,8 @@ with Serializable
             val z: RDD[(String, String, String, Double, (Complex, Complex))] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
                 .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5)))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed: RDD[(transformerset_id, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.equipment)
+            val original_keyed: RDD[(transformerset_id, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
+            // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
             val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
                 {
@@ -656,9 +657,10 @@ with Serializable
             // calculate new short circuit result records
             val replacements = new_nodes.map (calculate_short_circuit)
             // merge them into the existing set
-            val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.equipment)
+            val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.node)
             // ToDo: should we remove all records from the problem transformers?
-            original_keyed.subtract (replacements_keyed).union (replacements_keyed).values
+            val some = original_keyed.subtractByKey (replacements_keyed)
+            some.union (replacements_keyed).values
         }
         else
         {

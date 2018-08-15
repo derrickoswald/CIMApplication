@@ -43,52 +43,66 @@ extends GLMGenerator (one_phase, temperature, date_format)
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
+        val z = area.transformer.network_short_circuit_impedance
+        val nodename = node.id
 
-        val swing =
-          """
+        // if the network short circuit impedance isn't 0Ω, we have to invent a cable
+        if (z != Complex(0))
+        {
+            val swing =
+              """
+                |        object meter
+                |        {
+                |            name "N5";
+                |            phases %s;
+                |            bustype SWING;
+                |            nominal_voltage %sV;
+                |            voltage_A %s;
+                |        };
+                |""".stripMargin.format (phase, voltage, voltage)
+
+            val line = LineEdge ("N5", node.id, List())
+            val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0, this)
+            val cable =
+              """
+                |        object overhead_line
+                |        {
+                |            name "HV";
+                |            phases %s;
+                |            from "N5";
+                |            to "%s";
+                |            length 1000m;
+                |            configuration "N5_configuration";
+                |        };
+                |""".stripMargin.format (phase, nodename)
+
+            val meter =
+              """
+                |        object meter
+                |        {
+                |            name "%s";
+                |            phases %s;
+                |            bustype PQ;
+                |            nominal_voltage %sV;
+                |        };
+                |""".stripMargin.format (nodename, phase, voltage)
+
+            swing +
+            config +
+            cable +
+            meter
+        }
+        else
+            """
             |        object meter
             |        {
-            |            name "N5";
+            |            name "%s";
             |            phases %s;
             |            bustype SWING;
             |            nominal_voltage %sV;
             |            voltage_A %s;
             |        };
-            |""".stripMargin.format (phase, voltage, voltage)
-
-        val z = area.transformer.network_short_circuit_impedance
-        val line = LineEdge ("N5", node.id, List())
-        val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0, this)
-
-        val name = node.id
-        val cable =
-          """
-            |        object overhead_line
-            |        {
-            |            name "HV";
-            |            phases %s;
-            |            from "N5";
-            |            to "%s";
-            |            length 1000m;
-            |            configuration "N5_configuration";
-            |        };
-            |""".stripMargin.format (phase, name)
-
-        val meter =
-          """
-            |        object meter
-            |        {
-            |            name "%s";
-            |            phases %s;
-            |            bustype PQ;
-            |            nominal_voltage %sV;
-            |        };
-            |""".stripMargin.format (name, phase, voltage)
-
-        swing +
-        config +
-        cable +
-        meter
+            |""".stripMargin.format (nodename, phase, voltage, voltage)
     }
 
     /**

@@ -275,13 +275,22 @@ with Serializable
         val t_e: RDD[((transformerset_id, Terminal), ConductingEquipment)] = all_equipment.leftOuterJoin (one_terminal_equipment).values.map (
             {
                 case (_, Some (single)) ⇒ single
-                case (multiple, None) ⇒ multiple
+                case (other, None) ⇒ other
             }
         )
 
         // make nodes
         val m: RDD[(transformerset_id, (Terminal, ConductingEquipment))] = t_e.map (x ⇒ (x._1._1, (x._1._2, x._2)))
-        val n: RDD[(transformerset_id, (Terminal, ConductingEquipment, BaseVoltage))] = m.keyBy (_._2._2.BaseVoltage).join (get[BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
+        // key by BaseVoltage - handle PowerTransformer specially, otherwise it could be just .keyBy (_._2._2.BaseVoltage)
+        val m_key_by_BaseVoltage = m.keyBy (_._2._1.id).leftOuterJoin (get[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)).values
+            .map (
+                {
+                    case (x, Some (end)) ⇒ (end.TransformerEnd.BaseVoltage, x)
+                    case (x, None) ⇒ (x._2._2.BaseVoltage, x)
+                }
+            )
+
+        val n: RDD[(transformerset_id, (Terminal, ConductingEquipment, BaseVoltage))] = m_key_by_BaseVoltage.join (get[BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
         val nn: RDD[(transformerset_id, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
 
         val o: RDD[NodeParts] = nn.groupBy (_._2._1.TopologicalNode)

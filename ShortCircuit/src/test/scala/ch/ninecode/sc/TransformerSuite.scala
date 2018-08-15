@@ -15,6 +15,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
+import org.apache.commons.io.FileUtils
 
 class TransformerSuite
     extends
@@ -24,24 +25,28 @@ class TransformerSuite
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val FILE_DEPOT = "private_data/"
+    val FILE_DEPOT = "data/"
+    val PRIVATE_FILE_DEPOT = "private_data/"
 
     val FILENAME1 = "bkw_cim_export_schopfen_all.rdf"
+    val FILENAME2 = "sak_sample_complex_parallel.rdf"
 
     var run_one = 1
     var run_two = 2
 
     before
     {
-//        // unpack the zip files
-//        if (!new File (FILE_DEPOT + FILENAME1).exists)
-//            new Unzip ().unzip (FILE_DEPOT + "DemoData.zip", FILE_DEPOT)
+        // unpack the zip files
+//        if (!new File (PRIVATE_FILE_DEPOT + FILENAME1).exists)
+//            new Unzip ().unzip (PRIVATE_FILE_DEPOT + "DemoData.zip", PRIVATE_FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME2).exists)
+            new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex_parallel.zip", FILE_DEPOT)
     }
 
     test ("Basic")
     {
         session: SparkSession ⇒
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = PRIVATE_FILE_DEPOT + FILENAME1
 
             val start = System.nanoTime
             val files = filename.split (",")
@@ -67,7 +72,7 @@ class TransformerSuite
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
-            val sc_options = ShortCircuitOptions (description = "Basic", trafos = FILE_DEPOT + "trafo.txt")
+            val sc_options = ShortCircuitOptions (description = "Basic", trafos = PRIVATE_FILE_DEPOT + "trafo.txt")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -146,7 +151,7 @@ class TransformerSuite
     test ("Transformer Area")
     {
         session: SparkSession ⇒
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = PRIVATE_FILE_DEPOT + FILENAME1
 
             val start = System.nanoTime
             val files = filename.split (",")
@@ -200,5 +205,62 @@ class TransformerSuite
             println ("total: " + (total - start) / 1e9 + " seconds")
 
             check_impedances (percent = 2.0)
+    }
+
+    test ("Complex Parallel without non-radial errors")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME2
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
+            val ele = ntp.process (true).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                cmax = 0.95,
+                cmin = 0.95,
+                trafos = FILE_DEPOT + "sak_sample.transformers",
+                workdir = "./data/result/")
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val results = shortcircuit.run ()
+            results.cache ()
+
+            // write output to file and console
+            val output = FILE_DEPOT + "result"
+            val string = results.sortBy (_.tx).map (_.csv)
+
+            val path = new File (output)
+            FileUtils.deleteQuietly (path)
+            string.saveAsTextFile (output)
+
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
+            {
+                val h = csv (i)
+                println (h)
+            }
+
+            val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
+            assert (null != consumer.errors)
+            assert (!consumer.errors.contains (ScError (true, "non-radial network detected through Line2").toString))
     }
 }
