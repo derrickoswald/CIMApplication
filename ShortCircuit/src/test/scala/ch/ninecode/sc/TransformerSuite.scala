@@ -140,6 +140,8 @@ class TransformerSuite
             }
             statement.close ()
         }
+
+        connection.close ()
     }
 
 //    test ("dummy")

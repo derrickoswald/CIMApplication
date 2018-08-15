@@ -75,10 +75,10 @@ with Serializable
         // - ServiceLocation to EnergyConsumer
 
         // link to service location ids via UserAttribute
-        val attributes = get[UserAttribute]
+        val attributes = getOrElse[UserAttribute]
 
         // user attributes link through string quantities
-        val strings = get[StringQuantity]
+        val strings = getOrElse[StringQuantity]
 
         // get solar to service linkage, e.g. ("EEA5280", "MST115133")
         // and service to house linkage, e.g. ("MST115133", "HAS138130")
@@ -88,13 +88,13 @@ with Serializable
         val links = pairs.join (pairs.map (_.swap)).values
 
         // get the pv stations
-        val solars = get[SolarGeneratingUnit]
+        val solars = getOrElse[SolarGeneratingUnit]
 
         // get a simple list of house to pv pairs
         val house_solars = links.map (x ⇒ (x._2, x._1)).join (solars.keyBy (_.id)).values
 
         // get the terminals
-        val terminals = get[Terminal]
+        val terminals = getOrElse[Terminal]
 
         // link to the connectivity/topological node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (

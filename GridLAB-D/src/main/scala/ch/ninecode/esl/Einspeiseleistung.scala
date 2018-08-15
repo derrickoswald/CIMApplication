@@ -377,7 +377,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             val reduced_trafos = trafokreise.map (t ⇒ {
                 val transformers = t.transformers.power_rating
-                val cdata_iter = t.edges.filter (_.ratedCurrent < Double.PositiveInfinity).map (e ⇒ (e.element.id, e.ratedCurrent))
+                val cdata_iter = t.edges.filter (_.ratedCurrent < Double.PositiveInfinity).groupBy (_.key).values
+                    .map (edges ⇒ (edges.map (_.element.id).toArray.sortWith (_ < _) (0), edges.map (_.ratedCurrent).sum))
                 (t.trafo, (transformers, cdata_iter))
             }).cache
 
@@ -565,10 +566,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else if (-1 != options.reference)
         {
             val changed = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta)
-            precalc_results.has.filter ((x) => changed.contains (x.nis_number))
+            precalc_results.has.filter (x => changed.contains (x.nis_number))
         }
         else
-            precalc_results.has.filter(_.eea != null)
+            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network"))
 
         val tl = session.sparkContext.parallelize (transformers)
         val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)

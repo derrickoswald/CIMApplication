@@ -13,8 +13,13 @@ case class LineEdge
 )
 extends GLMEdge
 {
-    // ToDo: take the id of the first cable of a set of parallel cables
-    def id: String = lines.head.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
+    /**
+     * Return the name of the (possibly parallel) line.
+     *
+     * Uses the lowest alphabetic name of the ACLineSegments that make up this line.
+     * @return The ID of the edge (the mRID of the electrical element).
+     */
+    def id: String = lines.map (_.id).toArray.sortWith (_ < _) (0)
 
     /**
      * The node id connected to the first terminal.
@@ -57,7 +62,7 @@ extends GLMEdge
           |            length %sm;
           |            configuration "%s";
           |        };
-          |""".stripMargin.format (typ,id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, length, config)
+          |""".stripMargin.format (typ, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, length, config)
     }
 
     /**

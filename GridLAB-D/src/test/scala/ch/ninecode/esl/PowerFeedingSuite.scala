@@ -25,7 +25,7 @@ import org.apache.spark.sql.DataFrame
 
 class PowerFeedingSuite extends FunSuite
 {
-    val FILE_DEPOT = "private_data/"
+    val PRIVATE_FILE_DEPOT = "private_data/"
 
     type FixtureParam = SparkSession
 
@@ -94,7 +94,7 @@ class PowerFeedingSuite extends FunSuite
         val begin = System.nanoTime ()
 
         val root = if (true) "bkw_cim_export_haelig" else "bkw_cim_export_haelig_no_EEA7355" // Hälig
-        val filename = FILE_DEPOT + root + ".rdf"
+        val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
         readFile (session, filename)
 
         val read = System.nanoTime ()
@@ -157,5 +157,4 @@ class PowerFeedingSuite extends FunSuite
 
         assert (trafo_string == "TRA5200", "expected one trafokreis has an EEA")
     }
-
 }

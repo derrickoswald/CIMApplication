@@ -1,14 +1,18 @@
 package ch.ninecode.esl
 
+import java.sql.DriverManager
+
+import org.scalatest.fixture.FunSuite
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import org.scalatest.fixture.FunSuite
 
 import ch.ninecode.cim.CIMClasses
 
 class GridLABDSuite extends FunSuite
 {
-    val FILE_DEPOT = "private_data/"
+    val PRIVATE_FILE_DEPOT = "private_data/"
+    val FILE_DEPOT = "data/"
 
     type FixtureParam = SparkSession
 
@@ -68,7 +72,7 @@ class GridLABDSuite extends FunSuite
         else
             "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355"
         val filename =
-            FILE_DEPOT + root + ".rdf"
+            PRIVATE_FILE_DEPOT + root + ".rdf"
 
         val options = EinspeiseleistungOptions (
             verbose = true,
@@ -91,5 +95,62 @@ class GridLABDSuite extends FunSuite
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+    }
+
+    /**
+     * Test for the correct current limit on a parallel set of cables.
+     */
+    test ("Parallel")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val root = "parallel cable sample"
+            val filename = FILE_DEPOT + root + ".rdf"
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = false,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 1.5,
+                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                files = List(filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results)")
+            var records: Int = 0
+            while (resultset.next)
+            {
+                assert (resultset.getString (1) == "TX0001", "transformer name")
+                assert (resultset.getString (2) == "USR0001", "energy consumer name")
+                assert (resultset.getDouble (3) == 96000.0, "maximum")
+                assert (resultset.getString (4) == "current limit", "reason")
+                assert (resultset.getString (5) == "CAB0001 > 134.0 Amps", "details")
+                records = records + 1
+                assert (records == 1, "number of records")
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
     }
 }

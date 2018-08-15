@@ -132,7 +132,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
         val p_max_i = math.sqrt(3) * min_ir * (v + r_summe * min_ir)
         val (p_max, reason, details) =
             if (node.multiple_paths)
-                (trafo_ratedS, "transformer limit", "multiple paths")
+                (trafo_ratedS, "non-radial network", "multiple paths")
             else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
                 (trafo_ratedS, "transformer limit", "assuming no EEA")
             else if (p_max_u < p_max_i)
@@ -150,8 +150,8 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def get_treshold_per_has(nodes: RDD[PowerFeedingNode]): RDD[MaxPowerFeedingNodeEEA] =
     {
-        val houses = nodes.filter(_.id_seq.startsWith("HAS"))
-        houses.map(calc_max_feeding_power)
+        val houses = nodes.filter (_.sum_r > 0.0)
+        houses.map (calc_max_feeding_power)
     }
 
 }
