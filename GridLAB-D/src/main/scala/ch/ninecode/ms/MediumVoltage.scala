@@ -5,6 +5,7 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
@@ -13,11 +14,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.ShortCircuitInfo
 import ch.ninecode.gl.TData
 import ch.ninecode.gl.Trace
 import ch.ninecode.gl.Transformers
@@ -98,14 +99,6 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
-
-        // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
-        if ("" != options.short_circuit)
-        {
-            val infos = ShortCircuitInfo (session, storage_level)
-            val equivalents = infos.getShortCircuitInfo (options.short_circuit)
-            infos.merge (equivalents)
-        }
 
         val _transformers = new Transformers (session, storage_level)
         val tdata = _transformers.getTransformerData (topological_nodes = true)

@@ -115,6 +115,7 @@
         <module>SmartMeter</module>
         <module>Ingest</module>
         <module>Simulation</module>
+        <module>NetworkParameters</module>
     </modules>
 
     <dependencyManagement>

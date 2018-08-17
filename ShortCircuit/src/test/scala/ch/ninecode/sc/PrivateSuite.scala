@@ -5,10 +5,7 @@ import java.util.Map
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
-import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.gl.ShortCircuitInfo
 
 class PrivateSuite
     extends
@@ -46,12 +43,13 @@ class PrivateSuite
             val topo = System.nanoTime ()
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
-            // add EquivalentInjection elements based on the csv file
-            val infos = ShortCircuitInfo (session, StorageLevel.MEMORY_AND_DISK_SER)
-            val equivalents = infos.getShortCircuitInfo (PRIVATE_FILE_DEPOT + "KS_Leistungen.csv")
-            val export = new CIMExport (session)
-            export.export (equivalents, PRIVATE_FILE_DEPOT + "KS_Leistungen.rdf", "generated from " + "KS_Leistungen.csv")
-            infos.merge (equivalents)
+// TBD: how to execute this ahead of time once and apply it to the test
+//            // add EquivalentInjection elements based on the csv file
+//            val infos = ShortCircuitInfo (session, StorageLevel.MEMORY_AND_DISK_SER)
+//            val equivalents = infos.getShortCircuitInfo (PRIVATE_FILE_DEPOT + "KS_Leistungen.csv")
+//            val export = new CIMExport (session)
+//            export.export (equivalents, PRIVATE_FILE_DEPOT + "KS_Leistungen.rdf", "generated from " + "KS_Leistungen.csv")
+//            infos.merge (equivalents)
 
             val inj = System.nanoTime ()
             println ("equivalent injection: " + (inj - topo) / 1e9 + " seconds")

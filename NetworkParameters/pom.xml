@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <artifactId>CIMApplication</artifactId>
         <groupId>ch.ninecode.cim</groupId>
-        <relativePath>../pom.xml</relativePath>
         <version>2.11-2.3.1-2.4.0</version>
     </parent>
-    <artifactId>GridLAB-D</artifactId>
-    <groupId>ch.ninecode.gl</groupId>
-    <name>GridLAB-D</name>
-    <description>Perform GridLAB-D load flow using Spark and Scala</description>
-    <inceptionYear>2016</inceptionYear>
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
+    <artifactId>NetworkParameters</artifactId>
+    <groupId>ch.ninecode.np</groupId>
+    <name>NetworkParameters</name>
+    <description>Determine equivalent circuit parameters for the supplying network, e.g. N5.</description>
+    <inceptionYear>2018</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/NetworkParameters</url>
 
     <dependencies>
 
@@ -23,78 +22,6 @@
             <artifactId>CIMReader</artifactId>
             <version>${version.dependency.cimreader}</version>
             <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>ch.ninecode.gl</groupId>
-                    <artifactId>GridLAB-D</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>${version.dependency.sqlite}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>javax.json</artifactId>
-            <version>${version.dependency.json}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.datastax.spark</groupId>
-            <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
-            <version>${version.dependency.cassandra_spark}</version>
-            <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.scala-lang</groupId>
-                    <artifactId>scala-reflect</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-            <version>${version.dependency.cassandra_java}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-all</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-buffer</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-codec</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-common</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-handler</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-transport</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
@@ -121,13 +48,6 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${version.dependency.scala}</artifactId>
-            <version>${version.dependency.spark}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-hive-thriftserver_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
             <scope>provided</scope>
         </dependency>
@@ -211,7 +131,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.esl.EinspeiseleistungTestSuite</suites>
+                    <suites>ch.ninecode.np.NetworkParametersTestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -229,55 +149,19 @@
                 <version>3.0.0</version>
                 <executions>
                     <execution>
-                        <id>make-einspeiseleistung-assembly</id>
+                        <id>make-customer1-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>Einspeiseleistung-${project.parent.version}</finalName>
+                            <finalName>Customer1_NetworkParameters-${project.parent.version}</finalName>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.esl.Main</mainClass>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>make-export-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>Export-${project.parent.version}</finalName>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <mainClass>ch.ninecode.export.Main</mainClass>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>make-medium_voltage-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>MediumVoltage-${project.parent.version}</finalName>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <mainClass>ch.ninecode.ms.Main</mainClass>
+                                    <mainClass>ch.ninecode.np.Main</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

@@ -6,7 +6,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.connector.CIMFunction.Return
-import ch.ninecode.gl.ShortCircuitInfo
 import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.sc.ShortCircuit
 

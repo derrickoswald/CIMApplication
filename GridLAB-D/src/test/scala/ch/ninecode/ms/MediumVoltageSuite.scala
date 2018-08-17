@@ -63,7 +63,6 @@ class MediumVoltageSuite extends FunSuite
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
             trafos = "",
-            short_circuit = "",
             workdir = "./target/",
             files = List(filename)
         )

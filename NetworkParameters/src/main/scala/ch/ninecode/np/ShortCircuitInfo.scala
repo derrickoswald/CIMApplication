@@ -1,7 +1,6 @@
-package ch.ninecode.gl
+package ch.ninecode.np
 
 import scala.collection.Map
-import scala.language.existentials
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
