@@ -44,7 +44,7 @@ extends SparkSuite
             val topo = System.nanoTime ()
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
-            val infos = ShortCircuitInfo (session, storage)
+            val infos = ShortCircuitInfo1 (session, storage)
             val equivalents = infos.getShortCircuitInfo (csv)
 
             val ei: RDD[EquivalentInjection] = equivalents.filter (_.id == "TRA5555_equivalent_injection").map (_.asInstanceOf[EquivalentInjection])
@@ -58,5 +58,4 @@ extends SparkSuite
 
             println ("total: " + (equiv - start) / 1e9 + " seconds")
     }
-
 }

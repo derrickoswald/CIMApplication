@@ -161,7 +161,25 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.np.Main</mainClass>
+                                    <mainClass>ch.ninecode.np.MainCustomer1</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>make-customer2-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>Customer2_NetworkParameters-${project.parent.version}</finalName>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>ch.ninecode.np.MainCustomer2</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

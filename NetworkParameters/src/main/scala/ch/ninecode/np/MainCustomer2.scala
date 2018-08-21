@@ -1,13 +1,14 @@
 package ch.ninecode.np
 
 import java.io.UnsupportedEncodingException
-import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMExport
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.model.Element
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -15,13 +16,11 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.CIMExport
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.DefaultSource
-import ch.ninecode.model.Element
+import scala.collection.mutable.HashMap
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
-object Main
+object MainCustomer2
 {
     val properties: Properties =
     {
@@ -31,7 +30,7 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "NetworkParameters"
+    val APPLICATION_NAME: String = "Customer2_NetworkParameters"
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 
@@ -56,6 +55,11 @@ object Main
     )
 
     case class Arguments (
+        /**
+        * If <code>true</code>, don't call sys.exit().
+        */
+        unittest: Boolean = false,
+
         quiet: Boolean = false,
         master: String = "",
         opts: Map[String, String] = Map (),
@@ -63,8 +67,11 @@ object Main
         dedup: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
-        csv_file: String = "",
+        csv1_file: String = "Trafos_fuer_Analytiks.csv",
+        csv2_file: String = "Netzeinspeisungen.csv",
         files: Seq[String] = Seq ())
+
+    var do_exit = true
 
     val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments] (APPLICATION_NAME)
     {
@@ -72,17 +79,30 @@ object Main
 
         val default = new Arguments
 
+        override def terminate (exitState: Either[String, Unit]): Unit =
+            if (do_exit)
+                exitState match
+                {
+                    case Left(_)  => sys.exit (1)
+                    case Right(_) => sys.exit (0)
+                }
+
+        opt[Unit]("unittest").
+            hidden ().
+            action ((_, c) ⇒ c.copy (unittest = true)).
+            text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
+
         opt[Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
-            text ("supress informational messages [false]")
+            text ("supress informational messages [%s]".format (default.quiet))
 
         opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
-            text ("spark://host:port, mesos://host:port, yarn, or local[*]")
+            text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = x)).
-            text ("other Spark options")
+            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
@@ -90,23 +110,27 @@ object Main
 
         opt[Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
-            text ("de-duplicate input (striped) files [false]")
+            text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
         opt[LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
-            text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
+            text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
         opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
-            text ("checkpoint directory on HDFS, e.g. hdfs://...")
+            text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
 
-        opt[String]("csv").valueName ("<file>").
-            action ((x, c) ⇒ c.copy (csv_file = x)).
-            text ("csv file of available power at station data (KS_leistungen.csv)")
+        opt[String]("csv1").valueName ("<file>").
+            action ((x, c) ⇒ c.copy (csv1_file = x)).
+            text ("csv file of mapping between station and transformer [%s]".format (default.csv1_file))
+
+        opt[String]("csv2").valueName ("<file>").
+            action ((x, c) ⇒ c.copy (csv2_file = x)).
+            text ("csv file of available power at station data [%s]".format (default.csv2_file))
 
         help ("help").text ("prints this usage text")
 
-        arg[String]("<CIM>,<CIM>...").unbounded ().
+        arg[String]("<CIM>,<CIM>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -132,19 +156,6 @@ object Main
         }
 
         ret
-    }
-
-    /**
-     * Generate a working directory matching the files.
-     */
-    def derive_work_dir (files: Seq[String]): String =
-    {
-        val file = files.head.split (",")(0).replace (" ", "%20")
-        val uri = new URI (file)
-        if (null == uri.getScheme)
-            "/simulation/"
-        else
-            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
     }
 
     /**
@@ -186,74 +197,82 @@ object Main
 
     def main (args: Array[String])
     {
+        do_exit = !args.contains ("--unittest")
+
         // parser.parse returns Option[C]
         parser.parse (args, Arguments ()) match {
             case Some (arguments) ⇒
 
                 if (!arguments.quiet)
                 {
-                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.np.Main$").setLevel (org.apache.log4j.Level.INFO)
-                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.np.ShortCircuitInfo").setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.np.MainCustomer2$").setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger ("ch.ninecode.np.ShortCircuitInfo2").setLevel (org.apache.log4j.Level.INFO)
                 }
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
-                // create the configuration
-                val configuration = new SparkConf (false)
-                configuration.setAppName (APPLICATION_NAME)
-                if ("" != arguments.master)
-                    configuration.setMaster (arguments.master)
-                if (arguments.opts.nonEmpty)
-                    arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
-
-                // get the necessary jar files to send to the cluster
-                if ("" != arguments.master) {
-                    val s1 = jarForObject (new DefaultSource ())
-                    configuration.setJars (Array (s1))
-                }
-
-                val storage = StorageLevel.fromString (arguments.storage)
-                configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                // register CIMReader classes
-                configuration.registerKryoClasses (CIMClasses.list)
-                configuration.set ("spark.ui.showConsoleProgress", "false")
-
-                // make a Spark session
-                val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (arguments.log_level.toString)
-                if ("" != arguments.checkpoint_dir)
-                    session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
-                val version = session.version
-                log.info (s"Spark $version session established")
-                if (version.take (SPARK.length) != SPARK.take (version.length))
-                    log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
-                val setup = System.nanoTime ()
-                log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-
-                read_cim (session, arguments)
-
-                val read = System.nanoTime ()
-                log.info ("setup: " + (read - setup) / 1e9 + " seconds")
-
-                // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
-                if ("" != arguments.csv_file)
+                if (arguments.files.nonEmpty)
                 {
-                    val infos = ShortCircuitInfo (session, storage)
-                    val equivalents = infos.getShortCircuitInfo (arguments.csv_file)
-                    val export = new CIMExport (session)
-                    export.export (equivalents, arguments.csv_file.replace (".csv", ".rdf"), "generated from " + arguments.csv_file)
-                    infos.merge (equivalents)
+                    // create the configuration
+                    val configuration = new SparkConf (false)
+                    configuration.setAppName (APPLICATION_NAME)
+                    if ("" != arguments.master)
+                        configuration.setMaster (arguments.master)
+                    if (arguments.opts.nonEmpty)
+                        arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
+
+                    // get the necessary jar files to send to the cluster
+                    if ("" != arguments.master) {
+                        val s1 = jarForObject (new DefaultSource ())
+                        configuration.setJars (Array (s1))
+                    }
+
+                    val storage = StorageLevel.fromString (arguments.storage)
+                    configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                    // register CIMReader classes
+                    configuration.registerKryoClasses (CIMClasses.list)
+                    configuration.set ("spark.ui.showConsoleProgress", "false")
+
+                    // make a Spark session
+                    val session = SparkSession.builder ().config (configuration).getOrCreate ()
+                    session.sparkContext.setLogLevel (arguments.log_level.toString)
+                    if ("" != arguments.checkpoint_dir)
+                        session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
+                    val version = session.version
+                    log.info (s"Spark $version session established")
+                    if (version.take (SPARK.length) != SPARK.take (version.length))
+                        log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+
+                    val setup = System.nanoTime ()
+                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+
+                    read_cim (session, arguments)
+
+                    val initialization = System.nanoTime ()
+                    log.info ("initialization: " + (initialization - setup) / 1e9 + " seconds")
+
+                    // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
+                    if (("" != arguments.csv1_file) && ("" != arguments.csv2_file))
+                    {
+                        val infos = ShortCircuitInfo2 (session, storage)
+                        val equivalents = infos.getShortCircuitInfo (arguments.csv1_file, arguments.csv2_file)
+                        val export = new CIMExport (session)
+                        // ToDo: not right
+                        export.export (equivalents, arguments.csv1_file.replace (".csv", ".rdf"), "generated from " + arguments.csv1_file)
+                        infos.merge (equivalents)
+                    }
+                    else
+                        log.error ("""--csv1 and --csv2 not specified""")
                 }
-                else
-                    log.error ("""--csv not specified""")
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - read) / 1e9 + " seconds")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds")
 
-                sys.exit (0)
+                if (do_exit)
+                    sys.exit (0)
             case None ⇒
-                sys.exit (1)
+                if (do_exit)
+                    sys.exit (1)
         }
     }
 }

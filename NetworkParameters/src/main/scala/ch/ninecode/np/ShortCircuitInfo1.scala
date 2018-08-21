@@ -36,7 +36,7 @@ import ch.ninecode.model.Terminal
  * @param session the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
  */
-case class ShortCircuitInfo (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
+case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
 {
     import session.sqlContext.implicits._
     val log: Logger = LoggerFactory.getLogger (getClass)
