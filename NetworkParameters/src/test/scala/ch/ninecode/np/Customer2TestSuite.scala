@@ -4,7 +4,7 @@ import org.scalatest.FunSuite
 
 import ch.ninecode.np.MainCustomer2.main
 
-class Cutomer2TestSuite
+class Customer2TestSuite
 extends FunSuite
 {
     val PRIVATE_FILE_DEPOT = "private_data/"
@@ -12,7 +12,7 @@ extends FunSuite
     val CSV_FILE_2 = "Netzeinspeisungen.csv"
     val FILENAME1 = "NIS_CIM_Export_sias_current_ekz_hirzel_nullungsbedingungen_no_house_fuse.rdf"
 
-    test ("Help")
+    test ("Help2")
     {
         main (Array ("--unittest", "--help"))
     }
@@ -24,5 +24,4 @@ extends FunSuite
             "--csv2", PRIVATE_FILE_DEPOT + CSV_FILE_2,
             PRIVATE_FILE_DEPOT + FILENAME1))
     }
-
 }

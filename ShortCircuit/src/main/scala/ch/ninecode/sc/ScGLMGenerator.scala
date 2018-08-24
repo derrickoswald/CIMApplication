@@ -5,11 +5,20 @@ import java.util.Calendar
 
 import ch.ninecode.gl._
 
+/**
+ *
+ * @param one_phase If <code>true</code> generate a single phase .glm file.
+ * @param temperature The temperature of the elements in the .glm file (°C).
+ * @param date_format The date format to use within the .glm file.
+ * @param area The area over which the simulation is to extend.
+ * @param isMax If <code>true</code> generate a .glm file for maximum currents (low impedance) [for motor starting currents], otherwise minimum currents (high impedance) [for fuse sizing and specificity].
+ */
 case class ScGLMGenerator (
     one_phase: Boolean,
     temperature: Double,
     date_format: SimpleDateFormat,
-    area: SimulationTransformerServiceArea)
+    area: SimulationTransformerServiceArea,
+    isMax: Boolean)
 extends GLMGenerator (one_phase, temperature, date_format)
 {
     override def name: String = area.name
@@ -43,7 +52,7 @@ extends GLMGenerator (one_phase, temperature, date_format)
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
-        val z = area.transformer.network_short_circuit_impedance
+        val z = area.transformer.network_short_circuit_impedance_max
         val nodename = node.id
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable

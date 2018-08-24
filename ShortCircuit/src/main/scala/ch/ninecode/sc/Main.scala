@@ -72,8 +72,10 @@ object Main
         checkpoint_dir: String = "",
         description: String = "",
         trafos: String = "",
-        default_network_power: Double = 200e6,
-        default_network_impedance: Complex = Complex (0.437785783, -1.202806555),
+        default_network_power_max: Double = 200e6,
+        default_network_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+        default_network_power_min: Double = 100e6,
+        default_network_impedance_min: Complex = Complex (0.437785783, -1.202806555),
         default_transformer_power: Double = 630000.0,
         default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
         base_temperature: Double = 20.0,
@@ -126,13 +128,21 @@ object Main
             action ((x, c) ⇒ c.copy (description = x)).
             text ("text describing this program execution for SQLite run table")
 
-        opt[Double]("netp").valueName ("<Sk>").
-            action ((x, c) ⇒ c.copy (default_network_power = x)).
-            text ("network power if not in CIM, VA [%g]".format (default.default_network_power))
+        opt[Double]("netp_max").valueName ("<Sk_max>").
+            action ((x, c) ⇒ c.copy (default_network_power_max = x)).
+            text ("maximum network power if not in CIM, VA [%g]".format (default.default_network_power_max))
 
-        opt[Complex]("netz").valueName ("<r + xj>").
-            action ((x, c) ⇒ c.copy (default_network_impedance = x)).
-            text ("network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance))
+        opt[Complex]("netz_max").valueName ("<r + xj>").
+            action ((x, c) ⇒ c.copy (default_network_impedance_max = x)).
+            text ("maximum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
+
+        opt[Double]("netp_min").valueName ("<Sk_min>").
+            action ((x, c) ⇒ c.copy (default_network_power_min = x)).
+            text ("minimum network power if not in CIM, VA [%g]".format (default.default_network_power_min))
+
+        opt[Complex]("netz_min").valueName ("<r + xj>").
+            action ((x, c) ⇒ c.copy (default_network_impedance_min = x)).
+            text ("minimum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
 
         opt[Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
@@ -324,8 +334,10 @@ object Main
                 val options = ShortCircuitOptions (
                     verbose = !arguments.quiet,
                     description = arguments.description,
-                    default_short_circuit_power = arguments.default_network_power,
-                    default_short_circuit_impedance = arguments.default_network_impedance,
+                    default_short_circuit_power_max = arguments.default_network_power_max,
+                    default_short_circuit_impedance_max = arguments.default_network_impedance_max,
+                    default_short_circuit_power_min = arguments.default_network_power_min,
+                    default_short_circuit_impedance_min = arguments.default_network_impedance_min,
                     default_transformer_power_rating = arguments.default_transformer_power,
                     default_transformer_impedance = arguments.default_transformer_impedance,
                     base_temperature = arguments.base_temperature,

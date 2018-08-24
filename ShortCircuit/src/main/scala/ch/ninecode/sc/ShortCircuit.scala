@@ -506,9 +506,10 @@ with Serializable
      *
      * @param simulations the RDD of transformer service areas to which this analysis should be applied
      * @param temperature the temerature at which to evaluate the impedances (°C)
+     * @param isMax If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double): RDD[(String, String, String, Double, Complex)] =
+    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex)] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -526,7 +527,7 @@ with Serializable
 
         def generate (gridlabd: GridLABD, trafokreis: SimulationTransformerServiceArea): Unit =
         {
-            val generator = ScGLMGenerator (one_phase = true, temperature = temperature, date_format = _DateFormat, trafokreis)
+            val generator = ScGLMGenerator (one_phase = true, temperature = temperature, date_format = _DateFormat, trafokreis, isMax = isMax)
             gridlabd.export (generator)
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = StorageLevel.MEMORY_AND_DISK_SER, workdir = options.workdir)
@@ -621,9 +622,9 @@ with Serializable
                         directory = x._2.transformer_name)
             )
             // perform remedial simulations
-            val zlo: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.low_temperature).cache // (trafoid, nodeid, equipment, voltage, Z)
+            val zlo: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.low_temperature, true).cache // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
-            val zhi: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.high_temperature).cache // (trafoid, nodeid, equipment, voltage, Z)
+            val zhi: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.high_temperature, false).cache // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at high temperature""".format (zhi.count ()))
             val z: RDD[(String, String, String, Double, (Complex, Complex))] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
                 .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5)))
@@ -680,7 +681,12 @@ with Serializable
         }
 
         val _transformers = new Transformers (spark, storage_level)
-        val tdata = _transformers.getTransformerData (true, options.default_short_circuit_power, options.default_short_circuit_impedance)
+        val tdata = _transformers.getTransformerData (
+            true,
+            options.default_short_circuit_power_max,
+            options.default_short_circuit_impedance_max,
+            options.default_short_circuit_power_min,
+            options.default_short_circuit_impedance_min)
 
         val transformers: Array[Array[TData]] = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray

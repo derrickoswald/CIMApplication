@@ -130,8 +130,10 @@ with Serializable
     }
 
     def addSC (voltages: Map[String, Double]) (
-        default_supply_network_short_circuit_power: Double = 200.0e6,
-        default_supply_network_short_circuit_impedance: Complex = Complex (0.437785783, -1.202806555))
+        default_supply_network_short_circuit_power_max: Double = 200.0e6,
+        default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+        default_supply_network_short_circuit_power_min: Double = 100.0e6,
+        default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555))
         (arg: ((PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal)), Option[EquivalentInjection])): (PowerTransformer, Substation, (PowerTransformerEnd, Double, Terminal), (PowerTransformerEnd, Double, Terminal), EquivalentInjection) =
     {
         arg._2 match
@@ -140,14 +142,6 @@ with Serializable
             case None =>
                 // ToDo: fix this 1kV multiplier on the voltages
                 val v1 = arg._1._3._2 * 1000.0
-                val sk = default_supply_network_short_circuit_power
-                val netz_r1 = default_supply_network_short_circuit_impedance.re
-                val netz_x1 = default_supply_network_short_circuit_impedance.im
-                //val ratioZ0Z1 = 4
-                //val ratioX0R0 = 10
-                //val zqt0 = zqt * ratioZ0Z1
-                val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
-                val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
 
                 val voltage = voltages.find (_._2 == arg._1._3._2) match { case Some (v) ⇒ v._1 case None ⇒ "BaseVoltage_Unknown_%s".format (arg._1._3._2) }
                 val mRID = "EquivalentInjection_" + arg._1._1.id
@@ -164,18 +158,24 @@ with Serializable
                 conducting.bitfields = Array (Integer.parseInt ("1", 2))
                 val equivalent = EquivalentEquipment (conducting, null)
                 equivalent.bitfields = Array (0)
-                val injection = EquivalentInjection (equivalent, sk, 0.0, 0.0, 0.0, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, false, 0.0, netz_x1, netz_x0, netz_x1, null)
-                // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
+                // decompose sk values into P & Q
+                val maxP = default_supply_network_short_circuit_power_max * Math.cos (default_supply_network_short_circuit_impedance_max.angle)
+                val maxQ = default_supply_network_short_circuit_power_max * Math.sin (default_supply_network_short_circuit_impedance_max.angle)
+                val minP = default_supply_network_short_circuit_power_min * Math.cos (default_supply_network_short_circuit_impedance_min.angle)
+                val minQ = default_supply_network_short_circuit_power_min * Math.sin (default_supply_network_short_circuit_impedance_min.angle)
+                val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, default_supply_network_short_circuit_impedance_max.re, default_supply_network_short_circuit_impedance_max.re, 0.0, false, false, 0.0, default_supply_network_short_circuit_impedance_max.im, default_supply_network_short_circuit_impedance_max.im, 0.0, null)
                 // note: use RegulationStatus to indicate this is a default value, and not a real value
-                injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+                injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
                 (arg._1._1, arg._1._2, arg._1._3, arg._1._4, injection)
         }
     }
 
     def getTransformerData (
         topological_nodes: Boolean = true,
-        default_supply_network_short_circuit_power: Double = 200.0e6,
-        default_supply_network_short_circuit_impedance: Complex = Complex (0.437785783, -1.202806555)): RDD[TData] =
+        default_supply_network_short_circuit_power_max: Double = 200.0e6,
+        default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+        default_supply_network_short_circuit_power_min: Double = 100.0e6,
+        default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555)): RDD[TData] =
     {
         /**
          * The name of the node associated with a terminal.
@@ -248,7 +248,7 @@ with Serializable
         val injections_by_node = injections.keyBy (_.id).join (terms).values.map (x ⇒ (x._2.head.ConnectivityNode, x._1)) // ToDo: could be TopologicalNode?
 
         val transformers_stations_plus_ends_plus_terminals_plus_sc =
-            transformers_stations_plus_ends_plus_terminals.keyBy (_._3._3.ConnectivityNode).leftOuterJoin (injections_by_node).values.map (addSC (voltages) (default_supply_network_short_circuit_power, default_supply_network_short_circuit_impedance))
+            transformers_stations_plus_ends_plus_terminals.keyBy (_._3._3.ConnectivityNode).leftOuterJoin (injections_by_node).values.map (addSC (voltages) (default_supply_network_short_circuit_power_max, default_supply_network_short_circuit_impedance_max, default_supply_network_short_circuit_power_min, default_supply_network_short_circuit_impedance_min))
 
         // convert to TData
         val transformer_data = transformers_stations_plus_ends_plus_terminals_plus_sc.map (

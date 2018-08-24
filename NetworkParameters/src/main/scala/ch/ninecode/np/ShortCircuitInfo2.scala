@@ -1,6 +1,7 @@
 package ch.ninecode.np
 
 import scala.collection.Map
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -13,6 +14,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMSubsetter
 import ch.ninecode.cim.ClassInfo
@@ -28,7 +30,7 @@ import ch.ninecode.model.Location
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.Terminal
-import org.apache.spark.sql.DataFrame
+
 
 /**
  * Generate the RDD of available short circuit power and angle at each station.
@@ -141,25 +143,34 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
         def toEquivalentInjection (voltages: Map[Double, String]) (row: Row): EquivalentInjection =
         {
             val id = row.getString (0)
-            val ort = row.getString (2) + " - " + row.getString (3)
-            val v1 = row.getDouble (7)
-            val wik_max = row.getDouble (31)
-            val wik_min = row.getDouble (32)
-            val sk_max = row.getDouble (19) * 1e6
-            val sk_min = row.getDouble (20) * 1e6
             val station = row.getString (1)
             val name = row.getString (2)
+            val ort = name + " - " + row.getString (3)
+            val v1 = row.getDouble (7)
+            val sk_max = row.getDouble (19) * 1e6
+            val sk_min = row.getDouble (20) * 1e6
+            val ratioZ0Z1_max = row.getDouble (27)
+            val ratioZ0Z1_min = row.getDouble (28) // ToDo: not used, where to put this in the CIM model
+            val ratioX1R1_max = row.getDouble (29)
+            val ratioX1R1_min = row.getDouble (30)
+            // val wik1_max = row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            // val wik1_min = row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            val wik1_max = - ((Math.PI / 2.0) - Math.atan (ratioX1R1_max))
+            val wik1_min = - ((Math.PI / 2.0) - Math.atan (ratioX1R1_min))
+            val ratioX0R0_max = row.getDouble (33)
+            val ratioX0R0_min = row.getDouble (34)
+            val wik0_max = - ((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
+            val wik0_min = - ((Math.PI / 2.0) - Math.atan (ratioX0R0_min)) // ToDo: not used, where to put this in the CIM model
 
             val c = 1.0
-            //val ratioZ0Z1 = 4
-            //val ratioX0R0 = 10
-            val zqt = (c * v1 * v1) / sk_max
-            //val zqt0 = zqt * ratioZ0Z1
-            val wik_radians = Math.PI / 180.0 * wik_max
-            val netz_r1 = zqt * Math.cos (wik_radians)
-            val netz_x1 = zqt * Math.sin (wik_radians)
-            val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
-            val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
+            val zqt1_max = (c * v1 * v1) / sk_max
+            val zqt1_min = (c * v1 * v1) / sk_min
+            val zqt0_max = zqt1_max * ratioZ0Z1_max
+            val zqt0_min = zqt1_min * ratioZ0Z1_min // ToDo: not used, where to put this in the CIM model
+            val netz_r1 = zqt1_max * Math.cos (wik1_max)
+            val netz_x1 = zqt1_max * Math.sin (wik1_max)
+            val netz_r0 = zqt0_max * Math.cos (wik0_max)
+            val netz_x0 = zqt0_max * Math.sin (wik0_max)
 
             val voltage = voltages.getOrElse (v1, "BaseVoltage_Unknown_%s".format (v1))
             val mRID = "EquivalentInjection_" + id
@@ -177,9 +188,15 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
-            val injection = EquivalentInjection (equivalent, sk_max, 0.0, sk_min, 0.0, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
+            // decompose sk values into P & Q
+            val maxP = sk_max * Math.cos (wik1_max)
+            val maxQ = sk_max * Math.sin (wik1_max)
+            val minP = sk_min * Math.cos (wik1_min)
+            val minQ = sk_min * Math.sin (wik1_min)
+            val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
             // note: use RegulationStatus to indicate this is a real value and not a default
-            injection.bitfields = Array (Integer.parseInt ("0111010111000101", 2))
+            // skip r2,x2 since we don't really know them
+            injection.bitfields = Array (Integer.parseInt ("0011010011001111", 2))
             injection
         }
 
@@ -219,9 +236,8 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
-            val injection = EquivalentInjection (equivalent, eq_inj.maxP, 0.0, 0.0, 0.0, 0.0, 0.0, eq_inj.r, eq_inj.r0, eq_inj.r2, false, eq_inj.regulationStatus, 0.0, eq_inj.x, eq_inj.x0, eq_inj.x2, null)
-            // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
-            injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+            val injection = EquivalentInjection (equivalent, eq_inj.maxP, eq_inj.maxQ, eq_inj.minP, eq_inj.minQ, eq_inj.p, eq_inj.q, eq_inj.r, eq_inj.r0, eq_inj.r2, eq_inj.regulationCapability, eq_inj.regulationStatus, eq_inj.regulationTarget, eq_inj.x, eq_inj.x0, eq_inj.x2, eq_inj.ReactiveCapabilityCurve)
+            injection.bitfields = eq_inj.bitfields
 
             // create the PositionPoint (offset slightly from the transformer)
             val pp_element = BasicElement (null, mRID + "_location_p")

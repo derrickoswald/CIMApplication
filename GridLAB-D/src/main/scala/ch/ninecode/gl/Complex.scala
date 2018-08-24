@@ -77,7 +77,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
                 if (leading_sign)
                     if (number < 0) "-" + round (-number, digits).toString else "+" + round (number, digits).toString
                 else
-                    round (re, digits).toString
+                    round (number, digits).toString
         }
     }
     def toString (digits: Int): String =

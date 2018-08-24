@@ -131,7 +131,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.np.NetworkParametersTestSuite</suites>
+                    <suites>ch.ninecode.np.NetworkParametersTestSuite,ch.ninecode.np.Customer1TestSuite,ch.ninecode.np.Customer2TestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

@@ -3,6 +3,8 @@ package ch.ninecode.gl
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.model.EquivalentInjection
+
 /**
  * Groups ganged transformers (usually identical transformers in parallel).
  *
@@ -118,17 +120,9 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
     val power_rating: Double = transformers.map (edge ⇒ if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
 
-    // base power (for per unit calculations)
-    val base_va: Double =
-    {
-        val va = transformers.map (_.end1.ratedS).max
-        if (!transformers.forall (_.end1.ratedS == va))
-            log.error ("transformer set " + transformer_name + " has units with different base VA " + transformers.map (_.end1.ratedS).mkString (" "))
-        if (0.0 == va)
-            default_power_rating
-        else
-            va
-    }
+    val base_amps: Double = power_rating / v0 / Math.sqrt (3)
+
+    val base_ohms: Double = v0 / base_amps / Math.sqrt (3)
 
     // the characteristic transformer impedances at the secondary
     // with a flag indicating if it is the default value (the impedance was zero)
@@ -137,6 +131,17 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
         {
             if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
             {
+                // base power (for per unit calculations)
+                val base_va: Double =
+                {
+                    val va = transformers.map (_.end1.ratedS).max
+                    if (!transformers.forall (_.end1.ratedS == va))
+                        log.error ("transformer set " + transformer_name + " has units with different base VA " + transformers.map (_.end1.ratedS).mkString (" "))
+                    if (0.0 == va)
+                        default_power_rating
+                    else
+                        va
+                }
                 val base_ohms = v1 * v1 / base_va
                 (default_impedance * base_ohms, true)
             }
@@ -157,19 +162,114 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
         (zinv._1.reciprocal, zinv._2)
     }
 
-    val network_short_circuit_power: Double =
+    /**
+     * Return the maximum network short circuit power S<sub>k</sub> (VA).
+     *
+     * @return the network short circuit power (VA)
+     */
+    val network_short_circuit_power_max: Double =
     {
-        val power = transformers.head.shortcircuit.maxP
-        if (!transformers.forall (_.shortcircuit.maxP == power))
-            log.error ("transformer set " + transformer_name + " has differing network short circuit powers " + transformers.map (_.shortcircuit.maxP).mkString (" "))
+        def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
+        val power = Sk (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Sk (x.shortcircuit) == power))
+            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit powers " + transformers.map (x ⇒ Sk (x.shortcircuit)).mkString (" "))
         power
     }
 
-    val network_short_circuit_impedance: Complex =
+    /**
+     * Return the minimum network short circuit power S<sub>k</sub> (VA).
+     *
+     * @return the network short circuit power (VA)
+     */
+    val network_short_circuit_power_min: Double =
     {
-        val impedance = Complex (transformers.head.shortcircuit.r, transformers.head.shortcircuit.x)
-        if (!transformers.forall (x ⇒ Complex (x.shortcircuit.r, x.shortcircuit.x) == impedance))
-            log.error ("transformer set " + transformer_name + " has differing network short circuit impedance " + transformers.map (x ⇒ Complex (x.shortcircuit.r, x.shortcircuit.x)).mkString (" "))
+        def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
+        val power = Sk (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Sk (x.shortcircuit) == power))
+            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit powers " + transformers.map (x ⇒ Sk (x.shortcircuit)).mkString (" "))
+        power
+    }
+
+    /**
+     * Return the maximum network short circuit impedance Z (Ω).
+     *
+     * @return the network impedance (Ω)
+     */
+    val network_short_circuit_impedance_max: Complex =
+    {
+        def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r, equiv.x)
+        val impedance = Z (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance))
+            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the r and x")
+        // check against Sk
+        def Z2 (equiv: EquivalentInjection): Complex =
+        {
+            def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
+            def Wik (equiv: EquivalentInjection): Double = math.atan2 (equiv.maxQ, equiv.maxP)
+            val power = Sk (transformers.head.shortcircuit)
+            val angle = Wik (transformers.head.shortcircuit)
+            val c = 1.0
+            val z = (c * v0 * v0) / power
+            val r = z * Math.cos (angle)
+            val x = z * Math.sin (angle)
+            Complex (r, x)
+        }
+        val impedance2 = Z2 (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z2 (x.shortcircuit) == impedance2))
+            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z2 (x.shortcircuit)).mkString (" ") + " using the maxP and maxQ")
+
+        impedance
+    }
+
+    /**
+     * Return the minimum network short circuit impedance Z (Ω).
+     *
+     * @return the network impedance (Ω)
+     */
+    val network_short_circuit_impedance_min: Complex =
+    {
+        def Z (equiv: EquivalentInjection): Complex =
+        {
+            def Sk (equiv: EquivalentInjection): Double =
+            {
+                var p = math.sqrt (equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
+                if (0.0 == p)
+                    p = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
+                p
+            }
+            def Wik (equiv: EquivalentInjection): Double =
+            {
+                if (0.0 == equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
+                    math.atan2 (equiv.maxQ, equiv.maxP)
+                else
+                    math.atan2 (equiv.minQ, equiv.minP)
+            }
+            val power = Sk (transformers.head.shortcircuit)
+            val angle = Wik (transformers.head.shortcircuit)
+            val c = 1.0
+            val z = (c * v0 * v0) / power
+            val r = z * Math.cos (angle)
+            val x = z * Math.sin (angle)
+            Complex (r, x)
+        }
+        val impedance2 = Z (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance2))
+            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the minP and minQ")
+
+        impedance2
+    }
+
+    /**
+     * Return the maximum network short circuit zero sequence impedance Z (Ω).
+     *
+     * @return the network zero sequence impedance (Ω)
+     */
+    val network_short_circuit_zero_sequence_impedance_max: Complex =
+    {
+        def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r0, equiv.x0)
+        val impedance = Z (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance))
+            log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
         impedance
     }
 
@@ -188,14 +288,11 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
                 var default = false
                 var r = edge.end0.r
                 var x = edge.end0.x
-                if (0.0 == r)
+                if ((0.0 == r) && (0.0 == x))
                 {
-                    r = 2.397460317
-                    default = true
-                }
-                if (0.0 == x)
-                {
-                    x = 16.07618325
+                    val z = default_impedance * base_ohms
+                    r = z.re // 2.397460317
+                    x = z.im // 16.07618325
                     default = true
                 }
                 (Complex (r, x), default)
@@ -206,11 +303,6 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
         val inv = impedances.map (z ⇒ (z._1.reciprocal, z._2)).foldLeft ((zero, false))((z1, z2) ⇒ (z1._1 + z2._1, z1._2 || z2._2))
         val parallel = (inv._1.reciprocal, inv._2)
 
-        val sqrt3 = Math.sqrt (3)
-        val base_va = power_rating
-        // equivalent per unit values
-        val base_amps = base_va / v0 / sqrt3
-        val base_ohms = v0 / base_amps / sqrt3
         // per unit impedance
         (parallel._1 / base_ohms, parallel._2)
     }

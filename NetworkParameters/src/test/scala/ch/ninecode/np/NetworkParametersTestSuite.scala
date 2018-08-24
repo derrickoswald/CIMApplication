@@ -50,7 +50,7 @@ extends SparkSuite
             val ei: RDD[EquivalentInjection] = equivalents.filter (_.id == "TRA5555_equivalent_injection").map (_.asInstanceOf[EquivalentInjection])
             assert (!ei.isEmpty, "equivalent injection for transformer TRA5555 not found")
             val TRA5555 = ei.first ()
-            assert (Math.abs (TRA5555.maxP - 82.699e6) < 1.0, "TRA5555 max power")
+            assert (Math.abs (Math.sqrt (TRA5555.maxP * TRA5555.maxP + TRA5555.maxQ * TRA5555.maxQ) - 82.699e6) < 1.0, "TRA5555 max power")
             assert (Math.abs (Math.atan2 (TRA5555.x, TRA5555.r) * 180.0 / Math.PI - -63.34) < 1.0e-3, "TRA5555 angle")
 
             val equiv = System.nanoTime ()

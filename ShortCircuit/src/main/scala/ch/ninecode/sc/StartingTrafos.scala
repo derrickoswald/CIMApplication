@@ -18,21 +18,12 @@ extends
 {
     val primary_impedance: Impedanzen =
     {
-        val c = 1.0
-
-        //val ratioZ0Z1 = 4
-        //val ratioX0R0 = 10
-
-        val v1 = transformer.v0
-        val v2 = transformer.v1
-        val sk = transformer.network_short_circuit_power
-        val zqt = transformer.network_short_circuit_impedance
-        //val zqt0 = zqt * ratioZ0Z1
-        val netz_r1 = zqt.re
-        val netz_x1 = zqt.im
-        val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
-        val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
-        Impedanzen (Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0), Complex (netz_r1, netz_x1), Complex (netz_r0, netz_x0))
+        val z1_max = transformer.network_short_circuit_impedance_max
+        val z0_max = transformer.network_short_circuit_zero_sequence_impedance_max
+        val z1_min = transformer.network_short_circuit_impedance_min
+        val ratio_z0z1 = 30.0 // ToDo: the ratio Z0:Z1 cannot be stored in the CIM model
+        val z0_min = ratio_z0z1 * z1_min
+        Impedanzen (z1_max, z0_max, z1_min, z0_min)
     }
 
     val secondary_impedance: Impedanzen =

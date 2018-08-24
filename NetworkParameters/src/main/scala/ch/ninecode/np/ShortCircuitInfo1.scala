@@ -77,7 +77,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             val id = row.getString (0)
             val ort = row.getString (1)
             val v1 = row.getDouble (2) * 1e3
-            val wik = row.getDouble (3)
+            val wik = row.getDouble (3) * Math.PI / 180.0
             val sk = row.getDouble (4) * 1e6
             val sap = row.getString (5)
             val feeder = row.getString (6)
@@ -89,9 +89,8 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             //val ratioX0R0 = 10
             val zqt = (c * v1 * v1) / sk
             //val zqt0 = zqt * ratioZ0Z1
-            val wik_radians = Math.PI / 180.0 * wik
-            val netz_r1 = zqt * Math.cos (wik_radians)
-            val netz_x1 = zqt * Math.sin (wik_radians)
+            val netz_r1 = zqt * Math.cos (wik)
+            val netz_x1 = zqt * Math.sin (wik)
             val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
             val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
 
@@ -110,10 +109,13 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
-            val injection = EquivalentInjection (equivalent, sk, 0.0, 0.0, 0.0, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
-            // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
+            // decompose sk values into P & Q, use maxP and maxQ also as minP and minQ respectively
+            val maxP = sk * Math.cos (wik)
+            val maxQ = sk * Math.sin (wik)
+            val injection = EquivalentInjection (equivalent, maxP, maxQ, maxP, maxQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
+            // note: exclude r2, x2 since we don't really know them and they aren't used
             // note: use RegulationStatus to indicate this is a real value and not a default
-            injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+            injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
             injection
         }
         val sc = df.map (toEquivalentInjection (voltage_map)).rdd
@@ -152,9 +154,8 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
-            val injection = EquivalentInjection (equivalent, eq_inj.maxP, 0.0, 0.0, 0.0, 0.0, 0.0, eq_inj.r, eq_inj.r0, eq_inj.r2, false, eq_inj.regulationStatus, 0.0, eq_inj.x, eq_inj.x0, eq_inj.x2, null)
-            // note: exclude r0, x0, r2, x2 since we don't really know them and they aren't used
-            injection.bitfields = Array (Integer.parseInt ("0001010001000001", 2))
+            val injection = EquivalentInjection (equivalent, eq_inj.maxP, eq_inj.maxQ, eq_inj.minP, eq_inj.minQ, eq_inj.p, eq_inj.q, eq_inj.r, eq_inj.r0, eq_inj.r2, eq_inj.regulationCapability, eq_inj.regulationStatus, eq_inj.regulationTarget, eq_inj.x, eq_inj.x0, eq_inj.x2, eq_inj.ReactiveCapabilityCurve)
+            injection.bitfields = eq_inj.bitfields
 
             // create the PositionPoint (offset slightly from the transformer)
             val pp_element = BasicElement (null, mRID + "_location_p")

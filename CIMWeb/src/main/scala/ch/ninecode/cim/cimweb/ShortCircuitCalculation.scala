@@ -185,7 +185,7 @@ class ShortCircuitCalculation extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 val worstcasepf = cosphi.isNaN
-                val options = ShortCircuitOptions (false, "CIMApplication", network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, worstcasepf, cosphi, 3, 100000, transformer, null)
+                val options = ShortCircuitOptions (false, "CIMApplication", network_short_circuit_power, netz, network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, worstcasepf, cosphi, 3, 100000, transformer, null)
                 val query = ShortCircuitFunction (options)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction
@@ -212,8 +212,10 @@ class ShortCircuitCalculation extends RESTful
                                 val parameters = Json.createObjectBuilder
                                 parameters.add ("verbose", options.verbose)
                                 parameters.add ("description", options.description)
-                                parameters.add ("default_short_circuit_power", options.default_short_circuit_power)
-                                parameters.add ("default_short_circuit_impedance", options.default_short_circuit_impedance.toString)
+                                parameters.add ("maximum_default_short_circuit_power", options.default_short_circuit_power_max)
+                                parameters.add ("maximum_default_short_circuit_impedance", options.default_short_circuit_impedance_max.toString)
+                                parameters.add ("minimum_default_short_circuit_power", options.default_short_circuit_power_min)
+                                parameters.add ("minimum_default_short_circuit_impedance", options.default_short_circuit_impedance_min.toString)
                                 parameters.add ("default_transformer_power_rating", options.default_transformer_power_rating)
                                 parameters.add ("default_transformer_impedance", options.default_transformer_impedance.toString)
                                 parameters.add ("base_temperature", options.base_temperature)
