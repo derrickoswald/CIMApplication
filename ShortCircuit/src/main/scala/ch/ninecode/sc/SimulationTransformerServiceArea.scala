@@ -38,13 +38,13 @@ case class SimulationTransformerServiceArea (
     val only_houses: Boolean = false
     val n: Iterable[GLMNode] = if (only_houses) nodes.filter (_.asInstanceOf[SimulationNode].psrtype == "PSRType_HouseService") else nodes
 
-    // generate experiments as 5 seconds short circuits at each node
+    // generate experiments as 5 seconds short circuit (100Ω) at each node
     lazy val experiments: Array[ScExperiment] = n.zipWithIndex // (node, index)
         .map (
             x ⇒
             {
                 val node = x._1.asInstanceOf[SimulationNode]
-                ScExperiment (simulation, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (10.0, 0))
+                ScExperiment (simulation, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0, 0))
             }
         ).toArray
 

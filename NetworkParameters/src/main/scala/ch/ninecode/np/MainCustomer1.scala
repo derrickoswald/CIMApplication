@@ -67,7 +67,7 @@ object MainCustomer1
         dedup: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
-        csv_file: String = "KS_leistungen.csv",
+        csv_file: String = "KS_Leistungen.csv",
         files: Seq[String] = Seq ())
 
     var do_exit = true

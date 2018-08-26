@@ -15,7 +15,7 @@ import ch.ninecode.gl.Complex
  * @param slot Unique experiment number (slot in windowed time).
  * @param window Duration of the experiment (seconds).
  * @param voltage The node nominal voltage.
- * @param impedance The impedance (short circuit value) to apply.
+ * @param impedance The impedance (short circuit value) to apply (Ω).
  */
 case class ScExperiment (
     trafo: String,
