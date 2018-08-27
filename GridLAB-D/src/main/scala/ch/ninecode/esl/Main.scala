@@ -145,7 +145,7 @@ object Main
 
         opt[Double]('f', "precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
-            text ("factor to multiply precaclulation results for gridlabd")
+            text ("factor to multiply precalculation results for gridlabd")
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).

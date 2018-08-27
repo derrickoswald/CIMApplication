@@ -19,7 +19,7 @@ import ch.ninecode.gl.TransformerSet
  * @param transformer the transformer (or set of ganged transformers) servicing the area
  * @param nodes topological nodes for the simulation
  * @param edges topological edges for the simulation
- * @param start_time the simulatuon starting time
+ * @param start_time the simulation starting time
  * @param directory the directory to write the .glm, players and recorders
  */
 case class SimulationTransformerServiceArea (
