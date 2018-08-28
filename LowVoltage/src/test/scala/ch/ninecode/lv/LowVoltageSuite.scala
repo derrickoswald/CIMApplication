@@ -1,4 +1,4 @@
-package ch.ninecode.export
+package ch.ninecode.lv
 
 import java.util.HashMap
 
@@ -11,7 +11,7 @@ import org.scalatest.fixture.FunSuite
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.model.Element
 
-class ExportSuite extends FunSuite
+class LowVoltageSuite extends FunSuite
 {
     val FILE_DEPOT = "private_data/"
 
@@ -24,7 +24,7 @@ class ExportSuite extends FunSuite
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("ExportSuite")
+        configuration.setAppName ("LowVoltageSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
@@ -78,7 +78,7 @@ class ExportSuite extends FunSuite
         val filename =
             FILE_DEPOT + root + ".rdf"
 
-        val options = ExportOptions (
+        val options = LowVoltageOptions (
             verbose = true,
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
@@ -86,8 +86,8 @@ class ExportSuite extends FunSuite
             workdir = "./target/",
             files = List(filename)
         )
-        val export = Export (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), options)
-        val count = export.run ()
+        val lv = LowVoltage (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), options)
+        val count = lv.run ()
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " UST\n")

@@ -1,13 +1,19 @@
-package ch.ninecode.export
+package ch.ninecode.lv
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import ch.ninecode.esl.PowerFeedingNode
-import ch.ninecode.gl._
 import ch.ninecode.esl.Trafokreis
 
-class ExportGLMGenerator (
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.TransformerSet
+
+class LowVoltageGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     trafokreis: Trafokreis)
@@ -20,8 +26,6 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
     def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     override def name: String = trafokreis.name
-
-    override def header: String = "Export"
 
     override def start_time: Calendar = trafokreis.start
 

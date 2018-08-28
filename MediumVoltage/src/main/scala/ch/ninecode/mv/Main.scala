@@ -5,17 +5,18 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
+import scala.collection.mutable.HashMap
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
 
 object Main
 {

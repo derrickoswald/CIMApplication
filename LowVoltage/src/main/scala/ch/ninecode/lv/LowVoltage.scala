@@ -1,4 +1,4 @@
-package ch.ninecode.export
+package ch.ninecode.lv
 
 import java.net.URI
 import java.nio.file.Files
@@ -40,11 +40,11 @@ case class Header (
     scenarioTime: Calendar,
     version: String)
 
-case class Export (session: SparkSession, storage_level: StorageLevel, options: ExportOptions)
+case class LowVoltage (session: SparkSession, storage_level: StorageLevel, options: LowVoltageOptions)
 {
     if (options.verbose)
     {
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.export.Export").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.lv.LowVoltage").setLevel (org.apache.log4j.Level.INFO)
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
     }
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -140,7 +140,7 @@ case class Export (session: SparkSession, storage_level: StorageLevel, options: 
 
         def doit (trafokreis: Trafokreis): Int =
         {
-            val generator = new ExportGLMGenerator (!options.three, _DateFormat, trafokreis)
+            val generator = new LowVoltageGLMGenerator (!options.three, _DateFormat, trafokreis)
             gridlabd.export (generator)
             1
         }

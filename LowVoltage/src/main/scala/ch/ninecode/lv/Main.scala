@@ -1,4 +1,4 @@
-package ch.ninecode.export
+package ch.ninecode.lv
 
 import java.io.UnsupportedEncodingException
 import java.net.URI
@@ -28,7 +28,7 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "Export"
+    val APPLICATION_NAME: String = "Low Voltage"
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 
@@ -158,11 +158,11 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/Export-2.11-2.2.1-2.4.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/LowVoltage-2.11-2.3.1-2.4.0-jar-with-dependencies.jar):
      *     mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Export-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/LowVoltage-2.11-2.3.1-2.4.0-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
      */
     def main (args: Array[String])
     {
@@ -171,7 +171,7 @@ object Main
         {
             case Some (arguments) =>
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.export.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.lv.Main$").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
@@ -187,7 +187,7 @@ object Main
                 if ("" != arguments.master)
                 {
                     val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (ExportOptions ())
+                    val s2 = jarForObject (LowVoltageOptions ())
                     if (s1 != s2)
                         configuration.setJars (Array (s1, s2))
                     else
@@ -233,7 +233,7 @@ object Main
                 ro.put ("StorageLevel", arguments.storage)
                 ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
                 val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
-                val options = ExportOptions (
+                val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
                     cim_reader_options = ro,
                     three = arguments.three,
@@ -241,8 +241,8 @@ object Main
                     workdir = workdir,
                     files = arguments.files
                 )
-                val export = Export (session, storage, options)
-                val count = export.run ()
+                val lv = LowVoltage (session, storage, options)
+                val count = lv.run ()
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds " + count + " trafokreise")

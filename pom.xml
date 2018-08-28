@@ -117,6 +117,7 @@
         <module>Simulation</module>
         <module>NetworkParameters</module>
         <module>MediumVoltage</module>
+        <module>LowVoltage</module>
     </modules>
 
     <dependencyManagement>
