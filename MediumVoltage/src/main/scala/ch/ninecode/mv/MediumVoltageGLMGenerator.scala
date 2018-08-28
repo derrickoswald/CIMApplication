@@ -1,9 +1,14 @@
-package ch.ninecode.ms
+package ch.ninecode.mv
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.gl._
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.TransformerSet
 
 case class MediumVoltageGLMGenerator (
         one_phase: Boolean,

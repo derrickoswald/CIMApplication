@@ -116,6 +116,7 @@
         <module>Ingest</module>
         <module>Simulation</module>
         <module>NetworkParameters</module>
+        <module>MediumVoltage</module>
     </modules>
 
     <dependencyManagement>

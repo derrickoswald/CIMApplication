@@ -1,4 +1,4 @@
-package ch.ninecode.ms
+package ch.ninecode.mv
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession

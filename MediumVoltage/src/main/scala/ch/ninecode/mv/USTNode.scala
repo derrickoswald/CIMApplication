@@ -1,4 +1,4 @@
-package ch.ninecode.ms
+package ch.ninecode.mv
 
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.TransformerSet

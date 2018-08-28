@@ -1,22 +1,21 @@
-package ch.ninecode.ms
+package ch.ninecode.mv
 
 import java.io.UnsupportedEncodingException
-import java.net.URLDecoder
 import java.net.URI
+import java.net.URLDecoder
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
-
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
+import scala.collection.mutable.HashMap
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
 object Main
 {
@@ -207,8 +206,8 @@ object Main
                         classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
                     // register Medium Voltage classes
                     configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.ms.USTKreis],
-                        classOf[ch.ninecode.ms.USTNode]))
+                        classOf[ch.ninecode.mv.USTKreis],
+                        classOf[ch.ninecode.mv.USTNode]))
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 
