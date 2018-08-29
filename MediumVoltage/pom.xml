@@ -139,7 +139,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.mv.MediumVoltageSuite</suites>
+                    <suites>ch.ninecode.mv.MediumVoltageMainSuite,ch.ninecode.mv.MediumVoltageSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

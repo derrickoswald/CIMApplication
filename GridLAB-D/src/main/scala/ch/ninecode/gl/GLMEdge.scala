@@ -53,7 +53,7 @@ with Serializable
     /**
      * Return the .glm text for the edge.
      *
-     * @param one_phase If <code>true</code>, emit a single phase node, otherwise emit a three phase node.
+     * @param generator The generator object with details on what/how to generate the .glm.
      * @return The string value to be included in the .glm file for this edge.
      */
     def emit (generator: GLMGenerator): String =

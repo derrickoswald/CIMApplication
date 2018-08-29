@@ -8,12 +8,14 @@ import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 
 case class MediumVoltageGLMGenerator (
-        one_phase: Boolean,
-        date_format: SimpleDateFormat,
-        ust: USTKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
+    one_phase: Boolean,
+    date_format: SimpleDateFormat,
+    ust: USTKreis)
+extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
 
     override def name: String = ust.trafokreis_key
@@ -22,7 +24,7 @@ case class MediumVoltageGLMGenerator (
 
     override def finish_time: Calendar = ust.finish_time
 
-    override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
+    override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ ust.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Array[TransformerSet] = ust.transformers
 
@@ -33,39 +35,76 @@ case class MediumVoltageGLMGenerator (
 
     override def extra: Iterable[String] = List ("")
 
+    def three_or_one (property: String): String =
+        if (one_phase)
+            "%s_A.real,%s_A.imag".format (property, property)
+        else
+            "%s_A.real,%s_A.imag,%s_B.real,%s_B.imag,%s_C.real,%s_C.imag".format (property, property, property, property, property, property)
+
+    def three_or_one_player (property: String, name: String): String =
+        if (one_phase)
+        """            object player
+        |            {
+        |                property "%s_A";
+        |                file "input_data/%s.csv";
+        |            };""".stripMargin.format (property, name)
+        else
+        """            object player
+        |            {
+        |                property "%s_A";
+        |                file "input_data/%s_R.csv";
+        |            };
+        |            object player
+        |            {
+        |                property "%s_B";
+        |                file "input_data/%s_S.csv";
+        |            };
+        |            object player
+        |            {
+        |                property "%s_C";
+        |                file "input_data/%s_T.csv";
+        |            };""".stripMargin.format (property, name, property, name, property, name)
+
     override def emit_edge (edge: GLMEdge): String =
     {
         def recorders: String =
         {
-            "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + edge.id + "_current_recorder\";\n" +
-                "            parent \"" + edge.id + "\";\n" +
-                "            property " + ( if (one_phase) "current_in_A.real,current_in_A.imag" else "current_in_A.real,current_in_A.imag,current_in_B.real,current_in_B.imag,current_in_C.real,current_in_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + edge.id + "_current.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + edge.id + "_power_recorder\";\n" +
-                "            parent \"" + edge.id + "\";\n" +
-                "            property " + ( if (one_phase) "power_in_A.real,power_in_A.imag" else "power_in_A.real,power_in_A.imag,power_in_B.real,power_in_B.imag,power_in_C.real,power_in_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + edge.id + "_power.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + edge.id + "_losses_recorder\";\n" +
-                "            parent \"" + edge.id + "\";\n" +
-                "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + edge.id + "_losses.csv\";\n" +
-                "        };\n"
+            """
+            |        object recorder
+            |        {
+            |            name "%s_current_recorder";
+            |            parent "%s";
+            |            property %s;
+            |            interval 300;
+            |            file "output_data/%s_current.csv";
+            |        };
+            |
+            |        object recorder
+            |        {
+            |            name "%s_power_recorder";
+            |            parent "%s";
+            |            property %s;
+            |            interval 300;
+            |            file "output_data/%s_power.csv";
+            |        };
+            |
+            |        object recorder
+            |        {
+            |            name "%s_losses_recorder";
+            |            parent "%s";
+            |            property %s;
+            |            interval 300;
+            |            file "output_data/%s_losses.csv";
+            |        };
+            |""".stripMargin.format (
+                edge.id, edge.id, three_or_one ("current_in"), edge.id,
+                edge.id, edge.id, three_or_one ("power_in"), edge.id,
+                edge.id, edge.id, three_or_one ("power_losses"), edge.id)
         }
-        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
+        if (edge.isInstanceOf[TransformerEdge])
+            ""
+        else
+            super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
     }
 
     override def emit_node (node: GLMNode): String =
@@ -76,56 +115,62 @@ case class MediumVoltageGLMGenerator (
             if (null != node.load)
             {
                 val trafo = node.load.transformer_name
-                "\n" + // only need a recorder if there is a load
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + trafo + "_voltage_recorder\";\n" +
-                "            parent \"" + node.id + "\";\n" +
-                "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + trafo + "_voltage.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + trafo + "_power_recorder\";\n" +
-                "            parent \"" + node.id + "\";\n" +
-                "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + trafo + "_power.csv\";\n" +
-                "        };\n"
+                """
+                |        object recorder
+                |        {
+                |            name "%s_voltage_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_voltage.csv";
+                |        };
+                |
+                |        object recorder
+                |        {
+                |            name "%s_power_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_power.csv";
+                |        };
+                |""".stripMargin.format (
+                    trafo, node.id, three_or_one ("voltage"), trafo,
+                    trafo, node.id, three_or_one ("measured_power"), trafo)
             }
             else
             {
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + node.id + "_current_recorder\";\n" +
-                "            parent \"" + node.id + "\";\n" +
-                "            property " + ( if (one_phase) "measured_current_A.real,measured_current_A.imag" else "measured_current_A.real,measured_current_A.imag,measured_current_B.real,measured_current_B.imag,measured_current_C.real,measured_current_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + node.id + "_current.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + node.id + "_voltage_recorder\";\n" +
-                "            parent \"" + node.id + "\";\n" +
-                "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + node.id + "_voltage.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + node.id + "_power_recorder\";\n" +
-                "            parent \"" + node.id + "\";\n" +
-                "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + node.id + "_power.csv\";\n" +
-                "        };\n"
+                """
+                |        object recorder
+                |        {
+                |            name "%s_current_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_current.csv";
+                |        };
+                |
+                |        object recorder
+                |        {
+                |            name "%s_voltage_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_voltage.csv";
+                |        };
+                |
+                |        object recorder
+                |        {
+                |            name "%s_power_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_power.csv";
+                |        };
+                |""".stripMargin.format (
+                    node.id, node.id, three_or_one ("measured_current"), node.id,
+                    node.id, node.id, three_or_one ("voltage"), node.id,
+                    node.id, node.id, three_or_one ("measured_power"), node.id)
             }
-
         }
 
         super.emit_node (node) + generate_load (n) + recorder (n)
@@ -136,55 +181,37 @@ case class MediumVoltageGLMGenerator (
         val swing = node.asInstanceOf[SwingNode]
         // generate low voltage pin (NSPIN) swing node
         val trafo = swing.name
-        "\n" +
-        "        object meter\n" +
-        "        {\n" +
-        "            name \"" + swing.id + "\";\n" +
-        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-        "            bustype SWING;\n" +
-        "            nominal_voltage " + swing.nominal_voltage + "V;\n" +
-        (if (one_phase)
-            "            object player\n" +
-            "            {\n" +
-            "                property \"voltage_A\";\n" +
-            "                file \"input_data/" + trafo + ".csv\";\n" +
-            "            };\n"
-        else
-            "            object player\n" +
-            "            {\n" +
-            "                property \"voltage_A\";\n" +
-            "                file \"input_data/" + trafo + "_R.csv\";\n" +
-            "            };\n" +
-            "            object player\n" +
-            "            {\n" +
-            "                property \"voltage_B\";\n" +
-            "                file \"input_data/" + trafo + "_S.csv\";\n" +
-            "            };\n" +
-            "            object player\n" +
-            "            {\n" +
-            "                property \"voltage_C\";\n" +
-            "                file \"input_data/" + trafo + "_T.csv\";\n" +
-            "            };\n"
-        ) +
-        "        };\n" +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + trafo + "_current_recorder\";\n" +
-        "            parent \"" + node.id + "\";\n" +
-        "            property " + ( if (one_phase) "measured_current_A.real,measured_current_A.imag" else "measured_current_A.real,measured_current_A.imag,measured_current_B.real,measured_current_B.imag,measured_current_C.real,measured_current_C.imag") + ";\n" +
-        "            interval 300;\n" +
-        "            file \"output_data/" + trafo + "_current.csv\";\n" +
-        "        };\n" +
-        "\n" +
-        "        object recorder\n" +
-        "        {\n" +
-        "            name \"" + trafo + "_power_recorder\";\n" +
-        "            parent \"" + node.id + "\";\n" +
-        "            property " + ( if (one_phase) "measured_power_A.real,measured_power_A.imag" else "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag") + ";\n" +
-        "            interval 300;\n" +
-        "            file \"output_data/" + trafo + "_power.csv\";\n" +
-        "        };\n"
+        """
+        |        object meter
+        |        {
+        |            name "%s";
+        |            phases %s;
+        |            bustype SWING;
+        |            nominal_voltage %sV;
+        |%s
+        |        };
+        |
+        |        object recorder
+        |        {
+        |            name "%s_current_recorder";
+        |            parent "%s";
+        |            property %s;
+        |            interval 300;
+        |            file "output_data/%s_current.csv";
+        |        };
+        |
+        |        object recorder
+        |        {
+        |            name "%s_power_recorder";
+        |            parent "%s";
+        |            property %s;
+        |            interval 300;
+        |            file "output_data/%s_power.csv";
+        |        };
+        |""".stripMargin.format (
+            swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one_player ("voltage", trafo),
+            trafo, node.id, three_or_one ("measured_current"), trafo,
+            trafo, node.id, three_or_one ("measured_power"), trafo)
     }
 
     override def emit_transformer (transformer: TransformerSet): String =
@@ -194,24 +221,27 @@ case class MediumVoltageGLMGenerator (
 
         super.emit_transformer (transformer) +
             (if (!swings.contains (transformer.node0) && !swings.contains (transformer.node1))
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + name + "_current_recorder\";\n" +
-                "            parent \"" + name + "\";\n" +
-                "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + name + "_current.csv\";\n" +
-                "        };\n" +
-                "\n" +
-                "        object recorder\n" +
-                "        {\n" +
-                "            name \"" + name + "_losses_recorder\";\n" +
-                "            parent \"" + name + "\";\n" +
-                "            property " + ( if (one_phase) "power_losses_A.real,power_losses_A.imag" else "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag") + ";\n" +
-                "            interval 300;\n" +
-                "            file \"output_data/" + name + "_losses.csv\";\n" +
-                "        };\n"
+                """
+                |        object recorder
+                |        {
+                |            name "%s_current_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_current.csv";
+                |        };
+                |
+                |        object recorder
+                |        {
+                |            name "%s_losses_recorder";
+                |            parent "%s";
+                |            property %s;
+                |            interval 300;
+                |            file "output_data/%s_losses.csv";
+                |        };
+                |""".stripMargin.format (
+                    name, name, three_or_one ("current_out"), name,
+                    name, name, three_or_one ("power_losses"), name)
             else
                 ""
                 )
@@ -222,37 +252,16 @@ case class MediumVoltageGLMGenerator (
         if (null != node.load)
         {
             val trafo = node.load.transformer_name
-            "\n" +
-            "        object load\n" +
-            "        {\n" +
-            "            name \"" + node.id + "_load\";\n" +
-            "            parent \"" + node.id + "\";\n" +
-            "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-            "            nominal_voltage " + node.nominal_voltage + "V;\n" +
-            (if (one_phase)
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_A\";\n" +
-                "                file \"input_data/" + trafo + ".csv\";\n" +
-                "            };\n"
-            else
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_A\";\n" +
-                "                file \"input_data/" + trafo + "_R.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_B\";\n" +
-                "                file \"input_data/" + trafo + "_S.csv\";\n" +
-                "            };\n" +
-                "            object player\n" +
-                "            {\n" +
-                "                property \"constant_current_C\";\n" +
-                "                file \"input_data/" + trafo + "_T.csv\";\n" +
-                "            };\n"
-            ) +
-            "        };\n"
+            """
+            |        object load
+            |        {
+            |            name "%s_load";
+            |            parent "%s";
+            |            phases %s;
+            |            nominal_voltage %sV;
+            |%s
+            |        };
+            |""".stripMargin.format (node.id, node.id, if (one_phase) "AN" else "ABCN", node.nominal_voltage, three_or_one_player ("constant_current", trafo))
         }
         else
             ""
