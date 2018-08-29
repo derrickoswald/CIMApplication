@@ -26,7 +26,7 @@ import scala.io.Source
 case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
 {
     if (options.verbose)
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.ms.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:

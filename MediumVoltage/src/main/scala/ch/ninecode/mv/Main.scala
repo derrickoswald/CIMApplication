@@ -20,7 +20,7 @@ import ch.ninecode.cim.DefaultSource
 
 object Main
 {
-    val properties: Properties =
+    lazy val properties: Properties =
     {
         val in = this.getClass.getResourceAsStream ("/application.properties")
         val p = new Properties ()
@@ -54,6 +54,11 @@ object Main
     )
 
     case class Arguments (
+         /**
+          * If <code>true</code>, don't call sys.exit().
+          */
+         unittest: Boolean = false,
+
          quiet: Boolean = false,
          master: String = "",
          opts: Map[String,String] = Map(),
@@ -67,53 +72,79 @@ object Main
          files: Seq[String] = Seq()
     )
 
+    var do_exit = true
+
     val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        opt[Unit]('q', "quiet").
-            action ((_, c) => c.copy (quiet = true)).
-            text ("supress informational messages")
-
-        opt[String]('m', "master").valueName ("MASTER_URL").
-            action ((x, c) => c.copy (master = x)).
-            text ("spark://host:port, mesos://host:port, yarn, or local[*]")
-
-        opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) => c.copy (opts = x)).
-            text ("other Spark options")
-
-        opt[String]('g', "storage_level").
-            action ((x, c) => c.copy (storage = x)).
-            text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
-
-        opt[Unit]('u', "deduplicate").
-            action ((_, c) => c.copy (dedup = true)).
-            text ("de-duplicate input (striped) files")
-
-        opt[Unit]('3', "three").
-            action ((_, c) => c.copy (three = true)).
-            text ("use three phase computations")
-
-        opt[String]('t', "trafos").valueName ("<TRA file>").
-            action ((x, c) => c.copy (trafos = x)).
-            text ("file of transformer names (one per line) to process")
-
-        opt[LogLevels.Value]('l', "logging").
-            action ((x, c) => c.copy (log_level = x)).
-            text ("log level, one of " + LogLevels.values.iterator.mkString (","))
-
-        opt[String]('k', "checkpointdir").valueName ("<dir>").
-            action ((x, c) => c.copy (checkpoint_dir = x)).
-            text ("checkpoint directory on HDFS, e.g. hdfs://...")
-
-        opt[String]('w', "workdir").valueName ("<dir>").
-            action ((x, c) => c.copy (workdir = x)).
-            text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
+        note ("Creates GridLAB-D .glm models for each or all medium voltage transformer service areas.\n")
 
         help ("help").text ("prints this usage text")
 
-        arg[String]("<CIM> <CIM> ...").unbounded ().
+        version ("version").text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        ))
+
+        val default = new Arguments
+
+        override def terminate (exitState: Either[String, Unit]): Unit =
+            if (do_exit)
+                exitState match
+                {
+                    case Left(_)  => sys.exit (1)
+                    case Right(_) => sys.exit (0)
+                }
+
+        opt[Unit]("unittest").
+            hidden ().
+            action ((_, c) ⇒ c.copy (unittest = true)).
+            text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
+
+        opt[Unit]("quiet").
+            action ((_, c) => c.copy (quiet = true)).
+            text ("supress informational messages [%s]".format (default.quiet))
+
+        opt[String]("master").valueName ("MASTER_URL").
+            action ((x, c) => c.copy (master = x)).
+            text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
+
+        opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
+            action ((x, c) => c.copy (opts = x)).
+            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+
+        opt[String]("storage_level").
+            action ((x, c) => c.copy (storage = x)).
+            text ("storage level for RDD serialization [%s]".format (default.storage))
+
+        opt[Unit]("deduplicate").
+            action ((_, c) => c.copy (dedup = true)).
+            text ("de-duplicate input (striped) files [%s]".format (default.dedup))
+
+        opt[Unit]("three").
+            action ((_, c) => c.copy (three = true)).
+            text ("use three phase computations [%s]".format (default.three))
+
+        opt[String]("trafos").valueName ("<TRA file>").
+            action ((x, c) => c.copy (trafos = x)).
+            text ("file of transformer names (one per line) to process [%s]".format (default.trafos))
+
+        opt[LogLevels.Value]("logging").
+            action ((x, c) => c.copy (log_level = x)).
+            text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
+
+        opt[String]("checkpointdir").valueName ("<dir>").
+            action ((x, c) => c.copy (checkpoint_dir = x)).
+            text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
+
+        opt[String]("workdir").valueName ("<dir>").
+            action ((x, c) => c.copy (workdir = x)).
+            text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [%s]".format (default.workdir))
+
+        arg[String]("<CIM> <CIM> ...").optional ().unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -167,84 +198,92 @@ object Main
      */
     def main (args: Array[String])
     {
+        do_exit = !args.contains ("--unittest")
+
         // parser.parse returns Option[C]
         parser.parse (args, Arguments ()) match
         {
             case Some (arguments) =>
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.Main$").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
-                // create the configuration
-                val configuration = new SparkConf (false)
-                configuration.setAppName (APPLICATION_NAME)
-                if ("" != arguments.master)
-                    configuration.setMaster (arguments.master)
-                if (arguments.opts.nonEmpty)
-                    arguments.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-
-                // get the necessary jar files to send to the cluster
-                if ("" != arguments.master)
+                if (arguments.files.nonEmpty)
                 {
-                    val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (MediumVoltageOptions ())
-                    if (s1 != s2)
-                        configuration.setJars (Array (s1, s2))
-                    else
-                        configuration.setJars (Array (s1))
+                    // create the configuration
+                    val configuration = new SparkConf (false)
+                    configuration.setAppName (APPLICATION_NAME)
+                    if ("" != arguments.master)
+                        configuration.setMaster (arguments.master)
+                    if (arguments.opts.nonEmpty)
+                        arguments.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+
+                    // get the necessary jar files to send to the cluster
+                    if ("" != arguments.master)
+                    {
+                        val s1 = jarForObject (new DefaultSource ())
+                        val s2 = jarForObject (MediumVoltageOptions ())
+                        if (s1 != s2)
+                            configuration.setJars (Array (s1, s2))
+                        else
+                            configuration.setJars (Array (s1))
+                    }
+
+                    if (StorageLevel.fromString (arguments.storage).useDisk)
+                    {
+                        // register CIMReader classes
+                        configuration.registerKryoClasses (CIMClasses.list)
+                        // register GridLAB-D classes
+                        configuration.registerKryoClasses (Array (
+                            classOf[ch.ninecode.gl.PreNode],
+                            classOf[ch.ninecode.gl.PreEdge],
+                            classOf[ch.ninecode.gl.PV],
+                            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                        // register Medium Voltage classes
+                        configuration.registerKryoClasses (Array (
+                            classOf[ch.ninecode.mv.USTKreis],
+                            classOf[ch.ninecode.mv.USTNode]))
+                    }
+                    configuration.set ("spark.ui.showConsoleProgress", "false")
+
+                    // make a Spark session
+                    val session = SparkSession.builder ().config (configuration).getOrCreate ()
+                    session.sparkContext.setLogLevel (arguments.log_level.toString)
+                    if ("" != arguments.checkpoint_dir)
+                        session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
+                    val version = session.version
+                    log.info (s"Spark $version session established")
+                    if (version.take (SPARK.length) != SPARK.take (version.length))
+                        log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+
+                    val setup = System.nanoTime ()
+                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+                    val ro = HashMap[String,String] ()
+                    ro.put ("StorageLevel", arguments.storage)
+                    ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
+                    val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
+                    val options = MediumVoltageOptions (
+                        verbose = !arguments.quiet,
+                        cim_reader_options = ro,
+                        three = arguments.three,
+                        trafos = arguments.trafos,
+                        workdir = workdir,
+                        files = arguments.files
+                    )
+                    val mv = MediumVoltage (session, options)
+                    val count = mv.run ()
+                    log.info ("%s trafokreise processed".format (count))
                 }
-
-                if (StorageLevel.fromString (arguments.storage).useDisk)
-                {
-                    // register CIMReader classes
-                    configuration.registerKryoClasses (CIMClasses.list)
-                    // register GridLAB-D classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.gl.PreNode],
-                        classOf[ch.ninecode.gl.PreEdge],
-                        classOf[ch.ninecode.gl.PV],
-                        classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
-                    // register Medium Voltage classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.mv.USTKreis],
-                        classOf[ch.ninecode.mv.USTNode]))
-                }
-                configuration.set ("spark.ui.showConsoleProgress", "false")
-
-                // make a Spark session
-                val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                session.sparkContext.setLogLevel (arguments.log_level.toString)
-                if ("" != arguments.checkpoint_dir)
-                    session.sparkContext.setCheckpointDir (arguments.checkpoint_dir)
-                val version = session.version
-                log.info (s"Spark $version session established")
-                if (version.take (SPARK.length) != SPARK.take (version.length))
-                    log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
-                val setup = System.nanoTime ()
-                log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-                val ro = HashMap[String,String] ()
-                ro.put ("StorageLevel", arguments.storage)
-                ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
-                val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
-                val options = MediumVoltageOptions (
-                    verbose = !arguments.quiet,
-                    cim_reader_options = ro,
-                    three = arguments.three,
-                    trafos = arguments.trafos,
-                    workdir = workdir,
-                    files = arguments.files
-                )
-                val mv = MediumVoltage (session, options)
-                val count = mv.run ()
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds " + count + " trafokreise")
+                log.info ("total: " + (calculate - begin) / 1e9 + " seconds")
 
-                sys.exit (0)
+                if (do_exit)
+                    sys.exit (0)
             case None =>
-                sys.exit (1)
+                if (do_exit)
+                    sys.exit (1)
         }
     }
 }

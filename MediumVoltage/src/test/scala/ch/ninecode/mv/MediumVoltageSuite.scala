@@ -64,7 +64,7 @@ class MediumVoltageSuite extends FunSuite
             three = false,
             trafos = "",
             workdir = "./target/",
-            files = List(filename)
+            files = List (filename)
         )
         val ms = MediumVoltage (session, options)
         val count = ms.run ()
