@@ -22,5 +22,6 @@ class TestSuite extends Suites (
     new FDataSuite,
     new MaximumStartingCurrentSuite,
     new ShortCircuitSuite,
+    new NonradialSuite,
     new TransformerSuite
 )

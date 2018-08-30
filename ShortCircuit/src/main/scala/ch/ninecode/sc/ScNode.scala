@@ -25,4 +25,5 @@ extends
     Graphable
 {
     def fatalErrors: Boolean = (null != errors) && errors.exists (_.fatal)
+    def invalidErrors: Boolean = (null != errors) && errors.exists (_.invalid)
 }

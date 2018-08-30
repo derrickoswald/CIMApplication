@@ -2,7 +2,6 @@ package ch.ninecode.sc
 
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.Graphable
-
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.Cut
@@ -27,6 +26,7 @@ import ch.ninecode.model.Switch
  * @param id_seq_2 Terminal 2 mRID
  * @param id_cn_2 TopologicalNode 2 mRID
  * @param v2 voltage on Terminal 2 (V)
+ * @param num_terminals the number of terminals on the equipment (could be more than 2)
  * @param id_equ ConductingEquipment mRID
  * @param element conducting equipment subclass object
  * @param impedance impedance of the edge (Ω)
@@ -38,6 +38,7 @@ case class ScEdge (
     id_seq_2: String,
     id_cn_2: String,
     v2: Double,
+    num_terminals: Int,
     id_equ: String,
     element: Element,
     impedance: Impedanzen) extends Graphable with Serializable
@@ -87,13 +88,51 @@ case class ScEdge (
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
             case _: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
-                    v1 < v2
+                    v1 <= v2
                 else if (id_cn == id_cn_2)
-                    v2 < v1
+                    v2 <= v1
                 else
                     throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
             case _ ⇒
                 true
+        }
+    }
+
+    /**
+     * Warn of special cases of transformers that preclude accurate short-circuit calculation.
+     *
+     * @param id_cn TopologicalNode to test
+     * @param errors current list of errors in the trace
+     * @param messagemax the maximum number of error messages to be maintained
+     * @return a new list of errors with additional information about validity.
+     */
+    def hasIssues (id_cn: String, errors: List[ScError], messagemax: Int): List[ScError] =
+    {
+        element match
+        {
+            case _: PowerTransformer ⇒
+                // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
+                if (num_terminals > 2)
+                {
+                    val error = ScError (false, true, "%s transformer windings for edge %s".format (num_terminals, id_equ))
+                    ScError.combine_errors (errors, List (error), messagemax)
+                }
+                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                else if (v1 == v2)
+                {
+                    val error = ScError (false, true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
+                    ScError.combine_errors (errors, List (error), messagemax)
+                }
+                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                else if (v1 <= 1000.0 && v2 <= 1000.0)
+                {
+                    val error = ScError (false, true, "low voltage (%sV:%sV) transmission edge %s".format (v1, v2, id_equ))
+                    ScError.combine_errors (errors, List (error), messagemax)
+                }
+                else
+                    errors
+            case _ ⇒
+                errors
         }
     }
 

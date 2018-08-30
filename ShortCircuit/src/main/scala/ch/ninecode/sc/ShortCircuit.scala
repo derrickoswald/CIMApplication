@@ -154,6 +154,7 @@ with Serializable
                             terminals(i)._1.ACDCTerminal.id,
                             node2,
                             terminals(i)._2,
+                            terminals.length,
                             eq,
                             element,
                             z
@@ -241,7 +242,7 @@ with Serializable
                 v
             else
             {
-                val errors = message.combine_errors (v.errors, message.errors, options.messagemax)
+                val errors = ScError.combine_errors (v.errors, message.errors, options.messagemax)
                 val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
                 val fuses = if (null != message.fuses) message.fuses else v.fuses
                 v.copy (source = message.source, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
@@ -269,7 +270,7 @@ with Serializable
                                 Iterator.empty
                             else
                             {
-                                val error = ScError (true, "non-radial network detected through %s".format (triplet.attr.id_equ))
+                                val error = ScError (true, true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                                 log.error (error.message)
                                 // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator (
@@ -293,7 +294,8 @@ with Serializable
                         val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
                         val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
-                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, triplet.srcAttr.errors)))
+                        val errors = triplet.attr.hasIssues (triplet.dstAttr.id_seq, triplet.srcAttr.errors, options.messagemax)
+                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source, from, to, fuses, triplet.srcAttr.id_seq, errors)))
                     }
                     else
                         Iterator.empty
@@ -306,7 +308,8 @@ with Serializable
                         val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
                         val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
-                        Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, triplet.dstAttr.errors)))
+                        val errors = triplet.attr.hasIssues (triplet.srcAttr.id_seq, triplet.dstAttr.errors, options.messagemax)
+                        Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source, from, to, fuses, triplet.dstAttr.id_seq, errors)))
                     }
                     else
                         Iterator.empty
@@ -321,15 +324,15 @@ with Serializable
         {
             if (a.previous_node != b.previous_node)
             {
-                val error = ScError (true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
+                val error = ScError (true, true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node))
                 log.error (error.message)
-                a.copy (errors = a.combine_errors (a.errors, b.combine_errors (b.errors, List (error), options.messagemax), options.messagemax))
+                a.copy (errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, List (error), options.messagemax), options.messagemax))
             }
             else
             {
                 val parallel = a.edge.parallel (b.edge)
-                val warning = ScError (false, "reinforcement detected from %s".format (a.previous_node))
-                a.copy (edge = parallel, errors = a.combine_errors (a.errors, b.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
+                val warning = ScError (false, false, "reinforcement detected from %s".format (a.previous_node))
+                a.copy (edge = parallel, errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
             }
         }
 
@@ -385,8 +388,12 @@ with Serializable
         val equipment = arg._3
         val container = arg._4
         val v2 = node.voltage
-        val low = calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low)
-        val high = calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high)
+        val (low, high) =
+            if (node.invalidErrors)
+                (ScIntermediate (), ScIntermediate ())
+            else
+                (calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low),
+                 calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high))
 
         ScResult (node.id_seq, equipment, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
@@ -644,7 +651,7 @@ with Serializable
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, "INFO: computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
@@ -696,7 +703,7 @@ with Serializable
         else {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter (td ⇒ td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            val niederspannug = tdata.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
         }
 
@@ -714,7 +721,7 @@ with Serializable
                         ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null, null)
                     else
                     {
-                        val errors = if (node.transformer.total_impedance._2) List (ScError (false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
+                        val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
                         ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
                     }
                 case None ⇒
