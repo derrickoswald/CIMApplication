@@ -88,9 +88,9 @@ case class ScEdge (
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
             case _: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
-                    v1 <= v2
+                    v1 <= v2 || ((v1 <= 1000.0) && (v2 <= 1000.0))
                 else if (id_cn == id_cn_2)
-                    v2 <= v1
+                    v2 <= v1 || ((v1 <= 1000.0) && (v2 <= 1000.0))
                 else
                     throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
             case _ ⇒
@@ -126,7 +126,7 @@ case class ScEdge (
                 // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                 else if (v1 <= 1000.0 && v2 <= 1000.0)
                 {
-                    val error = ScError (false, true, "low voltage (%sV:%sV) transmission edge %s".format (v1, v2, id_equ))
+                    val error = ScError (false, true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
                     ScError.combine_errors (errors, List (error), messagemax)
                 }
                 else
