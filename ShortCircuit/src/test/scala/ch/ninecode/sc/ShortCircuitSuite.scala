@@ -606,7 +606,7 @@ class ShortCircuitSuite
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
             assert (Math.abs (consumer.low_ik - 812) < 0.5, "expected ik1polig=812A")
-            assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            assert (Math.abs (consumer.low_ik3pol - 1463) < 0.5, "expected ik3polig=1463A")
             // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
             assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
             assert (0 == results.filter (_.errors.nonEmpty).count, "expected no errors")
@@ -666,7 +666,7 @@ class ShortCircuitSuite
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
             assert (Math.abs (consumer.low_ik - 812) < 0.5, "expected ik1polig=812A")
-            assert (Math.abs (consumer.low_ik3pol - 1465) < 0.5, "expected ik3polig=1465A")
+            assert (Math.abs (consumer.low_ik3pol - 1463) < 0.5, "expected ik3polig=1463A")
             // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
             assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
             assert (0 == results.filter (_.errors.nonEmpty).count, "expected no errors")

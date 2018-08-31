@@ -198,8 +198,8 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     val network_short_circuit_impedance_max: Complex =
     {
         def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r, equiv.x)
-        val impedance = Z (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance))
+        val z = Z (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == z))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the r and x")
         // check against Sk
         def Z2 (equiv: EquivalentInjection): Complex =
@@ -214,11 +214,11 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
             val x = z * Math.sin (angle)
             Complex (r, x)
         }
-        val impedance2 = Z2 (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x ⇒ Z2 (x.shortcircuit) == impedance2))
+        val z2 = Z2 (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z2 (x.shortcircuit) == z2))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z2 (x.shortcircuit)).mkString (" ") + " using the maxP and maxQ")
 
-        impedance
+        if (Complex (0.0) != z) z else z2
     }
 
     /**
@@ -252,11 +252,11 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
             val x = z * Math.sin (angle)
             Complex (r, x)
         }
-        val impedance2 = Z (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance2))
+        val z = Z (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == z))
             log.error ("transformer set " + transformer_name + " has differing minimum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the minP and minQ")
 
-        impedance2
+        z
     }
 
     /**
