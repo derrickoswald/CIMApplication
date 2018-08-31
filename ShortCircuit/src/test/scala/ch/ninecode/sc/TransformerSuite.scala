@@ -32,6 +32,8 @@ with
             new Unzip ().unzip (FILE_DEPOT + "voltage_regulator.zip", FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME2).exists)
             new Unzip ().unzip (FILE_DEPOT + "three_winding_transformer.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME3).exists)
+            new Unzip ().unzip (FILE_DEPOT + "subtransmission.zip", FILE_DEPOT)
     }
 
     test ("Voltage Regulator")
