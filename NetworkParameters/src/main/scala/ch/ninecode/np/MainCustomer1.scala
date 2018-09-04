@@ -77,6 +77,17 @@ object MainCustomer1
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
+        note ("Creates EquivalentInjection objects for the network supplying transformers from an external data file.\n")
+
+        help ("help").text ("prints this usage text")
+
+        version ("version").text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        ))
+
         val default = new Arguments
 
         override def terminate (exitState: Either[String, Unit]): Unit =
@@ -118,7 +129,7 @@ object MainCustomer1
 
         opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
-            text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
+            text ("checkpoint directory on HDFS, e.g. hdfs://server:8020/... [%s]".format (default.checkpoint_dir))
 
         opt[String]("csv").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv_file = x)).
@@ -127,8 +138,6 @@ object MainCustomer1
         opt[String]("export").valueName ("<CIM>").
             action ((x, c) ⇒ c.copy (export = x)).
             text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
-
-        help ("help").text ("prints this usage text")
 
         arg[String]("<CIM>,<CIM>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
