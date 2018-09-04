@@ -376,6 +376,14 @@ object Database
         ret.toArray
     }
 
+    /**
+     * Determine the set of EnergyConsumers for which a re-calculation is necessary.
+     *
+     * @param simulation The current (most recent) simulation.
+     * @param reference The reference (historical) simulation.
+     * @param delta The difference in the amount of power that will trigger a recalculation.
+     * @return The list of mRID for EnergyConsumer objects needing to be recalculated.
+     */
     def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double): Array[String] =
     {
         var ret = new ArrayBuffer[String] ()
