@@ -20,6 +20,7 @@ extends FunSuite
     {
         main (Array ("--unittest", "--master", "local[*]",
             "--csv", PRIVATE_FILE_DEPOT + CSV_FILE,
+            "--export", "target/" + FILENAME,
             PRIVATE_FILE_DEPOT + FILENAME))
     }
 }

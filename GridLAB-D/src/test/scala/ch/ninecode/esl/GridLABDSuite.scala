@@ -27,7 +27,6 @@ class GridLABDSuite extends FunSuite
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "4g")
-        //configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
 
         // register CIMReader classes

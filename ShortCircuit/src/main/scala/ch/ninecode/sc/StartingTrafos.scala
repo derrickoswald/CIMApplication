@@ -19,10 +19,11 @@ extends
     val primary_impedance: Impedanzen =
     {
         val z1_max = transformer.network_short_circuit_impedance_max
-        val z0_max = transformer.network_short_circuit_zero_sequence_impedance_max
         val z1_min = transformer.network_short_circuit_impedance_min
-        val ratio_z0z1 = 30.0 // ToDo: the ratio Z0:Z1 cannot be stored in the CIM model
-        val z0_min = ratio_z0z1 * z1_min
+        val netz_r0 = 0.0
+        val netz_x0 = 0.0
+        val z0_max = Complex (netz_r0, netz_x0)
+        val z0_min = Complex (netz_r0, netz_x0)
         Impedanzen (z1_max, z0_max, z1_min, z0_min)
     }
 

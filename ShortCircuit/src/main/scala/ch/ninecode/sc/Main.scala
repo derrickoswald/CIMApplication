@@ -18,11 +18,10 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.model.Element
 import ch.ninecode.gl.Complex
+import ch.ninecode.model.Element
 
 object Main
 {
@@ -262,11 +261,23 @@ object Main
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
-        // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
-        val ele: RDD[Element] = ntp.process (true)
-        val topo = System.nanoTime ()
-        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+        // identify topological nodes if necessary
+        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        val ele = if (tns.isEmpty || tns.head._2.isEmpty)
+        {
+            val ntp = new CIMNetworkTopologyProcessor (session, storage)
+            val elements = ntp.process (false)
+            log.info (elements.count () + " elements")
+            val topo = System.nanoTime ()
+            log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+            elements
+        }
+        else
+        {
+            val elements = session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
+            log.info (elements.count () + " elements")
+            elements
+        }
         ele.name = "Elements"
         ele.persist (storage)
         ele

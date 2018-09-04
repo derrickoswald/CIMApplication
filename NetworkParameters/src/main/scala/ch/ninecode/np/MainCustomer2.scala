@@ -69,6 +69,7 @@ object MainCustomer2
         checkpoint_dir: String = "",
         csv1_file: String = "Trafos_fuer_Analytiks.csv",
         csv2_file: String = "Netzeinspeisungen.csv",
+        export: String = "",
         files: Seq[String] = Seq ())
 
     var do_exit = true
@@ -127,6 +128,10 @@ object MainCustomer2
         opt[String]("csv2").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv2_file = x)).
             text ("csv file of available power at station data [%s]".format (default.csv2_file))
+
+        opt[String]("export").valueName ("<CIM>").
+            action ((x, c) ⇒ c.copy (export = x)).
+            text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
 
         help ("help").text ("prints this usage text")
 
@@ -242,14 +247,20 @@ object MainCustomer2
                     log.info (s"Spark $version session established")
                     if (version.take (SPARK.length) != SPARK.take (version.length))
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
+                    val export = new CIMExport (session)
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    read_cim (session, arguments)
-
+                    val elements = read_cim (session, arguments)
                     val initialization = System.nanoTime ()
                     log.info ("initialization: " + (initialization - setup) / 1e9 + " seconds")
+
+                    if (arguments.export != "")
+                    {
+                        export.export (elements, arguments.export, arguments.files.mkString (","))
+                        val save = System.nanoTime ()
+                        log.info ("export: " + (save - initialization) / 1e9 + " seconds")
+                    }
 
                     // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
                     if (("" != arguments.csv1_file) && ("" != arguments.csv2_file))
@@ -257,7 +268,6 @@ object MainCustomer2
                         val infos = ShortCircuitInfo2 (session, storage)
                         val equivalents = infos.getShortCircuitInfo (arguments.csv1_file, arguments.csv2_file)
                         val export = new CIMExport (session)
-                        // ToDo: not right
                         export.export (equivalents, arguments.csv1_file.replace (".csv", ".rdf"), "generated from " + arguments.csv1_file)
                         infos.merge (equivalents)
                     }

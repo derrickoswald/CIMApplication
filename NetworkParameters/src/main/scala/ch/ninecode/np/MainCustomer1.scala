@@ -68,6 +68,7 @@ object MainCustomer1
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
         csv_file: String = "KS_Leistungen.csv",
+        export: String = "",
         files: Seq[String] = Seq ())
 
     var do_exit = true
@@ -122,6 +123,10 @@ object MainCustomer1
         opt[String]("csv").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data [%s]".format (default.csv_file))
+
+        opt[String]("export").valueName ("<CIM>").
+            action ((x, c) ⇒ c.copy (export = x)).
+            text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
 
         help ("help").text ("prints this usage text")
 
@@ -239,19 +244,25 @@ object MainCustomer1
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
 
                     val setup = System.nanoTime ()
+                    val export = new CIMExport (session)
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    read_cim (session, arguments)
-
+                    val elements = read_cim (session, arguments)
                     val initialization = System.nanoTime ()
                     log.info ("initialization: " + (initialization - setup) / 1e9 + " seconds")
+
+                    if (arguments.export != "")
+                    {
+                        export.export (elements, arguments.export, arguments.files.mkString (","))
+                        val save = System.nanoTime ()
+                        log.info ("export: " + (save - initialization) / 1e9 + " seconds")
+                    }
 
                     // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
                     if ("" != arguments.csv_file)
                     {
                         val infos = ShortCircuitInfo1 (session, storage)
                         val equivalents = infos.getShortCircuitInfo (arguments.csv_file)
-                        val export = new CIMExport (session)
                         export.export (equivalents, arguments.csv_file.replace (".csv", ".rdf"), "generated from " + arguments.csv_file)
                         infos.merge (equivalents)
                     }

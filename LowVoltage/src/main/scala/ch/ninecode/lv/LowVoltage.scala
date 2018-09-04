@@ -193,16 +193,16 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         }
 
         // identify topological nodes if necessary
-//        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
-//        if (tns.isEmpty || tns.head._2.isEmpty)
-//        {
+        var topo = System.nanoTime ()
+        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        if (tns.isEmpty || tns.head._2.isEmpty)
+        {
             val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
             val ele = ntp.process (false)
             log.info (ele.count () + " elements")
-//        }
-
-        val topo = System.nanoTime ()
-        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+            topo = System.nanoTime ()
+            log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+        }
 
         // prepare for precalculation
         val topological_nodes = true

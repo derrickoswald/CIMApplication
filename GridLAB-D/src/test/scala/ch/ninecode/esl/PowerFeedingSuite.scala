@@ -8,20 +8,16 @@ import java.util.HashMap
 
 import org.apache.spark.graphx.Graph
 import org.apache.spark.SparkConf
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.fixture.FunSuite
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
-import ch.ninecode.model.Element
-import org.apache.spark.sql.DataFrame
 
 class PowerFeedingSuite extends FunSuite
 {
