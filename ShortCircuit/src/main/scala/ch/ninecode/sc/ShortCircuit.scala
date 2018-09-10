@@ -582,13 +582,13 @@ with Serializable
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments)
     }
 
-    def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
+    def node_maker (rdd: RDD[(node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))])]): RDD[(identifier, GLMNode)] =
     {
         val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values.map (x ⇒ (x._1._1, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
         ss.map (args ⇒ (args._2.head._1, SimulationNode (args._1, args._2.head._2._3.nominalVoltage * 1000.0, args._2.head._2._2.id, args._2.head._2._2.Equipment.PowerSystemResource.PSRType)))
     }
 
-    def edge_maker (rdd: RDD[Iterable[(Iterable[(transformerset_id, Terminal)], Element)]]): RDD[(transformerset_id, GLMEdge)] =
+    def edge_maker (rdd: RDD[Iterable[(Iterable[(identifier, Terminal)], Element)]]): RDD[(identifier, GLMEdge)] =
     {
         rdd.map (
             args ⇒
@@ -612,7 +612,7 @@ with Serializable
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
             val island_helper = new Island (session, storage_level)
-            val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // (trafosetid, ([nodes], [edges]))
+            val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
@@ -636,7 +636,7 @@ with Serializable
             val z: RDD[(String, String, String, Double, (Complex, Complex))] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
                 .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5)))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed: RDD[(transformerset_id, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
+            val original_keyed: RDD[(identifier, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
             val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒

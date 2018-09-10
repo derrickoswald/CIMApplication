@@ -71,6 +71,19 @@ with Serializable
 
 object GLMEdge
 {
+    def multiconductor (element: Element): ACLineSegment =
+    {
+        element match
+        {
+            case acline: ACLineSegment ⇒ acline
+            case conductor: Conductor ⇒
+                new ACLineSegment (conductor, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, List(), List(), List(), List(), null, null, null)
+            case _ ⇒
+                println ("unexpected class in edge elements (%s)".format (element.getClass))
+                null
+        }
+    }
+
     /**
      * Temporary measure until we figure out how to create subclasses of GMLEdge from:
      *   - PreNode/PreEdge trace results
@@ -114,13 +127,13 @@ object GLMEdge
             case "Sectionaliser" ⇒
                 SwitchEdge (cn1, cn2, element.asInstanceOf[Sectionaliser].Switch,  false)
             case "Conductor" ⇒
-                LineEdge (cn1, cn2, elements.map (x ⇒ new ACLineSegment (x.asInstanceOf[Conductor], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, List(), List(), List(), List(), null, null, null)))
+                LineEdge (cn1, cn2, elements.map (multiconductor))
             //                base_temperature: Double = 20.0,
             //                target_temperature: Double = 20.0,
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
             case "ACLineSegment" ⇒
-                LineEdge (cn1, cn2, elements.map (_.asInstanceOf[ACLineSegment]))
+                LineEdge (cn1, cn2, elements.map (multiconductor))
             //                base_temperature: Double = 20.0,
             //                target_temperature: Double = 20.0,
             //                DEFAULT_R: Double = 0.225,

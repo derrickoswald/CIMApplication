@@ -252,27 +252,47 @@ with Serializable
         Graph.apply[PreNode, PreEdge] (xnodes, xedges, vertex_data, storage_level, storage_level)
     }
 
+    /**
+     * Generate RDD of nodes and edges for GridLAB-D based on a mapping from some <em>identifier</em> to island mRID.
+     *
+     * The <em>identifier</em> can be a transformer set id, e.g. "TRA1234_TRA1235"
+     * and the mapping would label each island with its supply transformer
+     * in a many-to-one fashion, i.e. each island belongs to only one transformer set id
+     * and all the islands having the same transformer set id belong to the
+     * set of islands in the same transformer service area (Trafokreis).
+     *
+     * Or, the <em>identifier</em> can be a feeder mRID, e.g. "ABG1234"
+     * and the mapping would label each island with such an identifier
+     * in a many-to-one fashion, i.e. each island belongs to only one feeder mRID,
+     * and all the islands having the same feeder mRID belong to the
+     * set of islands in the same feeder service area (Abgangkreis).
+     *
+     * @param identifiers_islands mapping from identifier to island mRID
+     * @param node_maker method to create a GLMNode from a node and the details about connected terminals, elements and voltages
+     * @param edge_maker method to create a GLMEdge from an iterator over groups of terminals and their element that belong to the same edge (may be parallel)
+     * @return
+     */
     def queryNetwork (
-         trafos_islands: IslandMap,
-         node_maker: RDD[NodeParts] ⇒ RDD[(transformerset_id, GLMNode)],
-         edge_maker: RDD[EdgeParts] ⇒ RDD[(transformerset_id, GLMEdge)]): (Nodes, Edges) =
+        identifiers_islands: IslandMap,
+        node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
+        edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)]): (Nodes, Edges) =
     {
         // the mapping between island and transformer service area
-        val islands_trafos: RDD[(island_id, transformerset_id)] = trafos_islands.map (_.swap)
+        val islands_trafos: RDD[(island_id, identifier)] = identifiers_islands.map (_.swap)
         // get nodes by TopologicalIsland
         val members: RDD[(node_id, island_id)] = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland))
         // get terminals by TopologicalIsland
         val terminals: RDD[(island_id, Terminal)] = get[Terminal].keyBy (_.TopologicalNode).join (members).map (_._2.swap)
         // map terminals to transformer service areas
-        val transformers_terminals: RDD[(transformerset_id, Terminal)] = terminals.join (islands_trafos).values.map (_.swap)
+        val transformers_terminals: RDD[(identifier, Terminal)] = terminals.join (islands_trafos).values.map (_.swap)
         // get equipment attached to each terminal
-        val terminals_equipment: RDD[(Iterable[(transformerset_id, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).values
+        val terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).values.cache
 
         // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSgment
-        val one_terminal_equipment: RDD[(String, ((transformerset_id, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
-        val all_equipment: RDD[(String, ((transformerset_id, Terminal), ConductingEquipment))] = terminals_equipment.flatMap (x ⇒ x._1.map (y ⇒ (y, x._2))).keyBy (_._1._2.TopologicalNode)
+        val one_terminal_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
+        val all_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.flatMap (x ⇒ x._1.map (y ⇒ (y, x._2))).keyBy (_._1._2.TopologicalNode)
         // preferentially take the single terminal equipment, but in all cases keep only one equipment
-        val t_e: RDD[((transformerset_id, Terminal), ConductingEquipment)] = all_equipment.leftOuterJoin (one_terminal_equipment).values.map (
+        val t_e: RDD[((identifier, Terminal), ConductingEquipment)] = all_equipment.leftOuterJoin (one_terminal_equipment).values.map (
             {
                 case (_, Some (single)) ⇒ single
                 case (other, None) ⇒ other
@@ -280,7 +300,7 @@ with Serializable
         )
 
         // make nodes
-        val m: RDD[(transformerset_id, (Terminal, ConductingEquipment))] = t_e.map (x ⇒ (x._1._1, (x._1._2, x._2)))
+        val m: RDD[(identifier, (Terminal, ConductingEquipment))] = t_e.map (x ⇒ (x._1._1, (x._1._2, x._2)))
         // key by BaseVoltage - handle PowerTransformer specially, otherwise it could be just .keyBy (_._2._2.BaseVoltage)
         val m_key_by_BaseVoltage = m.keyBy (_._2._1.id).leftOuterJoin (get[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)).values
             .map (
@@ -290,19 +310,19 @@ with Serializable
                 }
             )
 
-        val n: RDD[(transformerset_id, (Terminal, ConductingEquipment, BaseVoltage))] = m_key_by_BaseVoltage.join (get[BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
-        val nn: RDD[(transformerset_id, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
+        val n: RDD[(identifier, (Terminal, ConductingEquipment, BaseVoltage))] = m_key_by_BaseVoltage.join (get[BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
+        val nn: RDD[(identifier, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
 
         val o: RDD[NodeParts] = nn.groupBy (_._2._1.TopologicalNode)
-        val nodes: RDD[(transformerset_id, GLMNode)] = node_maker (o)
+        val nodes: RDD[(identifier, GLMNode)] = node_maker (o).cache
 
         // get all equipment with two nodes in the transformer service area that separate different TopologicalIsland (these are the edges)
-        val ff: RDD[(Iterable[(transformerset_id, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2))
-        val tte: RDD[(Iterable[(transformerset_id, Terminal)], Element)] = ff.filter (x ⇒ x._1.size > 1 && (x._1.head._1 == x._1.tail.head._1) && (x._1.head._2.TopologicalNode != x._1.tail.head._2.TopologicalNode))
+        val ff: RDD[(Iterable[(identifier, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get[Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2)).cache
+        val tte: RDD[(Iterable[(identifier, Terminal)], Element)] = ff.filter (x ⇒ x._1.size > 1 && (x._1.head._1 == x._1.tail.head._1) && (x._1.head._2.TopologicalNode != x._1.tail.head._2.TopologicalNode))
         // combine parallel edges
         val eq: RDD[EdgeParts] = tte.keyBy (_._1.map (_._2.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
         // make edges
-        val edges: RDD[(transformerset_id, GLMEdge)] = edge_maker (eq)
+        val edges: RDD[(identifier, GLMEdge)] = edge_maker (eq).cache
 
         (nodes, edges)
     }
@@ -310,12 +330,12 @@ with Serializable
 
 object Island
 {
-    type transformerset_id = String
+    type identifier = String
     type island_id = String
     type node_id = String
-    type IslandMap = RDD[(transformerset_id, island_id)]
-    type Nodes = RDD[(transformerset_id, GLMNode)]
-    type Edges = RDD[(transformerset_id, GLMEdge)]
-    type NodeParts = (node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])
-    type EdgeParts = Iterable[(Iterable[(transformerset_id, Terminal)], Element)]
+    type IslandMap = RDD[(identifier, island_id)]
+    type Nodes = RDD[(identifier, GLMNode)]
+    type Edges = RDD[(identifier, GLMEdge)]
+    type NodeParts = (node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))])
+    type EdgeParts = Iterable[(Iterable[(identifier, Terminal)], Element)]
 }

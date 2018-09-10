@@ -48,13 +48,33 @@ class MediumVoltageSuite extends FunSuite
         finally session.stop () // clean up the fixture
     }
 
+    /**
+     * Generate a sample .glm file.
+     *
+     * Note that with the number of output files requested, you will likely bump into the error:
+     *     recorder file output_data/KLE111341_current.csv: Too many open files
+     * To fix this, first check your own user hard file limit:
+     *     $ ulimit -Ha
+     *     ...
+     *     open files                      (-n) 4096
+     *     ...
+     * and then check your soft limit:
+     *     $ ulimit -Sa
+     *     ...
+     *     open files                      (-n) 1024
+     *     ...
+     * If there is a difference you can bump up the soft limit yourself to the hard limit
+     *     $ ulimit -Sn 4096
+     * and check your soft limit again.
+     * Otherwise you will need to do extraordinary work as root to get the limit extended.
+     */
     test ("Basic")
     {
         session: SparkSession ⇒
 
         val begin = System.nanoTime ()
 
-        val root = "island_TRA15569_TRA15602_terminal_2_topo"
+        val root = "sample"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -62,6 +82,8 @@ class MediumVoltageSuite extends FunSuite
             verbose = true,
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
+            base_temperature = 20.0,
+            temperature = 20.0,
             trafos = "",
             workdir = "./target/",
             files = List (filename)

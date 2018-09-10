@@ -139,18 +139,18 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
     def island_trafoset_rdd: RDD[(String, String)] =
     {
         // get all transformer set secondary TopologicalIsland names
-        val islands_trafos = get[PowerTransformer]
+        val islands_trafos = getOrElse[PowerTransformer]
             .keyBy (_.id)
             .join (
-                get[Terminal]
+                getOrElse[Terminal]
                     .filter (_.ACDCTerminal.sequenceNumber == 2)
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-            get[TopologicalNode]
+            getOrElse[TopologicalNode]
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
+            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname) // ToDo: multiple transformers in the same island that aren't ganged?
         islands_trafos.cache
     }
 
@@ -161,7 +161,7 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
      */
     def nodes: RDD[(VertexId, VertexData)] =
     {
-        get[TopologicalIsland].keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
+        getOrElse[TopologicalIsland].keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
             .map (
             x ⇒
             {
@@ -184,20 +184,20 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
     def edges: RDD[Edge[EdgeData]] =
     {
         // get nodes by TopologicalIsland
-        val members = get[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
+        val members = getOrElse[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
         // get terminals by TopologicalIsland
-        val terminals = get[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
+        val terminals = getOrElse[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
-        get[ConductingEquipment].keyBy (_.id).join (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+        getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
             .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, (islandid, terminal)))
             .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
             .map (
-            x ⇒
-            {
-                val equipment = x.head._1
-                val connected = isSameArea (x.head._1)
-                Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (x.head._1.id, connected))
-            }) // Edge[EdgeData]
+                x ⇒
+                {
+                    val equipment = x.head._1
+                    val connected = isSameArea (x.head._1)
+                    Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (x.head._1.id, connected))
+                }) // Edge[EdgeData]
     }
 
     /**

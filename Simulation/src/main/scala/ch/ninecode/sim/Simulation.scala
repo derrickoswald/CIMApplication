@@ -249,19 +249,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             null
     }
 
-    def node_maker (rdd: RDD[(node_id, Iterable[(transformerset_id, (Terminal, Element, BaseVoltage))])]): RDD[(transformerset_id, GLMNode)] =
+    def node_maker (rdd: RDD[(node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))])]): RDD[(identifier, GLMNode)] =
     {
-        val just_one: RDD[(node_id, (transformerset_id, (Terminal, Element, BaseVoltage)))] = rdd.map (x ⇒ (x._1, x._2.head))
-        val with_psr: RDD[((node_id, (transformerset_id, (Terminal, Element, BaseVoltage))), PowerSystemResource)] = just_one.keyBy (_._2._2._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
-        val with_coordinates: RDD[((node_id, (transformerset_id, (Terminal, Element, BaseVoltage))), Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
+        val just_one: RDD[(node_id, (identifier, (Terminal, Element, BaseVoltage)))] = rdd.map (x ⇒ (x._1, x._2.head))
+        val with_psr: RDD[((node_id, (identifier, (Terminal, Element, BaseVoltage))), PowerSystemResource)] = just_one.keyBy (_._2._2._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_coordinates: RDD[((node_id, (identifier, (Terminal, Element, BaseVoltage))), Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
         with_coordinates.map (x ⇒ (x._1._2._1, SimulationNode (x._1._2._2._1.TopologicalNode, x._1._2._2._3.nominalVoltage * 1000.0, x._1._2._2._2.id, toCoordinates (x._2) (0))))  // ToDo check for null coordinates
     }
 
-    def edge_maker (rdd: RDD[Iterable[(Iterable[(transformerset_id, Terminal)], Element)]]): RDD[(transformerset_id, GLMEdge)] =
+    def edge_maker (rdd: RDD[Iterable[(Iterable[(identifier, Terminal)], Element)]]): RDD[(identifier, GLMEdge)] =
     {
         // the terminals may be different for each element, but their TopologicalNode values are the same, and the geometry should be similar, so use the head
-        val with_psr: RDD[(Iterable[(Iterable[(transformerset_id, Terminal)], Element)], PowerSystemResource)] = rdd.keyBy (_.head._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
-        val with_coordinates: RDD[(Iterable[(Iterable[(transformerset_id, Terminal)], Element)], Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
+        val with_psr: RDD[(Iterable[(Iterable[(identifier, Terminal)], Element)], PowerSystemResource)] = rdd.keyBy (_.head._2.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_coordinates: RDD[(Iterable[(Iterable[(identifier, Terminal)], Element)], Option[Iterable[PositionPoint]])] = with_psr.map (x ⇒ (x._2.Location, x._1)).leftOuterJoin (get[PositionPoint].groupBy (_.Location)).values
         with_coordinates.map (
             x ⇒
             {
@@ -298,8 +298,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {
-            val islands_trafos: RDD[(island_id, transformerset_id)] = tsa.getTransformerServiceAreas
-            val trafos_islands: RDD[(transformerset_id, island_id)] = islands_trafos.map (_.swap)
+            val islands_trafos: RDD[(island_id, identifier)] = tsa.getTransformerServiceAreas
+            val trafos_islands: RDD[(identifier, island_id)] = islands_trafos.map (_.swap)
 
             val q = SimulationSparkQuery (session, options.verbose)
 
@@ -318,11 +318,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val end = iso_parse (job.interval("end"))
 
             // maybe reduce the set of islands
-            val islands_to_do: RDD[(transformerset_id, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
+            val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
 
             val island_helper = new Island (session, StorageLevel.fromString (options.storage)) //T ToDo: fix this storage
             val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
-            val areas: RDD[(transformerset_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
+            val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
 
             // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
             val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (_.swap)

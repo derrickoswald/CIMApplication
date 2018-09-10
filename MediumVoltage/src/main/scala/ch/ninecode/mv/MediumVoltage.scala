@@ -3,31 +3,35 @@ package ch.ninecode.mv
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.TData
-import ch.ninecode.gl.Trace
-import ch.ninecode.gl.TransformerSet
-import ch.ninecode.gl.Transformers
-import ch.ninecode.model.TopologicalNode
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
+import scala.collection.mutable.HashMap
+import scala.io.Source
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable.HashMap
-import scala.io.Source
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.Transformers
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Element
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
 
 case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
+extends CIMRDD
+with Serializable
 {
     if (options.verbose)
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -84,7 +88,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
+            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, force_retain_switches = true, force_retain_fuses = false)
             val ele = ntp.process (identify_islands = true)
             log.info (ele.count () + " elements")
         }
@@ -92,9 +96,85 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
-        // prepare for precalculation
-        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, options.workdir)
+        val _transformers = new Transformers (session, storage_level)
+        val tdata = _transformers.getTransformerData (topological_nodes = true)
 
+        // feeder service area calculations
+        val feeder = Feeder (session, options.storage)
+        val nodes_feeders = feeder.getFeederMap.filter (_._2 != null) // (nodeid, feederid)
+
+        // get a map of voltages
+        // ToDo: fix this 1kV multiplier on the voltages
+        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap()
+        val ff: RDD[(String, TopologicalNode)] = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).values
+        val nodes = ff.keyBy (_._2.id).leftOuterJoin (feeder.feederNodes).values
+                        .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, 0.0))))
+
+        // get equipment with nodes & terminals
+        val gg: RDD[(String, Iterable[(String, Terminal)])] = get[Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
+        // eliminate 0Ω links
+        val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
+        val eq: RDD[(Iterable[(String, Terminal)], Element)] = get[ConductingEquipment].keyBy (_.id).join (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (elementid, Element)
+            .join (hh).values.map (_.swap) // ([(nodeid, terminal)], Element)
+            // eliminate edges with only one end
+            .filter (x ⇒ (x._1.size > 1) && x._1.map (_._1).forall (_ != null)) // ([(nodeid, terminal)], Element)
+        // index by feeder
+        val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
+        // ToDo: is it better to groupBy feeder first?
+        val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (_._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
+        // make one edge for each unique feeder it's in
+        val ll: RDD[(String, Iterable[(Iterable[(String, Terminal)], Element)])] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, x.map (_._2))))
+
+        // make edges
+        // ToDo: fix this collect
+        val transformers = tdata.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+        def make_edge (transformers: Array[TransformerSet]) (args: Iterable[(Iterable[(String, Terminal)], Element)]): GLMEdge =
+        {
+            // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
+            val id_cn_1 = args.head._1.head._2.TopologicalNode
+            val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
+            AbgangKreis.toGLMEdge (transformers) (args.map (_._2), id_cn_1, id_cn_2)
+        }
+        val edges = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
+
+        val feeders: RDD[FeederArea] = nodes.groupBy (_._1).map (x ⇒ (x._1, x._2.map (_._2))).join (edges.groupByKey).map (x ⇒ FeederArea (x._1, x._2._1, x._2._2))
+
+        def generate (gridlabd: GridLABD, area: FeederArea): Int =
+        {
+            val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area)
+            gridlabd.export (generator)
+            log.info (area.feeder)
+            1
+        }
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
+        val count = feeders.map (generate (gridlabd, _)).sum.longValue
+
+        /*
+        def node_maker (rdd: RDD[(String, Iterable[(String, (Terminal, Element, BaseVoltage))])]): RDD[(String, GLMNode)] =
+        {
+            val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values.map (x ⇒ (x._1._1, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
+            ss.map (args ⇒ (args._2.head._1, GLMNode.toGLMNode (args._2.map (_._2._2), args._1, args._2.head._2._3.nominalVoltage * 1000.0)))
+        }
+
+
+
+        // toGLMNode (elements: Iterable[Element], id: String, nominal_voltage: Double)
+        // toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String)
+
+        val island_helper = new Island (session, storage_level)
+        val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (mv_feeders_islands, node_maker, edge_maker) // ([nodes], [edges])
+        val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).map (x ⇒ FeederArea (x._1, x._2._1, x._2._2)).cache
+        println (areas.map (x ⇒ "%s: %s nodes, %s edges".format (x.feeder, x.nodes.size, x.edges.size)).collect.mkString ("\n"))
+        def generate (gridlabd: GridLABD, area: FeederArea): Unit =
+        {
+            val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area)
+            gridlabd.export (generator)
+        }
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
+        areas.foreach (generate (gridlabd, _))
+*/
+
+        /*
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
@@ -124,9 +204,9 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         else
         {
             // get the high voltage transformers grouped by low voltage TopologicalIsland
-            val hochpannug = tdata.filter (td => (td.voltage1 > 0.4) || (td.voltage0 > 16.0)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
+            val hochspannung = tdata.filter (td => (td.voltage1 > 0.4) || (td.voltage0 > 16.0)).keyBy (_.node1).join (tnodes.keyBy (_.id)).values.map (lv_island_name).groupByKey
             // create a TransformerSet for each different low voltage TopologicalNode
-            hochpannug.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)))
+            hochspannung.values.map (_.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)))
         }
 
         // determine the list of low voltage transformer sets
@@ -167,5 +247,8 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
         log.info ("calculate: " + (calculate - prepare) / 1e9 + " seconds")
 
         islands.count
+        */
+
+        count
     }
 }

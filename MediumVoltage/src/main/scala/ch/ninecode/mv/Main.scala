@@ -230,7 +230,8 @@ object Main
                             configuration.setJars (Array (s1))
                     }
 
-                    if (StorageLevel.fromString (arguments.storage).useDisk)
+                    val storage = StorageLevel.fromString (arguments.storage)
+                    if (storage.useDisk)
                     {
                         // register CIMReader classes
                         configuration.registerKryoClasses (CIMClasses.list)
@@ -268,6 +269,7 @@ object Main
                         cim_reader_options = ro,
                         three = arguments.three,
                         trafos = arguments.trafos,
+                        storage = storage,
                         workdir = workdir,
                         files = arguments.files
                     )
