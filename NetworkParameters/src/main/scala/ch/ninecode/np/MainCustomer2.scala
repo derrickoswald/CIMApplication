@@ -106,7 +106,7 @@ object MainCustomer2
 
         opt[Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
-            text ("supress informational messages [%s]".format (default.quiet))
+            text ("suppress informational messages [%s]".format (default.quiet))
 
         opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).

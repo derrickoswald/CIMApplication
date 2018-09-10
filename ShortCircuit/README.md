@@ -39,7 +39,7 @@ The --help option generates a description of the options available:
 ShortCircuit 2.11-2.3.1-2.4.0
 Usage: ShortCircuit [options] <CIM>,<CIM>...
 
-  --quiet               supress informational messages [false]
+  --quiet               suppress informational messages [false]
   --master MASTER_URL   spark://host:port, mesos://host:port, yarn, or local[*]
   --opts k1=v1,k2=v2    other Spark options
   --storage <value>     storage level for RDD serialization [MEMORY_AND_DISK_SER]
