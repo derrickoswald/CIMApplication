@@ -4,8 +4,8 @@ import ch.ninecode.model.ACLineSegment
 
 case class LineEdge
 (
-    node1: String,
-    node2: String,
+    cn1: String,
+    cn2: String,
     lines: Iterable[ACLineSegment],
     base_temperature: Double = 20.0,
     DEFAULT_R: Double = 0.225,
@@ -20,21 +20,6 @@ extends GLMEdge
      * @return The ID of the edge (the mRID of the electrical element).
      */
     def id: String = lines.map (_.id).toArray.sortWith (_ < _) (0)
-
-    /**
-     * The node id connected to the first terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 1.
-     */
-    def cn1: String = node1
-
-    /**
-     * The node id connected to the second terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 2.
-     */
-    def cn2: String = node2
-
     /**
      * Emit a overhead or underground line.
      *

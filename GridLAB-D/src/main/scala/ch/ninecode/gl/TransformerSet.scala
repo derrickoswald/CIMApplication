@@ -306,4 +306,9 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
         // per unit impedance
         (parallel._1 / base_ohms, parallel._2)
     }
+
+    override def toString: String =
+    {
+        "%s %skVA %s:%s".format (transformer_name, power_rating / 1000.0, v0, v1)
+    }
 }

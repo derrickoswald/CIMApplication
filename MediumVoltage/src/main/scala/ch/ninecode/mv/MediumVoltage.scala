@@ -105,9 +105,9 @@ with Serializable
 
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap()
+        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
         val ff: RDD[(String, TopologicalNode)] = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).values
-        val nodes = ff.keyBy (_._2.id).leftOuterJoin (feeder.feederNodes).values
+        val nodes: RDD[(String, FeederNode)] = ff.keyBy (_._2.id).leftOuterJoin (feeder.feederNodes).values
                         .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, 0.0))))
 
         // get equipment with nodes & terminals
@@ -135,13 +135,26 @@ with Serializable
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
             AbgangKreis.toGLMEdge (transformers) (args.map (_._2), id_cn_1, id_cn_2)
         }
-        val edges = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
+        val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
 
-        val feeders: RDD[FeederArea] = nodes.groupBy (_._1).map (x ⇒ (x._1, x._2.map (_._2))).join (edges.groupByKey).map (x ⇒ FeederArea (x._1, x._2._1, x._2._2))
+        // OK, so there are nodes and edges identified by feeder, now we need to combine them
+        // we need a "touches" list that says feeder A touches feeder B through open switch X
+        val crosspoints: RDD[(String, PlayerSwitchEdge)] = edges.filter (_._2.isInstanceOf[PlayerSwitchEdge]).map (x ⇒ (x._1, x._2.asInstanceOf[PlayerSwitchEdge])) // (feederid, switch)
+        val links: RDD[(String, String)] = crosspoints.flatMap (x ⇒ List ((x._1, x._2.cn1), (x._1, x._2.cn2))).map (_.swap).join (nodes_feeders).values.filter (x ⇒ x._1 != x._2) // (feederid, otherfeederid)
+        val bidirection_links = links.flatMap (x ⇒ List (x, x.swap)).distinct // (feederid, otherfeederid)
+
+        // this is the list of feeder elements with all attached feeder names - including it's own
+        val feeder_mapping: RDD[(Element, Iterable[String])] = feeder.feeders.keyBy (_.id).join (bidirection_links).values.groupByKey.map (x ⇒ (x._1, Seq (x._1.id) ++ x._2))
+
+        // expand the list of nodes and edges to include one copy for each feedermap element
+        val more_nodes: RDD[(String, FeederNode)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (nodes).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
+        val more_edges: RDD[(String, GLMEdge)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (edges).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
+
+        val feeders: RDD[FeederArea] = more_nodes.groupByKey.join (more_edges.groupByKey).map (x ⇒ FeederArea (x._1, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
-            val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area)
+            val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
             log.info (area.feeder)
             1

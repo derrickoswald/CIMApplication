@@ -6,6 +6,7 @@ import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
@@ -23,7 +24,8 @@ case class MvGLMGenerator (
     one_phase: Boolean,
     temperature: Double,
     date_format: SimpleDateFormat,
-    feeder: FeederArea)
+    feeder: FeederArea,
+    voltages: collection.Map[String, Double])
 extends GLMGenerator (one_phase, temperature, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = feeder.feeder
@@ -36,7 +38,38 @@ extends GLMGenerator (one_phase, temperature, date_format) // ToDo: get library 
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
 
-    override def extra: Iterable[String] = List ("")
+    /**
+     * Add meter elements for nodes on the edge of the network.
+     *
+     * For switches and transformers with one terminal in the feeder network, and the other not,
+     * GridLAB-D complains because the referenced node doesn't exist, so we add them
+     * here... until a better method can be found.
+     *
+     * @return Node elements to add to the .glm file.
+     */
+    override def extra: Iterable[String] =
+    {
+        val n = feeder.nodes.map (_.id).toArray
+        def ends_voltages (edge: GLMEdge): Iterable[(String, Double)] =
+        {
+            edge match
+            {
+                case line: LineEdge ⇒
+                    val v = voltages.getOrElse (line.lines.head.Conductor.ConductingEquipment.BaseVoltage, 0.0)
+                    List ((line.cn1, v), (line.cn2, v))
+                case switch: PlayerSwitchEdge ⇒
+                    val v = voltages.getOrElse (switch.switch.ConductingEquipment.BaseVoltage, 0.0)
+                    List ((switch.cn1, v), (switch.cn2, v))
+                case transformer: TransformerEdge ⇒
+                    List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
+                case _ ⇒
+                    println ("unhandled class %s".format (edge.getClass))
+                    List ()
+            }
+        }
+        val missing = feeder.edges.flatMap (ends_voltages).filter (x ⇒ !n.contains (x._1))
+        missing.map (x ⇒ FeederNode (x._1, null, x._2).emit (this))
+    }
 
     def three_or_one (property: String): String =
         if (one_phase)

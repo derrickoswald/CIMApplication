@@ -2,27 +2,13 @@ package ch.ninecode.gl
 
 case class TransformerEdge
 (
-    node1: String,
-    node2: String,
+    cn1: String,
+    cn2: String,
     transformer: TransformerSet
 )
     extends GLMEdge
 {
     def id: String = transformer.transformer_name
-
-    /**
-     * The node id connected to the first terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 1.
-     */
-    def cn1: String = node1
-
-    /**
-     * The node id connected to the second terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 2.
-     */
-    def cn2: String = node2
 
     /**
      * Emit a transformer.

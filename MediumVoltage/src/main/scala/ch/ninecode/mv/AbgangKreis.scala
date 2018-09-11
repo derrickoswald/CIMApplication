@@ -105,7 +105,8 @@ object AbgangKreis
             //                DEFAULT_X: Double = 0.068
             case "PowerTransformer" ⇒
                 // find the transformer in the list
-                TransformerEdge (cn1, cn2, transformers.find (_.transformers.map (_.transformer.id).contains (element.id)).orNull)
+                val t = transformers.find (_.transformers.map (_.transformer.id).contains (element.id)).orNull
+                TransformerEdge (t.node0, t.node1, t)
             case _ ⇒
                 println ("""edge %s has unhandled class '%s'""".format (element.id, cls)) // ToDo: log somehow
                 case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
