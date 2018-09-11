@@ -1,8 +1,10 @@
-package ch.ninecode.gl
+package ch.ninecode.mv
 
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.model.Switch
 
-case class SwitchEdge
+case class PlayerSwitchEdge
 (
     cn1: String,
     cn2: String,
@@ -26,12 +28,18 @@ extends GLMEdge
         if (current <= 0)
             current = 9999.0 // ensure it doesn't trip immediately
         // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
-        val fuse_details = if (fuse)
+        val details = if (fuse)
             """
             mean_replacement_time 3600.0;
-            current_limit %sA;""".format (current)
+            current_limit %sA;
+            status "%s";""".format (current, status)
         else
-            ""
+            """
+            object player
+            {
+                property "status";
+                file "input_data/%s.csv";
+            };""".format (id)
 
         """
         |        object %s
@@ -39,9 +47,9 @@ extends GLMEdge
         |            name "%s";
         |            phases %s;
         |            from "%s";
-        |            to "%s";
-        |            status "%s";%s
+        |            to "%s";%s
         |        };
-        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
+        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
     }
 }
+

@@ -100,8 +100,10 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     // is the cable an external cable
     def externalCable (cable: ACLineSegment): Boolean =
     {
-        // cable.Conductor.ConductingEquipment.Equipment.EquipmentContainer == null (those without a container) doesn't work, the first cable out of a station has the station as a container
-        // cable.Conductor.len != 0.0 is our best guess (nis_el_int_connection is given a length of zero
+        // cable.Conductor.ConductingEquipment.Equipment.EquipmentContainer == null (those without a container) doesn't work: the first cable out of a station also has the station as a container
+        // cable.Conductor.len != 0.0 is our best guess (nis_el_int_connection is given a length of zero)
+        // could also use !cable.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName.contains ("nis_el_int_connection")
+        // could also use Complex (cable.r, cable.x) == Complex (0)
         cable.Conductor.len != 0.0
     }
 
@@ -191,6 +193,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     /**
      * Edge data for feeder processing.
      *
+     * @param id the mRID of the edge
      * @param isConnected <code>true</code> if there is a connection between the nodes, i.e. a closed switch,
      *        which means the nodes are part of the same feeder
      */

@@ -7,7 +7,6 @@ import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
@@ -69,29 +68,29 @@ object AbgangKreis
         cls match
         {
             case "Switch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Switch],  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Switch],  false)
             case "Cut" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Cut].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Cut].Switch,  false)
             case "Disconnector" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Disconnector].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Disconnector].Switch,  false)
             case "Fuse" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Fuse].Switch,  true)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Fuse].Switch,  true)
             case "GroundDisconnector" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[GroundDisconnector].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[GroundDisconnector].Switch,  false)
             case "Jumper" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Jumper].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Jumper].Switch,  false)
             case "MktSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[MktSwitch].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[MktSwitch].Switch,  false)
             case "ProtectedSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[ProtectedSwitch].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[ProtectedSwitch].Switch,  false)
             case "Breaker" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Breaker].ProtectedSwitch.Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Breaker].ProtectedSwitch.Switch,  false)
             case "LoadBreakSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch,  false)
             case "Recloser" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Recloser].ProtectedSwitch.Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Recloser].ProtectedSwitch.Switch,  false)
             case "Sectionaliser" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf[Sectionaliser].Switch,  false)
+                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Sectionaliser].Switch,  false)
             case "Conductor" ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor))
             //                base_temperature: Double = 20.0,
