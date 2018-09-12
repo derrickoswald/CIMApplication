@@ -65,7 +65,6 @@ object Main
          storage: String = "MEMORY_AND_DISK_SER",
          dedup: Boolean = false,
          three: Boolean = false,
-         trafos: String = "",
          log_level: LogLevels.Value = LogLevels.OFF,
          checkpoint_dir: String = "",
          workdir: String = "",
@@ -127,10 +126,6 @@ object Main
         opt[Unit]("three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [%s]".format (default.three))
-
-        opt[String]("trafos").valueName ("<TRA file>").
-            action ((x, c) => c.copy (trafos = x)).
-            text ("file of transformer names (one per line) to process [%s]".format (default.trafos))
 
         opt[LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
@@ -268,7 +263,6 @@ object Main
                         verbose = !arguments.quiet,
                         cim_reader_options = ro,
                         three = arguments.three,
-                        trafos = arguments.trafos,
                         storage = storage,
                         workdir = workdir,
                         files = arguments.files

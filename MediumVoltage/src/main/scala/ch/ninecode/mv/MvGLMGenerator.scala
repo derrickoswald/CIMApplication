@@ -7,10 +7,8 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
-
 
 /**
  * Medium voltage GridLAB-D model file exporter.
@@ -26,7 +24,7 @@ case class MvGLMGenerator (
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = true) // ToDo: get library base temperature and target temperature as command line input
+extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = feeder.station + "_" + "%03d".format (feeder.number)
 

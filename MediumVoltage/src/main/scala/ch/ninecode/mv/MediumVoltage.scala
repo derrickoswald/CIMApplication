@@ -58,18 +58,6 @@ with Serializable
     {
         val start = System.nanoTime ()
 
-        // determine transformer list if any
-        val trafos = if ("" != options.trafos)
-            // do all transformers listed in the file
-            Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-        else
-            null
-        if ((null != trafos) && (0 == trafos.length))
-        {
-            log.error  ("no transformers to process")
-            sys.exit (1)
-        }
-
         // read the file
         val reader_options = new HashMap[String, String] ()
         reader_options ++= options.cim_reader_options
@@ -128,11 +116,11 @@ with Serializable
             // eliminate edges with only one end
             .filter (x ⇒ (x._1.size > 1) && x._1.map (_._1).forall (_ != null)) // ([(nodeid, terminal)], Element)
         // index by feeder
-        val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
+        val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.distinct.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
         // ToDo: is it better to groupBy feeder first?
-        val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (_._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
+        val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (x ⇒ x._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
         // make one edge for each unique feeder it's in
-        val ll: RDD[(String, Iterable[(Iterable[(String, Terminal)], Element)])] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, x.map (_._2))))
+        val ll: RDD[(String, Iterable[(Iterable[(String, Terminal)], Element)])] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, x.filter (_._1 == y).map (_._2))))
 
         // make edges
         // ToDo: fix this collect

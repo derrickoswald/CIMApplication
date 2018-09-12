@@ -84,7 +84,6 @@ class MediumVoltageSuite extends FunSuite
             three = false,
             base_temperature = 20.0,
             temperature = 20.0,
-            trafos = "",
             workdir = "./target/",
             files = List (filename)
         )
