@@ -28,7 +28,9 @@ case class MvGLMGenerator (
     voltages: collection.Map[String, Double])
 extends GLMGenerator (one_phase, temperature, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
-    override def name: String = feeder.feeder
+    override def name: String = feeder.station + "_" + "%03d".format (feeder.number)
+
+    override def header: String = feeder.description
 
     override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[TransformerEdge])
 

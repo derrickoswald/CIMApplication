@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Bay
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Connector
@@ -28,9 +29,11 @@ import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Substation
 import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.VoltageLevel
 
 /**
  * Identify the nodes fed by each feeder.
@@ -181,6 +184,54 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         ret
     }
 
+    def feederStations: RDD[(String, Int, String, Element)] =
+    {
+        def parseNumber (description: String): Int =
+        {
+            val trigger = "Abgang nummer "
+            if (null == description)
+                0
+            else
+            {
+                val index = description.indexOf (trigger)
+                if (-1 == index)
+                    0
+                else
+                {
+                    val array = description.substring (trigger.length).split (" ")
+                    if (0 == array.length)
+                        0
+                    else
+                        array(0).toInt
+                }
+            }
+        }
+
+        // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
+        def station_fn (x: (Connector, Element)): (String, Int, String, Element) =
+        {
+            val description = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
+            val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
+            val number = parseNumber (description)
+            val header = "%s [%s]".format (description, alias)
+
+            val feeder = x._1.asInstanceOf[Element]
+            x._2 match
+            {
+                case station: Substation => (station.id, number, header, feeder)
+                case bay: Bay => (bay.Substation, number, header, feeder)
+                case level: VoltageLevel => (level.Substation, number, header, feeder)
+                case _ => throw new Exception ("unknown container type for %s".format (x._1))
+            }
+        }
+
+        val connectors = feeders.map (_.asInstanceOf[Connector])
+        val ret = connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse[Element]("Elements").keyBy (_.id)).values.map (station_fn)
+
+        ret.persist (storage)
+        ret.name = "feederStations"
+        ret
+    }
 
     /**
      * Vertex data for feeder processing.

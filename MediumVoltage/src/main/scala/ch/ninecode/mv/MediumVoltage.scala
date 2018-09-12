@@ -5,13 +5,11 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
@@ -20,7 +18,10 @@ import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
+import ch.ninecode.model.EquipmentContainer
+import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -150,7 +151,9 @@ with Serializable
         val more_nodes: RDD[(String, FeederNode)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (nodes).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
         val more_edges: RDD[(String, GLMEdge)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (edges).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
 
-        val feeders: RDD[FeederArea] = more_nodes.groupByKey.join (more_edges.groupByKey).map (x ⇒ FeederArea (x._1, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
+        val feeders = more_nodes.groupByKey.join (more_edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
+            .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
+            .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
