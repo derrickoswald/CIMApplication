@@ -1,5 +1,7 @@
 package ch.ninecode.mv
 
+import java.io.Closeable
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
@@ -45,6 +47,12 @@ with Serializable
     val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
     if (use_utc)
         date_format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+
+    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    {
+        try { block (resource) }
+        finally { resource.close () }
+    }
 
     def run (): Long =
     {
@@ -159,11 +167,20 @@ with Serializable
         {
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
+            val normally_open = "%s,OPEN".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
+            val normally_closed = "%s,CLOSED".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
+            // add a player file for each switch
+            area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
+                edge ⇒
+                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", if (feeder.switchClosed (edge.switch)) normally_closed else normally_open)
+            )
             log.info (area.feeder)
             1
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
+
+        // for filename in STA*; do pushd $filename; gridlabd $filename; popd ; done;
 
         count
     }

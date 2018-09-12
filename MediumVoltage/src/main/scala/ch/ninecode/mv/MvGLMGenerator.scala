@@ -26,7 +26,7 @@ case class MvGLMGenerator (
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-extends GLMGenerator (one_phase, temperature, date_format) // ToDo: get library base temperature and target temperature as command line input
+extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = true) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = feeder.station + "_" + "%03d".format (feeder.number)
 
@@ -111,6 +111,6 @@ extends GLMGenerator (one_phase, temperature, date_format) // ToDo: get library 
         |            nominal_voltage %sV;
         |            load_class R;
         |        };
-        """.stripMargin.format (transformer.node1, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10, 0)), 400.0)
+        """.stripMargin.format (transformer.node1, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (100000, 0)), 400.0)
     }
 }
