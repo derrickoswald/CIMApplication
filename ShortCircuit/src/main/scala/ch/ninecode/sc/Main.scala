@@ -266,7 +266,7 @@ object Main
         val ele = if (tns.isEmpty || tns.head._2.isEmpty)
         {
             val ntp = new CIMNetworkTopologyProcessor (session, storage)
-            val elements = ntp.process (false)
+            val elements = ntp.process (true)
             log.info (elements.count () + " elements")
             val topo = System.nanoTime ()
             log.info ("topology: " + (topo - read) / 1e9 + " seconds")
