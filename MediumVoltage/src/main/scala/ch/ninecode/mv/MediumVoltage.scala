@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
-import scala.io.Source
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -20,10 +19,7 @@ import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
-import ch.ninecode.model.EquipmentContainer
-import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -67,10 +63,7 @@ with Serializable
         reader_options.put ("ch.ninecode.cim.do_topo", "false")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
-        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
-            elements.explain
-        else
-            log.info (elements.count () + " elements")
+        log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
@@ -130,7 +123,7 @@ with Serializable
             // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
             val id_cn_1 = args.head._1.head._2.TopologicalNode
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-            AbgangKreis.toGLMEdge (transformers) (args.map (_._2), id_cn_1, id_cn_2)
+            AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
         val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
 
@@ -162,7 +155,7 @@ with Serializable
                 edge ⇒
                     gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", if (feeder.switchClosed (edge.switch)) normally_closed else normally_open)
             )
-            log.info (area.feeder)
+            log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)

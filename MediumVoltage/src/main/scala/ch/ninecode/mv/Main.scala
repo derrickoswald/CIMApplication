@@ -65,6 +65,8 @@ object Main
          storage: String = "MEMORY_AND_DISK_SER",
          dedup: Boolean = false,
          three: Boolean = false,
+         base_temperature: Double = 20.0,
+         temperature: Double = 20.0,
          log_level: LogLevels.Value = LogLevels.OFF,
          checkpoint_dir: String = "",
          workdir: String = "",
@@ -77,7 +79,7 @@ object Main
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        note ("Creates GridLAB-D .glm models for each or all medium voltage transformer service areas.\n")
+        note ("Creates GridLAB-D .glm models for all medium voltage feeder service areas.\n")
 
         help ("help").text ("prints this usage text")
 
@@ -126,6 +128,14 @@ object Main
         opt[Unit]("three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [%s]".format (default.three))
+
+        opt[Double]("tbase").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (base_temperature = x)).
+            text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
+
+        opt[Double]("temp").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (temperature = x)).
+            text ("low temperature for maximum fault (°C) [%g]".format (default.temperature))
 
         opt[LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
@@ -263,6 +273,8 @@ object Main
                         verbose = !arguments.quiet,
                         cim_reader_options = ro,
                         three = arguments.three,
+                        base_temperature = arguments.base_temperature,
+                        temperature = arguments.temperature,
                         storage = storage,
                         workdir = workdir,
                         files = arguments.files
