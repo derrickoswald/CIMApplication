@@ -64,7 +64,7 @@ case class ScResult (
     high_ik3pol: Double = 0.0,
     high_ip: Double = 0.0,
     high_sk: Double = 0.0,
-    fuses: List[Double],
+    fuses: List[List[Double]],
     fuse: Double,
     fuseOK: Boolean
 )
