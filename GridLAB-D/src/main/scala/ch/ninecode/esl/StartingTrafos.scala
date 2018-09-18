@@ -12,7 +12,7 @@ import org.apache.spark.graphx.VertexId
  * @param z The per unit transformer impedance.
  * @param ratedS The transformer rated power.
  */
-case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: String, z: Complex, ratedS: Double) extends Serializable
+case class StartingTrafos (osPin: VertexId, nsPin: VertexId, trafo_id: String, z: Complex, ratedS: Double)
 {
     def asString: String = trafo_id
 }

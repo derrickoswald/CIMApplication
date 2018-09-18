@@ -9,7 +9,7 @@ import org.apache.spark.graphx.VertexId
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 
-case class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
+case class Trace (initial: Graph[PreNode, PreEdge])
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 

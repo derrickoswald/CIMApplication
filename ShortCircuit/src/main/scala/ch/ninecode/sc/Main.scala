@@ -21,6 +21,7 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.Complex
+import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
 
 object Main
@@ -320,6 +321,8 @@ object Main
                 configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                 // register CIMReader classes
                 configuration.registerKryoClasses (CIMClasses.list)
+                // register GridLAB-D classes
+                configuration.registerKryoClasses (GridLABD.classes)
                 // register ShortCircuit analysis classes
                 configuration.registerKryoClasses (ShortCircuit.classes)
                 // register GraphX classes

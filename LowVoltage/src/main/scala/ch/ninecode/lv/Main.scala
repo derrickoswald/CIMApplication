@@ -8,15 +8,17 @@ import java.util.Properties
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
+import scopt.OptionParser
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.esl.Einspeiseleistung
+import ch.ninecode.gl.GridLABD
 
 object Main
 {
@@ -200,20 +202,9 @@ object Main
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
                     // register GridLAB-D classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.gl.PreNode],
-                        classOf[ch.ninecode.gl.PreEdge],
-                        classOf[ch.ninecode.gl.PV],
-                        classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                    configuration.registerKryoClasses (GridLABD.classes)
                     // register Einspeiseleistung classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.esl.Experiment],
-                        classOf[ch.ninecode.esl.MaxEinspeiseleistung],
-                        classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-                        classOf[ch.ninecode.esl.PowerFeedingNode],
-                        classOf[ch.ninecode.esl.PreCalculationResults],
-                        classOf[ch.ninecode.esl.Trafokreis],
-                        classOf[ch.ninecode.esl.StartingTrafos]))
+                    configuration.registerKryoClasses (Einspeiseleistung.classes)
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 

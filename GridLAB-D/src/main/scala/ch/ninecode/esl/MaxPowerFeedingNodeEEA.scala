@@ -21,7 +21,6 @@ case class MaxPowerFeedingNodeEEA (
     eea: Iterable[PV],
     reason: String,
     details: String)
-    extends Serializable
 {
     def nis_number: String =
     {

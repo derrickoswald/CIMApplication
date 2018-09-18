@@ -23,12 +23,14 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
-case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
-extends CIMRDD
-with Serializable
+case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) extends CIMRDD
 {
     if (options.verbose)
+    {
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.Feeder").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
+    }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -164,5 +166,30 @@ with Serializable
         // for filename in STA*; do pushd $filename; gridlabd $filename; popd ; done;
 
         count
+    }
+}
+
+object MediumVoltage
+{
+    /**
+     * The list of classes that can be persisted.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.mv.AbgangKreis],
+            classOf[ch.ninecode.mv.EdgeData],
+            classOf[ch.ninecode.mv.Feeder],
+            classOf[ch.ninecode.mv.FeederArea],
+            classOf[ch.ninecode.mv.FeederNode],
+            classOf[ch.ninecode.mv.MediumVoltage],
+            classOf[ch.ninecode.mv.MediumVoltageOptions],
+            classOf[ch.ninecode.mv.MediumVoltageGLMGenerator],
+            classOf[ch.ninecode.mv.MvGLMGenerator],
+            classOf[ch.ninecode.mv.PlayerSwitchEdge],
+            classOf[ch.ninecode.mv.USTKreis],
+            classOf[ch.ninecode.mv.USTNode],
+            classOf[ch.ninecode.mv.VertexData]
+        )
     }
 }

@@ -34,7 +34,7 @@ import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
 import ch.ninecode.model.Switch
 
-class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
+class PowerFeeding (initial: Graph[PreNode, PreEdge])
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 

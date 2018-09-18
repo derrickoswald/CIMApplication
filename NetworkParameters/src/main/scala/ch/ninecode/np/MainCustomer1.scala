@@ -1,19 +1,21 @@
 package ch.ninecode.np
 
 import java.io.UnsupportedEncodingException
-import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
+import scopt.OptionParser
+
 import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
@@ -240,6 +242,8 @@ object MainCustomer1
                     configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
+                    // register GraphX classes
+                    GraphXUtils.registerKryoClasses (configuration)
                     configuration.set ("spark.ui.showConsoleProgress", "false")
 
                     // make a Spark session

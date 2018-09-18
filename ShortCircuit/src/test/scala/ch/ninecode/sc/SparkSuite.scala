@@ -12,14 +12,12 @@ import java.util
 import java.util.zip.ZipInputStream
 
 import scala.collection.JavaConverters._
-
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
-
 import org.scalatest.fixture.FunSuite
-
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
 
 class SparkSuite
     extends
@@ -176,6 +174,8 @@ class SparkSuite
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
+        // register GridLAB-D classes
+        configuration.registerKryoClasses (GridLABD.classes)
         // register ShortCircuit analysis classes
         configuration.registerKryoClasses (ShortCircuit.classes)
         // register GraphX classes

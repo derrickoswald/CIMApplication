@@ -783,10 +783,6 @@ object ShortCircuit
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.gl.PreNode],
-            classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
-            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
             classOf[ch.ninecode.sc.Impedanzen],
             classOf[ch.ninecode.sc.ScEdge],
             classOf[ch.ninecode.sc.ScError],
@@ -796,6 +792,7 @@ object ShortCircuit
             classOf[ch.ninecode.sc.ScResult],
             classOf[ch.ninecode.sc.ShortCircuit],
             classOf[ch.ninecode.sc.ShortCircuitOptions],
-            classOf[ch.ninecode.sc.StartingTrafos])
+            classOf[ch.ninecode.sc.StartingTrafos]
+        )
     }
 }

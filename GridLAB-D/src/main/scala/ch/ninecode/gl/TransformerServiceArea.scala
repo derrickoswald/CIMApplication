@@ -23,9 +23,7 @@ import ch.ninecode.model._
  * @param session the Spark session object
  * @param debug flag to turn on debug output
  */
-case class TransformerServiceArea (session: SparkSession, debug: Boolean = false)
-    extends CIMRDD
-        with Serializable
+case class TransformerServiceArea (session: SparkSession, debug: Boolean = false) extends CIMRDD
 {
     import session.sqlContext.implicits._
 
@@ -102,23 +100,6 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
                 true
         }
     }
-
-    /**
-     * Vertex data for transformer service area processing.
-     *
-     * @param area_label a user friendly label for the area
-     * @param island the minimum (hash code) of all connected ConnectivityNode (single topological island)
-     * @param island_label a user friendly label for the island
-     */
-    case class VertexData (var area_label: String = "", var island: VertexId = Long.MaxValue, var island_label: String = "") extends Serializable
-
-    /**
-     * Edge data for transformer service area processing.
-     *
-     * @param isConnected <code>true</code> if there is a connection between the islands, i.e. a closed switch,
-     *        which means the islands are in the same transformer service area
-     */
-    case class EdgeData (id: String, isConnected: Boolean) extends Serializable
 
     /**
      * Create a mapping between TopologicalIsland and PowerTransformer(s) with secondary windings in the island.

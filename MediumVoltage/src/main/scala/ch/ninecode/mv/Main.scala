@@ -8,15 +8,15 @@ import java.util.Properties
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
+import org.apache.spark.graphx.GraphXUtils
 
 object Main
 {
@@ -241,15 +241,11 @@ object Main
                         // register CIMReader classes
                         configuration.registerKryoClasses (CIMClasses.list)
                         // register GridLAB-D classes
-                        configuration.registerKryoClasses (Array (
-                            classOf[ch.ninecode.gl.PreNode],
-                            classOf[ch.ninecode.gl.PreEdge],
-                            classOf[ch.ninecode.gl.PV],
-                            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                        configuration.registerKryoClasses (GridLABD.classes)
                         // register Medium Voltage classes
-                        configuration.registerKryoClasses (Array (
-                            classOf[ch.ninecode.mv.USTKreis],
-                            classOf[ch.ninecode.mv.USTNode]))
+                        configuration.registerKryoClasses (MediumVoltage.classes)
+                        // register GraphX classes
+                        GraphXUtils.registerKryoClasses (configuration)
                     }
                     configuration.set ("spark.ui.showConsoleProgress", "false")
 

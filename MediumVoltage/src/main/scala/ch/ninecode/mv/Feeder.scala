@@ -10,13 +10,13 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Bay
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Conductor
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Cut
 import ch.ninecode.model.Disconnector
@@ -44,7 +44,7 @@ import ch.ninecode.model.VoltageLevel
  * @param session the Spark session object
  * @param debug flag to turn on debug output
  */
-case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean = false) extends CIMRDD with Serializable
+case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean = false) extends CIMRDD
 {
     if (debug)
         org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.DEBUG)
@@ -101,13 +101,13 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     // is the cable an external cable
-    def externalCable (cable: ACLineSegment): Boolean =
+    def externalCable (cable: Conductor): Boolean =
     {
-        // cable.Conductor.ConductingEquipment.Equipment.EquipmentContainer == null (those without a container) doesn't work: the first cable out of a station also has the station as a container
-        // cable.Conductor.len != 0.0 is our best guess (nis_el_int_connection is given a length of zero)
-        // could also use !cable.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName.contains ("nis_el_int_connection")
-        // could also use Complex (cable.r, cable.x) == Complex (0)
-        cable.Conductor.len != 0.0
+        // cable.ConductingEquipment.Equipment.EquipmentContainer == null (those without a container) doesn't work: the first cable out of a station also has the station as a container
+        // cable.len != 0.0 is our best guess (nis_el_int_connection is given a length of zero)
+        // could also use !cable.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName.contains ("nis_el_int_connection")
+        // could also use Complex (aclinesegment.r, aclinesegment.x) == Complex (0)
+        cable.len != 0.0
     }
 
     /**
@@ -121,7 +121,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         element match
         {
             // trace only external cables
-            case cable: ACLineSegment ⇒ externalCable (cable)
+            case conductor: Conductor ⇒ externalCable (conductor)
+            case cable: ACLineSegment ⇒ externalCable (cable.Conductor)
             // switches have to be closed and not be in a substation
             case switch: Switch ⇒ switchClosed (switch) && fieldSwitch (switch)
             case cut: Cut ⇒ switchClosed (cut.Switch) && fieldSwitch (cut.Switch)
@@ -232,23 +233,6 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         ret.name = "feederStations"
         ret
     }
-
-    /**
-     * Vertex data for feeder processing.
-     *
-     * @param id the mRID of the node
-     * @param feeders the feeders connected to this node
-     */
-    case class VertexData (id: String, feeders: Set[String]) extends Serializable
-
-    /**
-     * Edge data for feeder processing.
-     *
-     * @param id the mRID of the edge
-     * @param isConnected <code>true</code> if there is a connection between the nodes, i.e. a closed switch,
-     *        which means the nodes are part of the same feeder
-     */
-    case class EdgeData (id: String, isConnected: Boolean) extends Serializable
 
     /**
      * Get the list of nodes.
