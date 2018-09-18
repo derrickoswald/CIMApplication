@@ -106,7 +106,7 @@ class PowerFeedingSuite extends FunSuite
 
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
-        val power_feeding = new PowerFeeding(initial)
+        val power_feeding = new PowerFeeding(session, initial)
 
         val start_ids = transformers.map (PowerFeeding.trafo_mapping)
         val graph = power_feeding.trace(start_ids)

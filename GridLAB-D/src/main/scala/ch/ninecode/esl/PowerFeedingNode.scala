@@ -6,7 +6,7 @@ import ch.ninecode.gl.GLMNode
  * Vertex data for the precalculation Pregel algorithm.
  *
  * @param id_seq Node mRID.
- * @param voltage Nomival voltage.
+ * @param voltage Nominal voltage.
  * @param source_obj Feeding transformer.
  * @param sum_r Summation of resistance values in the path from the feeding transformer to this node.
  * @param min_ir Minimum conductor current rating in the path from the feeding transformer to this node.

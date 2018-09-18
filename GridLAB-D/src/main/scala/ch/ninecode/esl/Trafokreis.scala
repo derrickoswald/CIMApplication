@@ -34,7 +34,7 @@ case class Trafokreis
     val window: Int = 3 * 60 // window size in simulated seconds per experiment
     val margin: Double = options.precalc_factor // check up to 50% over the precalculated value
     val step: Double = 10000.0
-    def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.max_power_feeding > 1000.0 // don't do houses where we already know it's less than a kilowatt
+    def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
     {
         val house = h._1.nis_number // the house under test
