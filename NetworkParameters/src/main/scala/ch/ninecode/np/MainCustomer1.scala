@@ -64,7 +64,11 @@ object MainCustomer1
 
         quiet: Boolean = false,
         master: String = "",
-        opts: Map[String, String] = Map (),
+        opts: Map[String, String] = Map (
+            "spark.graphx.pregel.checkpointInterval" → "8",
+            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" → "false"
+        ),
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
@@ -114,7 +118,7 @@ object MainCustomer1
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) ⇒ c.copy (opts = x)).
+            action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
@@ -239,12 +243,10 @@ object MainCustomer1
                     }
 
                     val storage = StorageLevel.fromString (arguments.storage)
-                    configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
                     // register GraphX classes
                     GraphXUtils.registerKryoClasses (configuration)
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()

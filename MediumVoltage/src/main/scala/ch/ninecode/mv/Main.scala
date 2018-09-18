@@ -61,7 +61,11 @@ object Main
 
          quiet: Boolean = false,
          master: String = "",
-         opts: Map[String,String] = Map(),
+         opts: Map[String, String] = Map (
+             "spark.graphx.pregel.checkpointInterval" → "8",
+             "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+             "spark.ui.showConsoleProgress" → "false"
+         ),
          storage: String = "MEMORY_AND_DISK_SER",
          dedup: Boolean = false,
          three: Boolean = false,
@@ -114,7 +118,7 @@ object Main
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) => c.copy (opts = x)).
+            action ((x, c) => c.copy (opts = c.opts ++ x)).
             text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage_level").
@@ -141,7 +145,7 @@ object Main
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt[String]("checkpointdir").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
 
@@ -247,7 +251,6 @@ object Main
                         // register GraphX classes
                         GraphXUtils.registerKryoClasses (configuration)
                     }
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()

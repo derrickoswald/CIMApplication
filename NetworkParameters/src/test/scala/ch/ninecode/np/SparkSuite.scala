@@ -168,6 +168,7 @@ extends FunSuite
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "1g")
         configuration.set ("spark.ui.port", "4041")
+        configuration.set ("spark.graphx.pregel.checkpointInterval", "8")
         configuration.set ("spark.ui.showConsoleProgress", "false")
         configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 

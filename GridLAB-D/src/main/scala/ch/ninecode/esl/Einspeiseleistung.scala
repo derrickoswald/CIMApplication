@@ -626,7 +626,7 @@ object Einspeiseleistung
             classOf[ch.ninecode.esl.PowerFeedingNode],
             classOf[ch.ninecode.esl.PreCalculationResults],
             classOf[ch.ninecode.esl.StartingTrafos],
-            classOf[ch.ninecode.esl.Trafokreis],
+            classOf[ch.ninecode.esl.Trafokreis]
         )
     }
 }
