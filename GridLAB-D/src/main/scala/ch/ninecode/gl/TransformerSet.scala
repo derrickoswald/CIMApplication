@@ -304,7 +304,10 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
         val parallel = (inv._1.reciprocal, inv._2)
 
         // per unit impedance
-        (parallel._1 / base_ohms, parallel._2)
+        if (0.0 == base_ohms)
+            (Complex (2.397460317, 16.07618325), true)
+        else
+            (parallel._1 / base_ohms, parallel._2)
     }
 
     override def toString: String =

@@ -145,6 +145,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val feeders = more_nodes.groupByKey.join (more_edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
             .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
+        log.info ("%s feeders found".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {

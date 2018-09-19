@@ -185,31 +185,31 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         ret
     }
 
-    def feederStations: RDD[(String, Int, String, Element)] =
+    def feederStations: RDD[(String, String, String, Element)] =
     {
-        def parseNumber (description: String): Int =
+        def parseNumber (description: String): String =
         {
             val trigger = "Abgang nummer "
             if (null == description)
-                0
+                "0"
             else
             {
                 val index = description.indexOf (trigger)
                 if (-1 == index)
-                    0
+                    "0"
                 else
                 {
                     val array = description.substring (trigger.length).split (" ")
                     if (0 == array.length)
-                        0
+                        "0"
                     else
-                        array(0).toInt
+                        array(0)
                 }
             }
         }
 
         // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
-        def station_fn (x: (Connector, Element)): (String, Int, String, Element) =
+        def station_fn (x: (Connector, Element)): (String, String, String, Element) =
         {
             val description = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
             val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
