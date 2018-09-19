@@ -15,6 +15,8 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -149,14 +151,23 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
+            if (options.verbose) // re-set the log level on each worker
+                org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
             val normally_open = "%s,OPEN".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
             val normally_closed = "%s,CLOSED".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
+            // for switches on the boundary, we need to force them to be normally closed, so make a list of interior node ids
+            val n = area.nodes.map (_.id).toArray
             // add a player file for each switch
             area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
                 edge ⇒
-                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", if (feeder.switchClosed (edge.switch)) normally_closed else normally_open)
+                {
+                    val boundary = !n.contains (edge.cn1) || !n.contains (edge.cn2)
+                    val state = if (boundary) normally_closed else if (feeder.switchClosed (edge.switch)) normally_closed else normally_open
+                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", state)
+                }
             )
             log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
@@ -164,7 +175,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 
-        // for filename in STA*; do pushd $filename; gridlabd $filename; popd ; done;
+        // for filename in STA*; do echo $filename; pushd $filename > /dev/null; gridlabd $filename; popd > /dev/null; done;
 
         count
     }

@@ -37,6 +37,7 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
     override def transformers: Array[TransformerSet] = feeder.edges.filter (_.isInstanceOf[TransformerEdge]).map (_.asInstanceOf[TransformerEdge]).map (_.transformer).toArray
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
+        .groupBy (_._id).values.map (_.head) // take only one feeder per node
 
     /**
      * Add meter elements for nodes on the edge of the network.
@@ -49,7 +50,7 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
      */
     override def extra: Iterable[String] =
     {
-        val n = feeder.nodes.map (_.id).toArray
+        val n = feeder.nodes.map (_._id).toArray
         def ends_voltages (edge: GLMEdge): Iterable[(String, Double)] =
         {
             edge match
@@ -86,14 +87,33 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         """
         |        object meter
         |        {
-        |            name "%s";
+        |            name "%s_swing";
         |            phases %s;
         |            bustype SWING;
         |            nominal_voltage %sV;
         |            %s %s;
         |        };
+        |
+        |        object switch
+        |        {
+        |            name "%s_switch";
+        |            phases %s;
+        |            from "%s_swing";
+        |            to "%s";
+        |            status "CLOSED";
+        |        };
+        |
+        |        object meter
+        |        {
+        |            name "%s";
+        |            phases %s;
+        |            bustype PQ;
+        |            nominal_voltage %sV;
+        |        };
         |""".stripMargin.format (
-            swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one ("voltage"), three_or_one (Complex (swing.nominal_voltage, 0.0)))
+            swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one ("voltage"), three_or_one (Complex (swing.nominal_voltage, 0.0)),
+            swing.id, if (one_phase) "AN" else "ABCN", swing.id, swing._id,
+            swing._id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage)
     }
 
     override def emit_transformer (transformer: TransformerSet): String =
