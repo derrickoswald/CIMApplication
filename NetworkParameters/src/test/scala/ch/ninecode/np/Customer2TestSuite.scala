@@ -23,6 +23,7 @@ extends FunSuite
             "--csv1", PRIVATE_FILE_DEPOT + CSV_FILE_1,
             "--csv2", PRIVATE_FILE_DEPOT + CSV_FILE_2,
             "--export", "target/" + FILENAME,
+            "--checkpoint", "/tmp/checkpoint",
             PRIVATE_FILE_DEPOT + FILENAME))
     }
 }

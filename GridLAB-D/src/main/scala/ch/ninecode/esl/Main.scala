@@ -8,15 +8,17 @@ import java.util.Properties
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
+import scopt.OptionParser
 
 import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
 
 object Main
 {
@@ -40,7 +42,7 @@ object Main
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
-    (s) =>
+    s =>
         {
             var ret = Map[String, String] ()
             val ss = s.split (",")
@@ -56,7 +58,11 @@ object Main
     case class Arguments (
         quiet: Boolean = false,
         master: String = "",
-        opts: Map[String,String] = Map(),
+        opts: Map[String, String] = Map (
+            "spark.graphx.pregel.checkpointInterval" → "8",
+            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" → "false"
+        ),
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
         three: Boolean = false,
@@ -79,49 +85,62 @@ object Main
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
+        note ("Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.\n")
+
+        help ("help").text ("prints this usage text")
+
+        version ("version").text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        ))
+
+        val default = new Arguments
+
         opt[Unit]('q', "quiet").
             action ((_, c) => c.copy (quiet = true)).
-            text ("suppress informational messages")
+            text ("suppress informational messages [false]")
 
         opt[String]('m', "master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
         opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) => c.copy (opts = x)).
-            text ("other Spark options")
+            action ((x, c) => c.copy (opts = c.opts ++ x)).
+            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]('g', "storage_level").
             action ((x, c) => c.copy (storage = x)).
-            text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
+            text ("storage level for RDD serialization [%s]".format (default.storage))
 
         opt[Unit]('u', "deduplicate").
             action ((_, c) => c.copy (dedup = true)).
-            text ("de-duplicate input (striped) files")
+            text ("de-duplicate input (striped) files [false]")
 
         opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
-            text ("use three phase computations")
+            text ("use three phase computations [false]")
 
         opt[Unit]('p', "precalculation").
             action ((_, c) => c.copy (precalculation = true)).
-            text ("calculates threshold and EEA existence for all HAS, assuming no EEA")
+            text ("only calculates threshold and EEA existence for all HAS, assuming no EEA [false]")
 
         opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
-            text ("file of transformer names (one per line) to process")
+            text ("file of transformer names (one per line) to process [%s]".format (default.trafos))
 
         opt[Unit]('x', "export_only").
             action ((_, c) => c.copy (export_only = true)).
-            text ("generates glm files only - no solve or analyse operations")
+            text ("generates glm files only - no solve or analyse operations [false]")
 
         opt[Unit]('a', "all").
             action ((_, c) => c.copy (all = true)).
-            text ("process all transformers (not just those with EEA)")
+            text ("process all transformers (not just those with EEA) [false]")
 
         opt[Unit]('e', "erase").
             action ((_, c) => c.copy (erase = true)).
-            text ("clean up (delete) simulation files")
+            text ("clean up (delete) simulation files [false]")
 
         opt[LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
@@ -141,17 +160,15 @@ object Main
 
         opt[Int]('d', "delta").valueName ("D").
             action ((x, c) => c.copy (delta = x)).
-            text ("delta power difference threshold for reference comparison")
+            text ("delta power difference threshold for reference comparison [%g]".format (default.delta))
 
         opt[Double]('f', "precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
-            text ("factor to multiply precalculation results for gridlabd")
+            text ("factor to multiply precalculation results for gridlabd [%g]".format (default.precalc_factor))
 
         opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
-
-        help ("help").text ("prints this usage text")
 
         arg[String]("<CIM> <CIM> ...").unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
@@ -240,22 +257,12 @@ object Main
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
                     // register GridLAB-D classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.gl.PreNode],
-                        classOf[ch.ninecode.gl.PreEdge],
-                        classOf[ch.ninecode.gl.PV],
-                        classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                    configuration.registerKryoClasses (GridLABD.classes)
                     // register Einspeiseleistung classes
-                    configuration.registerKryoClasses (Array (
-                        classOf[ch.ninecode.esl.Experiment],
-                        classOf[ch.ninecode.esl.MaxEinspeiseleistung],
-                        classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-                        classOf[ch.ninecode.esl.PowerFeedingNode],
-                        classOf[ch.ninecode.esl.PreCalculationResults],
-                        classOf[ch.ninecode.esl.Trafokreis],
-                        classOf[ch.ninecode.esl.StartingTrafos]))
+                    configuration.registerKryoClasses (Einspeiseleistung.classes)
+                    // register GraphX classes
+                    GraphXUtils.registerKryoClasses (configuration)
                 }
-                configuration.set ("spark.ui.showConsoleProgress", "false")
 
                 // make a Spark session
                 val session = SparkSession.builder ().config (configuration).getOrCreate ()

@@ -21,9 +21,7 @@ case class PV (
     node: String,
     solar: SolarGeneratingUnit)
 
-case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_level: StorageLevel)
-extends CIMRDD
-with Serializable
+case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_level: StorageLevel) extends CIMRDD
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)

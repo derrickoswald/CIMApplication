@@ -59,7 +59,7 @@ object AbgangKreis
      * @param cn2 the mRID of the node connected to the other end
      * @return a type of edge
      */
-    def toGLMEdge (transformers: Array[TransformerSet]) (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
+    def toGLMEdge (transformers: Array[TransformerSet], base_temperature: Double) (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head
@@ -92,15 +92,11 @@ object AbgangKreis
             case "Sectionaliser" ⇒
                 PlayerSwitchEdge (cn1, cn2, element.asInstanceOf[Sectionaliser].Switch,  false)
             case "Conductor" ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor))
-            //                base_temperature: Double = 20.0,
-            //                target_temperature: Double = 20.0,
+                LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
             case "ACLineSegment" ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor))
-            //                base_temperature: Double = 20.0,
-            //                target_temperature: Double = 20.0,
+                LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
             case "PowerTransformer" ⇒

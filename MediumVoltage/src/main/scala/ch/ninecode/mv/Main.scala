@@ -8,15 +8,15 @@ import java.util.Properties
 import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import scopt.OptionParser
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
+import org.apache.spark.graphx.GraphXUtils
 
 object Main
 {
@@ -61,10 +61,16 @@ object Main
 
          quiet: Boolean = false,
          master: String = "",
-         opts: Map[String,String] = Map(),
+         opts: Map[String, String] = Map (
+             "spark.graphx.pregel.checkpointInterval" → "8",
+             "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+             "spark.ui.showConsoleProgress" → "false"
+         ),
          storage: String = "MEMORY_AND_DISK_SER",
          dedup: Boolean = false,
          three: Boolean = false,
+         base_temperature: Double = 20.0,
+         temperature: Double = 20.0,
          log_level: LogLevels.Value = LogLevels.OFF,
          checkpoint_dir: String = "",
          workdir: String = "",
@@ -77,7 +83,7 @@ object Main
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        note ("Creates GridLAB-D .glm models for each or all medium voltage transformer service areas.\n")
+        note ("Creates GridLAB-D .glm models for all medium voltage feeder service areas.\n")
 
         help ("help").text ("prints this usage text")
 
@@ -112,7 +118,7 @@ object Main
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) => c.copy (opts = x)).
+            action ((x, c) => c.copy (opts = c.opts ++ x)).
             text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage_level").
@@ -127,11 +133,19 @@ object Main
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [%s]".format (default.three))
 
+        opt[Double]("tbase").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (base_temperature = x)).
+            text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
+
+        opt[Double]("temp").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (temperature = x)).
+            text ("low temperature for maximum fault (°C) [%g]".format (default.temperature))
+
         opt[LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt[String]("checkpointdir").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
 
@@ -231,17 +245,12 @@ object Main
                         // register CIMReader classes
                         configuration.registerKryoClasses (CIMClasses.list)
                         // register GridLAB-D classes
-                        configuration.registerKryoClasses (Array (
-                            classOf[ch.ninecode.gl.PreNode],
-                            classOf[ch.ninecode.gl.PreEdge],
-                            classOf[ch.ninecode.gl.PV],
-                            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+                        configuration.registerKryoClasses (GridLABD.classes)
                         // register Medium Voltage classes
-                        configuration.registerKryoClasses (Array (
-                            classOf[ch.ninecode.mv.USTKreis],
-                            classOf[ch.ninecode.mv.USTNode]))
+                        configuration.registerKryoClasses (MediumVoltage.classes)
+                        // register GraphX classes
+                        GraphXUtils.registerKryoClasses (configuration)
                     }
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()
@@ -263,6 +272,8 @@ object Main
                         verbose = !arguments.quiet,
                         cim_reader_options = ro,
                         three = arguments.three,
+                        base_temperature = arguments.base_temperature,
+                        temperature = arguments.temperature,
                         storage = storage,
                         workdir = workdir,
                         files = arguments.files

@@ -4,21 +4,23 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.util.Properties
 
+import scala.collection.mutable.HashMap
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+import scopt.OptionParser
+
+import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.model.Element
-import org.apache.spark.SparkConf
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.LoggerFactory
-import scopt.OptionParser
-
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
 
 object MainCustomer2
 {
@@ -62,7 +64,11 @@ object MainCustomer2
 
         quiet: Boolean = false,
         master: String = "",
-        opts: Map[String, String] = Map (),
+        opts: Map[String, String] = Map (
+            "spark.graphx.pregel.checkpointInterval" → "8",
+            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" → "false"
+        ),
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
@@ -113,7 +119,7 @@ object MainCustomer2
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) ⇒ c.copy (opts = x)).
+            action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
@@ -242,10 +248,10 @@ object MainCustomer2
                     }
 
                     val storage = StorageLevel.fromString (arguments.storage)
-                    configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
+                    // register GraphX classes
+                    GraphXUtils.registerKryoClasses (configuration)
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()

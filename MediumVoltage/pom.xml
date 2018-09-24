@@ -29,7 +29,7 @@
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>

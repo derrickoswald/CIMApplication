@@ -91,6 +91,6 @@ class MediumVoltageSuite extends FunSuite
         val count = ms.run ()
 
         val total = System.nanoTime ()
-        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " UST\n")
+        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " feeders\n")
     }
 }

@@ -7,14 +7,17 @@ import ch.ninecode.model.Element
 /**
  * Vertex data.
  *
- * @param id ConnectivityNode or TopologicalNode MRID.
+ * @param _id ConnectivityNode or TopologicalNode mRID.
  * @param nominal_voltage Node voltage.
  */
 case class FeederNode (
-    id: String,
+    _id: String,
     feeder: Element,
     nominal_voltage: Double)
 extends GLMNode
+{
+    override def id: String = if (null == feeder) _id else feeder.id
+}
 
 object FeederNode
 {

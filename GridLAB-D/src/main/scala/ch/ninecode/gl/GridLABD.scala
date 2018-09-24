@@ -556,3 +556,35 @@ class GridLABD (
     }
 }
 
+object GridLABD
+{
+    /**
+     * The list of classes that can be persisted.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.gl.Complex],
+            classOf[ch.ninecode.gl.FlowDirection],
+            classOf[ch.ninecode.gl.GLMGenerator],
+            classOf[ch.ninecode.gl.GridLABD],
+            classOf[ch.ninecode.gl.Island],
+            classOf[ch.ninecode.gl.LineEdge],
+            classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PreNode],
+            classOf[ch.ninecode.gl.PV],
+            classOf[ch.ninecode.gl.Solar],
+            classOf[ch.ninecode.gl.SwingNode],
+            classOf[ch.ninecode.gl.SwitchEdge],
+            classOf[ch.ninecode.gl.TData],
+            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
+            classOf[ch.ninecode.gl.Trace],
+            classOf[ch.ninecode.gl.Trans],
+            classOf[ch.ninecode.gl.TransformerEdge],
+            classOf[ch.ninecode.gl.TransformerServiceArea],
+            classOf[ch.ninecode.gl.VertexData],
+            classOf[ch.ninecode.gl.EdgeData],
+            classOf[ch.ninecode.gl.TransformerSet]
+        )
+    }
+}

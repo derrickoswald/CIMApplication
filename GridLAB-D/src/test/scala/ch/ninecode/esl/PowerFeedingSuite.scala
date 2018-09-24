@@ -41,20 +41,9 @@ class PowerFeedingSuite extends FunSuite
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.gl.PreNode],
-            classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
-            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        configuration.registerKryoClasses (GridLABD.classes)
         // register Einspeiseleistung classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.esl.Experiment],
-            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
-            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-            classOf[ch.ninecode.esl.PowerFeedingNode],
-            classOf[ch.ninecode.esl.PreCalculationResults],
-            classOf[ch.ninecode.esl.Trafokreis],
-            classOf[ch.ninecode.esl.StartingTrafos]))
+        configuration.registerKryoClasses (Einspeiseleistung.classes)
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
@@ -117,7 +106,7 @@ class PowerFeedingSuite extends FunSuite
 
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
-        val power_feeding = new PowerFeeding(initial)
+        val power_feeding = new PowerFeeding(session, initial)
 
         val start_ids = transformers.map (PowerFeeding.trafo_mapping)
         val graph = power_feeding.trace(start_ids)

@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
-import scala.io.Source
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -16,23 +15,24 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
-import ch.ninecode.model.EquipmentContainer
-import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
-case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions)
-extends CIMRDD
-with Serializable
+case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) extends CIMRDD
 {
     if (options.verbose)
+    {
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.Feeder").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
+    }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -67,10 +67,7 @@ with Serializable
         reader_options.put ("ch.ninecode.cim.do_topo", "false")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
-        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
-            elements.explain
-        else
-            log.info (elements.count () + " elements")
+        log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
@@ -130,7 +127,7 @@ with Serializable
             // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
             val id_cn_1 = args.head._1.head._2.TopologicalNode
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-            AbgangKreis.toGLMEdge (transformers) (args.map (_._2), id_cn_1, id_cn_2)
+            AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
         val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
 
@@ -150,26 +147,61 @@ with Serializable
         val feeders = more_nodes.groupByKey.join (more_edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
             .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
+        log.info ("%s feeders found".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
+            if (options.verbose) // re-set the log level on each worker
+                org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
             val normally_open = "%s,OPEN".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
             val normally_closed = "%s,CLOSED".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
+            // for switches on the boundary, we need to force them to be normally closed, so make a list of interior node ids
+            val n = area.nodes.map (_.id).toArray
             // add a player file for each switch
             area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
                 edge ⇒
-                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", if (feeder.switchClosed (edge.switch)) normally_closed else normally_open)
+                {
+                    val boundary = !n.contains (edge.cn1) || !n.contains (edge.cn2)
+                    val state = if (boundary) normally_closed else if (feeder.switchClosed (edge.switch)) normally_closed else normally_open
+                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", state)
+                }
             )
-            log.info (area.feeder)
+            log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 
-        // for filename in STA*; do pushd $filename; gridlabd $filename; popd ; done;
+        // for filename in STA*; do echo $filename; pushd $filename > /dev/null; gridlabd $filename; popd > /dev/null; done;
 
         count
+    }
+}
+
+object MediumVoltage
+{
+    /**
+     * The list of classes that can be persisted.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.mv.AbgangKreis],
+            classOf[ch.ninecode.mv.EdgeData],
+            classOf[ch.ninecode.mv.Feeder],
+            classOf[ch.ninecode.mv.FeederArea],
+            classOf[ch.ninecode.mv.FeederNode],
+            classOf[ch.ninecode.mv.MediumVoltage],
+            classOf[ch.ninecode.mv.MediumVoltageOptions],
+            classOf[ch.ninecode.mv.MediumVoltageGLMGenerator],
+            classOf[ch.ninecode.mv.MvGLMGenerator],
+            classOf[ch.ninecode.mv.PlayerSwitchEdge],
+            classOf[ch.ninecode.mv.USTKreis],
+            classOf[ch.ninecode.mv.USTNode],
+            classOf[ch.ninecode.mv.VertexData]
+        )
     }
 }

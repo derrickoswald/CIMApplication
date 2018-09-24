@@ -2,13 +2,15 @@ package ch.ninecode.lv
 
 import java.util.HashMap
 
+import org.scalatest.fixture.FunSuite
+
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.scalatest.fixture.FunSuite
 
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
 
 class LowVoltageSuite extends FunSuite
@@ -34,11 +36,7 @@ class LowVoltageSuite extends FunSuite
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.gl.PreNode],
-            classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
-            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
+        configuration.registerKryoClasses (GridLABD.classes)
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture

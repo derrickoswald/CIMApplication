@@ -607,3 +607,26 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         trafo_list.count
     }
 }
+
+object Einspeiseleistung
+{
+    /**
+     * The list of classes that can be persisted.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.esl.Einspeiseleistung],
+            classOf[ch.ninecode.esl.EinspeiseleistungGLMGenerator],
+            classOf[ch.ninecode.esl.EinspeiseleistungOptions],
+            classOf[ch.ninecode.esl.Experiment],
+            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
+            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
+            classOf[ch.ninecode.esl.PowerFeeding],
+            classOf[ch.ninecode.esl.PowerFeedingNode],
+            classOf[ch.ninecode.esl.PreCalculationResults],
+            classOf[ch.ninecode.esl.StartingTrafos],
+            classOf[ch.ninecode.esl.Trafokreis]
+        )
+    }
+}

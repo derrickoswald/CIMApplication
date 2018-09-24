@@ -2,6 +2,7 @@ package ch.ninecode.esl
 
 import java.util.Calendar
 
+import ch.ninecode.cim.CIMRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.graphx.EdgeDirection
@@ -13,30 +14,19 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.Breaker
-import ch.ninecode.model.Cut
-import ch.ninecode.model.Disconnector
-import ch.ninecode.model.Element
-import ch.ninecode.model.Fuse
-import ch.ninecode.model.GroundDisconnector
-import ch.ninecode.model.Jumper
-import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.MktSwitch
-import ch.ninecode.model.ProtectedSwitch
-import ch.ninecode.model.Recloser
-import ch.ninecode.model.Sectionaliser
-import ch.ninecode.model.Switch
+import ch.ninecode.model.EnergyConsumer
+import ch.ninecode.model.Terminal
 
-class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
+class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) extends CIMRDD with Serializable
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // return length, resistance and maximum curret for an edge
     def line_details (edge: PreEdge): (Double, Double, Double) =
@@ -118,8 +108,10 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
         )
     }
 
-    def calc_max_feeding_power(node: PowerFeedingNode): MaxPowerFeedingNodeEEA =
+    def calc_max_feeding_power(args: (PowerFeedingNode, Option[String])): MaxPowerFeedingNodeEEA =
     {
+        val node: PowerFeedingNode = args._1
+        val psrtype: Option[String] = args._2
         val r = node.sum_r
         val v = node.voltage
         val min_ir = node.min_ir
@@ -140,7 +132,7 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
             else
                 (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA(node.id_seq, node.voltage, trafo_id, p_max, null, reason, details)
+        MaxPowerFeedingNodeEEA(node.id_seq, node.voltage, psrtype.orNull, trafo_id, p_max, null, reason, details)
     }
 
     def has(string: String): String =
@@ -150,8 +142,9 @@ class PowerFeeding (initial: Graph[PreNode, PreEdge]) extends Serializable
 
     def get_treshold_per_has(nodes: RDD[PowerFeedingNode]): RDD[MaxPowerFeedingNodeEEA] =
     {
-        val houses = nodes.filter (_.sum_r > 0.0)
-        houses.map (calc_max_feeding_power)
+        val houses: RDD[PowerFeedingNode] = nodes.filter (_.sum_r > 0.0)
+        val psrtype = get[Terminal].keyBy (_.ConductingEquipment).join (get[EnergyConsumer].keyBy(_.id)).values.map (x ⇒ (x._1.TopologicalNode, x._2.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
+        houses.keyBy (_.id_seq).leftOuterJoin (psrtype).values.map (calc_max_feeding_power)
     }
 
 }
@@ -172,7 +165,7 @@ object PowerFeeding
 
     def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
-        val power_feeding = new PowerFeeding(initial)
+        val power_feeding = new PowerFeeding(session, initial)
         val start_ids = transformers.map (trafo_mapping)
 
         val graph = power_feeding.trace (start_ids)

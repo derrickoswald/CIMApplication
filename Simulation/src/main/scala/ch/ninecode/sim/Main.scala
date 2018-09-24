@@ -6,13 +6,15 @@ import java.util.Properties
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
+import scopt.OptionParser
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-import scopt.OptionParser
+
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
 
 object Main
 {
@@ -107,7 +109,7 @@ object Main
                 try
                 {
                     val sep = System.getProperty ("file.separator")
-                    val file = (if (x.startsWith (sep)) x else new java.io.File(".").getCanonicalPath + sep + x)
+                    val file = if (x.startsWith (sep)) x else new java.io.File(".").getCanonicalPath + sep + x
                     val text = scala.io.Source.fromFile (file, "UTF-8").mkString
                     c.copy (simulation = c.simulation :+ text)
                 }
@@ -195,6 +197,8 @@ object Main
                     configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
+                    // register GridLAB-D classes
+                    configuration.registerKryoClasses (GridLABD.classes)
                     // register Simulation analysis classes
                     configuration.registerKryoClasses (Simulation.classes)
                     configuration.set ("spark.ui.showConsoleProgress", "false")
