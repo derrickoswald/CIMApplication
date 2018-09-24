@@ -465,7 +465,7 @@ with Serializable
             }
         }
 
-        initial.pregel (ScMessage (null, null, null, null, null, null), 1000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
+        initial.pregel (ScMessage (null, null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
     def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
@@ -898,9 +898,8 @@ with Serializable
         def toTransformerSet (trafo: String): TransformerSet = transformersets.find (_.transformer_name == trafo).get
         val problem_trafosets = problem_trafos.map (toTransformerSet)
         if (0 != problem_trafos.count)
-            //results = fix (problem_trafosets, results)
-            println("problem trafos: ", problem_trafos.count)
-
+            results = fix (problem_trafosets, results)
+        
         results
     }
 }
