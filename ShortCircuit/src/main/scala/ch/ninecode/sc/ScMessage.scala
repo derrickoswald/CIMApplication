@@ -14,6 +14,6 @@ case class ScMessage (
     source: String,
     ref: Impedanzen,
     edge: Impedanzen,
-    fuses: List[List[Double]],
+    fuses: List[List[(String, Double)]],
     previous_node: String,
     errors: List[ScError])

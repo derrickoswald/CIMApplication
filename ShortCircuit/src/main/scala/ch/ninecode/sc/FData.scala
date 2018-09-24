@@ -31,15 +31,15 @@ object FData
             recommended.filter (_.Ik <= i).last.Rating
         }
     }
-    def fuseOK (ik: Double, fuses: List[List[Double]]): Boolean =
+    def fuseOK (ik: Double, fuses: List[List[(String, Double)]]): Boolean =
     {
         if (null == fuses)
             false
-        else if (fuses.reverse.head.length == 1)
+        else
         {
-            fuse (ik) >= fuses.reverse.head.head
-        } else {
-            fuse (ik/2) >= fuses.reverse.head.head && fuse (ik/2) >= fuses.reverse.head.last
+            var len = fuses.last.length
+            val ok = fuses.last.map(l => fuse(ik / len) >= l._2)
+            ok.forall(identity)
         }
     }
 }

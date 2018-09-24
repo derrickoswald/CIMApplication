@@ -19,7 +19,7 @@ case class ScNode (
     source: String,
     id_prev: String,
     impedance: Impedanzen,
-    fuses: List[List[Double]],
+    fuses: List[List[(String, Double)]],
     errors: List[ScError])
 extends
     Graphable

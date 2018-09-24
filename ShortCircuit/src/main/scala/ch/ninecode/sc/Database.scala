@@ -263,7 +263,7 @@ object Database
                         }
                         else
                         {
-                            datainsert2.setString (18, batch(i).fuses.mkString (","))
+                            datainsert2.setString (18, batch(i).fuseString)
                             datainsert2.setDouble (19, FData.fuse (batch(i).high_ik))
                             datainsert2.setBoolean (20, FData.fuseOK (batch(i).high_ik, batch(i).fuses))
                         }

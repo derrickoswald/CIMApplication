@@ -64,7 +64,7 @@ case class ScResult (
     high_ik3pol: Double = 0.0,
     high_ip: Double = 0.0,
     high_sk: Double = 0.0,
-    fuses: List[List[Double]],
+    fuses: List[List[(String, Double)]],
     fuse: Double,
     fuseOK: Boolean
 )
@@ -74,7 +74,13 @@ case class ScResult (
         low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" +
         imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
         high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
-        (if (null == fuses) "" else fuses.mkString (",")) + ";" + fuse + ";" + fuseOK
+        (if (null == fuses) "" else fuseString) + ";" + fuse + ";" + fuseOK
+        
+    def fuseString: String =
+    {
+        val s = fuses.map(_.map(_._2).mkString("+")).mkString(",")
+        s
+    }
 }
 
 object ScResult
