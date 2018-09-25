@@ -3,8 +3,8 @@ package ch.ninecode.mv
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.scalatest.fixture.FunSuite
-
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
 
 class MediumVoltageSuite extends FunSuite
 {
@@ -22,19 +22,16 @@ class MediumVoltageSuite extends FunSuite
         configuration.setAppName ("MediumVoltageSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "4g")
-        //configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
+        configuration.set ("spark.executor.memory", "1g")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
+        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
-        configuration.registerKryoClasses (Array (
-            classOf[ch.ninecode.gl.PreNode],
-            classOf[ch.ninecode.gl.PreEdge],
-            classOf[ch.ninecode.gl.PV],
-            classOf[ch.ninecode.gl.ThreePhaseComplexDataElement]))
-        configuration.set ("spark.ui.showConsoleProgress", "false")
+        configuration.registerKryoClasses (GridLABD.classes)
+        // register MediumVoltage classes
+        configuration.registerKryoClasses (MediumVoltage.classes)
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN

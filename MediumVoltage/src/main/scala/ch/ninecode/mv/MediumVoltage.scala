@@ -6,22 +6,23 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
+import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -95,16 +96,40 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
 
         // feeder service area calculations
         val feeder = Feeder (session, options.storage)
-        val nodes_feeders = feeder.getFeederMap.filter (_._2 != null) // (nodeid, feederid)
+        val nodes_feeders = feeder.identifyFeeders.filter (_._2 != null) // (nodeid, feederid)
 
-        // get a map of voltages
-        // ToDo: fix this 1kV multiplier on the voltages
+        // get a map of voltage for each TopologicalNode starting from Terminal elements
+        // ToDo: fix these 1kV multiplier on the voltages
+        log.info ("creating nodes")
         val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
-        val ff: RDD[(String, TopologicalNode)] = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).values
-        val nodes: RDD[(String, FeederNode)] = ff.keyBy (_._2.id).leftOuterJoin (feeder.feederNodes).values
-                        .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, 0.0))))
+        val end_voltages = getOrElse[PowerTransformerEnd].map (
+            x ⇒
+            {
+                val voltage = voltages.getOrElse (x.TransformerEnd.BaseVoltage, x.ratedU * 1000.0)
+                (x.TransformerEnd.Terminal, voltage)
+            }
+        )
+        val zeros = end_voltages.filter (_._2 == 0.0)
+        if (!zeros.isEmpty ())
+            log.warn ("""transformer ends with no nominal voltage, e.g. %s""".format (zeros.take (5).map (_._1).mkString (",")))
+        val equipment_voltages = getOrElse[Terminal].keyBy (_.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).values.map (
+            x ⇒
+            {
+                val voltage = voltages.getOrElse (x._2.BaseVoltage, 0.0)
+                (x._1.id, voltage)
+            }
+        )
+        val nodevoltages = end_voltages.filter (_._2 != 0.0).union (equipment_voltages.filter (_._2 != 0))
+            .join (getOrElse[Terminal].keyBy (_.id)).values
+            .map (x ⇒ (x._2.TopologicalNode, x._1))
+
+        // put it all together
+        val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
+        val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
+            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0)))))
 
         // get equipment with nodes & terminals
+        log.info ("creating edges")
         val gg: RDD[(String, Iterable[(String, Terminal)])] = get[Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
         // eliminate 0Ω links
         val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
@@ -131,23 +156,12 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         }
         val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
 
-        // OK, so there are nodes and edges identified by feeder, now we need to combine them
-        // we need a "touches" list that says feeder A touches feeder B through open switch X
-        val crosspoints: RDD[(String, PlayerSwitchEdge)] = edges.filter (_._2.isInstanceOf[PlayerSwitchEdge]).map (x ⇒ (x._1, x._2.asInstanceOf[PlayerSwitchEdge])) // (feederid, switch)
-        val links: RDD[(String, String)] = crosspoints.flatMap (x ⇒ List ((x._1, x._2.cn1), (x._1, x._2.cn2))).map (_.swap).join (nodes_feeders).values.filter (x ⇒ x._1 != x._2) // (feederid, otherfeederid)
-        val bidirection_links = links.flatMap (x ⇒ List (x, x.swap)).distinct // (feederid, otherfeederid)
-
-        // this is the list of feeder elements with all attached feeder names - including it's own
-        val feeder_mapping: RDD[(Element, Iterable[String])] = feeder.feeders.keyBy (_.id).join (bidirection_links).values.groupByKey.map (x ⇒ (x._1, Seq (x._1.id) ++ x._2))
-
-        // expand the list of nodes and edges to include one copy for each feedermap element
-        val more_nodes: RDD[(String, FeederNode)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (nodes).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
-        val more_edges: RDD[(String, GLMEdge)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (edges).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
-
-        val feeders = more_nodes.groupByKey.join (more_edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
+        // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
+        log.info ("creating models")
+        val feeders = nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
             .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
-        log.info ("%s feeders found".format (feeders.count))
+        log.info ("%s feeders".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
@@ -173,6 +187,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
             1
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
+        log.info ("exporting models")
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 
         // for filename in STA*; do echo $filename; pushd $filename > /dev/null; gridlabd $filename; popd > /dev/null; done;

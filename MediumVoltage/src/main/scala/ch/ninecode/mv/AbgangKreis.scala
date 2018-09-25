@@ -61,6 +61,8 @@ object AbgangKreis
      */
     def toGLMEdge (transformers: Array[TransformerSet], base_temperature: Double) (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
+        case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
+
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head
         val clazz = element.getClass.getName
@@ -102,10 +104,15 @@ object AbgangKreis
             case "PowerTransformer" ⇒
                 // find the transformer in the list
                 val t = transformers.find (_.transformers.map (_.transformer.id).contains (element.id)).orNull
-                TransformerEdge (t.node0, t.node1, t)
+                if (null == t)
+                {
+                    println ("""no transformer found for %s""".format (element.id)) // ToDo: log somehow
+                    fakeEdge (element.id, cn1, cn2)
+                }
+                else
+                    TransformerEdge (t.node0, t.node1, t)
             case _ ⇒
                 println ("""edge %s has unhandled class '%s'""".format (element.id, cls)) // ToDo: log somehow
-                case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
                 fakeEdge (element.id, cn1, cn2)
         }
     }

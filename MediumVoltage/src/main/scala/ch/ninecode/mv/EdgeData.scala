@@ -3,8 +3,10 @@ package ch.ninecode.mv
 /**
  * Edge data for feeder processing.
  *
+ * Each edge represents an open switch that separates different TopologicalIsland.
+ *
  * @param id the mRID of the edge
- * @param isConnected <code>true</code> if there is a connection between the nodes, i.e. a closed switch,
- *        which means the nodes are part of the same feeder
+ * @param island1 mRID of the island on one side
+ * @param island2 mRID of the island on the other side
  */
-case class EdgeData (id: String, isConnected: Boolean)
+case class EdgeData (id: String, island1: String, island2: String)

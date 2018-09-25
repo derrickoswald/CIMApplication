@@ -10,6 +10,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
@@ -143,7 +144,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     /**
-     * Checks that the object is a Connector at a medium voltage with the right PSRType
+     * Checks that the object is a Connector at a medium voltage with the right PSRType.
+     *
      * @param medium_voltages the list of acceptable medium voltage mRID values
      * @param psr_types the list of acceptable PSRType values
      * @param element the element to check
@@ -161,6 +163,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         }
     }
 
+    /**
+     * The RDD of feeder objects - elements where isFeeder is true.
+     *
+     * @return The RDD of feeders (usually Connector).
+     */
     def feeders: RDD[Element] =
     {
         // get the list of M5 voltages
@@ -176,12 +183,34 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         ret
     }
 
+    /**
+     * The RDD of node mRID to feeder objects mapping.
+     *
+     * @return The correspondence between node mRID and feeder.
+     * Note that only nodes that correspond to feeders are included in this RDD.
+     */
     def feederNodes: RDD[(String, Element)] =
     {
         val ret = getOrElse[Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values
 
         ret.persist (storage)
         ret.name = "FeederNodes"
+        ret
+    }
+
+    /**
+     * The RDD of island mRID to feeder objects mapping.
+     *
+     * @return The correspondence between island mRID and feeder.
+     * Note that only islands that correspond to feeders are included in this RDD.
+     */
+    def feederIslands: RDD[(String, Element)] =
+    {
+        val t = getOrElse[TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
+        val ret = t.join (feederNodes).values // (islandid, Feeder)
+
+        ret.persist (storage)
+        ret.name = "FeederIslands"
         ret
     }
 
@@ -235,35 +264,26 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     /**
-     * Get the list of nodes.
-     *
-     * @return An RDD of VertexId and data pairs suitable for GraphX initialization.
-     */
-    def nodes: RDD[(VertexId, VertexData)] =
-    {
-        getOrElse[TopologicalNode].keyBy (_.id).leftOuterJoin (feederNodes).values // (Node, Connector?)
-            .map (x ⇒ (vertex_id (x._1.id), VertexData (x._1.id, x._2.map (y ⇒ Set (y.id)).orNull))) // (VertexId, VertexData)
-    }
-
-    /**
      * Get the list of edges.
      *
      * @return An RDD of Edge objects suitable for GraphX initialization.
      */
     def edges: RDD[Edge[EdgeData]] =
     {
-        val terminals = getOrElse[Terminal]
+        val t = getOrElse[Terminal].keyBy (_.TopologicalNode).join (getOrElse[TopologicalNode].keyBy (_.id)).values
+            .map (x ⇒ (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
         getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
-            .join (getOrElse[Terminal].groupBy (_.ConductingEquipment)).values // (Element, [Terminal])
+            .join (t).values // (Element, [Terminal])
             .flatMap (
                 x ⇒
                 {
                     if ((x._2.size == 2) // ToDo: handle 3 terminal devices
-                        && (null != x._2.head.TopologicalNode)
-                        && (null != x._2.tail.head.TopologicalNode))
+                        && (null != x._2.head)
+                        && (null != x._2.tail.head)
+                        && (x._2.head != x._2.tail.head)) // switches only on the boundary
                     {
-                        val edge = EdgeData (x._1.id, isSameFeeder (x._1))
-                        List (Edge (vertex_id (x._2.head.TopologicalNode), vertex_id (x._2.tail.head.TopologicalNode), edge))
+                        val edge = EdgeData (x._1.id, x._2.head, x._2.tail.head)
+                        List (Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge))
                     }
                     else
                         List ()
@@ -272,19 +292,39 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     /**
+     * Get the list of vertices.
+     *
+     * @return An RDD of VertexId and data pairs suitable for GraphX initialization.
+     */
+    def nodes: RDD[(VertexId, VertexData)] =
+    {
+        val sources = feederIslands.groupByKey
+        edges.flatMap (x ⇒ List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
+            .map (
+            x ⇒
+                {
+                    val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set[String] ())
+                    (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
+                }
+            )
+    }
+
+    /**
+     * Get a mapping between TopologicalNode id and feeder id.
+     *
      * Trace through the connected TopologicalIsland graph to identify feeder service areas.
+     * This produces a processed graph with vertices identified by all feeder service areas
+     * that affect it (less than two open switches distant).
      *
      * Processing basically consists of propagating the area label to all connected islands,
-     * where the area label is initially set by the list of nodes in the same island as feeder,
-     * and "connected" is defined by switch status.
+     * where the area label is initially set by the list of nodes in the same island as feeder.
      *
-     * @see island_feeder_rdd
-     * @see isSameArea (Element)
-     *
-     * @return a processed graph with nodes (vertices) identified by feeder service area.
+     * @return an RDD of (nodeid, feederid) pairs for every TopologicalNode
      */
-    def identifyFeeders: Graph[VertexData, EdgeData] =
+    def identifyFeeders: RDD[(String, String)] =
     {
+        log.info ("identifying feeders")
+
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
             if (null == msg) // do nothing initially
@@ -295,51 +335,54 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
         {
-            if (!triplet.attr.isConnected)
-                Iterator.empty // send no message across a feeder boundary
+            var ret = List[(VertexId, VertexData)] ()
+            // the island on the source side can hop to the destination by closing the switch
+            if ((null == triplet.dstAttr.feeders) && (null != triplet.srcAttr.sources))
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.sources.mkString (","), triplet.dstAttr.toString))
+                ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, triplet.dstAttr.sources))
+            }
             else
-                if ((null != triplet.srcAttr.feeders) && (null == triplet.dstAttr.feeders))
+                if ((null != triplet.srcAttr.sources) && !triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
                 {
                     if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
-                    Iterator ((triplet.dstId, VertexData (triplet.dstAttr.id, triplet.srcAttr.feeders)))
+                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.sources.mkString (","), triplet.dstAttr.toString))
+                    val union = triplet.srcAttr.sources | triplet.dstAttr.feeders
+                    ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union))
                 }
-                else if ((null == triplet.srcAttr.feeders) && (null != triplet.dstAttr.feeders))
+            // and vice versa
+            if ((null == triplet.srcAttr.feeders) && (null != triplet.dstAttr.sources))
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.sources.mkString (","), triplet.srcAttr.toString))
+                ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, triplet.dstAttr.sources))
+            }
+            else
+                if ((null != triplet.dstAttr.sources) && !triplet.dstAttr.sources.subsetOf (triplet.srcAttr.feeders))
                 {
                     if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
-                    Iterator ((triplet.srcId, VertexData (triplet.srcAttr.id, triplet.dstAttr.feeders)))
+                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.sources.mkString (","), triplet.srcAttr.toString))
+                    val union = triplet.dstAttr.sources | triplet.srcAttr.feeders
+                    ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union))
                 }
-                else if ((null != triplet.srcAttr.feeders) && (null != triplet.dstAttr.feeders) && (triplet.srcAttr.feeders != triplet.dstAttr.feeders))
-                {
-                    val union = triplet.srcAttr.feeders | triplet.dstAttr.feeders
-                    Iterator ((triplet.srcId, VertexData (triplet.srcAttr.id, union)), (triplet.dstId, VertexData (triplet.dstAttr.id, union)))
-                }
-                else
-                    Iterator.empty
+            ret.toIterator
         }
 
         def merge_message (a: VertexData, b: VertexData): VertexData =
         {
-            VertexData (a.id, a.feeders | b.feeders)
+            VertexData (a.id, a.sources, a.feeders | b.feeders)
         }
 
         // traverse the graph with the Pregel algorithm
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
         val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges).cache ()
-        graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
-    }
+        val g = graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
 
-    /**
-     * Get a mapping between TopologicalNode id and feeder id.
-     *
-     * @return an RDD of (nodeid, feederid) pairs for every node
-     */
-    def getFeederMap: RDD[(String, String)] =
-    {
-        log.info ("tracing feeders")
-        val graph = identifyFeeders
-        graph.vertices.flatMap (v ⇒ if (null != v._2.feeders) v._2.feeders.map (x ⇒ (v._2.id, x)) else List()) // (nodeid, feederid)
+        // label every node (not just the ones on the boundary switches
+        val island_feeders = g.vertices.map (x ⇒ (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
+        getOrElse[TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
+                .flatMap (x ⇒ x._2.map (y ⇒ (x._1.id, y))) // (nodeid, feederid)
     }
 }
