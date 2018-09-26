@@ -86,6 +86,8 @@ case class ScEdge (
             case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
             case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
+            case line: ACLineSegment => 
+                !(v1 >= 1000 || v2 >= 1000)
             case _: PowerTransformer ⇒
                 if (id_cn == id_cn_1)
                     v1 <= v2 || ((v1 <= 1000.0) && (v2 <= 1000.0))

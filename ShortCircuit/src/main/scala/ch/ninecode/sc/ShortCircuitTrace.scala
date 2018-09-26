@@ -236,7 +236,7 @@ with Serializable
     {
         val x =
         if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance != null)
-            if (triplet.attr.v1 >= 16000 || triplet.attr.v2 >= 16000)
+            if (triplet.attr.v1 >= 1000 || triplet.attr.v2 >= 1000)
                 Iterator.empty
             else
                 handleMesh (triplet)
