@@ -199,6 +199,7 @@ object MainCustomer2
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        reader_options.put ("StorageLevel", arguments.storage)
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
         log.info (elements.count () + " elements")
 

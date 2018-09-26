@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -55,6 +54,26 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         finally { resource.close () }
     }
 
+    def storage_level_tostring (level: StorageLevel): String =
+    {
+        level match
+        {
+            case StorageLevel.NONE ⇒ "NONE"
+            case StorageLevel.DISK_ONLY ⇒ "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 ⇒ "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY ⇒ "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 ⇒ "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER ⇒ "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 ⇒ "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK ⇒ "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 ⇒ "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER ⇒ "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 ⇒ "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP ⇒ "OFF_HEAP"
+            case _ ⇒ ""
+        }
+    }
+
     def run (): Long =
     {
         val start = System.nanoTime ()
@@ -67,23 +86,18 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        reader_options.put ("StorageLevel", storage_level_tostring (options.storage))
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
         log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
-        val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
-        {
-            case Some ((_, storage)) => StorageLevel.fromString (storage)
-            case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-        }
-
         // identify topological nodes if necessary
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, force_retain_switches = true, force_retain_fuses = false)
+            val ntp = new CIMNetworkTopologyProcessor (session, options.storage, force_retain_switches = true, force_retain_fuses = false)
             val ele = ntp.process (identify_islands = true)
             log.info (ele.count () + " elements")
         }
@@ -91,7 +105,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
-        val _transformers = new Transformers (session, storage_level)
+        val _transformers = new Transformers (session, options.storage)
         val tdata = _transformers.getTransformerData (topological_nodes = true)
 
         // feeder service area calculations
@@ -185,7 +199,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
             log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
         }
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = options.storage, workdir = options.workdir)
         log.info ("exporting models")
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 

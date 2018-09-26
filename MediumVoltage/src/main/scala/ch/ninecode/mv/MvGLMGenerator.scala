@@ -63,8 +63,8 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
                     List ((switch.cn1, v), (switch.cn2, v))
                 case transformer: TransformerEdge ⇒
                     List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
-                case _ ⇒
-                    List ()
+                case edge: GLMEdge ⇒
+                    List ((edge.cn1, 400.0), (edge.cn2, 400.0)) // stupid unspecified transformers
             }
         }
         val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
