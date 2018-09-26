@@ -3,6 +3,7 @@ package ch.ninecode.mv
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -62,6 +63,9 @@ object AbgangKreis
     def toGLMEdge (transformers: Array[TransformerSet], base_temperature: Double) (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
         case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
+        {
+            override def emit (generator: GLMGenerator): String = ""
+        }
 
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head

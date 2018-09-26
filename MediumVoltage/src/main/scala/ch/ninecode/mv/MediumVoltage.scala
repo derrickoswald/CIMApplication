@@ -140,7 +140,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         // put it all together
         val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
         val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
-            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0)))))
+            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).cache
 
         // get equipment with nodes & terminals
         log.info ("creating edges")
@@ -167,7 +167,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
             AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
         // make one edge for each unique feeder it's in
-        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2)))))
+        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2))))).cache
 
         // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
         log.info ("creating models")
@@ -183,19 +183,38 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
 
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
-            val normally_open = "%s,OPEN".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
-            val normally_closed = "%s,CLOSED".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
+
+            // to make the glm files testable, we add a player file for the switches
+            val UNIX_EPOC: String = date_format.format (0L)
+            def player_entry (s: String): Array[Byte] = s.format (UNIX_EPOC).getBytes (StandardCharsets.UTF_8)
+            val normally_closed = player_entry ("%s,CLOSED")
+            /**
+             * stop trying to finesse the switch status
+
+            val normally_open  = player_entry ("%s,OPEN")
             // for switches on the boundary, we need to force them to be normally closed, so make a list of interior node ids
-            val n = area.nodes.map (_.id).toArray
+            val n = area.edges.flatMap (edge ⇒ if (null != edge.cn2) List (edge.cn1, edge.cn2) else List (edge.cn1)).map (x ⇒ (x, x)).groupBy(_._1).values.filter (_.size < 2).map (_.head._1).toArray
+            // an edge is on a boundary if it has one node not in the area nodes
+            def onBoundary (edge: PlayerSwitchEdge): Boolean = !n.contains (edge.cn1) || !n.contains (edge.cn2)
             // add a player file for each switch
             area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
                 edge ⇒
                 {
-                    val boundary = !n.contains (edge.cn1) || !n.contains (edge.cn2)
-                    val state = if (boundary) normally_closed else if (feeder.switchClosed (edge.switch)) normally_closed else normally_open
+                    val state =
+                        if (onBoundary (edge))
+                            normally_closed
+                        else
+                            if (feeder.switchClosed (edge.switch))
+                                normally_closed
+                            else
+                                normally_open
                     gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", state)
                 }
             )
+             */
+            area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
+                edge ⇒
+                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", normally_closed))
             log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
         }
@@ -203,6 +222,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         log.info ("exporting models")
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 
+        // to test all the generated glm files, change to the output directory and run
         // for filename in STA*; do echo $filename; pushd $filename > /dev/null; gridlabd $filename; popd > /dev/null; done;
 
         count
