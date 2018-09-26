@@ -64,11 +64,12 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
                 case transformer: TransformerEdge ⇒
                     List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
                 case _ ⇒
-                    println ("unhandled class %s".format (edge.getClass))
                     List ()
             }
         }
-        val missing = feeder.edges.flatMap (ends_voltages).filter (x ⇒ !n.contains (x._1))
+        val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
+            .filter (x ⇒ !n.contains (x._1)) // eliminate those that are emitted normally
+            .groupBy (_._1).values.map (_.head) // eliminate duplicates from multiple edges
         missing.map (x ⇒ FeederNode (x._1, null, x._2).emit (this))
     }
 

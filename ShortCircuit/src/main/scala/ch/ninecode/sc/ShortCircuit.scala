@@ -230,7 +230,7 @@ with Serializable
             case None ⇒
         }
 
-        Graph.apply[ScNode, ScEdge] (xnodes, xedges, default_node, storage_level, storage_level)
+        Graph[ScNode, ScEdge] (xnodes, xedges, default_node, storage_level, storage_level)
     }
 
     def trace (initial: Graph[ScNode, ScEdge]): Graph[ScNode, ScEdge] =
@@ -605,7 +605,7 @@ with Serializable
     def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
     {
         // transformer area calculations
-        val tsa = TransformerServiceArea (session)
+        val tsa = TransformerServiceArea (session, storage_level)
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {

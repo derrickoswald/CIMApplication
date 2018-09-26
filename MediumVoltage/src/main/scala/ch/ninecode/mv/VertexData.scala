@@ -7,5 +7,5 @@ package ch.ninecode.mv
  * @param sources the source feeders for the island (if any)
  * @param feeders the feeders connected to this island
  */
-case class VertexData (id: String, sources: Set[String], feeders: Set[String])
+case class VertexData (id: String = "", sources: Set[String] = Set[String](), feeders: Set[String] = Set[String]())
 

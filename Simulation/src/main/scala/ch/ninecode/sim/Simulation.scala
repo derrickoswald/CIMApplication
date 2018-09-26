@@ -294,7 +294,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
         // transformer area calculations
-        val tsa = TransformerServiceArea (session)
+        val tsa = TransformerServiceArea (session, StorageLevel.fromString (options.storage)) // ToDo: fix this storage
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {
@@ -320,7 +320,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             // maybe reduce the set of islands
             val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
 
-            val island_helper = new Island (session, StorageLevel.fromString (options.storage)) //T ToDo: fix this storage
+            val island_helper = new Island (session, StorageLevel.fromString (options.storage)) // ToDo: fix this storage
             val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
             val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
 

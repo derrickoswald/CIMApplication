@@ -141,8 +141,6 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.distinct.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
         // ToDo: is it better to groupBy feeder first?
         val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (x ⇒ x._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
-        // make one edge for each unique feeder it's in
-        val ll: RDD[(String, Iterable[(Iterable[(String, Terminal)], Element)])] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, x.filter (_._1 == y).map (_._2))))
 
         // make edges
         // ToDo: fix this collect
@@ -154,13 +152,14 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
             AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
-        val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
+        // make one edge for each unique feeder it's in
+        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2)))))
 
         // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
         log.info ("creating models")
         val feeders = nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
-            .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
+            .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head))).cache
         log.info ("%s feeders".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =

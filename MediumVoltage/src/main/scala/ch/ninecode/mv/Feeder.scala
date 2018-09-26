@@ -288,7 +288,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
                     else
                         List ()
                 }
-            ) // Edge[EdgeData]
+            ).cache // Edge[EdgeData]
     }
 
     /**
@@ -296,7 +296,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
      *
      * @return An RDD of VertexId and data pairs suitable for GraphX initialization.
      */
-    def nodes: RDD[(VertexId, VertexData)] =
+    def vertices: RDD[(VertexId, VertexData)] =
     {
         val sources = feederIslands.groupByKey
         edges.flatMap (x ⇒ List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
@@ -306,7 +306,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
                     val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set[String] ())
                     (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
                 }
-            )
+            ).cache
     }
 
     /**
@@ -337,35 +337,20 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         {
             var ret = List[(VertexId, VertexData)] ()
             // the island on the source side can hop to the destination by closing the switch
-            if ((null == triplet.dstAttr.feeders) && (null != triplet.srcAttr.sources))
+            if (!triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
             {
                 if (debug && log.isDebugEnabled)
                     log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.sources.mkString (","), triplet.dstAttr.toString))
-                ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, triplet.dstAttr.sources))
+                val union = triplet.srcAttr.sources | triplet.dstAttr.feeders
+                ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union))
             }
-            else
-                if ((null != triplet.srcAttr.sources) && !triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
-                {
-                    if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.sources.mkString (","), triplet.dstAttr.toString))
-                    val union = triplet.srcAttr.sources | triplet.dstAttr.feeders
-                    ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union))
-                }
-            // and vice versa
-            if ((null == triplet.srcAttr.feeders) && (null != triplet.dstAttr.sources))
+            if (!triplet.dstAttr.sources.subsetOf (triplet.srcAttr.feeders))
             {
                 if (debug && log.isDebugEnabled)
                     log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.sources.mkString (","), triplet.srcAttr.toString))
-                ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, triplet.dstAttr.sources))
+                val union = triplet.dstAttr.sources | triplet.srcAttr.feeders
+                ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union))
             }
-            else
-                if ((null != triplet.dstAttr.sources) && !triplet.dstAttr.sources.subsetOf (triplet.srcAttr.feeders))
-                {
-                    if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.sources.mkString (","), triplet.srcAttr.toString))
-                    val union = triplet.dstAttr.sources | triplet.srcAttr.feeders
-                    ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union))
-                }
             ret.toIterator
         }
 
@@ -377,7 +362,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         // traverse the graph with the Pregel algorithm
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
-        val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges).cache ()
+        val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
         val g = graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
 
         // label every node (not just the ones on the boundary switches
