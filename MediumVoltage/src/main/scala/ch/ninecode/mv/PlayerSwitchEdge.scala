@@ -13,7 +13,7 @@ case class PlayerSwitchEdge
 )
 extends GLMEdge
 {
-    def id: String = switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
+    override def id: String = switch.id
 
     /**
      * Emit a switch or fuse.
@@ -23,7 +23,7 @@ extends GLMEdge
      */
     override def emit (generator: GLMGenerator): String =
     {
-        val status = if (switch.normalOpen) "OPEN" else "CLOSED"
+        val obj = if (fuse) "fuse" else "switch"
         var current = switch.ratedCurrent
         if (current <= 0)
             current = 9999.0 // ensure it doesn't trip immediately
@@ -32,7 +32,11 @@ extends GLMEdge
             """
             mean_replacement_time 3600.0;
             current_limit %sA;
-            status "%s";""".format (current, status)
+            object player
+            {
+                property "status";
+                file "input_data/%s.csv";
+            };""".format (current, id)
         else
             """
             object player
@@ -49,7 +53,7 @@ extends GLMEdge
         |            from "%s";
         |            to "%s";%s
         |        };
-        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
+        |""".stripMargin.format (obj, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
     }
 }
 

@@ -12,12 +12,10 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Bay
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Conductor
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Cut
 import ch.ninecode.model.Disconnector
@@ -26,7 +24,6 @@ import ch.ninecode.model.Fuse
 import ch.ninecode.model.GroundDisconnector
 import ch.ninecode.model.Jumper
 import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
@@ -95,51 +92,29 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
             true
     }
 
-    // is the switch out in the field and not in a containing station
-    def fieldSwitch (switch: Switch): Boolean =
-    {
-        switch.ConductingEquipment.Equipment.EquipmentContainer == null
-    }
-
-    // is the cable an external cable
-    def externalCable (cable: Conductor): Boolean =
-    {
-        // cable.ConductingEquipment.Equipment.EquipmentContainer == null (those without a container) doesn't work: the first cable out of a station also has the station as a container
-        // cable.len != 0.0 is our best guess (nis_el_int_connection is given a length of zero)
-        // could also use !cable.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName.contains ("nis_el_int_connection")
-        // could also use Complex (aclinesegment.r, aclinesegment.x) == Complex (0)
-        cable.len != 0.0
-    }
-
     /**
-     * Method to determine if both nodes of an element are in the same feeder.
+     * Method to determine if the element is a switch.
      *
      * @param element The element to test.
-     * @return <code>true</code> if the element is effectively one node, <code>false</code> otherwise.
+     * @return <code>true</code> if the element is a switch, <code>false</code> otherwise.
      */
-    def isSameFeeder (element: Element): Boolean =
+    def isSwitch (element: Element): Boolean =
     {
         element match
         {
-            // trace only external cables
-            case conductor: Conductor ⇒ externalCable (conductor)
-            case cable: ACLineSegment ⇒ externalCable (cable.Conductor)
-            // switches have to be closed and not be in a substation
-            case switch: Switch ⇒ switchClosed (switch) && fieldSwitch (switch)
-            case cut: Cut ⇒ switchClosed (cut.Switch) && fieldSwitch (cut.Switch)
-            case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch) && fieldSwitch (disconnector.Switch)
-            case fuse: Fuse ⇒ switchClosed (fuse.Switch) && fieldSwitch (fuse.Switch)
-            case gd: GroundDisconnector ⇒ switchClosed (gd.Switch) && fieldSwitch (gd.Switch)
-            case jumper: Jumper ⇒ switchClosed (jumper.Switch) && fieldSwitch (jumper.Switch)
-            case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch) && fieldSwitch (ps.Switch)
-            case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch) && fieldSwitch (sectionaliser.Switch)
-            case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch) && fieldSwitch (breaker.ProtectedSwitch.Switch)
-            case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch) && fieldSwitch (lbs.ProtectedSwitch.Switch)
-            case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch) && fieldSwitch (recloser.ProtectedSwitch.Switch)
-            case _: PowerTransformer ⇒ false
+            case _: Switch ⇒ true
+            case _: Cut ⇒ true
+            case _: Disconnector ⇒ true
+            case _: Fuse ⇒ true
+            case _: GroundDisconnector ⇒ true
+            case _: Jumper ⇒ true
+            case _: ProtectedSwitch ⇒ true
+            case _: Sectionaliser ⇒ true
+            case _: Breaker ⇒ true
+            case _: LoadBreakSwitch ⇒ true
+            case _: Recloser ⇒ true
             case _ ⇒
-                log.warn ("feeder processor encountered edge with unhandled class '" + element.getClass.getName +"', assumed same feeder")
-                true
+                false
         }
     }
 
@@ -280,6 +255,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
                     if ((x._2.size == 2) // ToDo: handle 3 terminal devices
                         && (null != x._2.head)
                         && (null != x._2.tail.head)
+                        && isSwitch (x._1)
                         && (x._2.head != x._2.tail.head)) // switches only on the boundary
                     {
                         val edge = EdgeData (x._1.id, x._2.head, x._2.tail.head)

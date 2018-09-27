@@ -5,11 +5,13 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.nio.file.attribute.PosixFilePermission
 import java.text.ParseException
 import java.text.SimpleDateFormat
+import java.util.HashSet
+import java.util.Set
 
 import scala.collection.Map
-
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -23,7 +25,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.model._
 
 /**
@@ -241,7 +242,7 @@ class GridLABD (
     def prepare(): (RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]) =
     {
         // get a map of voltages
-        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap()
+        val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage)).collectAsMap()
 
         // get the terminals
         val terminals = get("Terminal").asInstanceOf[RDD[Terminal]].filter(null != _.ConnectivityNode)
@@ -492,7 +493,23 @@ class GridLABD (
         files.map (extract_trafo).flatMapValues (read)
     }
 
-    def writeInputFile (directory: String, path: String, bytes: Array[Byte]): Any =
+    def parsePermissions (s: String): Set[PosixFilePermission] =
+    {
+        // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
+        val ret = new HashSet[PosixFilePermission] ()
+        ret.add (PosixFilePermission.OWNER_READ)
+        ret.add (PosixFilePermission.OWNER_WRITE)
+        ret.add (PosixFilePermission.OWNER_EXECUTE)
+        ret.add (PosixFilePermission.GROUP_READ)
+        ret.add (PosixFilePermission.GROUP_WRITE)
+        ret.add (PosixFilePermission.GROUP_EXECUTE)
+        ret.add (PosixFilePermission.OTHERS_READ)
+        ret.add (PosixFilePermission.OTHERS_WRITE)
+        ret.add (PosixFilePermission.OTHERS_EXECUTE)
+        ret
+    }
+
+    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Any =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
@@ -500,7 +517,11 @@ class GridLABD (
             val file = Paths.get (workdir_path + directory + "/" + path)
             Files.createDirectories (file.getParent)
             if (null != bytes)
+            {
                 Files.write (file, bytes)
+                if (null != permissions)
+                    Files.setPosixFilePermissions (file, parsePermissions (permissions))
+            }
         }
         else
         {
@@ -512,14 +533,16 @@ class GridLABD (
             val file = new Path (workdir_slash + directory + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs (file.getParent, new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission("ugoa-rwx")) // "-"  WTF?
+            hdfs.mkdirs (file.getParent, new FsPermission("ugo-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission("ugo-rwx")) // "-"  WTF?
 
             if (null != bytes)
             {
                 val out = hdfs.create(file)
                 out.write(bytes)
                 out.close()
+                if (null != permissions)
+                    hdfs.setPermission (file, new FsPermission (permissions))
             }
         }
     }

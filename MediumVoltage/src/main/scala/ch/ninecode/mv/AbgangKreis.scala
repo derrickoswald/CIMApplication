@@ -63,9 +63,6 @@ object AbgangKreis
     def toGLMEdge (transformers: Array[TransformerSet], base_temperature: Double) (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
         case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
-        {
-            override def emit (generator: GLMGenerator): String = ""
-        }
 
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head
@@ -114,7 +111,19 @@ object AbgangKreis
                     fakeEdge (element.id, cn1, cn2)
                 }
                 else
-                    TransformerEdge (t.node0, t.node1, t)
+                {
+                    // do we need to swap these
+                    val (n1, n2) = if ((cn1 == t.node0) || (cn2 == t.node1))
+                        (cn1, cn2)
+                    else if ((cn1 == t.node1) || (cn2 == t.node0))
+                        (cn2, cn1)
+                    else
+                    {
+                        println ("""node correspondence not found for %s""".format (element.id)) // ToDo: log somehow
+                        (cn1, cn2)
+                    }
+                    TransformerEdge (n1, n2, t)
+                }
             case _ ⇒
                 println ("""edge %s has unhandled class '%s'""".format (element.id, cls)) // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)

@@ -175,7 +175,10 @@ with Serializable
         default_supply_network_short_circuit_power_max: Double = 200.0e6,
         default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
         default_supply_network_short_circuit_power_min: Double = 100.0e6,
-        default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555)): RDD[TData] =
+        default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
+        transformer_filter: PowerTransformer ⇒ Boolean = _.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern",
+        substation_filter: Substation ⇒ Boolean = _.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
+    ): RDD[TData] =
     {
         /**
          * The name of the node associated with a terminal.
@@ -189,12 +192,12 @@ with Serializable
 
         // get all transformers in substations
         val transformers = get[PowerTransformer]
-        val substation_transformers = transformers.filter (_.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern")
+        val substation_transformers = transformers.filter (transformer_filter)
 
         // get an RDD of substations by filtering out distribution boxes
         val substations = get[Substation]
         val stations = if (null != substations)
-            substations.filter (_.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox")
+            substations.filter (substation_filter)
         else
         {
             val fake_element = BasicElement (null, "")

@@ -543,7 +543,7 @@ with Serializable
             val generator = ScGLMGenerator (one_phase = true, temperature = temperature, date_format = _DateFormat, trafokreis, isMax = isMax)
             gridlabd.export (generator)
         }
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = StorageLevel.MEMORY_AND_DISK_SER, workdir = options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = storage_level, workdir = options.workdir)
         val experiments = simulations.flatMap (
             x ⇒
             {
