@@ -2,7 +2,6 @@ package ch.ninecode.esl
 
 import java.util.Calendar
 
-import ch.ninecode.cim.CIMRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.graphx.EdgeDirection
@@ -14,6 +13,7 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
@@ -23,7 +23,7 @@ import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.model.Terminal
 
-class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) extends CIMRDD with Serializable
+class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -52,7 +52,7 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.srcAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                    val message = PowerFeedingNode (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)
+                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString,  message.asString))
                     Iterator ((triplet.dstId, message))
@@ -62,7 +62,7 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.dstAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                    val message = PowerFeedingNode (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                     Iterator ((triplet.srcId, message))
@@ -83,7 +83,7 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
         node
     }
 
-    def trace(starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
+    def trace (initial: Graph[PreNode, PreEdge], starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
     {
         log.info ("trace")
         // create the initial Graph with PowerFeedingNode vertecies
@@ -113,7 +113,7 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
         val node: PowerFeedingNode = args._1
         val psrtype: Option[String] = args._2
         val r = node.sum_r
-        val v = node.voltage
+        val v = node.nominal_voltage
         val min_ir = node.min_ir
         val trafo_id = node.source_obj.trafo_id
         val trafo_ratedS = node.source_obj.ratedS
@@ -132,7 +132,7 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
             else
                 (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA(node.id_seq, node.voltage, psrtype.orNull, trafo_id, p_max, null, reason, details)
+        MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, psrtype.orNull, trafo_id, p_max, null, reason, details)
     }
 
     def has(string: String): String =
@@ -144,32 +144,25 @@ class PowerFeeding (session: SparkSession, initial: Graph[PreNode, PreEdge]) ext
     {
         val houses: RDD[PowerFeedingNode] = nodes.filter (_.sum_r > 0.0)
         val psrtype = get[Terminal].keyBy (_.ConductingEquipment).join (get[EnergyConsumer].keyBy(_.id)).values.map (x ⇒ (x._1.TopologicalNode, x._2.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
-        houses.keyBy (_.id_seq).leftOuterJoin (psrtype).values.map (calc_max_feeding_power)
+        houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power)
     }
-
-}
-
-object PowerFeeding
-{
-    val log: Logger = LoggerFactory.getLogger (getClass)
 
     def trafo_mapping (transformers: TransformerSet): StartingTrafos =
     {
-      val pn = PreNode ("", 0.0)
-      val v0 = pn.vertex_id (transformers.node0)
-      val v1 = pn.vertex_id (transformers.node1)
-      val ratedS = transformers.power_rating
-      val impedance = transformers.total_impedance_per_unit._1
-      StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
+        val pn = PreNode ("", 0.0)
+        val v0 = pn.vertex_id (transformers.node0)
+        val v1 = pn.vertex_id (transformers.node1)
+        val ratedS = transformers.power_rating
+        val impedance = transformers.total_impedance_per_unit._1
+        StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
     }
 
-    def threshold_calculation (session: SparkSession, initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
-        val power_feeding = new PowerFeeding(session, initial)
         val start_ids = transformers.map (trafo_mapping)
 
-        val graph = power_feeding.trace (start_ids)
-        val house_nodes = power_feeding.get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
+        val graph = trace (initial, start_ids)
+        val house_nodes = get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
         val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(sdata).values
 
         val has = traced_house_nodes_EEA.map(node =>
@@ -188,17 +181,17 @@ object PowerFeeding
 
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
-          val source = triplet.srcAttr.source_obj
-          val target = triplet.dstAttr.source_obj
+            val source = triplet.srcAttr.source_obj
+            val target = triplet.dstAttr.source_obj
 
-          var ret = (null.asInstanceOf[String], triplet.attr)
-          if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
-            val source_trafo_id = source.trafo_id
-            val target_trafo_id = target.trafo_id
-            if (source_trafo_id == target_trafo_id)
-              ret = (source_trafo_id, triplet.attr) 
-          }
-          ret
+            var ret = (null.asInstanceOf[String], triplet.attr)
+            if (source != null && target != null && source.trafo_id != null && target.trafo_id != null) {
+                val source_trafo_id = source.trafo_id
+                val target_trafo_id = target.trafo_id
+                if (source_trafo_id == target_trafo_id)
+                    ret = (source_trafo_id, triplet.attr)
+            }
+            ret
         }
 
         val vertices = graph.vertices.values

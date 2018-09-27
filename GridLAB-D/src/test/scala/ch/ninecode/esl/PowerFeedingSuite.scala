@@ -106,10 +106,10 @@ class PowerFeedingSuite extends FunSuite
 
         // construct the initial graph from the real edges and nodes
         val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
-        val power_feeding = new PowerFeeding(session, initial)
+        val power_feeding = new PowerFeeding (session)
 
-        val start_ids = transformers.map (PowerFeeding.trafo_mapping)
-        val graph = power_feeding.trace(start_ids)
+        val start_ids = transformers.map (power_feeding.trafo_mapping)
+        val graph = power_feeding.trace (initial, start_ids)
         val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
 
         val HAS138130: MaxPowerFeedingNodeEEA =
