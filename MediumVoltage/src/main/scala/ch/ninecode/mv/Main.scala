@@ -280,7 +280,7 @@ object Main
                     )
                     val mv = MediumVoltage (session, options)
                     val count = mv.run ()
-                    log.info ("%s trafokreise processed".format (count))
+                    log.info ("%s models processed".format (count))
                 }
 
                 val calculate = System.nanoTime ()

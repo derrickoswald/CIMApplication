@@ -179,7 +179,36 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
                 {
                     val nodes = x._2._1.groupBy (_.id).map (y ⇒ y._2.head) // distinct
                     // to handle the ganged transformers that have only one node connected into the network
-                    val edges = x._2._2.groupBy (_.id).map (y ⇒ y._2.head)
+                    // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
+                    val nodelist = nodes.map (x ⇒ (x._id, x)).toMap
+                    def pickbest (arg: (String, Iterable[GLMEdge])): GLMEdge =
+                    {
+                        val withcount = arg._2.map (
+                            edge ⇒
+                            {
+                                val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
+                                {
+                                    case (Some(n1), Some (n2)) ⇒ List (n1, n2)
+                                    case (Some(n1), None) ⇒ List (n1)
+                                    case (None, Some (n2)) ⇒ List (n2)
+                                    case _ ⇒ List () // ?
+                                }
+                                (edge, n)
+                            }
+                        )
+                        val two = withcount.filter (_._2.size >= 2)
+                        if (two.nonEmpty)
+                            two.head._1
+                        else
+                        {
+                            val one =  withcount.filter (_._2.nonEmpty)
+                            if (one.nonEmpty)
+                                one.head._1
+                            else
+                                withcount.head._1
+                        }
+                    }
+                    val edges = x._2._2.groupBy (_.id).map (pickbest)
                     FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, nodes, edges)
                 }).cache
         log.info ("%s feeders".format (feeders.count))

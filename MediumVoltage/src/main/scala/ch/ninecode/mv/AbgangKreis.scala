@@ -112,7 +112,7 @@ object AbgangKreis
                 }
                 else
                 {
-                    // do we need to swap these
+                    // we need to swap these
                     val (n1, n2) = if ((cn1 == t.node0) || (cn2 == t.node1))
                         (cn1, cn2)
                     else if ((cn1 == t.node1) || (cn2 == t.node0))
