@@ -17,6 +17,27 @@ object MaximumStartingCurrent
     val dmax_medium_rep = 0.03
 
     /**
+     * Compute the cos term for the maximum current calculation.
+     *
+     * @param network_impedance network resistance and reactance at the point of common coupling (Ω)
+     * @param options providing power factor values for calculation
+     * @return The angle between the device inrush current and the network impedance, or worst case 1.0 if the options choose that.
+     */
+    def costerm (
+        network_impedance: Complex,
+        options: ShortCircuitOptions): Double =
+    {
+        if (options.worstcasepf)
+            1.0
+        else
+        {
+            val phin = network_impedance.angle
+            val phim = acos (options.cosphi)
+            cos (phin - phim)
+        }
+    }
+
+    /**
      * Calculate the maximum symmetrical 3 phase motor current at the point of common coupling.
      *
      * @param network_short_circuit_power network short-circuit power at the point of common coupling (VA)
@@ -34,15 +55,7 @@ object MaximumStartingCurrent
         ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
-        val costerm = if (options.worstcasepf)
-            1.0
-        else
-        {
-            val phin = network_impedance.angle
-            val phim = acos (options.cosphi)
-            cos (phin - phim)
-        }
-        val pmax = Math.abs (network_short_circuit_power / (root3 * costerm))
+        val pmax = Math.abs (network_short_circuit_power / (root3 * costerm (network_impedance, options)))
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }
 
@@ -66,15 +79,7 @@ object MaximumStartingCurrent
     {
         val root3 = sqrt (3.0)
         val phin = network_impedance.angle
-        val costerm = if (options.worstcasepf)
-            1.0
-        else
-        {
-            val phin = network_impedance.angle
-            val phim = acos (options.cosphi)
-            cos (phin - phim)
-        }
-        val pmax = Math.abs (network_short_circuit_power * root3 / (6.0 * costerm))
+        val pmax = Math.abs (network_short_circuit_power * root3 / (6.0 * costerm (network_impedance, options)))
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }
 

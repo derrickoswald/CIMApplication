@@ -342,6 +342,7 @@ with Serializable
             }
         }
 
+        log.info ("tracing")
         initial.pregel (ScMessage (null, null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
 
@@ -400,12 +401,14 @@ with Serializable
             else
                 (calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low),
                  calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high))
+        val costerm = MaximumStartingCurrent.costerm (node.impedance.impedanz_low, options)
 
         ScResult (node.id_seq, equipment, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
             node.source, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
-            low.ik,  low.ik3pol,  low.ip,  low.sk,  low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
+            low.ik,  low.ik3pol,  low.ip,  low.sk, costerm,
+            low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
             high.ik, high.ik3pol, high.ip, high.sk,
             node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
@@ -610,6 +613,8 @@ with Serializable
     // execute GridLAB-D to approximate the impedances and replace the error records
     def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
     {
+        log.info ("performing load-flow for %s non-radial networks".format (problem_transformers.count))
+
         // transformer area calculations
         val tsa = TransformerServiceArea (session, storage_level)
         // only proceed if topological processing was done (there are TopologicalIslands)
@@ -685,6 +690,8 @@ with Serializable
 
     def run (): RDD[ScResult] =
     {
+        log.info ("storage level: %s".format (storage_level.toString))
+
         // check if topology exists, and if not then generate it
         if (null == get[TopologicalNode])
         {
@@ -715,6 +722,7 @@ with Serializable
 
         val transformersets = transformers.map (txs ⇒ TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance))
         val starting_nodes = transformersets.map (trafo_mapping)
+        log.info ("%s starting transformers".format (starting_nodes.length))
 
         // create the initial Graph with ScNode vertices
         def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =
@@ -744,6 +752,7 @@ with Serializable
         result.setName ("scresult")
         result.persist (storage_level)
 
+        log.info ("computing results")
         // join results with terminals to get equipment
         val d = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
