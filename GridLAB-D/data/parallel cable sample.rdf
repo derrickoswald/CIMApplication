@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <rdf:RDF xmlns:cim='http://iec.ch/TC57/2013/CIM-schema-cim16#' xmlns:md='http://iec.ch/TC57/61970-552/ModelDescription/1#' xmlns:dm='http://iec.ch/2002/schema/CIM_difference_model#' xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>
 	<md:FullModel rdf:about="Maximum Feeed-In Test 1">
-		<md:Model.created>2018-08-15T12:48:09.434Z</md:Model.created>
+		<md:Model.created>2018-09-29T14:41:07.007Z</md:Model.created>
 		<md:Model.description>Simple two parallel cable problem</md:Model.description>
 		<md:Model.modelingAuthoritySet>http://9code.ch/</md:Model.modelingAuthoritySet>
 		<md:Model.profile>https://github.com/derrickoswald/CIMSpace</md:Model.profile>
@@ -1006,13 +1006,6 @@
 	</cim:PositionPoint>
 	<cim:ConnectivityNode rdf:ID="USR0001_node">
 	</cim:ConnectivityNode>
-	<cim:Terminal rdf:ID="USR0001_terminal">
-		<cim:IdentifiedObject.name>USR0001_terminal</cim:IdentifiedObject.name>
-		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
-		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
-		<cim:Terminal.ConductingEquipment rdf:resource="#USR0001"/>
-		<cim:Terminal.ConnectivityNode rdf:resource="#USR0001_node"/>
-	</cim:Terminal>
 	<cim:PSRType rdf:ID="PSRType_HouseService">
 		<cim:IdentifiedObject.name>House Service</cim:IdentifiedObject.name>
 		<cim:IdentifiedObject.description>Consumer/Customer</cim:IdentifiedObject.description>
@@ -1235,5 +1228,12 @@
 		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
 		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0002"/>
 		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0001_node_2"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="USR0001_terminal">
+		<cim:IdentifiedObject.name>USR0001_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0004_node_2"/>
 	</cim:Terminal>
 </rdf:RDF>

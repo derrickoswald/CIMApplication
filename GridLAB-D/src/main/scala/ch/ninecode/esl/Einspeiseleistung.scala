@@ -134,7 +134,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             for (e ← experiments) {
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
-                    List ((e, r, limit, r.element + " > " + max + " Volts"))
+                    return (List ((e, r, limit, r.element + " > " + max + " Volts")))
             }
             List ()
         }
@@ -168,7 +168,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val max = arg._2
             for (e ← experiments) {
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
-                    List ((e, r, limit, r.element + " > " + max + " Amps"))
+                    return (List ((e, r, limit, r.element + " > " + max + " Amps")))
             }
             List ()
         }
@@ -216,7 +216,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             for (e ← experiments) {
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
-                    List ((e, r, limit, r.element + " > " + power + " Watts"))
+                    return (List ((e, r, limit, r.element + " > " + power + " Watts")))
             }
             List ()
         }
