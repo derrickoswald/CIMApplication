@@ -70,10 +70,11 @@ object Database
                   |    x double,                             -- aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
                   |    r0 double,                            -- aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
                   |    x0 double,                            -- aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
-                  |    ik double,                            -- one phase short bolted circuit current (A)
+                  |    ik double,                            -- one phase bolted short circuit current (A)
                   |    ik3pol double,                        -- three phase bolted short circuit current (A)
                   |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
                   |    sk double,                            -- short-circuit power at the point of common coupling (VA)
+                  |    costerm,                              -- cos(Ψ-φ) value used in calculating imax values (dimensionless)
                   |    imax_3ph_low double,                  -- maximum inrush current (3 phase) for repetition_rate<0.01/min (A)
                   |    imax_1ph_low double,                  -- maximum inrush current (1 phase, line to neutral) for repetition_rate<0.01/min (A)
                   |    imax_2ph_low double,                  -- maximum inrush current (line to line) for repetition_rate<0.01/min (A)
@@ -189,7 +190,7 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 val zipped = records.zipWithIndex
                 var index = 0L
@@ -222,12 +223,13 @@ object Database
                         datainsert1.setDouble (15, batch(i).low_ik3pol)
                         datainsert1.setDouble (16, batch(i).low_ip)
                         datainsert1.setDouble (17, batch(i).low_sk)
-                        datainsert1.setDouble (18, batch(i).imax_3ph_low)
-                        datainsert1.setDouble (19, batch(i).imax_1ph_low)
-                        datainsert1.setDouble (20, batch(i).imax_2ph_low)
-                        datainsert1.setDouble (21, batch(i).imax_3ph_med)
-                        datainsert1.setDouble (22, batch(i).imax_1ph_med)
-                        datainsert1.setDouble (23, batch(i).imax_2ph_med)
+                        datainsert1.setDouble (18, batch(i).costerm)
+                        datainsert1.setDouble (19, batch(i).imax_3ph_low)
+                        datainsert1.setDouble (20, batch(i).imax_1ph_low)
+                        datainsert1.setDouble (21, batch(i).imax_2ph_low)
+                        datainsert1.setDouble (22, batch(i).imax_3ph_med)
+                        datainsert1.setDouble (23, batch(i).imax_1ph_med)
+                        datainsert1.setDouble (24, batch(i).imax_2ph_med)
                         datainsert1.executeUpdate ()
                     }
                     for (i <- batch.indices)

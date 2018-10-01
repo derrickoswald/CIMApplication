@@ -12,11 +12,12 @@ import java.util.Calendar
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.rdd.RDD
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 object Database
 {
-    val log = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     def makeSchema (connection: Connection)
     {
@@ -26,7 +27,14 @@ object Database
         resultset1.close ()
         if (!exists1)
         {
-            statement.executeUpdate ("create table simulation (id integer primary key autoincrement, description text, time text)")
+            statement.executeUpdate (
+                """create table simulation
+                  |    -- table of simulation executions
+                  |(
+                  |    id integer primary key autoincrement, -- unique id for each simulation program execution
+                  |    description text,                     -- textual description of the simulation run
+                  |    time text                             -- the date and time at which the simulation was run
+                  |)""".stripMargin)
             statement.executeUpdate ("create index if not exists epoc on simulation (time)")
         }
         val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'results'")
@@ -34,7 +42,19 @@ object Database
         resultset2.close ()
         if (!exists2)
         {
-            statement.executeUpdate ("create table results (id integer primary key autoincrement, simulation integer, trafo text, house text, maximum double, eea integer, reason text, details text)")
+            statement.executeUpdate (
+                """create table results
+                  |    -- table of calculated maximum feed-in values
+                  |(
+                  |    id integer primary key autoincrement, -- unique id for each simulation result
+                  |    simulation integer,                   -- foreign key to corresponding simulation table program execution
+                  |    trafo text,                           -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |    house text,                           -- mRID of the EnergyConsumer at this feed-in node
+                  |    maximum double,                       -- maximum feed-in power (W)
+                  |    eea integer,                          -- the number of PV installations at this feed-in node
+                  |    reason text,                          -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
+                  |    details text                          -- details regarding the limiting criteria
+                  |)""".stripMargin)
             statement.executeUpdate ("create index if not exists house on results (house)")
             statement.executeUpdate ("create index if not exists sim on results (simulation)")
         }
@@ -45,70 +65,72 @@ object Database
         {
             statement.executeUpdate (
                 """create view if not exists intermediate as
-                |   select
-                |     0 Priority,
-                |     s.description Analysis,
-                |     datetime(s.time / 1000, 'unixepoch', 'localtime') Date,
-                |     s.time When_Epoc,
-                |     r.trafo Transformer,
-                |     r.house House,
-                |     r.maximum Maximum,
-                |     r.reason Reason,
-                |     r.details Details
-                |   from
-                |     simulation s,
-                |     results r
-                |   where
-                |     s.description = 'Threshold Precalculation' and
-                |     s.id = r.simulation
-                | union
-                |   select
-                |     1 Priority,
-                |     s.description Analysis,
-                |     datetime(s.time / 1000, 'unixepoch', 'localtime') Date,
-                |     s.time When_Epoc,
-                |     r.trafo Transformer,
-                |     r.house House,
-                |     r.maximum Maximum,
-                |     r.reason Reason,
-                |     r.details Details
-                |   from
-                |     simulation s,
-                |     results r
-                |   where
-                |     s.description = 'Einspeiseleistung' and
-                |     s.id = r.simulation""".stripMargin)
+                  |    -- staging view for unified (precalculated & GridLAB-D simulated) feed-in values
+                  |    select
+                  |        0 Priority,             -- low priority for precalculated values
+                  |        s.description Analysis, -- 'Threshold Precalculation'
+                  |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
+                  |        s.time When_Epoc,       -- numeric program execution time
+                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
+                  |        r.maximum Maximum,      -- maximum feed-in power (W)
+                  |        r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
+                  |        r.details Details       -- details regarding the limiting criteria
+                  |    from
+                  |        simulation s,           -- program executions
+                  |        results r               -- result values
+                  |    where
+                  |        s.description = 'Threshold Precalculation' and -- select only precalculated values
+                  |        s.id = r.simulation     -- join the program execution with the result value
+                  |union
+                  |    select
+                  |        1 Priority,             -- high priority for load-flow values
+                  |        s.description Analysis, -- 'Einspeiseleistung'
+                  |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
+                  |        s.time When_Epoc,       -- numeric program execution time
+                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
+                  |        r.maximum Maximum,      -- maximum feed-in power (W)
+                  |        r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
+                  |        r.details Details       -- details regarding the limiting criteria
+                  |    from
+                  |        simulation s,           -- program executions
+                  |        results r               -- result values
+                  |    where
+                  |        s.description = 'Einspeiseleistung' and -- select only load-flow values
+                  |        s.id = r.simulation     -- join the program execution with the result value""".stripMargin)
             statement.executeUpdate (
                 """create view if not exists feedin as
-                | select
-                |   i.Analysis,
-                |   i.Transformer,
-                |   i.House,
-                |   i.Maximum,
-                |   i.Reason,
-                |   i.Details,
-                |   max(i.When_Epoc) When_Epoc
-                | from
-                |   intermediate i
-                | where
-                |   Priority = 1
-                | group by
-                |   House
-                | union
-                | select
-                |   i.Analysis,
-                |   i.Transformer,
-                |   i.House,
-                |   i.Maximum,
-                |   i.Reason,
-                |   i.Details,
-                |   max(i.When_Epoc) When_Epoc
-                | from
-                |   intermediate i
-                | where
-                |   House not in (select House from intermediate where Priority = 1 group By House)
-                | group by
-                |   House""".stripMargin)
+                  |    -- view of the most recent best estimated value of maximum feed-in power
+                  |    select
+                  |        i.Analysis,             -- type of analysis, prefer 'Einspeiseleistung'
+                  |        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        i.House,                -- mRID of the EnergyConsumer at this feed-in node
+                  |        i.Maximum,              -- maximum feed-in power (W)
+                  |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
+                  |        i.Details,              -- details regarding the limiting criteria
+                  |        max(i.When_Epoc) When_Epoc -- select only the most recent value
+                  |    from
+                  |        intermediate i          -- staging view
+                  |    where
+                  |        Priority = 1            -- select only the load-flow values (if any)
+                  |    group by
+                  |        House                   -- for each unique EnergyConsumer mRID
+                  |union
+                  |    select
+                  |        i.Analysis,             -- type of analysis, fall back to 'Threshold Precalculation'
+                  |        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        i.House,                -- mRID of the EnergyConsumer at this feed-in node
+                  |        i.Maximum,              -- maximum feed-in power (W)
+                  |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
+                  |        i.Details,              -- details regarding the limiting criteria
+                  |        max(i.When_Epoc) When_Epoc -- select only the most recent value
+                  |    from
+                  |        intermediate i          -- staging view
+                  |    where
+                  |        House not in (select House from intermediate where Priority = 1 group By House) -- select precalculated values if no load-flow value is present
+                  |    group by
+                  |        House                   -- for each unique EnergyConsumer mRID""".stripMargin)
         }
         statement.close ()
     }
@@ -117,7 +139,7 @@ object Database
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
-        Files.createDirectories (file.getParent ())
+        Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -145,12 +167,12 @@ object Database
                 val resultset = statement.executeQuery ("select last_insert_rowid() id")
                 resultset.next ()
                 val id = resultset.getInt ("id")
-                resultset.close
-                statement.close
+                resultset.close ()
+                statement.close ()
 
                 // insert the results
                 val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?)")
-                for (i <- 0 until records.length)
+                for (i <- records.indices)
                 {
                     datainsert.setNull (1, Types.INTEGER)
                     datainsert.setInt (2, id)
@@ -167,20 +189,20 @@ object Database
                     datainsert.setString (7, records(i).details)
                     datainsert.executeUpdate ()
                 }
-                datainsert.close
-                connection.commit
+                datainsert.close ()
+                connection.commit ()
 
-                return (id)
+                id
             }
             else
-                return (0)
+                0
         }
         catch
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e);
-            return (-1)
+            case e: SQLException ⇒ log.error ("exception caught: " + e)
+            -1
         }
         finally
         {
@@ -202,7 +224,7 @@ object Database
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
-        Files.createDirectories (file.getParent ())
+        Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -228,14 +250,14 @@ object Database
             val resultset = statement.executeQuery ("select last_insert_rowid() id")
             resultset.next ()
             val id = resultset.getInt ("id")
-            resultset.close
-            statement.close
+            resultset.close ()
+            statement.close ()
 
             // insert the results
             val records = results.collect ()
 
             val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
-            for (i <- 0 until records.length)
+            for (i <- records.indices)
             {
                 val trafo_id = records(i).source_obj
                 val eea = if (records(i).eea != null) records(i).eea.size else 0
@@ -250,17 +272,17 @@ object Database
                 datainsert.setString (8, records(i).details)
                 datainsert.executeUpdate ()
             }
-            datainsert.close
-            connection.commit
+            datainsert.close ()
+            connection.commit ()
 
-            return (id)
+            return id
         }
         catch
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e);
-            return (-1)
+            case e: SQLException ⇒ log.error ("exception caught: " + e)
+            return -1
         }
         finally
         {
@@ -277,9 +299,9 @@ object Database
         }
     }
 
-    def fetchHouseMaximumsForTransformer (simulation: Int, transformer: String): Array[Tuple2[String,Double]] =
+    def fetchHouseMaximumsForTransformer (simulation: Int, transformer: String): Array[(String,Double)] =
     {
-        var ret = new ArrayBuffer[Tuple2[String,Double]] ()
+        var ret = new ArrayBuffer[(String,Double)] ()
 
         // check if the directory exists
         val file = Paths.get ("simulation/results.db")

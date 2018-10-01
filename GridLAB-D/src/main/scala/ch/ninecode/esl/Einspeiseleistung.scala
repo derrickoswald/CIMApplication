@@ -8,6 +8,7 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -15,7 +16,9 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -23,9 +26,8 @@ import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
-import ch.ninecode.model.Element
 
-case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions)
+case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
 {
     if (options.verbose)
     {
@@ -39,7 +41,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         if (!pl.isInfoEnabled)
             pl.setLevel (org.apache.log4j.Level.INFO)
     }
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -52,24 +55,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     val _DateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
     if (USE_UTC)
         _DateFormat.setTimeZone(TimeZone.getTimeZone("UTC"))
-
-    /**
-     * Lookup CIM RDD by name.
-     * @param name The unqualified name of the RDD (name of the class)
-     * @return The RDD found or null if nothing was found.
-     */
-    def get (name: String): RDD[Element] =
-    {
-        val rdds = session.sparkContext.getPersistentRDDs
-        for (key <- rdds.keys)
-        {
-            val rdd = rdds (key)
-            if (rdd.name == name)
-                return (rdd.asInstanceOf[RDD[Element]])
-        }
-
-        return (null)
-    }
 
     def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions) (arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
     {
@@ -151,25 +136,25 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + max + " Volts")))
             }
-            List()
+            List ()
         }
 
         val overV = elements.filter (if (options.three) interesting3ph else interesting1ph)
         overV.flatMap (assign (experiments))
     }
 
-    def ampcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[Tuple2[String, Double]]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+    def ampcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
         val limit = "current limit"
 
         // eliminate measurements below capacity
-        def interesting1ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
+        def interesting1ph(arg: (ThreePhaseComplexDataElement, Double)): Boolean =
         {
             val r = arg._1
             val max = arg._2
             r.value_a.abs / Math.sqrt(3) > max
         }
-        def interesting3ph(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Boolean =
+        def interesting3ph(arg: (ThreePhaseComplexDataElement, Double)): Boolean =
         {
             val r = arg._1
             val max = arg._2
@@ -177,7 +162,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         // assign an experiment to each measurement
-        def assign(experiments: Iterable[Experiment])(arg: Tuple2[ThreePhaseComplexDataElement, Double]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+        def assign(experiments: Iterable[Experiment])(arg: (ThreePhaseComplexDataElement, Double)): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             val r = arg._1
             val max = arg._2
@@ -185,7 +170,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + max + " Amps")))
             }
-            List()
+            List ()
         }
 
         val cdata_map = cdata.toMap
@@ -233,11 +218,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 if ((e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis))
                     return (List ((e, r, limit, r.element + " > " + power + " Watts")))
             }
-            List()
+            List ()
         }
 
         // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
-        val i = if (options.three) power / (400.0 * math.sqrt (3)) else power / 400.0
+        val i = if (options.three) power / (400.0 * math.sqrt (3)) else power / 400.0 // ToDo: remove hard-coded voltage
         val overI = elements.filter (if (options.three) interesting3ph (i) else interesting1ph (i))
         overI.flatMap (assign (experiments))
     }
@@ -530,13 +515,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // determine the set of transformers to work on
         val transformers: Array[TransformerSet] = if (null != trafos)
         {
-            val selected = tdata.filter ((x) => trafos.contains (x.transformer.id)).distinct
+            val selected = tdata.filter (x => trafos.contains (x.transformer.id)).distinct
             selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = tdata.filter ((td) => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
+            val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
         }
 
@@ -550,15 +535,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
-            // java.lang.ClassCastException: org.apache.spark.graphx.impl.ShippableVertexPartition cannot be cast to scala.Product2
-            // https://issues.apache.org/jira/browse/SPARK-14804 Graph vertexRDD/EdgeRDD checkpoint results ClassCastException: 
-            // Fix Version/s: 2.0.3, 2.1.1, 2.2.0
-//            session.sparkContext.getCheckpointDir match
-//            {
-//                case Some (dir) => initial.checkpoint ()
-//                case None =>
-//            }
-            PowerFeeding.threshold_calculation (session, initial, sdata, transformers, gridlabd, storage_level)
+            val pf = new PowerFeeding (session)
+            pf.threshold_calculation (initial, sdata, transformers, gridlabd, storage_level)
         }
 
         val houses = if (options.all)

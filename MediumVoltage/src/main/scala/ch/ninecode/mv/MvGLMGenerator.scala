@@ -24,7 +24,7 @@ case class MvGLMGenerator (
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false) // ToDo: get library base temperature and target temperature as command line input
+extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = true) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = "%s_%s".format (feeder.station, feeder.number)
 
@@ -39,6 +39,8 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
 
+    def nodelist: Map[String,GLMNode] = feeder.nodes.map (x ⇒ (x._id, x)).toMap
+
     /**
      * Add meter elements for nodes on the edge of the network.
      *
@@ -50,7 +52,6 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
      */
     override def extra: Iterable[String] =
     {
-        val n = feeder.nodes.map (_._id).toArray
         def ends_voltages (edge: GLMEdge): Iterable[(String, Double)] =
         {
             edge match
@@ -63,12 +64,13 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
                     List ((switch.cn1, v), (switch.cn2, v))
                 case transformer: TransformerEdge ⇒
                     List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
-                case _ ⇒
-                    println ("unhandled class %s".format (edge.getClass))
-                    List ()
+                case edge: GLMEdge ⇒
+                    List ((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
             }
         }
-        val missing = feeder.edges.flatMap (ends_voltages).filter (x ⇒ !n.contains (x._1))
+        val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
+            .filter (x ⇒ !nodelist.isDefinedAt (x._1)) // eliminate those that are emitted normally
+            .groupBy (_._1).values.map (_.head) // eliminate duplicates from multiple edges
         missing.map (x ⇒ FeederNode (x._1, null, x._2).emit (this))
     }
 
@@ -129,6 +131,6 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         |            nominal_voltage %sV;
         |            load_class R;
         |        };
-        """.stripMargin.format (transformer.node1, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (100000, 0)), 400.0)
+        """.stripMargin.format (transformer.node1, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.v1)
     }
 }

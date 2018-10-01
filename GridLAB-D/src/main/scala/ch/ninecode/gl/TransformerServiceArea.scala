@@ -7,6 +7,7 @@ import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -21,9 +22,10 @@ import ch.ninecode.model._
  * Identifies island clusters sharing a (group of ganged) transformer(s) low voltage winding.
  *
  * @param session the Spark session object
+ * @param storage_level The storage level to use in persisting the edges and nodes.
  * @param debug flag to turn on debug output
  */
-case class TransformerServiceArea (session: SparkSession, debug: Boolean = false) extends CIMRDD
+case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD
 {
     import session.sqlContext.implicits._
 
@@ -239,7 +241,8 @@ case class TransformerServiceArea (session: SparkSession, debug: Boolean = false
         // traverse the graph with the Pregel algorithm
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
-        val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges).cache ()
+        val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges, VertexData (), storage_level, storage_level).cache ()
+
         graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
     }
 

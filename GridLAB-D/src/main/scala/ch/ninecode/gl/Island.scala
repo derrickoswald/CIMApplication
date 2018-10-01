@@ -249,7 +249,7 @@ with Serializable
         }
 
         // construct the initial graph from the edges and nodes
-        Graph.apply[PreNode, PreEdge] (xnodes, xedges, vertex_data, storage_level, storage_level)
+        Graph[PreNode, PreEdge] (xnodes, xedges, vertex_data, storage_level, storage_level)
     }
 
     /**

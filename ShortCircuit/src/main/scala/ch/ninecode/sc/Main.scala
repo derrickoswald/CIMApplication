@@ -89,6 +89,7 @@ object Main
         cmin: Double = 0.90,
         worstcasepf: Boolean = true,
         cosphi: Double = 1.0,
+        fuse_table: Int = 1,
         messagemax: Int = 5,
         batchsize: Long = 10000L,
         workdir: String = "",
@@ -184,6 +185,10 @@ object Main
             action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
             text ("load power factor, used for maximum inrush current [worst case]")
 
+        opt[Int]("fuse_table").
+            action ((x, c) => c.copy (fuse_table = x)).
+            text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s]".format (default.fuse_table))
+
         opt[Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
             text ("maximum number of warning and error messages per node [%d]".format (default.messagemax))
@@ -260,6 +265,7 @@ object Main
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        reader_options.put ("StorageLevel", arguments.storage)
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
         log.info (elements.count () + " elements")
 
@@ -363,6 +369,7 @@ object Main
                     cmin = arguments.cmin,
                     worstcasepf = arguments.worstcasepf,
                     cosphi = arguments.cosphi,
+                    fuse_table = arguments.fuse_table,
                     messagemax = arguments.messagemax,
                     batchsize = arguments.batchsize,
                     trafos = arguments.trafos,

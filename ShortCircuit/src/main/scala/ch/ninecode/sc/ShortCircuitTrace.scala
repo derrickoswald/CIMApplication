@@ -32,6 +32,7 @@ with Serializable
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     def trace (initial: Graph[ScNode, ScEdge]): Graph[ScNode, ScEdge] =
     {
+        log.info ("tracing")
         initial.pregel (ScMessage (null, null, null, null, null, null), 10000, EdgeDirection.Either) (vprog, sendMessage, mergeMessage)
     }
         
@@ -74,7 +75,13 @@ with Serializable
         }
         else
         {
-            val parallel = a.edge.parallel (b.edge)
+            val parallel =
+                if ((null != a.edge) && (null != b.edge))
+                    a.edge.parallel (b.edge)
+                else if (null != a.edge)
+                    a.edge
+                else
+                    b.edge
             val warning = ScError (false, false, "reinforcement detected from %s".format (a.previous_node))
             a.copy (edge = parallel, errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
         }

@@ -31,6 +31,7 @@ class NonradialSuite
 
     val FILENAME1 = "bkw_cim_export_schopfen_all.rdf"
     val FILENAME2 = "sak_sample_complex_parallel.rdf"
+    val FILENAME3 = "three_winding_non-radial.rdf"
 
     var run_one = 1
     var run_two = 2
@@ -40,6 +41,8 @@ class NonradialSuite
         // unpack the zip files
         if (!new File (FILE_DEPOT + FILENAME2).exists)
             new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex_parallel.zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME3).exists)
+            new Unzip ().unzip (FILE_DEPOT + "three_winding_non-radial.zip", FILE_DEPOT)
     }
 
     test ("Basic")
@@ -263,5 +266,56 @@ class NonradialSuite
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
             assert (null != consumer.errors)
             assert (!consumer.errors.contains (ScError (true, true, "non-radial network detected through Line2").toString))
+    }
+
+
+    test ("Three Winding Transformer with non-radial network")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME3
+
+            val start = System.nanoTime
+            val files = filename.split (",")
+            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            options.put ("path", filename)
+            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (elements.count + " elements")
+            val read = System.nanoTime
+            println ("read: " + (read - start) /  1e9 + " seconds")
+
+            // identify topological nodes
+            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
+            val ele = ntp.process (true).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            println (ele.count () + " elements")
+
+            val topo = System.nanoTime ()
+            println ("topology: " + (topo - read) / 1e9 + " seconds")
+
+            // short circuit calculations
+            val sc_options = ShortCircuitOptions (
+                default_short_circuit_power_max = 600.0e6,
+                default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
+                default_short_circuit_power_min = 600.0e6,
+                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
+                base_temperature = 20.0,
+                low_temperature = 20.0,
+                workdir = "./results/")
+            val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
+            val results = shortcircuit.run ()
+            results.cache ()
+
+            val string = results.sortBy (_.tx).map (_.csv)
+            val csv = string.collect
+            println ("results: " + csv.length)
+            println (ScResult.csv_header)
+            for (i <- csv.indices)
+                println (csv (i))
+
+            assert (results.filter (_.equipment == "USR0001").count == 0, "USR0001 should not be computed")
+            assert (Math.abs (results.filter (_.equipment == "USR0002").first ().low_sk - 8933600) < 100.0, "USER002 power")
+            assert (Math.abs (results.filter (_.equipment == "USR0003").first ().low_sk - 8884895) < 100.0, "USER003 power")
     }
 }

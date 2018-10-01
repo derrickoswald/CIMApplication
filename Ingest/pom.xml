@@ -10,7 +10,7 @@
         <version>2.11-2.3.1-2.4.0</version>
     </parent>
     <artifactId>Ingest</artifactId>
-    <groupId>ch.ninecode.gl</groupId>
+    <groupId>ch.ninecode.ingest</groupId>
     <name>Ingest</name>
     <description>Import measurement data to Cassandra using Spark and Scala</description>
     <inceptionYear>2018</inceptionYear>

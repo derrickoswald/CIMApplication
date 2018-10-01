@@ -11,17 +11,17 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
+import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
@@ -54,6 +54,26 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         finally { resource.close () }
     }
 
+    def storage_level_tostring (level: StorageLevel): String =
+    {
+        level match
+        {
+            case StorageLevel.NONE ⇒ "NONE"
+            case StorageLevel.DISK_ONLY ⇒ "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 ⇒ "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY ⇒ "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 ⇒ "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER ⇒ "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 ⇒ "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK ⇒ "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 ⇒ "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER ⇒ "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 ⇒ "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP ⇒ "OFF_HEAP"
+            case _ ⇒ ""
+        }
+    }
+
     def run (): Long =
     {
         val start = System.nanoTime ()
@@ -66,23 +86,18 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        reader_options.put ("StorageLevel", storage_level_tostring (options.storage))
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
         log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
-        val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
-        {
-            case Some ((_, storage)) => StorageLevel.fromString (storage)
-            case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-        }
-
         // identify topological nodes if necessary
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, force_retain_switches = true, force_retain_fuses = false)
+            val ntp = new CIMNetworkTopologyProcessor (session, options.storage, force_retain_switches = true, force_retain_fuses = false)
             val ele = ntp.process (identify_islands = true)
             log.info (ele.count () + " elements")
         }
@@ -90,21 +105,46 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
-        val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes = true)
+        // get all the transformers
+        val _transformers = new Transformers (session, options.storage)
+        val tdata = _transformers.getTransformerData (topological_nodes = true, transformer_filter = transformer ⇒ true)
 
         // feeder service area calculations
         val feeder = Feeder (session, options.storage)
-        val nodes_feeders = feeder.getFeederMap.filter (_._2 != null) // (nodeid, feederid)
+        val nodes_feeders = feeder.identifyFeeders.filter (_._2 != null) // (nodeid, feederid)
 
-        // get a map of voltages
-        // ToDo: fix this 1kV multiplier on the voltages
+        // get a map of voltage for each TopologicalNode starting from Terminal elements
+        // ToDo: fix these 1kV multiplier on the voltages
+        log.info ("creating nodes")
         val voltages = get("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map(v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
-        val ff: RDD[(String, TopologicalNode)] = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).values
-        val nodes: RDD[(String, FeederNode)] = ff.keyBy (_._2.id).leftOuterJoin (feeder.feederNodes).values
-                        .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, 0.0))))
+        val end_voltages = getOrElse[PowerTransformerEnd].map (
+            x ⇒
+            {
+                val voltage = voltages.getOrElse (x.TransformerEnd.BaseVoltage, x.ratedU * 1000.0)
+                (x.TransformerEnd.Terminal, voltage)
+            }
+        )
+        val zeros = end_voltages.filter (_._2 == 0.0)
+        if (!zeros.isEmpty ())
+            log.warn ("""transformer ends with no nominal voltage, e.g. %s""".format (zeros.take (5).map (_._1).mkString (",")))
+        val equipment_voltages = getOrElse[Terminal].keyBy (_.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).values.map (
+            x ⇒
+            {
+                val voltage = voltages.getOrElse (x._2.BaseVoltage, 0.0)
+                (x._1.id, voltage)
+            }
+        )
+        val nodevoltages = end_voltages.filter (_._2 != 0.0).union (equipment_voltages.filter (_._2 != 0))
+            .join (getOrElse[Terminal].keyBy (_.id)).values
+            .map (x ⇒ (x._2.TopologicalNode, x._1))
+
+        // put it all together
+        val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
+        val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
+            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).cache
 
         // get equipment with nodes & terminals
+        log.info ("creating edges")
         val gg: RDD[(String, Iterable[(String, Terminal)])] = get[Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
         // eliminate 0Ω links
         val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
@@ -116,8 +156,6 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.distinct.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
         // ToDo: is it better to groupBy feeder first?
         val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (x ⇒ x._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
-        // make one edge for each unique feeder it's in
-        val ll: RDD[(String, Iterable[(Iterable[(String, Terminal)], Element)])] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, x.filter (_._1 == y).map (_._2))))
 
         // make edges
         // ToDo: fix this collect
@@ -129,25 +167,51 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
             AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
-        val edges: RDD[(String, GLMEdge)] = ll.map (x ⇒ (x._1, make_edge (transformers) (x._2))).cache
+        // make one edge for each unique feeder it's in
+        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2))))).cache
 
-        // OK, so there are nodes and edges identified by feeder, now we need to combine them
-        // we need a "touches" list that says feeder A touches feeder B through open switch X
-        val crosspoints: RDD[(String, PlayerSwitchEdge)] = edges.filter (_._2.isInstanceOf[PlayerSwitchEdge]).map (x ⇒ (x._1, x._2.asInstanceOf[PlayerSwitchEdge])) // (feederid, switch)
-        val links: RDD[(String, String)] = crosspoints.flatMap (x ⇒ List ((x._1, x._2.cn1), (x._1, x._2.cn2))).map (_.swap).join (nodes_feeders).values.filter (x ⇒ x._1 != x._2) // (feederid, otherfeederid)
-        val bidirection_links = links.flatMap (x ⇒ List (x, x.swap)).distinct // (feederid, otherfeederid)
-
-        // this is the list of feeder elements with all attached feeder names - including it's own
-        val feeder_mapping: RDD[(Element, Iterable[String])] = feeder.feeders.keyBy (_.id).join (bidirection_links).values.groupByKey.map (x ⇒ (x._1, Seq (x._1.id) ++ x._2))
-
-        // expand the list of nodes and edges to include one copy for each feedermap element
-        val more_nodes: RDD[(String, FeederNode)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (nodes).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
-        val more_edges: RDD[(String, GLMEdge)] = feeder_mapping.map (x ⇒ (x._1.id, x._2)).join (edges).flatMap (x ⇒ x._2._1.map (y ⇒ (y, x._2._2)))
-
-        val feeders = more_nodes.groupByKey.join (more_edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
+        // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
+        log.info ("creating models")
+        val feeders = nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
-            .map (x ⇒ FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, x._2._1.groupBy (_.id).map (y ⇒ y._2.head), x._2._2.groupBy (_.key).map (y ⇒ y._2.head)))
-        log.info ("%s feeders found".format (feeders.count))
+            .map (
+                x ⇒
+                {
+                    val nodes = x._2._1.groupBy (_.id).map (y ⇒ y._2.head) // distinct
+                    // to handle the ganged transformers that have only one node connected into the network
+                    // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
+                    val nodelist = nodes.map (x ⇒ (x._id, x)).toMap
+                    def pickbest (arg: (String, Iterable[GLMEdge])): GLMEdge =
+                    {
+                        val withcount = arg._2.map (
+                            edge ⇒
+                            {
+                                val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
+                                {
+                                    case (Some(n1), Some (n2)) ⇒ List (n1, n2)
+                                    case (Some(n1), None) ⇒ List (n1)
+                                    case (None, Some (n2)) ⇒ List (n2)
+                                    case _ ⇒ List () // ?
+                                }
+                                (edge, n)
+                            }
+                        )
+                        val two = withcount.filter (_._2.size >= 2)
+                        if (two.nonEmpty)
+                            two.head._1
+                        else
+                        {
+                            val one =  withcount.filter (_._2.nonEmpty)
+                            if (one.nonEmpty)
+                                one.head._1
+                            else
+                                withcount.head._1
+                        }
+                    }
+                    val edges = x._2._2.groupBy (_.id).map (pickbest)
+                    FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, nodes, edges)
+                }).cache
+        log.info ("%s feeders".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
@@ -156,26 +220,33 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
 
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
-            val normally_open = "%s,OPEN".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
-            val normally_closed = "%s,CLOSED".format (date_format.format (0L)).getBytes (StandardCharsets.UTF_8)
-            // for switches on the boundary, we need to force them to be normally closed, so make a list of interior node ids
-            val n = area.nodes.map (_.id).toArray
-            // add a player file for each switch
-            area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.asInstanceOf[PlayerSwitchEdge]).foreach (
-                edge ⇒
-                {
-                    val boundary = !n.contains (edge.cn1) || !n.contains (edge.cn2)
-                    val state = if (boundary) normally_closed else if (feeder.switchClosed (edge.switch)) normally_closed else normally_open
-                    gridlabd.writeInputFile (generator.name + "/input_data", edge.id + ".csv", state)
-                }
-            )
+
+            // to make the glm files testable, we add a player file for the switches generated by a bash file of the form:
+            //     for file in \
+            //     file1 \
+            //     file2 \
+            //     file3
+            //     do
+            //         echo 1970-01-01 00:00:00 UTC,CLOSED>$file.csv
+            //     done
+            val switches = area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.id).mkString (" \\\n")
+            val UNIX_EPOC: String = date_format.format (0L)
+            val text =
+                """for file in \
+                  |%s
+                  |do
+                  |    echo %s,%s>$file.csv
+                  |done""".stripMargin.format (switches, UNIX_EPOC, "CLOSED").getBytes (StandardCharsets.UTF_8)
+            gridlabd.writeInputFile (generator.name + "/input_data", "gen", text, "ugo-rwx")
             log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
             1
         }
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = storage_level, workdir = options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = options.storage, workdir = options.workdir)
+        log.info ("exporting models")
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 
-        // for filename in STA*; do echo $filename; pushd $filename > /dev/null; gridlabd $filename; popd > /dev/null; done;
+        // to test all the generated glm files, change to the output directory and run
+        // for filename in STA*; do echo $filename; pushd $filename/input_data > /dev/null; ./gen; cd ..; gridlabd $filename; popd > /dev/null; done;
 
         count
     }
