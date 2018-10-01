@@ -73,6 +73,8 @@ object FData
     {
         if (null == fuses)
             false
+        else if (fuses.isEmpty)
+            false
         else
         {
             var len = fuses.last.length

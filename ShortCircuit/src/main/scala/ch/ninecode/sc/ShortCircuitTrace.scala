@@ -223,9 +223,18 @@ with Serializable
                     {
                         val error = ScError (true, true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                         log.error (error.message)
-                        
-                        val comb_fuse = src.fuses.last ::: dst.fuses.last
-                        val fuses = src.fuses.dropRight(1) :+ comb_fuse.distinct 
+
+                        val fuses =
+                            if (null != src.fuses)
+                                if (null != dst.fuses)
+                                    src.fuses.dropRight(1) :+ (src.fuses.last ::: dst.fuses.last)
+                                else
+                                    src.fuses
+                            else
+                                if (null != dst.fuses)
+                                    dst.fuses
+                                else
+                                    null
 
                         // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                         Iterator (
