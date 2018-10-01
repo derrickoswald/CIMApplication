@@ -69,19 +69,22 @@ class FDataSuite extends FunSuite
     test ("Table 2 FuseOK")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuseOK (123.456, List (288282.0, 73737.3, 1323.8, 100.0, 40.0)), "expected OK")
+        val list = List ( List (("TEI124", 288282.0), ("TEI123", 73737.3)), List(("TEI134", 1323.8), ("TEI135", 100.0)), List(("TEI141", 40.0)))
+        assert (FData.fuseOK (123.456, list), "expected OK")
     }
 
     test ("Table 2 FuseNotOK")
     {
         FData.fuse_sizing_table (2)
-        assert (!FData.fuseOK (123.456, List (288282.0, 73737.3, 1323.8, 50.0)), "expected not OK")
+        val list = List ( List (("TEI12", 288282.0 )), List (("TEI13", 73737.3)), List(("TEI14", 1323.8)), List(("TEI145", 50.0)))
+        assert (!FData.fuseOK (123.456, list), "expected not OK")
     }
 
     test ("Table 2 Fuse0")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuseOK (123.456, List (288282.0, 73737.3, 1323.8, 100.0, 40.0, 0.0)), "expected OK")
+        val list = List ( List (("TEI12", 288282.0)), List(("TEI13", 73737.3)), List(("TEIA14", 1323.8)), List(("TEI14", 100.0)), List(("TEI15", 40.0)), List(("TEI16", 0.0)))
+        assert (FData.fuseOK (123.456, list), "expected OK")
     }
 
     test ("Table 2 then 1 Fuse+")

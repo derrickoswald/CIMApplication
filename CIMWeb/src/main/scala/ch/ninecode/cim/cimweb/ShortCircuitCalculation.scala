@@ -185,7 +185,7 @@ class ShortCircuitCalculation extends RESTful
                 spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
                 val input = getInputRecord ("input record containing the function to run")
                 val worstcasepf = cosphi.isNaN
-                val options = ShortCircuitOptions (false, "CIMApplication", network_short_circuit_power, netz, network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, worstcasepf, cosphi, 3, 100000, transformer, null)
+                val options = ShortCircuitOptions (false, "CIMApplication", network_short_circuit_power, netz, network_short_circuit_power, netz, transformer_power_rating, txz, tbase, tlow, thigh, cmax, cmin, worstcasepf, cosphi, 1, 3, 100000, transformer, null)
                 val query = ShortCircuitFunction (options)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
                 val interaction = connection.createInteraction
