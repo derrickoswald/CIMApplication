@@ -20,6 +20,7 @@ import ch.ninecode.gl.Complex
  * @param cmin voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless)
  * @param worstcasepf assume worst case motor power factor (cos term = 1.0, ignore cosphi)
  * @param cosphi power factor of (motor) load e.g. cos (60), the cosine of the motor starting current-voltage phase angle, typical values range from 0.2 (φ = 78°) to 0.6 (φ = 53°) during startup (dimensionless)
+ * @param fuse_table recommended fuse sizing table choice, either 1 or 2; table 1 ranges from 65A⇒25 to 2400A⇒630, while table 2 ranges from 28A⇒10 to 2500A⇒630
  * @param messagemax mximum number of warning and error messages to keep for each node
  * @param batchsize size of result collections for driver database writes
  * @param trafos file name of transformer names to process
@@ -41,6 +42,7 @@ case class ShortCircuitOptions (
     cmin: Double = 0.90,
     worstcasepf: Boolean = true,
     cosphi: Double = 0.5,
+    fuse_table: Int = 1,
     messagemax: Int = 5,
     batchsize: Long = 10000,
     trafos: String = "",

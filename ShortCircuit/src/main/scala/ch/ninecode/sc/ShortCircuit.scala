@@ -691,6 +691,8 @@ with Serializable
     def run (): RDD[ScResult] =
     {
         log.info ("storage level: %s".format (storage_level.toString))
+        FData.fuse_sizing_table (options.fuse_table)
+        log.info ("fuse sizing table: %s".format (options.fuse_table))
 
         // check if topology exists, and if not then generate it
         if (null == get[TopologicalNode])

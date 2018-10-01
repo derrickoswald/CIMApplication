@@ -89,6 +89,7 @@ object Main
         cmin: Double = 0.90,
         worstcasepf: Boolean = true,
         cosphi: Double = 1.0,
+        fuse_table: Int = 1,
         messagemax: Int = 5,
         batchsize: Long = 10000L,
         workdir: String = "",
@@ -183,6 +184,10 @@ object Main
         opt[Double]("cosphi").
             action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
             text ("load power factor, used for maximum inrush current [worst case]")
+
+        opt[Int]("fuse_table").
+            action ((x, c) => c.copy (fuse_table = x)).
+            text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s]".format (default.fuse_table))
 
         opt[Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
@@ -364,6 +369,7 @@ object Main
                     cmin = arguments.cmin,
                     worstcasepf = arguments.worstcasepf,
                     cosphi = arguments.cosphi,
+                    fuse_table = arguments.fuse_table,
                     messagemax = arguments.messagemax,
                     batchsize = arguments.batchsize,
                     trafos = arguments.trafos,
