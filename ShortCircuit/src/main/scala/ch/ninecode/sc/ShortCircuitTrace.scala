@@ -67,7 +67,7 @@ with Serializable
             else 
             {
                 // TODO
-                val fuse_error = List(ScError (true, true, "different fuse paths detectede from %s to %s".format (a.previous_node, b.previous_node)))
+                val fuse_error = List(ScError (true, true, "different fuse paths detected from %s to %s".format (a.previous_node, b.previous_node)))
                 log.error (fuse_error.head.message)
                 error = ScError.combine_errors(error, fuse_error, options.messagemax)
             }
@@ -93,11 +93,11 @@ with Serializable
         val dst = triplet.dstAttr
         if (triplet.attr.element.isInstanceOf[Fuse])
         {
-            if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
+            if (triplet.attr.shouldContinueTo (triplet.dstAttr))
             {
                 if (src.fuses != null && src.fuses.last.map(_._1).contains(triplet.attr.element.id))
                 {
-                    if (src.fuses.dropRight(1) == dst.fuses || (dst.fuses == null && src.fuses.dropRight(1).length == 0))
+                    if (src.fuses.dropRight(1) == dst.fuses || (dst.fuses == null && src.fuses.dropRight(1).isEmpty))
                         Iterator.empty
                     else 
                     {
@@ -107,7 +107,7 @@ with Serializable
                 }
                 else if (dst.fuses != null && dst.fuses.last.map(_._1).contains(triplet.attr.element.id))
                 {
-                    if (dst.fuses.dropRight(1) == src.fuses || (src.fuses == null && dst.fuses.dropRight(1).length == 0))
+                    if (dst.fuses.dropRight(1) == src.fuses || (src.fuses == null && dst.fuses.dropRight(1).isEmpty))
                         Iterator.empty
                     else 
                     {
@@ -118,7 +118,7 @@ with Serializable
                 else 
                 {
                     // TODO
-                    log.error ("shouldnt happen")
+                    log.error ("shouldn't happen")
                     Iterator.empty
                 }
             }
@@ -193,7 +193,7 @@ with Serializable
         else 
         {
             // TODO
-            log.error ("shouldnt happen")
+            log.error ("shouldn't happen")
             Iterator.empty
         }
     }
@@ -252,12 +252,9 @@ with Serializable
     {
         val x =
         if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance != null)
-            if (triplet.attr.v1 > 1000 || triplet.attr.v2 > 1000)
-                Iterator.empty
-            else
-                handleMesh (triplet)
+            handleMesh (triplet)
         else if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
-            if (triplet.attr.shouldContinueTo (triplet.dstAttr.id_seq))
+            if (triplet.attr.shouldContinueTo (triplet.dstAttr))
             {
                 val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                 val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
@@ -268,7 +265,7 @@ with Serializable
             else
                 Iterator.empty
         else if (triplet.dstAttr.impedance != null && triplet.srcAttr.impedance == null)
-            if (triplet.attr.shouldContinueTo (triplet.srcAttr.id_seq))
+            if (triplet.attr.shouldContinueTo (triplet.srcAttr))
             {
                 val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                 val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)

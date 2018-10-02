@@ -635,7 +635,7 @@ with Serializable
 
         val initial = get_inital_graph ()
         val initial_with_starting_nodes = initial.mapVertices (starting_map (starting_nodes)).persist (storage_level)
-        val sct = new ShortCircuitTrace(session, options)
+        val sct = ShortCircuitTrace (session, options)
         val graph = sct.trace (initial_with_starting_nodes)
 
         // get the visited nodes with their data

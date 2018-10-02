@@ -68,36 +68,39 @@ case class ScEdge (
     /**
      * Predicate that determines if the trace should continue to the given node.
      *
-     * @param id_cn TopologicalNode to test
+     * @param node TopologicalNode to test
      * @return <code>false</code> for open Switch objects and higher voltage transformer nodes, <code>true</code> otherwise
      */
-    def shouldContinueTo (id_cn: String): Boolean =
+    def shouldContinueTo (node: ScNode): Boolean =
     {
-        element match
-        {
-            case switch: Switch ⇒ switchClosed (switch)
-            case cut: Cut ⇒ switchClosed (cut.Switch)
-            case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch)
-            case fuse: Fuse ⇒ switchClosed (fuse.Switch)
-            case gd: GroundDisconnector ⇒ switchClosed (gd.Switch)
-            case jumper: Jumper ⇒ switchClosed (jumper.Switch)
-            case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch)
-            case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch)
-            case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
-            case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
-            case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-            case line: ACLineSegment => 
-                !(v1 > 1000 || v2 > 1000)
-            case _: PowerTransformer ⇒
-                if (id_cn == id_cn_1)
-                    v1 <= v2 || ((v1 <= 1000.0) && (v2 <= 1000.0))
-                else if (id_cn == id_cn_2)
-                    v2 <= v1 || ((v1 <= 1000.0) && (v2 <= 1000.0))
-                else
-                    throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
-            case _ ⇒
-                true
-        }
+        if (node.id_prev == "network")
+            false
+        else
+            element match
+            {
+                case switch: Switch ⇒ switchClosed (switch)
+                case cut: Cut ⇒ switchClosed (cut.Switch)
+                case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch)
+                case fuse: Fuse ⇒ switchClosed (fuse.Switch)
+                case gd: GroundDisconnector ⇒ switchClosed (gd.Switch)
+                case jumper: Jumper ⇒ switchClosed (jumper.Switch)
+                case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch)
+                case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch)
+                case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
+                case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
+                case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
+                case line: ACLineSegment ⇒ true
+                case _: PowerTransformer ⇒ // continue if voltage decreases or it stays below 1000.0
+                    val id_cn = node.id_seq
+                    if (id_cn == id_cn_1)
+                        v1 <= v2 || v1 <= 1000.0
+                    else if (id_cn == id_cn_2)
+                        v2 <= v1 || v2 <= 1000.0
+                    else
+                        throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
+                case _ ⇒
+                    true
+            }
     }
 
     /**
