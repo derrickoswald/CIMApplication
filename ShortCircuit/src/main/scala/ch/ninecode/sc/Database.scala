@@ -267,7 +267,10 @@ object Database
                         {
                             datainsert2.setString (18, batch(i).fuseString)
                             datainsert2.setDouble (19, FData.fuse (batch(i).high_ik))
-                            datainsert2.setBoolean (20, FData.fuseOK (batch(i).high_ik, batch(i).fuses))
+                            if (FData.hasMissingValues(batch(i).fuses))
+                                datainsert2.setNull (20, Types.BOOLEAN)
+                            else
+                                datainsert2.setBoolean (20, FData.fuseOK (batch(i).high_ik, batch(i).fuses))
                         }
                         datainsert2.executeUpdate ()
                     }
