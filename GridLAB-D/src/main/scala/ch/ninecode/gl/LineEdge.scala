@@ -79,8 +79,10 @@ extends GLMEdge
         val psr = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource
         if (null != psr.AssetDatasheet)
             psr.AssetDatasheet // ToDo: this is not really what is needed, it should be ConcentricNeutralCableInfo.name e.g. GKN 3x16rm/16 1/0.6 kV
-        else
+        else if (null != psr.IdentifiedObject.name)
             psr.IdentifiedObject.name // ToDo: this is a NIS specific characteristic where the ACLineSegment.name is the article.type
+        else
+            "_" + line.hashCode.toString
     }
 
     /**

@@ -4,12 +4,10 @@ import scala.util.control.Breaks._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMRDD
@@ -20,13 +18,9 @@ import ch.ninecode.model._
  * Uses GraphX to trace the topology and generate the short circuit results at each node.
  *
  * @param session the Spark session
- * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
  * @param options options for short-circuit processing
  */
-
-case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOptions)
-extends CIMRDD
-with Serializable
+case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOptions) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -59,7 +53,7 @@ with Serializable
             var fuses: List[List[(String, Double)]] = null
             if (a.fuses == b.fuses)
                 fuses = a.fuses
-            else if (a.fuses.dropRight(1) == b.fuses.dropRight(1))
+            else if ((null != a.fuses) && (null != b.fuses) && a.fuses.dropRight(1) == b.fuses.dropRight(1))
             {
                 val comb_fuse = a.fuses.last ::: b.fuses.last
                 fuses = a.fuses.dropRight(1) :+ comb_fuse.distinct
@@ -131,7 +125,7 @@ with Serializable
             if (src.fuses == dst.fuses)
                 Iterator.empty
 
-            else if (src.fuses.dropRight(1) == dst.fuses.dropRight(1))
+            else if ((null != src.fuses) && (null != dst.fuses) && src.fuses.dropRight(1) == dst.fuses.dropRight(1))
             {
                 val comb_fuse = src.fuses.last ::: dst.fuses.last
                 val fuses = src.fuses.dropRight(1) :+ comb_fuse.distinct
@@ -140,7 +134,7 @@ with Serializable
                     (triplet.srcId, ScMessage (src.source, null, null, fuses, dst.id_seq, null))
                 )                    
             }
-            else if (src.fuses.length == dst.fuses.length)
+            else if ((null != src.fuses) && (null != dst.fuses) && src.fuses.length == dst.fuses.length)
             {
                 var r: Iterator[(VertexId, ScMessage)] = Iterator.empty
                 breakable {
