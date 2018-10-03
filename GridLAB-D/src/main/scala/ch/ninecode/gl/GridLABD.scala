@@ -353,17 +353,28 @@ class GridLABD (
         val gridlabd =
             if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
             {
-                Array[String](
-                    "bash",
-                    "-c",
-                    "while read line; do " +
-                        "export FILE=$line; " +
-                        "pushd " + workdir_path + "$FILE; " +
-                        "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
-                        "cat output_data/* > output.txt; " +
-                        "cat $FILE.out; " +
-                        "popd; " +
-                        "done < /dev/stdin")
+                val os = System.getProperty("os.name")
+                if (os.startsWith("Windows"))
+                {
+                    val scriptPath = "D:/workspace_projects/CIMApplication/GridLAB-D/src/test/resources/pipe.sh"
+                    Array[String](
+                        "bash",
+                        scriptPath
+                    )
+                }
+                else {
+                    Array[String](
+                        "bash",
+                        "-c",
+                        "while read line; do " +
+                            "export FILE=$line; " +
+                            "pushd " + workdir_path + "$FILE; " +
+                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                            "cat output_data/* > output.txt; " +
+                            "cat $FILE.out; " +
+                            "popd; " +
+                            "done < /dev/stdin")
+                }
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
@@ -451,7 +462,7 @@ class GridLABD (
                 if (c.startsWith ("# file"))
                 {
                     val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
-                    val filename = c.replaceAll (filename_pattern, "$1")
+                    val filename = c.replaceAll (filename_pattern, "$1").replaceAll("\\r", "")
                     val (e, u) = filenameparser (filename)
                     element = e
                     units = u
