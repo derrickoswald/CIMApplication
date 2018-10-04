@@ -131,6 +131,6 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         |            nominal_voltage %sV;
         |            load_class R;
         |        };
-        """.stripMargin.format (transformer.node1, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.v1)
+        """.stripMargin.format (transformer.transformer_name, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.v1)
     }
 }
