@@ -281,7 +281,7 @@ object Main
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         val ele = if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage)
+            val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
             val elements = ntp.process (true)
             log.info (elements.count () + " elements")
             val topo = System.nanoTime ()
