@@ -61,7 +61,7 @@ class ParallelFusesSuite
             cmin = 0.95,
             cmax = 1.0,
             cosphi = 0.65,
-            workdir="./results/")
+            workdir="simulation/")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
         val results = shortcircuit.run ()
 
@@ -69,8 +69,8 @@ class ParallelFusesSuite
         results.cache ()
     }
 
-    def filterResults(results: RDD[ScResult]): RDD[ScResult] = {
-        results.filter(r => {r.fuses != null && r.fuses != "" && r.equipment.startsWith("HAS") && r.fuseString.contains("+")})
+    def filterResults(results: RDD[ScResult], trafo: String): RDD[ScResult] = {
+        results.filter(r => {r.fuses != null && r.fuses != "" && r.tx == trafo && r.equipment.startsWith("HAS") && r.fuseString.contains("+")})
     }
 
     def checkParalleFuse(fuses: RDD[ScResult] , node: String, fuseString: String): Unit = {
@@ -80,14 +80,42 @@ class ParallelFusesSuite
         assert(value == fuseString, "parallel fuse expected for " + node + ": " + fuseString)
     }
 
-         
-         test ("Testcase12")
+
+    test ("Testcase6")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME6
+            val results = processFile(session, filename)
+            val filtered_results = filterResults(results, "TRA6864")
+
+            assert(filtered_results.count == 1, "1 HAS with parallel fuses expected")
+            assert(FData.hasMissingValues(filtered_results.first.fuses), "has missing fuse value (-1)")
+            checkParalleFuse(filtered_results, "HAS112021", "630.0+630.0,-1.0")
+    }
+
+    test ("Testcase11")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME11
+            val results = processFile(session, filename)
+            val filtered_results = filterResults(results, "TRA8419")
+
+            assert(filtered_results.count == 3, "6 HAS with parallel fuses expected")
+
+            checkParalleFuse(filtered_results, "HAS69774", "315.0+315.0,250.0")
+            checkParalleFuse(filtered_results, "HAS69773", "315.0+315.0,100.0")
+            checkParalleFuse(filtered_results, "HAS106736", "315.0+315.0,40.0")
+    }
+
+    test ("Testcase12")
     {
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME12
             val results = processFile(session, filename)
-            val filtered_results = filterResults(results)
+            val filtered_results = filterResults(results, "TRA403")
 
             assert(filtered_results.count == 11, "11 HAS with parallel fuses expected")
 

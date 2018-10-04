@@ -82,4 +82,9 @@ object FData
             ok.forall(identity)
         }
     }
+    def hasMissingValues (fuses: List[List[(String, Double)]]): Boolean = {
+        fuses.exists(f => {
+            f.exists(l => {l._2 <= 0.0 || l._2 == null || l._2 == ""})
+        })
+    }
 }

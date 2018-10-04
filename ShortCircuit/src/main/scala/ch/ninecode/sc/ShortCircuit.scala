@@ -298,8 +298,7 @@ with Serializable
             low.ik,  low.ik3pol,  low.ip,  low.sk, costerm,
             low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
-            high.ik, high.ik3pol, high.ip, high.sk,
-            node.fuses, FData.fuse (high.ik), FData.fuseOK (high.ik, node.fuses))
+            high.ik, high.ik3pol, high.ip, high.sk, node.fuses)
     }
 
     /**
