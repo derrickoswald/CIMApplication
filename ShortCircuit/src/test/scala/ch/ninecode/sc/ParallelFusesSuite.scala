@@ -80,6 +80,16 @@ class ParallelFusesSuite
         assert(value == fuseString, "parallel fuse expected for " + node + ": " + fuseString)
     }
 
+    test ("Testcase2")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME2
+            val results = processFile(session, filename)
+            val filtered_results = filterResults(results, "TRA532")
+
+            assert(filtered_results.count == 0, "No HAS with parallel fuses expected")
+    }
 
     test ("Testcase6")
     {

@@ -127,12 +127,17 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
 
             else if ((null != src.fuses) && (null != dst.fuses) && src.fuses.dropRight(1) == dst.fuses.dropRight(1))
             {
-                val comb_fuse = src.fuses.last ::: dst.fuses.last
-                val fuses = src.fuses.dropRight(1) :+ comb_fuse.distinct
-                Iterator(
-                    (triplet.dstId, ScMessage (dst.source, null, null, fuses, src.id_seq, null)),
-                    (triplet.srcId, ScMessage (src.source, null, null, fuses, dst.id_seq, null))
-                )                    
+                if (src.fuses.last.map (_._1).toArray.sortWith (_ < _).mkString != dst.fuses.last.map (_._1).toArray.sortWith (_ < _).mkString)
+                {
+                    val comb_fuse = src.fuses.last ::: dst.fuses.last
+                    val fuses = src.fuses.dropRight(1) :+ comb_fuse.distinct
+                    Iterator(
+                        (triplet.dstId, ScMessage (dst.source, null, null, fuses, src.id_seq, null)),
+                        (triplet.srcId, ScMessage (src.source, null, null, fuses, dst.id_seq, null))
+                    )
+                }
+                else
+                    Iterator.empty
             }
             else if ((null != src.fuses) && (null != dst.fuses) && src.fuses.length == dst.fuses.length)
             {
