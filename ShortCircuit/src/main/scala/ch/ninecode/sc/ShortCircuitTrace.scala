@@ -80,8 +80,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             a.copy (edge = parallel, errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
         }
     }
-        
-    def propagateFusesOnly (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] = 
+
+    def propagateFusesOnly (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
     {
         val src = triplet.srcAttr
         val dst = triplet.dstAttr
@@ -164,25 +164,38 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             else
             {                     
                 val fuse_error = ScError (true, true, "different fuse paths detected from %s to %s".format (src.id_seq, dst.id_seq))
-                log.error (fuse_error.message)
-                Iterator(
-                    (triplet.dstId, ScMessage (dst.source, null, null, null, src.id_seq, List (fuse_error))),
-                    (triplet.srcId, ScMessage (src.source, null, null, null, dst.id_seq, List (fuse_error)))
-                )
+                val msrc = if (!src.errors.contains (fuse_error))
+                    Some ((triplet.srcId, ScMessage (src.source, null, null, null, dst.id_seq, List (fuse_error))))
+                else
+                    None
+                val mdst = if (!dst.errors.contains (fuse_error))
+                    Some ((triplet.dstId, ScMessage (dst.source, null, null, null, src.id_seq, List (fuse_error))))
+                else
+                    None
+                val r = Iterator (msrc, mdst).filter (_.isDefined).map (_.get)
+                if (r.nonEmpty)
+                    log.error (fuse_error.message)
+                r
             }
         else if (src.fatalErrors)
         {
             val fuses = triplet.attr.fusesTo (src.fuses)
-            Iterator(
-                (triplet.dstId, ScMessage (dst.source, null, null, fuses, src.id_seq, src.errors))
-            )
+            if (fuses != dst.fuses)
+                Iterator(
+                    (triplet.dstId, ScMessage (dst.source, null, null, fuses, src.id_seq, src.errors))
+                )
+            else
+                Iterator.empty
         }
         else if (dst.fatalErrors)
         {
             val fuses = triplet.attr.fusesTo (dst.fuses)
-            Iterator(
-                (triplet.srcId, ScMessage (src.source, null, null, fuses, dst.id_seq, dst.errors))
-            )
+            if (fuses != src.fuses)
+                Iterator(
+                    (triplet.srcId, ScMessage (src.source, null, null, fuses, dst.id_seq, dst.errors))
+                )
+            else
+                Iterator.empty
         }
         else 
         {
@@ -200,7 +213,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         {
             propagateFusesOnly(triplet)
         }
-        else if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
+        else
+        if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
             Iterator.empty
         else
         {

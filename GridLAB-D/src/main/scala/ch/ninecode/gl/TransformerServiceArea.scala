@@ -10,7 +10,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 
@@ -27,8 +26,6 @@ import ch.ninecode.model._
  */
 case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD
 {
-    import session.sqlContext.implicits._
-
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -41,6 +38,13 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      * Index of open field in Switch bitmask.
      */
     val openMask: Int = Switch.fields.indexOf ("open")
+
+    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse[ConductingEquipment]
+    val element_rdd: RDD[Element] = getOrElse[Element]("Elements")
+    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse[PowerTransformer]
+    val terminal_rdd: RDD[Terminal] = getOrElse[Terminal]
+    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse[TopologicalIsland]
+    val topological_node_rdd: RDD[TopologicalNode] = getOrElse[TopologicalNode]
 
     /**
      * Compute the vertex id.
@@ -122,19 +126,19 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     def island_trafoset_rdd: RDD[(String, String)] =
     {
         // get all transformer set secondary TopologicalIsland names
-        val islands_trafos = getOrElse[PowerTransformer]
+        val islands_trafos = power_transformer_rdd
             .keyBy (_.id)
             .join (
-                getOrElse[Terminal]
+                terminal_rdd
                     .filter (_.ACDCTerminal.sequenceNumber == 2)
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-            getOrElse[TopologicalNode]
-                .keyBy (_.id))
+                topological_node_rdd
+                    .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname) // ToDo: multiple transformers in the same island that aren't ganged?
-        islands_trafos.cache
+            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")) // (islandid, trafosetname) // ToDo: multiple transformers in the same island that aren't ganged?
+        islands_trafos.persist (storage_level)
     }
 
     /**
@@ -144,19 +148,8 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def nodes: RDD[(VertexId, VertexData)] =
     {
-        getOrElse[TopologicalIsland].keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
-            .map (
-            x ⇒
-            {
-                val hash = vertex_id (x._1.id)
-                val data = x._2 match
-                {
-                    case Some (trafosetname) ⇒ VertexData (trafosetname, hash, x._1.id)
-                    case None ⇒ VertexData (null, hash, x._1.id)
-                }
-                (hash, data)
-            }
-        )
+        topological_island_rdd.keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
+            .map (x ⇒ (vertex_id (x._1.id), VertexData (x._2.orNull, x._1.id)))
     }
 
     /**
@@ -167,11 +160,11 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     def edges: RDD[Edge[EdgeData]] =
     {
         // get nodes by TopologicalIsland
-        val members = getOrElse[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
+        val members = topological_node_rdd.map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
         // get terminals by TopologicalIsland
-        val terminals = getOrElse[Terminal].keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
+        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
-        getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+        conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
             .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, (islandid, terminal)))
             .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
             .map (
@@ -179,7 +172,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
                 {
                     val equipment = x.head._1
                     val connected = isSameArea (x.head._1)
-                    Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (x.head._1.id, connected))
+                    Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (equipment.id, connected))
                 }) // Edge[EdgeData]
     }
 
@@ -202,7 +195,11 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             if (null == msg) // do nothing initially
                 attr
             else
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug ("%s <-- %s".format (id, msg.toString))
                 msg
+            }
         }
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
@@ -214,13 +211,13 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
                 {
                     if (debug && log.isDebugEnabled)
                         log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
-                    Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island, triplet.dstAttr.island_label)))
+                    Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
                 }
                 else if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
                 {
                     if (debug && log.isDebugEnabled)
                         log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
-                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island, triplet.srcAttr.island_label)))
+                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                 }
                 else if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
                 {
@@ -233,20 +230,35 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
 
         def merge_message (a: VertexData, b: VertexData): VertexData =
         {
+            if (debug && log.isDebugEnabled)
+                log.debug ("%s >-< %s".format (a.toString, b.toString))
             if (a.area_label != b.area_label)
                 log.error ("""island "%s" is serviced by two transformers (%s, %s)""".format (a.island_label, a.area_label, b.area_label))
             a
         }
 
-        // traverse the graph with the Pregel algorithm
-        // assigns the minimum VertexId of all electrically identical islands
-        // Note: on the first pass through the Pregel algorithm all nodes get a null message
-        val graph: Graph[VertexData, EdgeData] = Graph (nodes, edges, VertexData (), storage_level, storage_level).cache ()
+        session.sparkContext.getCheckpointDir match
+        {
+            case Some (_) ⇒
+                edges.checkpoint ()
+                nodes.checkpoint ()
+            case None ⇒
+        }
+//
+//        edges.saveAsObjectFile ("hdfs://sandbox:8020/checkpoint/edges")
+//        nodes.saveAsObjectFile ("hdfs://sandbox:8020/checkpoint/nodes")
+//
+//        val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile ("hdfs://sandbox:8020/checkpoint/edges")
+//        val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile ("hdfs://sandbox:8020/checkpoint/nodes")
 
-        graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
+        // traverse the graph with the Pregel algorithm
+        // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
+        // Note: on the first pass through the Pregel algorithm all nodes get a null message
+        val graph = Graph (nodes, edges, VertexData (), storage_level, storage_level)
+        graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).persist (storage_level)
     }
 
-    def hasIslands: Boolean = !getOrElse[TopologicalIsland].isEmpty
+    def hasIslands: Boolean = !topological_island_rdd.isEmpty
 
     /**
      * Get a mapping between TopologicalIsland id and transformer set name.
@@ -260,6 +272,6 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         log.info ("mapping islands to transformer service areas")
         val pairs = graph.vertices.map (v ⇒ (v._2.island_label, v._2.area_label)) // (islandid, areaid)
         val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
-        pairs.map (_.swap).join (areas).values.cache // (islandid, trafosetname)
+        pairs.map (_.swap).join (areas).values.persist (storage_level) // (islandid, trafosetname)
     }
 }

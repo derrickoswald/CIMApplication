@@ -23,5 +23,6 @@ class TestSuite extends Suites (
     new MaximumStartingCurrentSuite,
     new ShortCircuitSuite,
     new NonradialSuite,
-    new TransformerSuite
+    new TransformerSuite,
+    new ParallelFusesSuite
 )

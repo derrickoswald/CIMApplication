@@ -71,6 +71,7 @@ object Main
             "spark.ui.showConsoleProgress" → "false"
         ),
         storage: String = "MEMORY_AND_DISK_SER",
+        splitsize: Long = 67108864L,
         dedup: Boolean = false,
         log_level: LogLevels.Value = LogLevels.OFF,
         checkpoint_dir: String = "",
@@ -116,6 +117,10 @@ object Main
         opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
+
+        opt[Long]("splitsize").
+            action ((x, c) ⇒ c.copy (splitsize = x)).
+            text ("file input format maximum size [%s]".format (default.splitsize))
 
         opt[Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
@@ -265,7 +270,7 @@ object Main
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        reader_options.put ("StorageLevel", arguments.storage)
+        reader_options.put ("ch.ninecode.cim.split_maxsize", arguments.splitsize.toString)
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
         log.info (elements.count () + " elements")
 
