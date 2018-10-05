@@ -223,13 +223,7 @@ with Serializable
         xedges.persist (storage_level)
         xnodes.name = "xnodes"
         xnodes.persist (storage_level)
-        spark.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒
-                xedges.checkpoint ()
-                xnodes.checkpoint ()
-            case None ⇒
-        }
+        if (spark.sparkContext.getCheckpointDir.isDefined) { xedges.checkpoint (); xnodes.checkpoint () }
 
         Graph[ScNode, ScEdge] (xnodes, xedges, default_node, storage_level, storage_level)
     }

@@ -200,11 +200,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         has.persist (storage_level)
         vertices.persist (storage_level)
         edges.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) => has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
-            case None =>
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) { has.checkpoint (); vertices.checkpoint (); edges.checkpoint () }
 
         PreCalculationResults (simulation, has, vertices, edges)
     }

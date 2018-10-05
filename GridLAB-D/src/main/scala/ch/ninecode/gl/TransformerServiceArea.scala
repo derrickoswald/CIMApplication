@@ -237,19 +237,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             a
         }
 
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒
-                edges.checkpoint ()
-                nodes.checkpoint ()
-            case None ⇒
-        }
-//
-//        edges.saveAsObjectFile ("hdfs://sandbox:8020/checkpoint/edges")
-//        nodes.saveAsObjectFile ("hdfs://sandbox:8020/checkpoint/nodes")
-//
-//        val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile ("hdfs://sandbox:8020/checkpoint/edges")
-//        val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile ("hdfs://sandbox:8020/checkpoint/nodes")
+        if (session.sparkContext.getCheckpointDir.isDefined) { edges.checkpoint (); nodes.checkpoint () }
 
         // traverse the graph with the Pregel algorithm
         // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)

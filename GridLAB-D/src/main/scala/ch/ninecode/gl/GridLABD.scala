@@ -231,10 +231,7 @@ class GridLABD (
         val cables = keyed.join(wireinfos.keyBy(_.id)).values.map(x ⇒ (x._1.id, x._2.ratedCurrent))
 
         cables.persist(storage_level)
-        session.sparkContext.getCheckpointDir match {
-            case Some (_) ⇒ cables.checkpoint()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
 
         cables
     }
@@ -306,13 +303,7 @@ class GridLABD (
         val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist(storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒
-                xedges.checkpoint ()
-                xnodes.checkpoint ()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) { xedges.checkpoint (); xnodes.checkpoint () }
 
         (xedges, xnodes)
     }

@@ -102,11 +102,7 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val pv = filteredPV.groupBy (_.node)
 
         pv.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (dir) ⇒ pv.checkpoint ()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) pv.checkpoint ()
 
         pv
     }

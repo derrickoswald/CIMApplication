@@ -197,10 +197,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val cables = keyed.join(wireinfos.keyBy(_.id)).values.map(x ⇒ (x._1.id, x._2.ratedCurrent))
 
         cables.persist(storage_level)
-        session.sparkContext.getCheckpointDir match {
-            case Some (_) ⇒ cables.checkpoint()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
 
         cables
     }
@@ -273,13 +270,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist(storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒
-                xedges.checkpoint ()
-                xnodes.checkpoint ()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) { xedges.checkpoint (); xnodes.checkpoint () }
 
         // construct the initial graph from the real edges and nodes
         Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)

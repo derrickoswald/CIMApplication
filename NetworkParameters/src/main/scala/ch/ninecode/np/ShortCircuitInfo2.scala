@@ -416,10 +416,6 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
         old_elements.name = "pre_shortcircuit_info_Elements"
         new_elements.name = "Elements"
         new_elements.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) => new_elements.checkpoint ()
-            case None =>
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) new_elements.checkpoint ()
     }
 }

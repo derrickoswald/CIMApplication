@@ -104,11 +104,7 @@ with Serializable
 
         cables.name = "cables"
         cables.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒ cables.checkpoint()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
 
         cables
     }
@@ -240,13 +236,7 @@ with Serializable
         val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) ⇒
-                xedges.checkpoint ()
-                xnodes.checkpoint ()
-            case None ⇒
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) { xedges.checkpoint (); xnodes.checkpoint () }
 
         // construct the initial graph from the edges and nodes
         Graph[PreNode, PreEdge] (xnodes, xedges, vertex_data, storage_level, storage_level)

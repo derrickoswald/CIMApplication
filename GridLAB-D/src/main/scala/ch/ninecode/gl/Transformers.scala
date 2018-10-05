@@ -258,11 +258,7 @@ with Serializable
             x => TData (x._1, x._2, x._5, x._3._1, x._3._2, x._3._3, node_name (x._3._3), x._4._1, x._4._2, x._4._3, node_name (x._4._3))
             )
         transformer_data.persist (storage_level)
-        session.sparkContext.getCheckpointDir match
-        {
-            case Some (_) => transformer_data.checkpoint ()
-            case None =>
-        }
+        if (session.sparkContext.getCheckpointDir.isDefined) transformer_data.checkpoint ()
 
         transformer_data
     }
