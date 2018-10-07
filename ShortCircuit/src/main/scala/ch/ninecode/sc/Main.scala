@@ -19,7 +19,10 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
@@ -281,8 +284,16 @@ object Main
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         val ele = if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
-            val elements = ntp.process (true)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val elements = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = true,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = false,
+                    storage = storage)
+            )
             log.info (elements.count () + " elements")
             val topo = System.nanoTime ()
             log.info ("topology: " + (topo - read) / 1e9 + " seconds")

@@ -21,7 +21,7 @@ case class SimulationGLMGenerator (
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Array[TransformerSet] = Array(kreis.transformer)
+    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (kreis.transformer.node0, kreis.transformer.node1, kreis.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
@@ -116,9 +116,9 @@ case class SimulationGLMGenerator (
         super.emit_node (node) + recorders + players
     }
 
-    override def emit_transformer (transformer: TransformerSet): String =
+    override def emit_transformer (transformer: TransformerEdge): String =
     {
-        val name = transformer.transformer_name.split ("_")(0) // only match the first transformer of a set
+        val name = transformer.transformer.transformer_name.split ("_")(0) // only match the first transformer of a set
         super.emit_transformer (transformer) +
         kreis.recorders.filter (
             recorder ⇒
@@ -126,7 +126,7 @@ case class SimulationGLMGenerator (
                 recorder.parent == name
             }
         )
-        .map (_.copy (parent = transformer.transformer_name)) // alter the parent to the transformer set name
+        .map (_.copy (parent = transformer.transformer.transformer_name)) // alter the parent to the transformer set name
         .map (emit_recorder).mkString
     }
 

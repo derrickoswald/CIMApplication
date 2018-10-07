@@ -14,6 +14,9 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
@@ -66,8 +69,16 @@ class NonradialSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
-            val ele = ntp.process (false)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = false,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = true,
+                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            )
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()
@@ -174,8 +185,16 @@ class NonradialSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes and islands
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
-            val ele = ntp.process (true).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = false,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = true,
+                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()
@@ -229,8 +248,16 @@ class NonradialSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
-            val ele = ntp.process (true).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = true,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = true,
+                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()
@@ -287,8 +314,16 @@ class NonradialSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), true, true, true)
-            val ele = ntp.process (true).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = true,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = true,
+                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()

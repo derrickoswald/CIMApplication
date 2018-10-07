@@ -7,11 +7,8 @@ import java.util.TimeZone
 
 import scala.collection.Map
 import scala.io.Source
-import scala.util.control.Breaks._
 
 import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.rdd.RDD
@@ -22,6 +19,9 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
@@ -578,8 +578,16 @@ with Serializable
         // check if topology exists, and if not then generate it
         if (null == get[TopologicalNode])
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level, true, true, false) // force retain switches and fuses
-            val elements = ntp.process (true)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val elements = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = true,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = true,
+                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+            )
             log.info ("%d elements after topology generated".format (elements.count ()))
         }
 

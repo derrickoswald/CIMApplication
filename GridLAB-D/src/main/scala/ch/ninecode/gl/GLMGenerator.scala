@@ -170,13 +170,9 @@ extends Serializable
     /**
      * Details about transformers used in the edges list.
      *
-     * Transformer data is very rich and hence cannot be contained in a simple edge.
-     * This method provides a richer set of details about the transformers in the network.
-     * The link is between the GLMEdge.edge.id and TData.transformer.id.
-     *
-     * @return The details about pertinent transformers.
+     * @return The TransformerSet objects to include in the export.
      */
-    def transformers: Array[TransformerSet] = Array()
+    def transformers: Iterable[TransformerEdge] = List ()
 
     /**
      * The ID of the SWING or slack bus nodes and their voltages.
@@ -233,20 +229,30 @@ extends Serializable
      */
     def targetTemperature: Double = temperature
 
-    // emitting classes
-    var trans = new Trans (one_phase)
-
     /**
      * Emit configurations for all groups of edges that are ACLineSegments.
      *
      * Get one of each type of ACLineSegment and emit a configuration for each of them.
      *
      * @param edges The edges in the model.
-     * @return The configuration elements as a single string.
+     * @return The configuration elements as strings.
      */
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
         edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+    }
+
+    /**
+     * Emit configurations for all edges that are PowerTransformers.
+     *
+     * Get one of each type of TransformerSet and  emit a configuration for each of them.
+     *
+     * @param transformers The transformers in the model.
+     * @return The configuration elements as strings.
+     */
+    def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    {
+        transformers.groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
     /**
@@ -322,9 +328,15 @@ extends Serializable
 
     }
 
-    def emit_transformer (transformer: TransformerSet): String =
+    /**
+     * Emit one transformer edge.
+     *
+     * @param transformer the edge to emit
+     * @return The .glm file text for the transformer.
+     */
+    def emit_transformer (transformer: TransformerEdge): String =
     {
-        trans.emit (transformer)
+        transformer.emit (this)
     }
 
     /**
@@ -338,7 +350,7 @@ extends Serializable
     def make_glm (): String =
     {
         // get the transformer configurations
-        val t_string = trans.getTransformerConfigurations (transformers)
+        val t_string = getTransformerConfigurations (transformers)
 
         // get a configuration for each type of ACLineSegment
         val l_strings = getACLineSegmentConfigurations (edges)

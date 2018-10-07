@@ -91,13 +91,14 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
     def valid_config_name (string: String): String =
     {
-        if ((null == string) || ("" == string))
+        val s = if ((null == string) || ("" == string))
             "unknown"
         else
             if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
                 string
             else
                 "_" + string
+        s.replace (".", "d").replace (":", "$")
     }
 
     // get the configuration name (of the parallel transformers)

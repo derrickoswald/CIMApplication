@@ -86,29 +86,6 @@ extends GLMEdge
     }
 
     /**
-     * Generate a valid configuration name.
-     *
-     * Use the given string, usually a library type description (e.g. "GKN 3x95se/95 1/0.6 kV" or "4x95, Ceanderkabel",
-     * to create a valid GridLAB-D configuration name.
-     * The intent is to allow human-readable configuration names while adhering to GrdLAB-D rules such as:
-     *
-     * - no leading digits: ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
-     * - no decimal points: KLE199604 (underground_line:227) reference to TT 3x2.5 is missing match value
-     *
-     */
-    def valid_config_name (string: String): String =
-    {
-        val s = if ((null == string) || ("" == string))
-            "unknown"
-        else
-            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
-                string
-            else
-                "_" + string
-        s.replace (".", "d")
-    }
-
-    /**
      * Get the configuration name (of the parallel lines).
      *
      * @return An appropriate line configuration name.

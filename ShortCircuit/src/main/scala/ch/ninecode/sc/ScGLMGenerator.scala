@@ -29,7 +29,7 @@ extends GLMGenerator (one_phase, temperature, date_format)
 
     override def edges: Iterable[GLMEdge] = area.edges
 
-    override def transformers: Array[TransformerSet] = Array(area.transformer)
+    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (area.transformer.node0, area.transformer.node1, area.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = area.swing_nodes
 
@@ -203,9 +203,10 @@ extends GLMGenerator (one_phase, temperature, date_format)
      * @param transformer The transformer specifics.
      * @return The .glm file text for the transformer.
      */
-    override def emit_transformer (transformer: TransformerSet): String =
+    override def emit_transformer (transformer: TransformerEdge): String =
     {
         val t = super.emit_transformer (transformer)
+        val name = transformer.transformer.transformer_name
         val recorder =
             """
               |        object recorder
@@ -216,7 +217,7 @@ extends GLMGenerator (one_phase, temperature, date_format)
               |            interval 5;
               |            file "output_data/%s%%%s_current.csv";
               |        };
-            """.stripMargin.format (transformer.node1, transformer.transformer_name, transformer.transformer_name, transformer.node1, transformer.transformer_name)
+            """.stripMargin.format (transformer.cn2, name, name, transformer.cn2, name)
         t + recorder
     }
 }

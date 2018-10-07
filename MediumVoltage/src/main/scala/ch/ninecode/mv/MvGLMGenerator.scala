@@ -34,7 +34,7 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
 
     override def nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder == null)
 
-    override def transformers: Array[TransformerSet] = feeder.edges.filter (_.isInstanceOf[TransformerEdge]).map (_.asInstanceOf[TransformerEdge]).map (_.transformer).toArray
+    override def transformers: Iterable[TransformerEdge] = feeder.edges.filter (_.isInstanceOf[TransformerEdge]).map (_.asInstanceOf[TransformerEdge])
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
@@ -118,8 +118,9 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
             swing._id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage)
     }
 
-    override def emit_transformer (transformer: TransformerSet): String =
+    override def emit_transformer (transformer: TransformerEdge): String =
     {
+        val name = transformer.transformer.transformer_name
         super.emit_transformer (transformer) +
         """
         |        object load
@@ -131,6 +132,6 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         |            nominal_voltage %sV;
         |            load_class R;
         |        };
-        """.stripMargin.format (transformer.transformer_name, transformer.node1, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.v1)
+        """.stripMargin.format (name, transformer.cn2, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.transformer.v1)
     }
 }

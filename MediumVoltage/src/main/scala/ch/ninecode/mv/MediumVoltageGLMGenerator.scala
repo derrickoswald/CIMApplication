@@ -26,7 +26,7 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
 
     override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ ust.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
-    override def transformers: Array[TransformerSet] = ust.transformers
+    override def transformers: Iterable[TransformerEdge] = ust.transformers.map (x ⇒ TransformerEdge (x.node0, x.node1, x))
 
     override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
 
@@ -214,13 +214,13 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
             trafo, node.id, three_or_one ("measured_power"), trafo)
     }
 
-    override def emit_transformer (transformer: TransformerSet): String =
+    override def emit_transformer (transformer: TransformerEdge): String =
     {
-        val name = transformer.transformer_name
+        val name = transformer.transformer.transformer_name
         val swings = swing_nodes.map (_.id).toArray
 
         super.emit_transformer (transformer) +
-            (if (!swings.contains (transformer.node0) && !swings.contains (transformer.node1))
+            (if (!swings.contains (transformer.cn1) && !swings.contains (transformer.cn2))
                 """
                 |        object recorder
                 |        {

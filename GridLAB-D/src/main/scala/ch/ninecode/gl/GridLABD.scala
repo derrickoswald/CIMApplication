@@ -535,8 +535,9 @@ class GridLABD (
             val file = new Path (workdir_slash + directory + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs (file.getParent, new FsPermission("ugo-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission("ugo-rwx")) // "-"  WTF?
+            val mode: Short = 755
+            hdfs.mkdirs (file.getParent, new FsPermission (mode))
+            hdfs.setPermission (file.getParent, new FsPermission (mode)) // "-"  WTF?
 
             if (null != bytes)
             {
@@ -604,7 +605,6 @@ object GridLABD
             classOf[ch.ninecode.gl.TData],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
             classOf[ch.ninecode.gl.Trace],
-            classOf[ch.ninecode.gl.Trans],
             classOf[ch.ninecode.gl.TransformerEdge],
             classOf[ch.ninecode.gl.TransformerServiceArea],
             classOf[ch.ninecode.gl.VertexData],
