@@ -1,14 +1,17 @@
 package ch.ninecode.np
 
 import scala.collection.mutable
+
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.model.EquivalentInjection
-import org.apache.spark.rdd.RDD
 
-class NetworkParametersTestSuite
-extends SparkSuite
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.model.EquivalentInjection
+
+class NetworkParametersTestSuite extends SparkSuite
 {
     val FILE_DEPOT = "private_data/"
     val FILENAME1 = "NIS_CIM_Export_sias_current_20161220_Sample4.rdf"
@@ -37,8 +40,14 @@ extends SparkSuite
             println ("read: " + (read - start) /  1e9 + " seconds")
 
             // identify topological nodes
-            val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
-            val ele = ntp.process (false)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = false,
+                    force_retain_switches = ForceTrue,
+                    force_retain_fuses = ForceTrue,
+                    debug = true,
+                    storage = storage))
             println (ele.count () + " elements")
 
             val topo = System.nanoTime ()

@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -14,6 +15,9 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.TransformerSet
@@ -97,8 +101,13 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, options.storage, force_retain_switches = true, force_retain_fuses = false)
-            val ele = ntp.process (identify_islands = true)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = true,
+                    force_retain_switches = ForceTrue,
+                    force_retain_fuses = Unforced,
+                    storage = options.storage))
             log.info (ele.count () + " elements")
         }
 

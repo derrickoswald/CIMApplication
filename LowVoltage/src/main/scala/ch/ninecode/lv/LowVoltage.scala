@@ -8,6 +8,7 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -20,6 +21,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.esl._
 import ch.ninecode.gl._
 import ch.ninecode.model._
@@ -197,8 +199,11 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-            val ele = ntp.process (false)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = false,
+                    storage = storage_level))
             log.info (ele.count () + " elements")
             topo = System.nanoTime ()
             log.info ("topology: " + (topo - read) / 1e9 + " seconds")

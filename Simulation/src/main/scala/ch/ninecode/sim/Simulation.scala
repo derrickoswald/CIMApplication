@@ -17,7 +17,6 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-
 import com.datastax.driver.core.Cluster
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
@@ -29,9 +28,9 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
@@ -108,8 +107,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         {
             case Some (_) =>
             case None =>
-                val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-                val ele = ntp.process (true)
+                val ntp = CIMNetworkTopologyProcessor (session)
+                val ele = ntp.process (
+                    CIMTopologyOptions (
+                        identify_islands = true,
+                        storage = storage_level))
                 log.info (ele.count () + " elements after topology creation")
                 val topology = System.nanoTime ()
                 log.info ("topology: " + (topology - read) / 1e9 + " seconds")

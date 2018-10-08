@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -485,8 +486,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
-            val ntp = new CIMNetworkTopologyProcessor (session, storage_level)
-            val ele = ntp.process (false)
+            val ntp = CIMNetworkTopologyProcessor (session)
+            val ele = ntp.process (
+                CIMTopologyOptions (
+                    identify_islands = false,
+                    storage = storage_level))
             log.info (ele.count () + " elements")
         }
         else

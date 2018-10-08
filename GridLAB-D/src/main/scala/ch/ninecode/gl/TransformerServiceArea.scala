@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import scala.util.Random
+
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -10,6 +12,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
 
@@ -239,10 +242,27 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
 
         if (session.sparkContext.getCheckpointDir.isDefined) { edges.checkpoint (); nodes.checkpoint () }
 
-        // traverse the graph with the Pregel algorithm
-        // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
-        // Note: on the first pass through the Pregel algorithm all nodes get a null message
-        val graph = Graph (nodes, edges, VertexData (), storage_level, storage_level)
+        // workaround for java.lang.ArrayIndexOutOfBoundsException: -1
+        //        at org.apache.spark.graphx.util.collection.GraphXPrimitiveKeyOpenHashMap$mcJI$sp.apply$mcJI$sp(GraphXPrimitiveKeyOpenHashMap.scala:64)
+        // save nodes and edges to HDFS and use the newly read RDD to make the graph
+        val graph = if (session.sparkContext.getCheckpointDir.isDefined)
+        {
+            var root = session.sparkContext.getCheckpointDir.get
+            if (!root.endsWith ("/"))
+                root = root + "/"
+            val magic = Random.nextInt (99999999)
+            edges.saveAsObjectFile (root + "edges_" + magic)
+            nodes.saveAsObjectFile (root + "nodes_" + magic)
+
+            val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile (root + "edges_" + magic)
+            val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile (root + "nodes_" + magic)
+            Graph (_nodes, _edges, VertexData (), storage_level, storage_level)
+        }
+        else
+            // traverse the graph with the Pregel algorithm
+            // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
+            // Note: on the first pass through the Pregel algorithm all nodes get a null message
+            Graph (nodes, edges, VertexData (), storage_level, storage_level)
         graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).persist (storage_level)
     }
 

@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.cim.ForceTrue
 import ch.ninecode.model.Element
 
 object MainCustomer1
@@ -202,8 +204,14 @@ object MainCustomer1
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // identify topological nodes
-        val ntp = new CIMNetworkTopologyProcessor (session, storage, true, true, true)
-        val ele: RDD[Element] = ntp.process (true)
+        val ntp = CIMNetworkTopologyProcessor (session)
+        val ele = ntp.process (
+            CIMTopologyOptions (
+                identify_islands = true,
+                force_retain_switches = ForceTrue,
+                force_retain_fuses = ForceTrue,
+                debug = true,
+                storage = storage))
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
         ele.name = "Elements"

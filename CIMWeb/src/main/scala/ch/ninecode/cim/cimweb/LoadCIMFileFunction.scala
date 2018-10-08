@@ -3,14 +3,16 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import ch.ninecode.cim.CIMEdges
-import ch.ninecode.cim.CIMJoin
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import scala.collection.mutable.HashMap
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import scala.collection.mutable.HashMap
+import ch.ninecode.cim.CIMEdges
+import ch.ninecode.cim.CIMJoin
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
 
 case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
@@ -75,14 +77,17 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
                     case _ ⇒
                         reader_options.put (option._1, option._2)
                 }
-            reader_options.put ("path", files.mkString (",")) // ToDo: why is this still needed?
+            reader_options.put ("path", files.mkString (","))
 
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
             var count = elements.count
             if (topo)
             {
-                val ntp = new CIMNetworkTopologyProcessor (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER)
-                val elements2 = ntp.process (isld)
+                val ntp = CIMNetworkTopologyProcessor (spark)
+                val elements2 = ntp.process (
+                    CIMTopologyOptions (
+                        identify_islands = isld,
+                        storage = org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER))
                 count = elements2.count
             }
             if (join)
