@@ -53,6 +53,6 @@ object GLMNode
      */
     def toGLMNode (elements: Iterable[Element], id: String, nominal_voltage: Double): GLMNode =
     {
-        PreNode (id, nominal_voltage)
+        PreNode (id, nominal_voltage, null)
     }
 }

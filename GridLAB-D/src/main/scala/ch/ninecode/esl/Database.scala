@@ -269,7 +269,13 @@ object Database
                 datainsert.setDouble (5, records(i).max_power_feeding)
                 datainsert.setInt(6, eea)
                 datainsert.setString (7, records(i).reason)
-                datainsert.setString (8, records(i).details)
+                if (null == records(i).details)
+                {
+                    datainsert.setNull (8, Types.VARCHAR)
+                    datainsert.setNull (5, Types.DECIMAL) // also set the maximum to null
+                }
+                else
+                    datainsert.setString (8, records(i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close ()

@@ -13,6 +13,7 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PV
@@ -52,7 +53,8 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.srcAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.srcAttr.min_ir, ir)
-                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, sum_r, min_ir, triplet.srcAttr.multiple_paths)
+                    val problem = if (null != triplet.srcAttr.problem) triplet.srcAttr.problem else triplet.attr.problem
+                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, sum_r, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString,  message.asString))
                     Iterator ((triplet.dstId, message))
@@ -62,7 +64,8 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.dstAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.dstAttr.min_ir, ir)
-                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, sum_r, min_ir, triplet.dstAttr.multiple_paths)
+                    val problem = if (null != triplet.dstAttr.problem) triplet.dstAttr.problem else triplet.attr.problem
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, sum_r, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                     Iterator ((triplet.srcId, message))
@@ -77,7 +80,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
 
     def mergeMessage(a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
     {
-        val node = a.copy (multiple_paths = true)
+        val node = a.copy (problem = "non-radial network")
         if (log.isDebugEnabled)
             log.debug ("merge %s & %s".format (a.asString, b.asString))
         node
@@ -92,15 +95,15 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
             starting_nodes.find (s ⇒ s.nsPin == id) match
             {
                 case Some (node) =>
-                    PowerFeedingNode (v.id, v.nominal_voltage, node, 0.0, Double.PositiveInfinity, false)
+                    PowerFeedingNode (v.id, v.nominal_voltage, node, 0.0, Double.PositiveInfinity, v.problem)
                 case None =>
-                    PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
+                    PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
             }
         }
         val graph = initial.mapVertices (starting_map)
 
         // run Pregel
-        val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, false)
+        val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, null)
         graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
             vertexProgram,
             sendMessage,
@@ -123,8 +126,8 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         val p_max_u = math.sqrt(3) * 1.03 * 0.03 * v * v / r_summe
         val p_max_i = math.sqrt(3) * min_ir * (v + r_summe * min_ir)
         val (p_max, reason, details) =
-            if (node.multiple_paths)
-                (trafo_ratedS, "non-radial network", "multiple paths")
+            if (null != node.problem)
+                (trafo_ratedS, node.problem, null)
             else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
                 (trafo_ratedS, "transformer limit", "assuming no EEA")
             else if (p_max_u < p_max_i)
@@ -149,7 +152,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
 
     def trafo_mapping (transformers: TransformerSet): StartingTrafos =
     {
-        val pn = PreNode ("", 0.0)
+        val pn = PreNode ("", 0.0, null)
         val v0 = pn.vertex_id (transformers.node0)
         val v1 = pn.vertex_id (transformers.node1)
         val ratedS = transformers.power_rating

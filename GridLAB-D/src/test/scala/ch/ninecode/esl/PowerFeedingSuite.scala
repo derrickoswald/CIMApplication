@@ -105,7 +105,7 @@ class PowerFeedingSuite extends FunSuite
         val solars = solar.getSolarInstallations
 
         // construct the initial graph from the real edges and nodes
-        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
+        val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
         val power_feeding = new PowerFeeding (session)
 
         val start_ids = transformers.map (power_feeding.trafo_mapping)

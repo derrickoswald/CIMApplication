@@ -10,7 +10,7 @@ import ch.ninecode.gl.GLMNode
  * @param source_obj Feeding transformer.
  * @param sum_r Summation of resistance values in the path from the feeding transformer to this node.
  * @param min_ir Minimum conductor current rating in the path from the feeding transformer to this node.
- * @param multiple_paths Set <code>true</code> if the trace found multiple feeding transformers.
+ * @param problem Error message if the trace found multiple feeding transformers, or a problematic transformer type.
  */
 case class PowerFeedingNode (
     id: String,
@@ -18,7 +18,7 @@ case class PowerFeedingNode (
     source_obj: StartingTrafos,
     sum_r: Double,
     min_ir: Double,
-    multiple_paths: Boolean) extends GLMNode
+    problem: String) extends GLMNode
 {
-    def asString: String = "[%s %gV %s %gΩ %gA%s]".format (id, nominal_voltage, source_obj.asString, sum_r, min_ir, if (multiple_paths) " m" else "")
+    def asString: String = "[%s %gV %s %gΩ %gA %s]".format (id, nominal_voltage, source_obj.asString, sum_r, min_ir, problem)
 }

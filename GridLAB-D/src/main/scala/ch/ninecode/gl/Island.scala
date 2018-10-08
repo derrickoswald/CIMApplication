@@ -11,14 +11,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.BaseVoltage
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Element
-import ch.ninecode.model.PowerTransformerEnd
-import ch.ninecode.model.Terminal
-import ch.ninecode.model.TopologicalNode
-import ch.ninecode.model.WireInfo
+import ch.ninecode.model._
 
 /**
  * A topological island utility class to get edges and nodes.
@@ -36,6 +29,66 @@ with Serializable
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     import Island._
 
+    /**
+     * Return <code>true</code> if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
+     */
+    def connected (element: Element): Boolean =
+    {
+        val clazz = element.getClass.getName
+        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
+        cls match
+        {
+            case "Switch" ⇒             !element.asInstanceOf[Switch].normalOpen
+            case "Cut" ⇒                !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" ⇒       !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" ⇒               !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" ⇒ !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" ⇒             !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "MktSwitch" ⇒          !element.asInstanceOf[MktSwitch].Switch.normalOpen
+            case "ProtectedSwitch" ⇒    !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Breaker" ⇒            !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" ⇒    !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" ⇒           !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Sectionaliser" ⇒      !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+            case "Conductor" ⇒          true
+            case "ACLineSegment" ⇒      true
+            case "PowerTransformer" ⇒   false
+            case _ ⇒
+                log.error("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed conducting")
+                true
+        }
+    }
+
+    /**
+     * Warn of special cases of transformers.
+     *
+     * @param element Element to test
+     * @param num_terminals total number of terminals on the ConductingEquipment
+     * @param v1 primary voltage
+     * @param v2 secondary voltage
+     * @return an error string with additional information about validity
+     */
+    def hasIssues (element: Element, num_terminals: Int, v1: Double, v2: Double): String =
+    {
+        element match
+        {
+            case _: PowerTransformer ⇒
+                // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
+                if (num_terminals > 2)
+                    "%s transformer windings for edge %s".format (num_terminals, element.id)
+                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                else if (v1 == v2)
+                    "voltage (%sV) regulator edge %s".format (v1, element.id)
+                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                else if (v1 <= 1000.0 && v2 <= 1000.0)
+                    "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, element.id)
+                else
+                    null
+            case _ ⇒
+                null
+        }
+    }
+
     def edge_operator (arg: (Element, Iterable[(Terminal, Double)], Double)): List[PreEdge] =
     {
         var ret = List[PreEdge]()
@@ -51,7 +104,7 @@ with Serializable
         {
             // get the equipment
             val equipment = cond.asInstanceOf[ConductingEquipment]
-
+            val conn = connected (element)
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!terminals.map (_._2).contains (230.0))
@@ -68,6 +121,8 @@ with Serializable
                                 "",
                                 terminals(0)._2,
                                 terminals(0)._1.ConductingEquipment,
+                                conn,
+                                null,
                                 ratedCurrent,
                                 element)
                     case _ ⇒
@@ -81,6 +136,8 @@ with Serializable
                                 terminals(i)._1.TopologicalNode,
                                 terminals(i)._2,
                                 terminals(0)._1.ConductingEquipment,
+                                conn,
+                                hasIssues (element, terminals.length, terminals(0)._2, terminals(i)._2),
                                 ratedCurrent,
                                 element)
                         }
@@ -211,7 +268,7 @@ with Serializable
         val edges = equipment.flatMap (edge_operator).filter (edgefilter)
 
         // make nodes from the edges
-        val nodes = edges.flatMap (e ⇒ if (e.cn2 != "") List (PreNode (e.cn1, e.v1), PreNode (e.cn2, e.v2)) else List (PreNode (e.cn1, e.v1))).distinct
+        val nodes = edges.flatMap (e ⇒ if (e.cn2 != "") List (PreNode (e.cn1, e.v1, e.problem), PreNode (e.cn2, e.v2, e.problem)) else List (PreNode (e.cn1, e.v1, e.problem))).distinct
 
         (edges, nodes)
     }

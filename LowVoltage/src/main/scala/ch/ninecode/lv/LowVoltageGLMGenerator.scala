@@ -49,7 +49,7 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                     null,
                     0.0,
                     Double.PositiveInfinity,
-                    false)))
+                    null)))
     }
 
     override def emit_node (node: GLMNode): String =

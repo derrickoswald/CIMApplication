@@ -12,6 +12,7 @@ import java.util.HashSet
 import java.util.Set
 
 import scala.collection.Map
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -25,6 +26,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.model._
 
 /**
@@ -120,6 +122,66 @@ class GridLABD (
         if (topological_nodes) t.TopologicalNode else t.ConnectivityNode
     }
 
+    /**
+     * Return <code>true</code> if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
+     */
+    def connected (element: Element): Boolean =
+    {
+        val clazz = element.getClass.getName
+        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
+        cls match
+        {
+            case "Switch" ⇒             !element.asInstanceOf[Switch].normalOpen
+            case "Cut" ⇒                !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" ⇒       !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" ⇒               !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" ⇒ !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" ⇒             !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "MktSwitch" ⇒          !element.asInstanceOf[MktSwitch].Switch.normalOpen
+            case "ProtectedSwitch" ⇒    !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Breaker" ⇒            !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" ⇒    !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" ⇒           !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Sectionaliser" ⇒      !element.asInstanceOf[Sectionaliser].Switch.normalOpen
+            case "Conductor" ⇒          true
+            case "ACLineSegment" ⇒      true
+            case "PowerTransformer" ⇒   false
+            case _ ⇒
+                log.error("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed conducting")
+                true
+        }
+    }
+
+    /**
+     * Warn of special cases of transformers.
+     *
+     * @param element Element to test
+     * @param num_terminals total number of terminals on the ConductingEquipment
+     * @param v1 primary voltage
+     * @param v2 secondary voltage
+     * @return an error string with additional information about validity
+     */
+    def hasIssues (element: Element, num_terminals: Int, v1: Double, v2: Double): String =
+    {
+        element match
+        {
+            case _: PowerTransformer ⇒
+                // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
+                if (num_terminals > 2)
+                    "%s transformer windings for edge %s".format (num_terminals, element.id)
+                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                else if (v1 == v2)
+                    "voltage (%sV) regulator edge %s".format (v1, element.id)
+                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                else if (v1 <= 1000.0 && v2 <= 1000.0)
+                    "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, element.id)
+                else
+                    null
+            case _ ⇒
+                null
+        }
+    }
+
     def edge_operator(voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
         var ret = List[PreEdge]()
@@ -164,6 +226,8 @@ class GridLABD (
                                 "",
                                 volts(0),
                                 terminals(0).ConductingEquipment,
+                                true,
+                                null,
                                 ratedCurrent,
                                 e)
                     case _ ⇒
@@ -177,6 +241,8 @@ class GridLABD (
                                 node_name(terminals(i)),
                                 volts(i),
                                 terminals(0).ConductingEquipment,
+                                connected (e),
+                                hasIssues (e, terminals.length, volts(0), volts(i)),
                                 ratedCurrent,
                                 e)
                         }
@@ -193,7 +259,7 @@ class GridLABD (
         val node = arg._1._1
         val term = arg._1._2
         val edge = arg._2
-        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
+        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, edge.problem)
     }
 
     def connectivity_node_operator(arg: ((ConnectivityNode, Terminal), PreEdge)): PreNode =
@@ -201,7 +267,7 @@ class GridLABD (
         val node = arg._1._1
         val term = arg._1._2
         val edge = arg._2
-        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2)
+        PreNode(node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, edge.problem)
     }
 
     def exists(filename: String): Boolean =
@@ -294,9 +360,21 @@ class GridLABD (
             connectivitynodes.keyBy(_.id).join(terminals.keyBy(_.ConnectivityNode)).values.keyBy(_._2.id).join(tv).values.map(connectivity_node_operator).distinct
         }
 
+        def worst (x: (VertexId, Iterable[PreNode])): (VertexId, PreNode) =
+        {
+            (x._1,
+                {
+                    val m = x._2.filter (null != _.problem)
+                    if (m.nonEmpty)
+                        m.head
+                    else
+                        x._2.head
+                }
+            )
+        }
         // persist edges and nodes to avoid recompute
-        val xedges = real_edges.map(make_graph_edges)
-        val xnodes = nodes.map(make_graph_vertices)
+        val xedges = real_edges.map (make_graph_edges)
+        val xnodes = nodes.map (make_graph_vertices).groupByKey.map (worst)
         val e = xedges.count
         xedges.name = "xedges"
         xedges.persist(storage_level)

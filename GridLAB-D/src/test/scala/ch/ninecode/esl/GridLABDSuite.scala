@@ -141,4 +141,62 @@ class GridLABDSuite extends FunSuite
             statement.close ()
             connection.close ()
     }
+
+
+    /**
+     * Test for the correct current limit on a parallel set of cables.
+     */
+    test ("Three windng transformer")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val root = "three_winding_transformer"
+            val filename = FILE_DEPOT + root + ".rdf"
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = false,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 1.5,
+                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                files = List(filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results)")
+            var records: Int = 0
+            while (resultset.next)
+            {
+                if (resultset.getString (2) == "USR0004" || resultset.getString (2) == "USR0005")
+                {
+                    assert (resultset.getString (1) == "TX0003", "transformer name")
+                    assert (resultset.getDouble (3) == 0.0, "maximum")
+                    assert (resultset.wasNull, "maximum should be null")
+                    assert (resultset.getString (4) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
+                }
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+    }
 }

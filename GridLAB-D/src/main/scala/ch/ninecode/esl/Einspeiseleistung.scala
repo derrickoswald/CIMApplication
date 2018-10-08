@@ -538,7 +538,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session)
             pf.threshold_calculation (initial, sdata, transformers, gridlabd, storage_level)
         }
