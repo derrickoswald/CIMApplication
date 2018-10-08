@@ -535,9 +535,8 @@ class GridLABD (
             val file = new Path (workdir_slash + directory + "/" + path)
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            val mode: Short = 755
-            hdfs.mkdirs (file.getParent, new FsPermission (mode))
-            hdfs.setPermission (file.getParent, new FsPermission (mode)) // "-"  WTF?
+            hdfs.mkdirs (file.getParent, new FsPermission ("ugo-rwx"))
+            hdfs.setPermission (file.getParent, new FsPermission ("ugo-rwx")) // "-"  WTF?
 
             if (null != bytes)
             {
