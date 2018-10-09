@@ -88,7 +88,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
         assert(value == fuseString, "parallel fuse expected for " + node + ": " + fuseString)
     }
 
-    test ("Testcase2")
+    ignore ("Testcase2")
     {
         session: SparkSession ⇒
 
@@ -99,7 +99,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             assert(filtered_results.count == 0, "No HAS with parallel fuses expected")
     }
 
-    test ("Testcase6")
+    ignore ("Testcase6")
     {
         session: SparkSession ⇒
 
@@ -112,7 +112,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             checkParalleFuse(filtered_results, "HAS112021", "630.0+630.0,-1.0")
     }
 
-    test ("Testcase11")
+    ignore ("Testcase11")
     {
         session: SparkSession ⇒
 
@@ -127,7 +127,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             checkParalleFuse(filtered_results, "HAS106736", "315.0+315.0,40.0")
     }
 
-    test ("Testcase12")
+    ignore ("Testcase12")
     {
         session: SparkSession ⇒
 

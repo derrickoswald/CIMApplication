@@ -17,11 +17,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.cim.ForceTrue
-import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
@@ -56,7 +52,7 @@ with Serializable
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, null, null, null)
+    val default_node = ScNode ("", 0.0, null, null, null, null)
 
     def make_graph_vertices (v: ScNode): (VertexId, ScNode) =
     {
@@ -74,7 +70,7 @@ with Serializable
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, null, null, null)
+        ScNode (node.id, voltage, null, null, null, null)
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
@@ -292,7 +288,7 @@ with Serializable
             low.ik,  low.ik3pol,  low.ip,  low.sk, costerm,
             low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
-            high.ik, high.ik3pol, high.ip, high.sk, node.fuses)
+            high.ik, high.ik3pol, high.ip, high.sk, null)
     }
 
     /**
@@ -543,12 +539,12 @@ with Serializable
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.prev, z, original.fuses, List(ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.prev, z, List(ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
                             (
-                                ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
+                                ScNode (x._1._2, v, x._1._1, null, z, List()),
                                 1, x._1._3, ""
                             )
                     }
@@ -571,25 +567,8 @@ with Serializable
 
     def run (): RDD[ScResult] =
     {
-        log.info ("storage level: %s".format (storage_level.toString))
         FData.fuse_sizing_table (options.fuse_table)
-        log.info ("fuse sizing table: %s".format (options.fuse_table))
-
-        // check if topology exists, and if not then generate it
-        if (null == get[TopologicalNode])
-        {
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val elements = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = true,
-                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-            )
-            log.info ("%d elements after topology generated".format (elements.count ()))
-        }
+        assert (null != get[TopologicalNode], "no topology")
 
         val _transformers = new Transformers (spark, storage_level)
         val tdata = _transformers.getTransformerData (
@@ -623,11 +602,11 @@ with Serializable
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null, null)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null)
                     else
                     {
                         val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, errors)
                     }
                 case None ⇒
                     v

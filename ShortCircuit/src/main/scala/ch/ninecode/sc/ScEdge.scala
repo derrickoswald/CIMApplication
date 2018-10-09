@@ -205,25 +205,6 @@ case class ScEdge (
                 Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
         }
     }
-
-    /**
-     * Compute the list of fuse values as accumulated from the reference
-     *
-     * @param ref fuse value list of the node at one end of the edge (List[Double] (A))
-     * @return list of fuses at the other end of the edge
-     */
-    def fusesTo (ref: List[List[(String, Double)]]): List[List[(String, Double)]] =
-    {
-        element match
-        {
-            case fuse: Fuse ⇒
-                if (null == ref) List(List((fuse.id, fuse.Switch.ratedCurrent))) else ref :+ List((fuse.id, fuse.Switch.ratedCurrent))
-            case breaker: Breaker ⇒
-                if (null == ref) List(List((breaker.id, breaker.ProtectedSwitch.Switch.ratedCurrent))) else ref :+ List((breaker.id, breaker.ProtectedSwitch.Switch.ratedCurrent))
-            case _ ⇒
-                ref
-        }
-    }
 }
 
 object ScEdge
