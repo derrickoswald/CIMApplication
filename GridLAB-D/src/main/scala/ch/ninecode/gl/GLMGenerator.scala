@@ -96,7 +96,7 @@ extends Serializable
             |        {
             |            solver_method NR;
             |            default_maximum_voltage_error 10e-6;
-            |            NR_iteration_limit 5000;
+            |            NR_iteration_limit 500;
             |            NR_superLU_procs 16;
             |            nominal_frequency 50;
             |        };
