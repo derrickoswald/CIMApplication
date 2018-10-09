@@ -1,19 +1,11 @@
 package ch.ninecode.sc
 
-import scala.math._
-
-import org.scalatest.fixture.FunSuite
+import org.scalatest.FunSuite
 
 import ch.ninecode.gl.Complex
 
 class MaximumStartingCurrentSuite extends FunSuite
 {
-    type FixtureParam = Int
-    def withFixture (test: OneArgTest): org.scalatest.Outcome =
-    {
-        withFixture (test.toNoArgTest (0))
-    }
-
     /**
      * See example 4.6.1 Motor Start-up in DACHCZ Technical Rules for the Assessment of Network Disturbances
      */

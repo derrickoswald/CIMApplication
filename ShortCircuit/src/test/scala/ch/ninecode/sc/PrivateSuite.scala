@@ -11,9 +11,7 @@ import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 
-class PrivateSuite
-    extends
-        SparkSuite
+class PrivateSuite extends SparkSuite
 {
     val PRIVATE_FILE_DEPOT = "private_data/"
 

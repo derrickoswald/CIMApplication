@@ -14,11 +14,7 @@ import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 
-class ParallelFusesSuite
-    extends
-        SparkSuite
-    with
-        BeforeAndAfter
+class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "private_data/"
 

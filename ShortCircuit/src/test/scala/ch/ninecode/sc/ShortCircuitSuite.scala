@@ -16,11 +16,7 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 
-class ShortCircuitSuite
-    extends
-        SparkSuite
-    with
-        BeforeAndAfter
+class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "data/"
 

@@ -4,21 +4,18 @@ import java.util.HashMap
 import java.util.Map
 import java.io.File
 
-import org.apache.commons.io.FileUtils
+import org.scalatest.BeforeAndAfter
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.scalatest.BeforeAndAfter
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 
-class TransformerSuite
-extends
-    SparkSuite
-with
-    BeforeAndAfter
+class TransformerSuite extends SparkSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "data/"
 

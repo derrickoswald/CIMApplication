@@ -21,11 +21,7 @@ import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 
-class NonradialSuite
-    extends
-        SparkSuite
-    with
-        BeforeAndAfter
+class NonradialSuite extends SparkSuite with BeforeAndAfter
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
