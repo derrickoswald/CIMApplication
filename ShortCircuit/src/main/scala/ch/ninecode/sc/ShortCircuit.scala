@@ -519,8 +519,16 @@ with Serializable
             // perform remedial simulations
             val zlo: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.low_temperature, true).cache // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
-            val zhi: RDD[(String, String, String, Double, Complex)] = remedial (simulations, options.high_temperature, false).cache // (trafoid, nodeid, equipment, voltage, Z)
-            log.info ("""ran %s experiments at high temperature""".format (zhi.count ()))
+            val zhi: RDD[(String, String, String, Double, Complex)] =
+                // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
+                if (options.low_temperature != options.high_temperature)
+                {
+                    val _z = remedial (simulations, options.high_temperature, false).cache // (trafoid, nodeid, equipment, voltage, Z)
+                    log.info ("""ran %s experiments at high temperature""".format (_z.count ()))
+                    _z
+                }
+                else
+                    zlo
             val z: RDD[(String, String, String, Double, (Complex, Complex))] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
                 .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5)))
             // map to the type returned by the trace, use the existing value where possible
@@ -650,7 +658,7 @@ with Serializable
         // compute results
         var results: RDD[ScResult] = g.map (calculate_short_circuit)
 
-        // find transformers where there are non-radial networks
+        // find transformers where there are non-radial networks and fix them
         val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct.cache
         def toTransformerSet (trafo: String): TransformerSet = transformersets.find (_.transformer_name == trafo).get
         val problem_trafosets = problem_trafos.map (toTransformerSet)
