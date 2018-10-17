@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import java.io.Closeable
 import java.nio.charset.StandardCharsets
@@ -29,12 +29,12 @@ import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 
-case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) extends CIMRDD
+case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 {
     if (options.verbose)
     {
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.Feeder").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.Feeder").setLevel (org.apache.log4j.Level.INFO)
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
     }
     implicit val spark: SparkSession = session
@@ -225,7 +225,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
             if (options.verbose) // re-set the log level on each worker
-                org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.MediumVoltage").setLevel (org.apache.log4j.Level.INFO)
+                org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
 
             val generator = MvGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
@@ -261,7 +261,7 @@ case class MediumVoltage (session: SparkSession, options: MediumVoltageOptions) 
     }
 }
 
-object MediumVoltage
+object OneOfN
 {
     /**
      * The list of classes that can be persisted.
@@ -269,19 +269,19 @@ object MediumVoltage
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.mv.AbgangKreis],
-            classOf[ch.ninecode.mv.EdgeData],
-            classOf[ch.ninecode.mv.Feeder],
-            classOf[ch.ninecode.mv.FeederArea],
-            classOf[ch.ninecode.mv.FeederNode],
-            classOf[ch.ninecode.mv.MediumVoltage],
-            classOf[ch.ninecode.mv.MediumVoltageOptions],
-            classOf[ch.ninecode.mv.MediumVoltageGLMGenerator],
-            classOf[ch.ninecode.mv.MvGLMGenerator],
-            classOf[ch.ninecode.mv.PlayerSwitchEdge],
-            classOf[ch.ninecode.mv.USTKreis],
-            classOf[ch.ninecode.mv.USTNode],
-            classOf[ch.ninecode.mv.VertexData]
+            classOf[ch.ninecode.on.AbgangKreis],
+            classOf[ch.ninecode.on.EdgeData],
+            classOf[ch.ninecode.on.Feeder],
+            classOf[ch.ninecode.on.FeederArea],
+            classOf[ch.ninecode.on.FeederNode],
+            classOf[ch.ninecode.on.OneOfN],
+            classOf[ch.ninecode.on.OneOfNOptions],
+            classOf[ch.ninecode.on.OneOfNGLMGenerator],
+            classOf[ch.ninecode.on.MvGLMGenerator],
+            classOf[ch.ninecode.on.PlayerSwitchEdge],
+            classOf[ch.ninecode.on.USTKreis],
+            classOf[ch.ninecode.on.USTNode],
+            classOf[ch.ninecode.on.VertexData]
         )
     }
 }

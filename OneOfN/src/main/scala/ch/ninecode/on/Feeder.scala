@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection

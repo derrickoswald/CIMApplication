@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -11,7 +11,7 @@ import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 
-case class MediumVoltageGLMGenerator (
+case class OneOfNGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     ust: USTKreis)

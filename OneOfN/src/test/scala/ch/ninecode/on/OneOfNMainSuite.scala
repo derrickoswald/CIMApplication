@@ -1,10 +1,10 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import org.scalatest.FunSuite
 
-import ch.ninecode.mv.Main.main
+import ch.ninecode.on.Main.main
 
-class MediumVoltageMainSuite
+class OneOfNMainSuite
 extends FunSuite
 {
     test ("Help")

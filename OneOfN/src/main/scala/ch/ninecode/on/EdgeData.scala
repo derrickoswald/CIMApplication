@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 /**
  * Edge data for feeder processing.
