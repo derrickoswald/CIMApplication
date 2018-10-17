@@ -291,6 +291,61 @@ with Serializable
             high.ik, high.ik3pol, high.ip, high.sk, null)
     }
 
+
+    /**
+     * Get the node part of the element name.
+     *
+     * @param s the element name as pulled out by filename stripping
+     * @return the node (first) part of the element name
+     */
+    def extract_node (s: String): String =
+    {
+        val elementindex = s.indexOf ("%")
+        if (-1 == elementindex) s else s.substring (0, elementindex)
+    }
+
+    /**
+     * Yield live branches.
+     *
+     * Get the edges with current flowing through them.
+     *
+     * @param arg tuple of transformer and recorder value
+     * @return tuple of the node, the edge and the magnitude of the current
+     */
+    def alive (arg: (String, ThreePhaseComplexDataElement)): Option[(String, String, Double)] =
+    {
+        val datum = arg._2
+        datum.units match
+        {
+            case "Amps" ⇒
+                val value = datum.value_a.modulus
+                if (value > 1e-5)
+                {
+                    val elementindex = datum.element.indexOf ("%")
+                    if (-1 == elementindex)
+                        None
+                    else
+                        Some (datum.element.substring (0, elementindex), datum.element.substring (elementindex + 1), value)
+                }
+                else
+                    None
+            case _ ⇒
+                None
+        }
+    }
+
+    /**
+     * TBD trace the path of the current.
+     *
+     * @param start stating node (e.g. EnergyConsumer)
+     * @param data list of live branches
+     * @return the traced fuses
+     */
+    def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[String] =
+    {
+        List()
+    }
+
     /**
      * Convert current and voltage at a node into impedance.
      *
@@ -302,57 +357,80 @@ with Serializable
      */
     def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex) =
     {
-        val z: Complex = arg._2 match
+        val (z, path): (Complex, List[List[String]]) = arg._2 match
         {
             case Some (data) ⇒
                 val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (_.units == "Volts")
-                val current: Iterable[Complex] = data.filter (_._2.units == "Amps").map (_._2.value_a)
+                val current: Iterable[Complex] = data.filter (x ⇒ x._2.units == "Amps" && arg._1.mrid == extract_node (x._2.element)).map (_._2.value_a)
                 voltage match
                 {
                     case Some (volts) ⇒
                         val v = volts.value_a
                         implicit val zero: Complex = Complex(0)
-                        val i = current.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
+                        // val i = current.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
+                        val i = current.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
                         if (i == zero)
                         {
                             log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
-                            Complex (Double.PositiveInfinity, 0.0)
+                            (Complex (Double.PositiveInfinity, 0.0), null)
                         }
                         else
-                            (arg._1.voltage - v) / i
+                        {
+                            val z =  (arg._1.voltage - v) / i
+                            val live: Iterable[(String, String, Double)] = data.flatMap (alive)
+                            val route = traceroute (arg._1.mrid, live)
+                            (z, route)
+                        }
                     case _ ⇒
-                        null
+                        (null, null)
                 }
             case _ ⇒
-                null
+                (null, null)
         }
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z)
     }
 
+//    /**
+//     * Demultiplex file names into element and type.
+//     *
+//     * Converts a filename into the node mrid and type of recording - current or voltage.
+//     * For example, for a node called PIN767 with a node id of PIN767_topo, there may be files with names like:
+//     * <ul>
+//     * <li>PIN767_topo%FLE7941_current.csv</li>
+//     * <li>PIN767_topo%FLT1024_current.csv</li>
+//     * <li>PIN767_topo_voltage.csv</li>
+//     * </ul>
+//     * which would produce the pairs:
+//     * <ul>
+//     * <li>("PIN767_topo", "Amps)</li>
+//     * <li>("PIN767_topo", "Amps)</li>
+//     * <li>("PIN767_topo", "Volts)</li>
+//     * </ul>
+//     *
+//     * @param filename the filename to demultiplex
+//     * @return the pair of node id and type of recorder
+//     */
+//    def special_filenameparser (filename: String): (String, String) =
+//    {
+//        val elementindex = filename.indexOf ("%")
+//        val element = if (-1 == elementindex) filename.substring (0, filename.lastIndexOf ("_")) else filename.substring (0, elementindex)
+//        val units = if (filename.endsWith ("_voltage.csv"))
+//            "Volts"
+//        else if (filename.endsWith ("_current.csv"))
+//            "Amps"
+//        else
+//            ""
+//        (element, units)
+//    }
+
     /**
-     * Demultiplex file names into element and type.
-     *
-     * Converts a filename into the node mrid and type of recording - current or voltage.
-     * For example, for a node called PIN767 with a node id of PIN767_topo, there may be files with names like:
-     * <ul>
-     * <li>PIN767_topo%FLE7941_current.csv</li>
-     * <li>PIN767_topo%FLT1024_current.csv</li>
-     * <li>PIN767_topo_voltage.csv</li>
-     * </ul>
-     * which would produce the pairs:
-     * <ul>
-     * <li>("PIN767_topo", "Amps)</li>
-     * <li>("PIN767_topo", "Amps)</li>
-     * <li>("PIN767_topo", "Volts)</li>
-     * </ul>
-     *
-     * @param filename the filename to demultiplex
-     * @return the pair of node id and type of recorder
+     * Get the name element (possible multiplexed, e.g. node%edge) and type of measurement.
+     * @param filename the recorder file name
+     * @return tuple of the element and type of recorder
      */
     def special_filenameparser (filename: String): (String, String) =
     {
-        val elementindex = filename.indexOf ("%")
-        val element = if (-1 == elementindex) filename.substring (0, filename.lastIndexOf ("_")) else filename.substring (0, elementindex)
+        val element = filename.substring (0, filename.lastIndexOf ("_"))
         val units = if (filename.endsWith ("_voltage.csv"))
             "Volts"
         else if (filename.endsWith ("_current.csv"))
@@ -381,7 +459,7 @@ with Serializable
         val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
         // key by trafo_mrid_time to join
-        val values = output.keyBy (x ⇒ x._1 + "_" + x._2.element + "_" + x._2.millis.toString).groupByKey
+        val values = output.keyBy (x ⇒ x._1 + "_" + extract_node (x._2.element) + "_" + x._2.millis.toString).groupByKey
         val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.mrid + "_" + x.t1.getTimeInMillis.toString)
         val dd = exp.leftOuterJoin (values)
         val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance))
