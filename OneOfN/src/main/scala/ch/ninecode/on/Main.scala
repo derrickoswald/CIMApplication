@@ -119,7 +119,7 @@ object Main
 
         opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = c.opts ++ x)).
-            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+            text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage_level").
             action ((x, c) => c.copy (storage = x)).
@@ -201,7 +201,7 @@ object Main
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/rdffilename.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/rdffilename.rdf"
      * or on AWS:
      *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */

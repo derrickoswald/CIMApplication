@@ -71,7 +71,7 @@ class OneOfNSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "sample"
+        val root = "NIS_CIM_Export_sias_current_20161220_Muri bei Bern_V11"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
@@ -84,8 +84,8 @@ class OneOfNSuite extends FunSuite
             workdir = "./target/",
             files = List (filename)
         )
-        val ms = OneOfN (session, options)
-        val count = ms.run ()
+        val on = OneOfN (session, options)
+        val count = on.run ()
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " feeders\n")

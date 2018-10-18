@@ -109,7 +109,7 @@ GridLAB-D 2.2.0
 Usage: GridLAB-D [options] <CIM> <CIM> ...
 
   -m, --master MASTER_URL  spark://host:port, mesos://host:port, yarn, or local[*]
-  -o, --opts k1=v1,k2=v2   other Spark options
+  -o, --opts k1=v1,k2=v2   Spark options
   -g, --storage_level <value>
                            storage level for RDD serialization (default: MEMORY_AND_DISK_SER)
   -3, --three              use three phase computations
