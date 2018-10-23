@@ -15,7 +15,7 @@ class TraceRoute
         def split (endings: Set[String]) (branch: SimpleBranch): (Option[SimpleBranch], Option[SimpleBranch], Option[String]) = // (unordered, ordered, next)
         {
             if (endings.contains (branch.from))
-                (None, Some (Branch (branch.to, branch.from, branch.current, branch.mRID)), Some (branch.to)) // flip direction
+                (None, Some (Branch (branch.to, branch.from, branch.current, branch.mRID, branch.rating)), Some (branch.to)) // flip direction
             else if (endings.contains (branch.to))
                 (None, Some (branch), Some (branch.from)) // already directed correctly
             else
@@ -59,7 +59,7 @@ class TraceRoute
             if (candidates.nonEmpty)
             {
                 val candidate = candidates.head
-                val flipped = branches.map (x ⇒ if (x.mRID != candidate) x else SimpleBranch (x.to, x.from, x.current, x.mRID))
+                val flipped = branches.map (x ⇒ if (x.mRID != candidate) x else SimpleBranch (x.to, x.from, x.current, x.mRID, x.rating))
                 val delinquents = kcl_violations (flipped)
                 if (delinquents.isEmpty)
                     Some (flipped)
@@ -89,7 +89,26 @@ class TraceRoute
 
         // create unordered branches
         val undirected = mutable.Map[String, SimpleBranch]()
-        data.foreach (x ⇒ if (!undirected.contains (x._2)) undirected (x._2) = Branch (x._1, data.find (y ⇒ y._2 == x._2 && y._1 != x._1).map (_._1).getOrElse ("source"), x._3, x._2))
+        def get_mrid (element: String): String =
+        {
+            val index = element.indexOf ("$")
+            if (-1 == index) element else element.substring (0, index)
+        }
+        def get_rating (element: String): Option[Double] =
+        {
+            val index = element.indexOf ("$")
+            if (-1 == index) None else Some (element.substring (index + 1).toDouble)
+        }
+        def make_branch (element: (String, String, Double)): Unit =
+        {
+            val from = element._1
+            val mrid = get_mrid (element._2)
+            val current = element._3
+            val rating = get_rating (element._2)
+            if (!undirected.contains (mrid))
+                undirected (mrid) = Branch (from, data.find (y ⇒ get_mrid (y._2) == mrid && y._1 != from).map (_._1).getOrElse ("source"), current, mrid, rating)
+        }
+        data.foreach (make_branch)
         // walk backwards from ending node
         val branches = make_directed (Set("source"), undirected.values)
         // flip branches that violate KCL
@@ -174,7 +193,7 @@ class TraceRoute
 
         var network: Iterable[Branch] = toBranches (start, data)
         // print out the starting branches
-        //println ("raw:\n" + network.mkString ("\n"))
+        // println ("raw:\n" + network.mkString ("\n"))
 
         // step by step reduce the network to a single branch through series and parallel reductions
         var done = false
@@ -191,7 +210,7 @@ class TraceRoute
             }
         }
         while (!done)
-        //println ("reduced:\n" + network.mkString ("\n"))
+        // println ("reduced:\n" + network.mkString ("\n"))
 
         // convert the network into a set of fuses by removing all cables and transformers
         network.toSeq.flatMap (_.justFuses)

@@ -69,7 +69,7 @@ object FData
             recommended.filter (_.Ik <= i).last.Rating
         }
     }
-    def fuseOK (ik: Double, fuses: List[List[(String, Double)]]): Boolean =
+    def fuseOK (ik: Double, fuses: List[(String, Double)]): Boolean =
     {
         if (null == fuses)
             false
@@ -77,14 +77,13 @@ object FData
             false
         else
         {
-            var len = fuses.last.length
-            val ok = fuses.last.map(l => fuse(ik / len) >= l._2)
-            ok.forall(identity)
+            var len = fuses.length
+            val ok = fuses.forall (l => fuse(ik / len) >= l._2)
+            ok
         }
     }
-    def hasMissingValues (fuses: List[List[(String, Double)]]): Boolean = {
-        fuses.exists(f => {
-            f.exists(l => {l._2 <= 0.0 || l._2 == null || l._2 == ""})
-        })
+    def hasMissingValues (fuses: List[(String, Double)]): Boolean =
+    {
+        fuses.exists (l => l._2 <= 0.0)
     }
 }

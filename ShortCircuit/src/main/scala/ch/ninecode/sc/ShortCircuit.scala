@@ -52,7 +52,7 @@ with Serializable
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, null, null)
+    val default_node = ScNode ("", 0.0, null, null, null, null, null)
 
     def make_graph_vertices (v: ScNode): (VertexId, ScNode) =
     {
@@ -70,7 +70,7 @@ with Serializable
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, null, null)
+        ScNode (node.id, voltage, null, null, null, null, null)
     }
 
     def edge_operator (voltages: Map[String, Double]) (arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
@@ -288,7 +288,7 @@ with Serializable
             low.ik,  low.ik3pol,  low.ip,  low.sk, costerm,
             low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
-            high.ik, high.ik3pol, high.ip, high.sk, null)
+            high.ik, high.ik3pol, high.ip, high.sk, node.fuses)
     }
 
 
@@ -344,13 +344,13 @@ with Serializable
      * @param data list of live branches
      * @return the traced fuses
      */
-    def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[String] =
+    def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[(String, Double)] =
     {
         // print out the data
-        println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
+        // println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
 
         val tr = new TraceRoute ()
-        tr.traceroute (start, data).map (_.asString)
+        tr.traceroute (start, data).flatMap (_.asFuse)
     }
 
     /**
@@ -362,9 +362,9 @@ with Serializable
      * @param arg a tuple of the experimental conditions and the results (both voltage and current in the same Iterable)
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex, List[String]) =
+    def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex, List[(String, Double)]) =
     {
-        val (z, path): (Complex, List[String]) = arg._2 match
+        val (z, path): (Complex, List[(String, Double)]) = arg._2 match
         {
             case Some (data) ⇒
                 val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (_.units == "Volts")
@@ -455,7 +455,7 @@ with Serializable
      * @param experiments the experiments contained in the players, that can be extracted from the recorders
      * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex, List[String])] =
+    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex, List[(String, Double)])] =
     {
         val b4_solve = System.nanoTime ()
         val trafos: RDD[String] = experiments.map (_.trafo).distinct
@@ -469,7 +469,7 @@ with Serializable
         val values = output.keyBy (x ⇒ x._1 + "_" + x._2.millis.toString).groupByKey
         val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.t1.getTimeInMillis.toString)
         val dd = exp.leftOuterJoin (values)
-        val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance))
+        val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
         val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
@@ -487,7 +487,7 @@ with Serializable
      * @param isMax If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex, List[String])] =
+    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex, List[(String, Double)])] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -602,9 +602,9 @@ with Serializable
                         directory = x._2.transformer_name)
             )
             // perform remedial simulations
-            val zlo: RDD[(String, String, String, Double, Complex, List[String])] = remedial (simulations, options.low_temperature, true).cache // (trafoid, nodeid, equipment, voltage, Z)
+            val zlo: RDD[(String, String, String, Double, Complex, List[(String, Double)])] = remedial (simulations, options.low_temperature, true).cache // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
-            val zhi: RDD[(String, String, String, Double, Complex, List[String])] =
+            val zhi: RDD[(String, String, String, Double, Complex, List[(String,Double)])] =
                 // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
                 if (options.low_temperature != options.high_temperature)
                 {
@@ -614,7 +614,7 @@ with Serializable
                 }
                 else
                     zlo
-            val z: RDD[(String, String, String, Double, (Complex, Complex), List[String])] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
+            val z: RDD[(String, String, String, Double, (Complex, Complex), List[(String, Double)])] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
                 .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5), x._1._6))
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed: RDD[(identifier, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
@@ -623,6 +623,7 @@ with Serializable
                 x ⇒
                 {
                     val v = x._1._4
+                    val fuses = x._1._6
                     val z1_low = x._1._5._1
                     val z0_low = z1_low * 4.0 // approximately four times
                     val z1_hi = x._1._5._2
@@ -632,12 +633,12 @@ with Serializable
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.prev, z, List(ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.prev, z, fuses, List(ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
                             (
-                                ScNode (x._1._2, v, x._1._1, null, z, List()),
+                                ScNode (x._1._2, v, x._1._1, null, z, List(), List()),
                                 1, x._1._3, ""
                             )
                     }
@@ -695,11 +696,11 @@ with Serializable
                 case Some (node) ⇒
                     // assign source and impedances to starting transformer primary and secondary
                     if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null, null)
                     else
                     {
                         val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, errors)
+                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
                     }
                 case None ⇒
                     v

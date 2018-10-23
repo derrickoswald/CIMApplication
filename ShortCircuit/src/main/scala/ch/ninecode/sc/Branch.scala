@@ -40,7 +40,6 @@ package ch.ninecode.sc
  * @param from
  * @param to
  * @param current
- * @param mRID
  * @param parallel
  */
 abstract class Branch (val from: String, val to: String, val current: Double)
@@ -49,6 +48,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     def iter: Iterable[Branch]
     def justFuses: Option[Branch] // this branch, but only fuses
     def asString: String
+    def asFuse: Seq[(String, Double)]
 
     def add_in_series (that: Branch): Branch =
     {
@@ -73,13 +73,14 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     }
 }
 
-case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String) extends Branch (from, to, current)
+case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double]) extends Branch (from, to, current)
 {
-    override def toString: String =  """SimpleBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, mRID)
-    def asString: String =  mRID
+    override def toString: String =  """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
+    def asString: String =  "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
+    def asFuse: Seq[(String, Double)] = Seq((mRID, rating.getOrElse (0.0)))
     def seq = Seq (this)
     def iter = Iterable (this)
-    def isFuse: Boolean = mRID.startsWith ("TEI")
+    def isFuse: Boolean = rating.isDefined
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
 }
 
@@ -87,6 +88,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 {
     override def toString: String =  """SeriesBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, series.map (_.toString).mkString ("+"))
     def asString: String =  """%s""".format (series.map (_.asString).mkString ("(", ",", ")"))
+    def asFuse: Seq[(String, Double)] = series.flatMap (_.asFuse)
     def seq: Seq[Branch] = series
     def iter = Iterable (this)
     def justFuses: Option[Branch] =
@@ -95,7 +97,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
         if ((fuses.size == 1) && fuses.head.isInstanceOf[SimpleBranch])
         {
             val branch = fuses.head.asInstanceOf[SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID))
+            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.rating))
         }
         else if (fuses.nonEmpty)
             Some (SeriesBranch (this.from, this.to, this.current, fuses))
@@ -108,6 +110,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
 {
     override def toString: String =  """ParallelBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, parallel.map (_.toString).mkString ("[", ",", "]"))
     def asString: String =  """%s""".format (parallel.map (_.asString).mkString ("[", "||", "]"))
+    def asFuse: Seq[(String, Double)] = parallel.flatMap (_.asFuse).toSeq
     def seq = Seq (this)
     def iter: Iterable[Branch] = parallel
     def justFuses: Option[Branch] =
@@ -116,7 +119,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
         if ((fuses.size == 1) && fuses.head.isInstanceOf[SimpleBranch])
         {
             val branch = fuses.head.asInstanceOf[SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
+            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
         }
         else if (fuses.nonEmpty)
             Some (ParallelBranch (this.from, this.to, this.current, fuses))
@@ -127,8 +130,8 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
 object Branch
 {
-    def apply (from: String, to: String, current: Double, mRID: String) = SimpleBranch (from: String, to: String, current: Double, mRID: String)
-    def apply (from: String, to: String, current: Double, series: Seq[Branch]) = SeriesBranch (from: String, to: String, current: Double, series)
-    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]) = ParallelBranch (from: String, to: String, current: Double, parallel)
+    def apply (from: String, to: String, current: Double, mRID: String, rating: Option[Double]) = SimpleBranch (from, to, current, mRID, rating)
+    def apply (from: String, to: String, current: Double, series: Seq[Branch]) = SeriesBranch (from, to, current, series)
+    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]) = ParallelBranch (from, to, current, parallel)
 }
 

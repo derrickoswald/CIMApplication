@@ -174,6 +174,11 @@ extends GLMGenerator (one_phase, temperature, date_format)
     override def emit_edge (edge: GLMEdge): String =
     {
         val link = super.emit_edge (edge)
+        val size = edge match
+        {
+            case sw: SwitchEdge ⇒ """$%s""".format (sw.switch.ratedCurrent)
+            case _ ⇒ ""
+        }
         val recorders =
             """
             |        object recorder
@@ -182,7 +187,7 @@ extends GLMGenerator (one_phase, temperature, date_format)
             |            parent "%s";
             |            property current_in_A.real,current_in_A.imag,flow_direction;
             |            interval 5;
-            |            file "output_data/%s%%%s_current.csv";
+            |            file "output_data/%s%%%s%s_current.csv";
             |        };
             |
             |        object recorder
@@ -191,9 +196,9 @@ extends GLMGenerator (one_phase, temperature, date_format)
             |            parent "%s";
             |            property current_out_A.real,current_out_A.imag,flow_direction;
             |            interval 5;
-            |            file "output_data/%s%%%s_current.csv";
+            |            file "output_data/%s%%%s%s_current.csv";
             |        };
-            """.stripMargin.format (edge.cn1, edge.id, edge.id, edge.cn1, edge.id, edge.cn2, edge.id, edge.id, edge.cn2, edge.id)
+            """.stripMargin.format (edge.cn1, edge.id, edge.id, edge.cn1, edge.id, size, edge.cn2, edge.id, edge.id, edge.cn2, edge.id, size)
         link + recorders
     }
 

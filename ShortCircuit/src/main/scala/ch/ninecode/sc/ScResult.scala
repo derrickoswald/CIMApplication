@@ -65,7 +65,7 @@ case class ScResult (
     high_ik3pol: Double = 0.0,
     high_ip: Double = 0.0,
     high_sk: Double = 0.0,
-    fuses: List[List[(String, Double)]]
+    fuses: List[(String, Double)]
 )
 {
     def csv: String =
@@ -77,7 +77,7 @@ case class ScResult (
 
     def fuseString: String =
     {
-        val s = fuses.map(_.map(_._2).mkString("+")).mkString(",")
+        val s = fuses.map(_._2).mkString("+").mkString(",")
         s
     }
 }
