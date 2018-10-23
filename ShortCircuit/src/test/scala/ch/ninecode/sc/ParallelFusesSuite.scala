@@ -88,7 +88,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
         assert(value == fuseString, "parallel fuse expected for " + node + ": " + fuseString)
     }
 
-    ignore ("Testcase2")
+    test ("Testcase2")
     {
         session: SparkSession ⇒
 
