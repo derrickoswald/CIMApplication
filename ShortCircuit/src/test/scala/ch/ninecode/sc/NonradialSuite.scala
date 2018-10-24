@@ -346,7 +346,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 println (csv (i))
 
             assert (results.filter (_.equipment == "USR0001").count == 0, "USR0001 should not be computed")
-            assert (Math.abs (results.filter (_.equipment == "USR0002").first ().low_sk - 8933600) < 100.0, "USER002 power")
-            assert (Math.abs (results.filter (_.equipment == "USR0003").first ().low_sk - 8884895) < 100.0, "USER003 power")
+            assert (Math.abs (results.filter (_.equipment == "USR0002").first ().low_sk - 9062604) < 100.0, "USER002 power")
+            assert (Math.abs (results.filter (_.equipment == "USR0003").first ().low_sk - 9062623) < 100.0, "USER003 power")
     }
 }

@@ -49,6 +49,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     def justFuses: Option[Branch] // this branch, but only fuses
     def asString: String
     def asFuse: Seq[(String, Double)]
+    def reverse: Branch
 
     def add_in_series (that: Branch): Branch =
     {
@@ -82,6 +83,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def iter = Iterable (this)
     def isFuse: Boolean = rating.isDefined
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
+    def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
 }
 
 case class SeriesBranch (override val from: String, override val to: String, override val current: Double, series: Seq[Branch]) extends Branch (from, to, current)
@@ -104,6 +106,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
         else
             None
     }
+    def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
 }
 
 case class ParallelBranch (override val from: String, override val to: String, override val current: Double, parallel: Iterable[Branch]) extends Branch (from, to, current)
@@ -126,6 +129,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
         else
             None
     }
+    def reverse: Branch = ParallelBranch (to, from, current, parallel.map (_.reverse))
 }
 
 object Branch

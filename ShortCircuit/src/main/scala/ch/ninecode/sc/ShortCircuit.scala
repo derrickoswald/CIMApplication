@@ -350,7 +350,7 @@ with Serializable
         // println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
 
         val tr = new TraceRoute ()
-        tr.traceroute (start, data).flatMap (_.asFuse)
+        tr.traceroute (start, data).map (_.reverse).flatMap (_.asFuse)
     }
 
     /**
@@ -645,7 +645,7 @@ with Serializable
                 }
             )
             // calculate new short circuit result records
-            val replacements = new_nodes.map (calculate_short_circuit)
+            val replacements = new_nodes.map (calculate_short_circuit).cache
             // merge them into the existing set
             val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.node)
             // ToDo: should we remove all records from the problem transformers?
@@ -742,7 +742,7 @@ with Serializable
         val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
 
         // compute results
-        var results: RDD[ScResult] = g.map (calculate_short_circuit)
+        var results: RDD[ScResult] = g.map (calculate_short_circuit).cache
 
         // find transformers where there are non-radial networks and fix them
         val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct.cache

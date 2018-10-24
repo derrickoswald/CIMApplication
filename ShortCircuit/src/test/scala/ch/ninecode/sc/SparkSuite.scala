@@ -149,7 +149,7 @@ class SparkSuite extends FunSuite
                         // We've found an address that looks reasonable!
                         val newenv = new java.util.HashMap[String, String] ()
                         newenv.put ("SPARK_LOCAL_IP", ip.getHostAddress)
-                        newenv.put ("SPARK_HOME", "/home/derrick/spark/spark-2.3.0-bin-hadoop2.7")
+                        newenv.put ("SPARK_HOME", "/home/derrick/spark/spark-2.3.2-bin-hadoop2.7")
                         setEnv (newenv)
                     }
                 }
@@ -167,7 +167,7 @@ class SparkSuite extends FunSuite
         configuration.setAppName ("ShortCircuitSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "1g")
-        configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
         configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
