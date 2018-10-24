@@ -77,7 +77,7 @@ case class ScResult (
 
     def fuseString: String =
     {
-        val s = fuses.map(_._2).mkString("+").mkString(",")
+        val s = fuses.map (_._2.toString).mkString("+")
         s
     }
 }

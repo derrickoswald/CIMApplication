@@ -176,7 +176,7 @@ extends GLMGenerator (one_phase, temperature, date_format)
         val link = super.emit_edge (edge)
         val size = edge match
         {
-            case sw: SwitchEdge ⇒ """$%s""".format (sw.switch.ratedCurrent)
+            case sw: SwitchEdge ⇒ if (sw.fuse) """$%s""".format (sw.switch.ratedCurrent) else ""
             case _ ⇒ ""
         }
         val recorders =
