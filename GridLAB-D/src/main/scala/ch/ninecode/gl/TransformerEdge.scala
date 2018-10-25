@@ -113,7 +113,7 @@ case class TransformerEdge
         |            reactance %s;
         |        };
         |""".stripMargin.format (
-                if (default) "#warning WARNING: using default impedance for " + config + "\n" else "",
+                if (default) "\n#warning WARNING: using default impedance for " + config else "",
                 config,
                 "WYE_WYE", // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
                 transformer.power_rating / 1000.0,

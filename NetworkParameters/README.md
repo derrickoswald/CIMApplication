@@ -59,7 +59,7 @@ Creates EquivalentInjection objects for the network supplying transformers from 
   --version            Scala: 2.11, Spark: 2.3.1, Customer2_NetworkParameters: 2.4.0
   --quiet              suppress informational messages [false]
   --master MASTER_URL  local[*], spark://host:port, mesos://host:port, yarn []
-  --opts k1=v1,k2=v2   other Spark options []
+  --opts k1=v1,k2=v2   Spark options []
   --storage <value>    storage level for RDD serialization [MEMORY_AND_DISK_SER]
   --deduplicate        de-duplicate input (striped) files [false]
   --logging <value>    log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]

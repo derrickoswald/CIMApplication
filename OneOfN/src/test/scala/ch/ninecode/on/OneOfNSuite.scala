@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
@@ -6,7 +6,7 @@ import org.scalatest.fixture.FunSuite
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 
-class MediumVoltageSuite extends FunSuite
+class OneOfNSuite extends FunSuite
 {
     val FILE_DEPOT = "private_data/"
 
@@ -19,7 +19,7 @@ class MediumVoltageSuite extends FunSuite
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("MediumVoltageSuite")
+        configuration.setAppName ("OneOfNSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "1g")
@@ -30,8 +30,8 @@ class MediumVoltageSuite extends FunSuite
         configuration.registerKryoClasses (CIMClasses.list)
         // register GridLAB-D classes
         configuration.registerKryoClasses (GridLABD.classes)
-        // register MediumVoltage classes
-        configuration.registerKryoClasses (MediumVoltage.classes)
+        // register OneOfN classes
+        configuration.registerKryoClasses (OneOfN.classes)
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("OFF") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -71,11 +71,11 @@ class MediumVoltageSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "sample"
+        val root = "NIS_CIM_Export_sias_current_20161220_Muri bei Bern_V11"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
-        val options = MediumVoltageOptions (
+        val options = OneOfNOptions (
             verbose = true,
             cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
             three = false,
@@ -84,8 +84,8 @@ class MediumVoltageSuite extends FunSuite
             workdir = "./target/",
             files = List (filename)
         )
-        val ms = MediumVoltage (session, options)
-        val count = ms.run ()
+        val on = OneOfN (session, options)
+        val count = on.run ()
 
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " feeders\n")

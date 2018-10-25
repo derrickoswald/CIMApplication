@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import java.io.UnsupportedEncodingException
 import java.net.URI
@@ -28,7 +28,7 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "Medium Voltage"
+    val APPLICATION_NAME: String = "OneOfN"
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 
@@ -83,7 +83,7 @@ object Main
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        note ("Creates GridLAB-D .glm models for all medium voltage feeder service areas.\n")
+        note ("Creates GridLAB-D .glm models for all medium voltage (N5 network) feeder service areas for one-of-N analysis.\n")
 
         help ("help").text ("prints this usage text")
 
@@ -119,7 +119,7 @@ object Main
 
         opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = c.opts ++ x)).
-            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+            text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage_level").
             action ((x, c) => c.copy (storage = x)).
@@ -201,7 +201,7 @@ object Main
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/MediumVoltage1.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/rdffilename.rdf"
      * or on AWS:
      *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
@@ -214,7 +214,7 @@ object Main
         {
             case Some (arguments) =>
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mv.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.Main$").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
@@ -232,7 +232,7 @@ object Main
                     if ("" != arguments.master)
                     {
                         val s1 = jarForObject (new DefaultSource ())
-                        val s2 = jarForObject (MediumVoltageOptions ())
+                        val s2 = jarForObject (OneOfNOptions ())
                         if (s1 != s2)
                             configuration.setJars (Array (s1, s2))
                         else
@@ -246,8 +246,8 @@ object Main
                         configuration.registerKryoClasses (CIMClasses.list)
                         // register GridLAB-D classes
                         configuration.registerKryoClasses (GridLABD.classes)
-                        // register Medium Voltage classes
-                        configuration.registerKryoClasses (MediumVoltage.classes)
+                        // register OneOfN classes
+                        configuration.registerKryoClasses (OneOfN.classes)
                         // register GraphX classes
                         GraphXUtils.registerKryoClasses (configuration)
                     }
@@ -268,7 +268,7 @@ object Main
                     ro.put ("StorageLevel", arguments.storage)
                     ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
                     val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
-                    val options = MediumVoltageOptions (
+                    val options = OneOfNOptions (
                         verbose = !arguments.quiet,
                         cim_reader_options = ro,
                         three = arguments.three,
@@ -278,8 +278,8 @@ object Main
                         workdir = workdir,
                         files = arguments.files
                     )
-                    val mv = MediumVoltage (session, options)
-                    val count = mv.run ()
+                    val on = OneOfN (session, options)
+                    val count = on.run ()
                     log.info ("%s models processed".format (count))
                 }
 

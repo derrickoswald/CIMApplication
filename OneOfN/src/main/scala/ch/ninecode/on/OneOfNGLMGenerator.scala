@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import java.text.SimpleDateFormat
 
@@ -18,7 +18,7 @@ import ch.ninecode.gl.TransformerSet
  * @param date_format The date format to use within the .glm file.
  * @param feeder The elements to be generated.
  */
-case class MvGLMGenerator (
+case class OneOfNGLMGenerator (
     one_phase: Boolean,
     temperature: Double,
     date_format: SimpleDateFormat,
@@ -102,7 +102,11 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         |            phases %s;
         |            from "%s_swing";
         |            to "%s";
-        |            status "CLOSED";
+        |            object player
+        |            {
+        |                property "status";
+        |                file "input_data/%s.csv";
+        |            };
         |        };
         |
         |        object meter
@@ -114,7 +118,7 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
         |        };
         |""".stripMargin.format (
             swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one ("voltage"), three_or_one (Complex (swing.nominal_voltage, 0.0)),
-            swing.id, if (one_phase) "AN" else "ABCN", swing.id, swing._id,
+            swing.id, if (one_phase) "AN" else "ABCN", swing.id, swing._id, swing.id,
             swing._id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage)
     }
 

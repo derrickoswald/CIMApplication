@@ -8,12 +8,12 @@
         <groupId>ch.ninecode.cim</groupId>
         <version>2.11-2.3.1-2.4.0</version>
     </parent>
-    <artifactId>MediumVoltage</artifactId>
-    <groupId>ch.ninecode.mv</groupId>
-    <name>MediumVoltage</name>
-    <description>Generate GridLAB-D models for the medium voltage N5 network.</description>
+    <artifactId>OneOfN</artifactId>
+    <groupId>ch.ninecode.on</groupId>
+    <name>OneOfN</name>
+    <description>Generate GridLAB-D models for the medium voltage N5 network for one-of-N analysis.</description>
     <inceptionYear>2017</inceptionYear>
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/MediumVoltage</url>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/OneOfN</url>
 
 
     <dependencies>
@@ -139,7 +139,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.mv.MediumVoltageMainSuite,ch.ninecode.mv.MediumVoltageSuite</suites>
+                    <suites>ch.ninecode.on.OneOfNMainSuite,ch.ninecode.on.OneOfNSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -157,19 +157,19 @@
                 <version>3.0.0</version>
                 <executions>
                     <execution>
-                        <id>make-medium_voltage-assembly</id>
+                        <id>make-one_of_n-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>MediumVoltage-${project.parent.version}</finalName>
+                            <finalName>OneOfN-${project.parent.version}</finalName>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.mv.Main</mainClass>
+                                    <mainClass>ch.ninecode.on.Main</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

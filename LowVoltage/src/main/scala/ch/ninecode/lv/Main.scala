@@ -83,7 +83,7 @@ object Main
 
         opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = x)).
-            text ("other Spark options")
+            text ("Spark options")
 
         opt[String]('s', "storage_level").
             action ((x, c) => c.copy (storage = x)).

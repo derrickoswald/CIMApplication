@@ -122,7 +122,7 @@ object MainCustomer2
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
-            text ("other Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+            text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).

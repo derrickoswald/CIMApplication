@@ -1,4 +1,4 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
@@ -93,26 +93,38 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     /**
-     * Method to determine if the element is a switch.
+     * Predicate for external switches.
+     *
+     * @param swtch The switch to test.
+     * @return <code>true</code> if the switch has PSRType not equal to PSRType_Substation
+     */
+    def isExternal (swtch: Switch): Boolean =
+    {
+        log.info ("%s %s".format (swtch.id, swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
+        swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType != "PSRType_Substation"
+    }
+
+    /**
+     * Method to determine if the element is an external switch.
      *
      * @param element The element to test.
      * @return <code>true</code> if the element is a switch, <code>false</code> otherwise.
      */
-    def isSwitch (element: Element): Boolean =
+    def isExternalSwitch (element: Element): Boolean =
     {
         element match
         {
-            case _: Switch ⇒ true
-            case _: Cut ⇒ true
-            case _: Disconnector ⇒ true
-            case _: Fuse ⇒ true
-            case _: GroundDisconnector ⇒ true
-            case _: Jumper ⇒ true
-            case _: ProtectedSwitch ⇒ true
-            case _: Sectionaliser ⇒ true
-            case _: Breaker ⇒ true
-            case _: LoadBreakSwitch ⇒ true
-            case _: Recloser ⇒ true
+            case s: Switch ⇒ isExternal (s)
+            case c: Cut ⇒ isExternal (c.Switch)
+            case d: Disconnector ⇒ isExternal (d.Switch)
+            case f: Fuse ⇒ isExternal (f.Switch)
+            case g: GroundDisconnector ⇒ isExternal (g.Switch)
+            case j: Jumper ⇒ isExternal (j.Switch)
+            case p: ProtectedSwitch ⇒ isExternal (p.Switch)
+            case s: Sectionaliser ⇒ isExternal (s.Switch)
+            case b: Breaker ⇒ isExternal (b.ProtectedSwitch.Switch)
+            case l: LoadBreakSwitch ⇒ isExternal (l.ProtectedSwitch.Switch)
+            case r: Recloser ⇒ isExternal (r.ProtectedSwitch.Switch)
             case _ ⇒
                 false
         }
@@ -255,7 +267,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
                     if ((x._2.size == 2) // ToDo: handle 3 terminal devices
                         && (null != x._2.head)
                         && (null != x._2.tail.head)
-                        && isSwitch (x._1)
+                        && isExternalSwitch (x._1)
                         && (x._2.head != x._2.tail.head)) // switches only on the boundary
                     {
                         val edge = EdgeData (x._1.id, x._2.head, x._2.tail.head)

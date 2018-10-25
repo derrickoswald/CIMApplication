@@ -1,11 +1,11 @@
-package ch.ninecode.mv
+package ch.ninecode.on
 
 import scala.collection.mutable.HashMap
 
 import org.apache.spark.storage.StorageLevel
 
 /**
- * Options for the Medium Voltage program.
+ * Options for the One-Of-N program.
  *
  * @param verbose flag to output progress and interesting values
  * @param cim_reader_options settings for the CIMReader
@@ -16,7 +16,7 @@ import org.apache.spark.storage.StorageLevel
  * @param workdir shared directory (HDFS or NFS share) for intermediate results
  * @param files the list of files to process
  */
-case class MediumVoltageOptions (
+case class OneOfNOptions (
     verbose: Boolean = false,
     cim_reader_options: Iterable[(String, String)] = new HashMap[String, String] (),
     three: Boolean = false,
