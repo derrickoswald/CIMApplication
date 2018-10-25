@@ -695,17 +695,11 @@ with Serializable
         // create the initial Graph with ScNode vertices
         def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =
         {
-            starting_nodes.find (trafo ⇒ trafo.nsPin == id || trafo.osPin == id) match
+            starting_nodes.find (trafo ⇒ trafo.nsPin == id) match
             {
                 case Some (node) ⇒
-                    // assign source and impedances to starting transformer primary and secondary
-                    if (node.osPin == id)
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "network", node.primary_impedance, null, null)
-                    else
-                    {
-                        val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                        ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
-                    }
+                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
+                    ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
                 case None ⇒
                     v
             }
