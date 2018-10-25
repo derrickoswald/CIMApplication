@@ -77,9 +77,8 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
         results
     }
 
-    def filterResults(results: RDD[ScResult], trafo: String): RDD[ScResult] = {
-        results.filter(r => {r.fuses != null && r.fuses.nonEmpty && r.tx == trafo && r.equipment.startsWith("HAS") && r.fuseString.contains("+")})
-    }
+    def filterResults (results: RDD[ScResult], trafo: String): RDD[ScResult] =
+        results.filter (r => {r.fuses != null && r.tx == trafo && r.equipment.startsWith ("HAS") && r.fuseString.contains ("[")})
 
     def checkParallelFuse (fuses: RDD[ScResult], node: String, fuseString: String): Unit = {
         val filtered = fuses.filter(_.equipment == node)
@@ -96,9 +95,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             val results = processFile(session, filename)
             val filtered_results = filterResults(results, "TRA532_TRA533")
 
-            val ddd = results.filter (_.fuses  != null)
-
-            assert(filtered_results.count == 58, "58 HAS with parallel fuses expected")
+            assert(filtered_results.count == 52, "52 HAS with parallel fuses expected")
     }
 
     test ("Testcase6")
@@ -109,9 +106,9 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             val results = processFile(session, filename)
             val filtered_results = filterResults(results, "TRA6864")
 
-            assert(filtered_results.count == 5, "5 HAS with parallel fuses expected")
+            assert(filtered_results.count == 1, "1 HAS with parallel fuses expected")
             assert(FData.hasMissingValues(filtered_results.filter (_.equipment == "HAS112021").first.fuses), "has missing fuse value (-1)")
-            checkParallelFuse(filtered_results, "HAS112021", "630.0+630.0+-1.0")
+            checkParallelFuse(filtered_results, "HAS112021", "([630.0,630.0],-1.0)")
     }
 
     test ("Testcase11")
@@ -124,9 +121,9 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
 
             assert(filtered_results.count == 3, "3 HAS with parallel fuses expected")
 
-            checkParallelFuse(filtered_results, "HAS69774", "315.0+315.0+250.0")
-            checkParallelFuse(filtered_results, "HAS69773", "315.0+315.0+100.0")
-            checkParallelFuse(filtered_results, "HAS106736", "315.0+315.0+40.0")
+            checkParallelFuse(filtered_results, "HAS69774", "([315.0,315.0],250.0)")
+            checkParallelFuse(filtered_results, "HAS69773", "([315.0,315.0],100.0)")
+            checkParallelFuse(filtered_results, "HAS106736", "([315.0,315.0],40.0)")
     }
 
     test ("Testcase12")
@@ -137,18 +134,18 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             val results = processFile(session, filename)
             val filtered_results = filterResults(results, "TRA403")
 
-            assert(filtered_results.count == 24, "24 HAS with parallel fuses expected")
+            assert(filtered_results.count == 11, "11 HAS with parallel fuses expected")
 
-            checkParallelFuse(filtered_results, "HAS17937", "630.0+630.0,400.0")
-            checkParallelFuse(filtered_results, "HAS13669", "630.0+630.0,400.0+400.0,160.0")
-            checkParallelFuse(filtered_results, "HAS13533", "630.0+630.0,400.0")
-            checkParallelFuse(filtered_results, "HAS13523", "630.0+630.0,400.0+400.0,160.0")
-            checkParallelFuse(filtered_results, "HAS13522", "630.0+630.0,400.0+400.0,250.0")
-            checkParallelFuse(filtered_results, "HAS13521", "630.0+630.0,400.0+400.0,250.0")
-            checkParallelFuse(filtered_results, "HAS13520", "630.0+630.0,400.0+400.0,250.0")
-            checkParallelFuse(filtered_results, "HAS13518", "630.0+630.0,400.0")
-            checkParallelFuse(filtered_results, "HAS13517", "630.0+630.0,400.0")
-            checkParallelFuse(filtered_results, "HAS118740", "630.0+630.0,400.0")
-            checkParallelFuse(filtered_results, "HAS115599", "630.0+630.0,250.0")
+            checkParallelFuse(filtered_results, "HAS17937", "([630.0,630.0],400.0)")
+            checkParallelFuse(filtered_results, "HAS13669", "([630.0,630.0],[400.0,400.0],160.0)")
+            checkParallelFuse(filtered_results, "HAS13533", "([630.0,630.0],400.0)")
+            checkParallelFuse(filtered_results, "HAS13523", "([630.0,630.0],[400.0,400.0],160.0)")
+            checkParallelFuse(filtered_results, "HAS13522", "([630.0,630.0],[400.0,400.0],250.0)")
+            checkParallelFuse(filtered_results, "HAS13521", "([630.0,630.0],[400.0,400.0],250.0)")
+            checkParallelFuse(filtered_results, "HAS13520", "([630.0,630.0],[400.0,400.0],250.0)")
+            checkParallelFuse(filtered_results, "HAS13518", "([630.0,630.0],400.0)")
+            checkParallelFuse(filtered_results, "HAS13517", "([630.0,630.0],400.0)")
+            checkParallelFuse(filtered_results, "HAS118740", "([630.0,630.0],400.0)")
+            checkParallelFuse(filtered_results, "HAS115599", "([630.0,630.0],250.0)")
     }
 }

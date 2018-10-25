@@ -69,21 +69,39 @@ object FData
             recommended.filter (_.Ik <= i).last.Rating
         }
     }
-    def fuseOK (ik: Double, fuses: List[(String, Double)]): Boolean =
+    def fuseOK (ik: Double, fuses: Branch): Boolean =
     {
         if (null == fuses)
             false
-        else if (fuses.isEmpty)
-            false
         else
         {
-            var len = fuses.length
-            val ok = fuses.forall (l => fuse(ik / len) >= l._2)
+            val ok = fuses match
+            {
+                case sim: SimpleBranch ⇒
+                    val rating = sim.rating.getOrElse (Double.MaxValue)
+                    if (0.0 == rating)
+                        false
+                    else
+                        fuse (ik) >= sim.rating.getOrElse (Double.MaxValue)
+                case ser: SeriesBranch ⇒ fuseOK (ik, ser.series.last)
+                case par: ParallelBranch ⇒ par.parallel.forall (x ⇒ fuseOK (ik, x))
+            }
             ok
         }
     }
-    def hasMissingValues (fuses: List[(String, Double)]): Boolean =
+    def hasMissingValues (fuses: Branch): Boolean =
     {
-        fuses.exists (l => l._2 <= 0.0)
+        if (null == fuses)
+            false
+        else
+        {
+            val missing = fuses match
+            {
+                case sim: SimpleBranch ⇒ sim.rating.getOrElse (Double.MinValue) <= 0.0
+                case ser: SeriesBranch ⇒ ser.series.exists (hasMissingValues)
+                case par: ParallelBranch ⇒ par.parallel.exists (hasMissingValues)
+            }
+            missing
+        }
     }
 }

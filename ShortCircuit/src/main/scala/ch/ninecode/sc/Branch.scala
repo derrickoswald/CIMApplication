@@ -37,10 +37,9 @@ package ch.ninecode.sc
  * Note that the series and parallel constructs alternate, and so the labels are redundant
  * if the reader knows that they alternate starting with a series sequence.
  *
- * @param from
- * @param to
- * @param current
- * @param parallel
+ * @param from the 'from' node
+ * @param to the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
  */
 abstract class Branch (val from: String, val to: String, val current: Double)
 {
@@ -48,7 +47,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     def iter: Iterable[Branch]
     def justFuses: Option[Branch] // this branch, but only fuses
     def asString: String
-    def asFuse: Seq[(String, Double)]
+    def asFuse: String
     def reverse: Branch
 
     def add_in_series (that: Branch): Branch =
@@ -74,11 +73,20 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     }
 }
 
+/**
+ * A simple two terminal element branch.
+ *
+ * @param from the 'from' node
+ * @param to the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
+ * @param mRID the mRID of the CIM element
+ * @param rating the current rating if it is a fuse
+ */
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double]) extends Branch (from, to, current)
 {
     override def toString: String =  """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
     def asString: String =  "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
-    def asFuse: Seq[(String, Double)] = Seq((mRID, rating.getOrElse (0.0)))
+    def asFuse:   String = rating.getOrElse (0.0).toString
     def seq = Seq (this)
     def iter = Iterable (this)
     def isFuse: Boolean = rating.isDefined
@@ -86,11 +94,19 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
 }
 
+/**
+ * A group of series connected elements.
+ *
+ * @param from the 'from' node
+ * @param to the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
+ * @param series the branches in series, in order
+ */
 case class SeriesBranch (override val from: String, override val to: String, override val current: Double, series: Seq[Branch]) extends Branch (from, to, current)
 {
     override def toString: String =  """SeriesBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, series.map (_.toString).mkString ("+"))
-    def asString: String =  """%s""".format (series.map (_.asString).mkString ("(", ",", ")"))
-    def asFuse: Seq[(String, Double)] = series.flatMap (_.asFuse)
+    def asString: String =  series.map (_.asString).mkString ("(", ",", ")")
+    def asFuse: String =    series.map (_.asFuse)  .mkString ("(", ",", ")")
     def seq: Seq[Branch] = series
     def iter = Iterable (this)
     def justFuses: Option[Branch] =
@@ -109,11 +125,19 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
 }
 
+/**
+ * A group of elements in parallel.
+ *
+ * @param from the 'from' node
+ * @param to the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
+ * @param parallel the branches in parallel, in no particular order
+ */
 case class ParallelBranch (override val from: String, override val to: String, override val current: Double, parallel: Iterable[Branch]) extends Branch (from, to, current)
 {
     override def toString: String =  """ParallelBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, parallel.map (_.toString).mkString ("[", ",", "]"))
-    def asString: String =  """%s""".format (parallel.map (_.asString).mkString ("[", "||", "]"))
-    def asFuse: Seq[(String, Double)] = parallel.flatMap (_.asFuse).toSeq
+    def asString: String = parallel.map (_.asString).mkString ("[", ",", "]")
+    def asFuse:   String = parallel.map (_.asFuse)  .mkString ("[", ",", "]")
     def seq = Seq (this)
     def iter: Iterable[Branch] = parallel
     def justFuses: Option[Branch] =

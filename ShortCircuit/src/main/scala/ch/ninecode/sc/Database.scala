@@ -257,7 +257,7 @@ object Database
                         datainsert2.setDouble (15, batch(i).high_ik3pol)
                         datainsert2.setDouble (16, batch(i).high_ip)
                         datainsert2.setDouble (17, batch(i).high_sk)
-                        if ((null == batch(i).fuses) || batch(i).fuses.isEmpty)
+                        if (null == batch(i).fuses)
                         {
                             datainsert2.setNull (18, Types.VARCHAR)
                             datainsert2.setNull (19, Types.DOUBLE)

@@ -209,17 +209,35 @@ case class ScEdge (
     /**
      * Compute the list of fuse values as accumulated from the reference
      *
-     * @param ref fuse value list of the node at one end of the edge (List[Double] (A))
-     * @return list of fuses at the other end of the edge
+     * @param ref fuse network of the node at one end of the edge
+     * @return network of fuses at the other end of the edge
      */
-    def fusesTo (ref: List[(String, Double)]): List[(String, Double)] =
+    def fusesTo (ref: Branch): Branch =
     {
         element match
         {
             case fuse: Fuse ⇒
-                if (null == ref) List((fuse.id, fuse.Switch.ratedCurrent)) else ref :+ (fuse.id, fuse.Switch.ratedCurrent)
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, Some (fuse.Switch.ratedCurrent))
+                if (null == ref)
+                    next
+                else
+                    ref match
+                    {
+                        case sim: SimpleBranch ⇒ SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
+                        case ser: SeriesBranch ⇒ SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
+                        case _ ⇒ throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                    }
             case breaker: Breaker ⇒
-                if (null == ref) List((breaker.id, breaker.ProtectedSwitch.Switch.ratedCurrent)) else ref :+ (breaker.id, breaker.ProtectedSwitch.Switch.ratedCurrent)
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
+                if (null == ref)
+                    next
+                else
+                    ref match
+                    {
+                        case sim: SimpleBranch ⇒ SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
+                        case ser: SeriesBranch ⇒ SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
+                        case _ ⇒ throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                    }
             case _ ⇒
                 ref
         }

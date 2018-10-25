@@ -24,23 +24,75 @@ class FDataSuite extends FunSuite
         assert (FData.fuse (0.0) == 0.0, "expected 0A")
     }
 
-//    test ("FuseOK")
-//    {
-//        val list = List (("TEI124", 288282.0), ("TEI123", 73737.3)), List(("TEI134", 1323.8), ("TEI135", 100.0)), List(("TEI141", 40.0))
-//        assert (FData.fuseOK (123.456, list), "expected OK")
-//    }
-//
-//    test ("FuseNotOK")
-//    {
-//        val list = List (("TEI12", 288282.0 )), List (("TEI13", 73737.3)), List(("TEI14", 1323.8)), List(("TEI145", 50.0))
-//        assert (!FData.fuseOK (123.456, list), "expected not OK")
-//    }
-//
-//    test ("Fuse0")
-//    {
-//        val list = List (("TEI12", 288282.0)), List(("TEI13", 73737.3)), List(("TEIA14", 1323.8)), List(("TEI14", 100.0)), List(("TEI15", 40.0)), List(("TEI16", 0.0))
-//        assert (FData.fuseOK (123.456, list), "expected OK")
-//    }
+    test ("FuseOK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0))))
+        assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("FuseNotOK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (50.0))))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
+
+    test ("Fuse0")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 0.0, "TEI15", Some (0.0))))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
+
+    test ("FuseNone")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 0.0, "TEI15", None)))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
 
     test ("Table 2 Fuse+")
     {
@@ -66,26 +118,79 @@ class FDataSuite extends FunSuite
         assert (FData.fuse (0.0) == 0.0, "expected 0A")
     }
 
-//    test ("Table 2 FuseOK")
-//    {
-//        FData.fuse_sizing_table (2)
-//        val list = List ( List (("TEI124", 288282.0), ("TEI123", 73737.3)), List(("TEI134", 1323.8), ("TEI135", 100.0)), List(("TEI141", 40.0)))
-//        assert (FData.fuseOK (123.456, list), "expected OK")
-//    }
-//
-//    test ("Table 2 FuseNotOK")
-//    {
-//        FData.fuse_sizing_table (2)
-//        val list = List ( List (("TEI12", 288282.0 )), List (("TEI13", 73737.3)), List(("TEI14", 1323.8)), List(("TEI145", 50.0)))
-//        assert (!FData.fuseOK (123.456, list), "expected not OK")
-//    }
-//
-//    test ("Table 2 Fuse0")
-//    {
-//        FData.fuse_sizing_table (2)
-//        val list = List ( List (("TEI12", 288282.0)), List(("TEI13", 73737.3)), List(("TEIA14", 1323.8)), List(("TEI14", 100.0)), List(("TEI15", 40.0)), List(("TEI16", 0.0)))
-//        assert (FData.fuseOK (123.456, list), "expected OK")
-//    }
+    test ("Table 2 FuseOK")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0))))
+        assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("Table 2 FuseNotOK")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (50.0))))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
+
+    test ("Table 2 Fuse0")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 0.0, "TEI15", Some (0.0))))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
+
+    test ("Table 2 FuseNone")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 0.0, "TEI15", None)))
+        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
 
     test ("Table 2 then 1 Fuse+")
     {
