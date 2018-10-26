@@ -101,7 +101,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     def isExternal (swtch: Switch): Boolean =
     {
         log.info ("%s %s".format (swtch.id, swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
-        swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType != "PSRType_Substation"
+        val ret = swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType != "PSRType_Substation"
+        ret
     }
 
     /**
@@ -178,7 +179,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
      */
     def feederNodes: RDD[(String, Element)] =
     {
-        val ret = getOrElse[Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values
+        val ret = getOrElse[Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
 
         ret.persist (storage)
         ret.name = "FeederNodes"
@@ -201,6 +202,13 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         ret
     }
 
+    /**
+     * Get the mapping of station and feeder number to CIM element.
+     *
+     * Tries to parse the "Abgang nummer" and compose a descriptive .glm header.
+     *
+     * @return RDD of 4tuples (stationid, abgang#, description, feeder)
+     */
     def feederStations: RDD[(String, String, String, Element)] =
     {
         def parseNumber (description: String): String =
@@ -224,15 +232,15 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
             }
         }
 
-        // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
         def station_fn (x: (Connector, Element)): (String, String, String, Element) =
         {
             val description = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
             val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
             val number = parseNumber (description)
             val header = "%s [%s]".format (description, alias)
-
             val feeder = x._1.asInstanceOf[Element]
+
+            // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
             x._2 match
             {
                 case station: Substation => (station.id, number, header, feeder)

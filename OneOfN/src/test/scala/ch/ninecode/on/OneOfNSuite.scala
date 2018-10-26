@@ -22,7 +22,7 @@ class OneOfNSuite extends FunSuite
         configuration.setAppName ("OneOfNSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "1g")
+        configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         configuration.set ("spark.ui.showConsoleProgress", "false")
 
@@ -71,7 +71,7 @@ class OneOfNSuite extends FunSuite
 
         val begin = System.nanoTime ()
 
-        val root = "NIS_CIM_Export_sias_current_20161220_Muri bei Bern_V11"
+        val root = "bkw_cim_export_azimi"
         val filename =
             FILE_DEPOT + root + ".rdf"
 
