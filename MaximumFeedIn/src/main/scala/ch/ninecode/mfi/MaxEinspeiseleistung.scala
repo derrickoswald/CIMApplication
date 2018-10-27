@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 /**
  * Final result record.

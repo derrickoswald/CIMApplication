@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 import java.nio.file.Files
 import java.nio.file.Paths

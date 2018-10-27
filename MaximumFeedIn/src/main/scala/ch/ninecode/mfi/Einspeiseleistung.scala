@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -598,17 +598,17 @@ object Einspeiseleistung
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.esl.Einspeiseleistung],
-            classOf[ch.ninecode.esl.EinspeiseleistungGLMGenerator],
-            classOf[ch.ninecode.esl.EinspeiseleistungOptions],
-            classOf[ch.ninecode.esl.Experiment],
-            classOf[ch.ninecode.esl.MaxEinspeiseleistung],
-            classOf[ch.ninecode.esl.MaxPowerFeedingNodeEEA],
-            classOf[ch.ninecode.esl.PowerFeeding],
-            classOf[ch.ninecode.esl.PowerFeedingNode],
-            classOf[ch.ninecode.esl.PreCalculationResults],
-            classOf[ch.ninecode.esl.StartingTrafos],
-            classOf[ch.ninecode.esl.Trafokreis]
+            classOf[ch.ninecode.mfi.Einspeiseleistung],
+            classOf[ch.ninecode.mfi.EinspeiseleistungGLMGenerator],
+            classOf[ch.ninecode.mfi.EinspeiseleistungOptions],
+            classOf[ch.ninecode.mfi.Experiment],
+            classOf[ch.ninecode.mfi.MaxEinspeiseleistung],
+            classOf[ch.ninecode.mfi.MaxPowerFeedingNodeEEA],
+            classOf[ch.ninecode.mfi.PowerFeeding],
+            classOf[ch.ninecode.mfi.PowerFeedingNode],
+            classOf[ch.ninecode.mfi.PreCalculationResults],
+            classOf[ch.ninecode.mfi.StartingTrafos],
+            classOf[ch.ninecode.mfi.Trafokreis]
         )
     }
 }

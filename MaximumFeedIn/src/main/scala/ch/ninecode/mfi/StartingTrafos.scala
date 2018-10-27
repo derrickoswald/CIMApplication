@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 import ch.ninecode.gl.Complex
 import org.apache.spark.graphx.VertexId

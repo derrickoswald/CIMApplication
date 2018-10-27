@@ -118,6 +118,7 @@
         <module>NetworkParameters</module>
         <module>OneOfN</module>
         <module>LowVoltage</module>
+        <module>MaximumFeedIn</module>
     </modules>
 
     <dependencyManagement>

@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
@@ -30,7 +30,7 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "Einspeiseleistung"
+    val APPLICATION_NAME: String = "MaximumFeedIn"
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 
@@ -215,12 +215,12 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/Einspeiseleistung-2.11-2.2.1-2.4.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar):
      *     mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Einspeiseleistung-2.2.8-jar-with-dependencies.jar "hdfs://sandbox:8020/data/NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11.rdf"
+     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/Einspeiseleistung-2.11-2.2.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
      */
     def main (args: Array[String])
     {

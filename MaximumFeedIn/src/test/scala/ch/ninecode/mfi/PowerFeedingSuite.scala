@@ -1,4 +1,4 @@
-package ch.ninecode.esl
+package ch.ninecode.mfi
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
