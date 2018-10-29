@@ -37,8 +37,65 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0))))
+        assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("No Current FuseOK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0))))
         assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("ParallelFuseOK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    ParallelBranch ("e", "f", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 2.0, "TEI134", Some (40.0)),
+                            SimpleBranch ("d", "e", 2.0, "TEI135", Some (40.0))))))
+        assert (FData.fuseOK (246.912, branch), "expected OK")
+    }
+
+    test ("No Current ParallelFuseOK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    ParallelBranch ("e", "f", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (40.0)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (40.0))))))
+        assert (FData.fuseOK (246.912, branch), "expected OK")
     }
 
     test ("FuseNotOK")
@@ -54,7 +111,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (50.0))))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (50.0))))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 
@@ -71,8 +128,8 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
-                    SimpleBranch ("e", "f", 0.0, "TEI15", Some (0.0))))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 4.0, "TEI15", Some (0.0))))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 
@@ -89,8 +146,8 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
-                    SimpleBranch ("e", "f", 0.0, "TEI15", None)))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 4.0, "TEI15", None)))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 
@@ -132,8 +189,68 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0))))
+        assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("Table 2 No Current FuseOK")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0))))
         assert (FData.fuseOK (123.456, branch), "expected OK")
+    }
+
+    test ("Table 2 ParallelFuseOK")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    ParallelBranch ("e", "f", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 2.0, "TEI134", Some (40.0)),
+                            SimpleBranch ("d", "e", 2.0, "TEI135", Some (40.0))))))
+        assert (FData.fuseOK (246.912, branch), "expected OK")
+    }
+
+    test ("Table 2 No Current ParallelFuseOK")
+    {
+        FData.fuse_sizing_table (2)
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    ParallelBranch ("e", "f", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (40.0)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (40.0))))))
+        assert (FData.fuseOK (246.912, branch), "expected OK")
     }
 
     test ("Table 2 FuseNotOK")
@@ -150,7 +267,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (50.0))))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (50.0))))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 
@@ -168,8 +285,8 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
-                    SimpleBranch ("e", "f", 0.0, "TEI15", Some (0.0))))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 4.0, "TEI15", Some (0.0))))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 
@@ -187,8 +304,8 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
-                    SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0)),
-                    SimpleBranch ("e", "f", 0.0, "TEI15", None)))
+                    SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0)),
+                    SimpleBranch ("e", "f", 4.0, "TEI15", None)))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
     }
 

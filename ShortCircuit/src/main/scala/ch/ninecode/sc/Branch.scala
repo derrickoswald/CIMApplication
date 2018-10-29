@@ -48,6 +48,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     def justFuses: Option[Branch] // this branch, but only fuses
     def asString: String
     def asFuse: String
+    def lastFuses: Iterable[Branch]
     def reverse: Branch
 
     def add_in_series (that: Branch): Branch =
@@ -90,6 +91,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def seq = Seq (this)
     def iter = Iterable (this)
     def isFuse: Boolean = rating.isDefined
+    def lastFuses: Iterable[Branch] = Seq (this)
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
     def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
 }
@@ -109,6 +111,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def asFuse: String =    series.map (_.asFuse)  .mkString ("(", ",", ")")
     def seq: Seq[Branch] = series
     def iter = Iterable (this)
+    def lastFuses: Iterable[Branch] = series.last.lastFuses
     def justFuses: Option[Branch] =
     {
         val fuses = series.flatMap (_.justFuses)
@@ -140,6 +143,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
     def asFuse:   String = parallel.map (_.asFuse)  .mkString ("[", ",", "]")
     def seq = Seq (this)
     def iter: Iterable[Branch] = parallel
+    def lastFuses: Iterable[Branch] = parallel.flatMap (_.lastFuses)
     def justFuses: Option[Branch] =
     {
         val fuses = parallel.flatMap (_.justFuses)

@@ -61,13 +61,14 @@ object FData
     }
     def fuse (ik: Double): Double =
     {
-        if (ik.isNaN)
+        val rating = if (ik.isNaN)
             recommended.last.Rating
         else
         {
             val i = Math.abs (ik)
             recommended.filter (_.Ik <= i).last.Rating
         }
+        rating
     }
     def fuseOK (ik: Double, fuses: Branch): Boolean =
     {
@@ -83,11 +84,21 @@ object FData
                         false
                     else
                         fuse (ik) >= sim.rating.getOrElse (Double.MaxValue)
-                case ser: SeriesBranch ⇒ fuseOK (ik, ser.series.last)
+                case ser: SeriesBranch ⇒
+                    val last = ser.lastFuses
+                    val total = last.map (_.current).sum
+                    if (0 == total)
+                        fuseOK (ik, ser.lastFuses.head)
+                    else
+                        last.forall (x ⇒ fuseOK (ik * x.current / total, x))
                 case par: ParallelBranch ⇒
-                    // split the current according to the ratio of currents
-                    val total = par.parallel.map (_.current).sum
-                    par.parallel.forall (x ⇒ fuseOK (ik * x.current / total, x))
+                    // split the current according to the ratio of currents,
+                    // or fall back to just divided equally among fuses
+                    val last = par.lastFuses
+                    val count = last.size
+                    val split = if (0 == count) 1.0 else 1.0 / count
+                    val total = last.map (_.current).sum
+                    last.forall (x ⇒ fuseOK (ik * (if (0.0 == total) split else x.current / total), x))
             }
             ok
         }
