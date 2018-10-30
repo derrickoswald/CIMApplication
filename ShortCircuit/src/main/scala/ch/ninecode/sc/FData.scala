@@ -85,12 +85,7 @@ object FData
                     else
                         fuse (ik) >= sim.rating.getOrElse (Double.MaxValue)
                 case ser: SeriesBranch ⇒
-                    val last = ser.lastFuses
-                    val total = last.map (_.current).sum
-                    if (0 == total)
-                        fuseOK (ik, ser.lastFuses.head)
-                    else
-                        last.forall (x ⇒ fuseOK (ik * x.current / total, x))
+                    fuseOK (ik, ser.seq.last)
                 case par: ParallelBranch ⇒
                     // split the current according to the ratio of currents,
                     // or fall back to just divided equally among fuses

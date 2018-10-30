@@ -98,6 +98,26 @@ class FDataSuite extends FunSuite
         assert (FData.fuseOK (246.912, branch), "expected OK")
     }
 
+    test ("No Current Parallel Fuse Not OK")
+    {
+        val branch =
+            SeriesBranch ("a", "z", 0.0,
+                Seq (
+                    ParallelBranch ("c", "d", 0.0,
+                        List (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    ParallelBranch ("d", "e", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
+                    ParallelBranch ("e", "f", 0.0,
+                        List (
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (40.0)),
+                            SimpleBranch ("d", "e", 0.0, "TEI135", Some (50.0))))))
+        assert (!FData.fuseOK (246.912, branch), "expected Not OK")
+    }
+
     test ("FuseNotOK")
     {
         val branch =
@@ -149,6 +169,24 @@ class FDataSuite extends FunSuite
                     SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", None)))
         assert (!FData.fuseOK (123.456, branch), "expected not OK")
+    }
+
+    test ("Series Branch within parallel Branch OK")
+    {
+        val branch =
+            ParallelBranch ("a", "z", 0.0,
+                List (
+                    SimpleBranch ("a", "z", 6.0, "TEI11", Some(50.0)),
+                    SeriesBranch("a", "z", 0.0,
+                        Seq (
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some(50.0)),
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some(40.0))
+                        )
+                    )
+                )
+        )
+
+        assert (FData.fuseOK (280, branch), "expected OK")
     }
 
     test ("Table 2 Fuse+")
