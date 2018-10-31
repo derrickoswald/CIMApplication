@@ -80,12 +80,12 @@ class PrivateSuite extends SparkSuite
 
             println ("total: " + (db - start) / 1e9 + " seconds")
     }
-/*
+
     test ("CKW")
     {
         session: SparkSession ⇒
 
-            val filename = PRIVATE_FILE_DEPOT + "CIM_Export_CKW_Stripe1.rdf"
+            val filename = PRIVATE_FILE_DEPOT + "CIM_Export_CKW_EMM-Rueeggisignen.rdf"
 
             val start = System.nanoTime
             val files = filename.split (",")
@@ -106,7 +106,7 @@ class PrivateSuite extends SparkSuite
             val ntp = CIMNetworkTopologyProcessor (session)
             val ele = ntp.process (
                 CIMTopologyOptions (
-                    identify_islands = false,
+                    identify_islands = true,
                     force_retain_switches = Unforced,
                     force_retain_fuses = ForceTrue,
                     default_switch_open_state = false,
@@ -119,29 +119,19 @@ class PrivateSuite extends SparkSuite
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
-            val sc_options = ShortCircuitOptions ()
+            val sc_options = ShortCircuitOptions (workdir = "./target")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            // write output to file and console
-            val output = PRIVATE_FILE_DEPOT + "result"
-            val string = results.sortBy (_.tx).map (_.csv)
-
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
-            string.saveAsTextFile (output)
-
-            val csv = string.collect
-            println ("results: " + csv.length)
-            println (ScResult.csv_header)
-            for (i <- csv.indices)
-            {
-                val h = csv (i)
-                println (h)
-            }
+            val sc = System.nanoTime ()
+            println ("short circuit: " + (sc - topo) / 1e9 + " seconds")
 
             // output SQLite database
-            Database.store ("test", sc_options) (results)
+            Database.store (sc_options) (results)
+
+            val db = System.nanoTime ()
+            println ("database: " + (db - sc) / 1e9 + " seconds")
+
+            println ("total: " + (db - start) / 1e9 + " seconds")
     }
-*/
 }
