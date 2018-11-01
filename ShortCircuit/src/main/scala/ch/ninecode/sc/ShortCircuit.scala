@@ -371,27 +371,25 @@ with Serializable
         val (z, path): (Complex, Branch) = arg._2 match
         {
             case Some (data) ⇒
-                val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (_.units == "Volts")
+                val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (x ⇒ x.units == "Volts" && arg._1.mrid == x.element)
                 val current: Iterable[Complex] = data.filter (x ⇒ x._2.units == "Amps" && arg._1.mrid == extract_node (x._2.element)).map (_._2.value_a)
                 voltage match
                 {
                     case Some (volts) ⇒
+                        val live = data.flatMap (alive)
+                        val route = traceroute (arg._1.mrid, live)
                         val v = volts.value_a
                         implicit val zero: Complex = Complex(0)
                         // val i = current.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
                         val i = current.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
-                        if (i == zero)
+                        val z = if (i == zero)
                         {
                             log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
-                            (Complex (Double.PositiveInfinity, 0.0), null)
+                            Complex (Double.PositiveInfinity, 0.0)
                         }
                         else
-                        {
-                            val z =  (arg._1.voltage - v) / i
-                            val live: Iterable[(String, String, Double)] = data.flatMap (alive)
-                            val route = traceroute (arg._1.mrid, live)
-                            (z, route)
-                        }
+                            (arg._1.voltage - v) / i
+                        (z, route)
                     case _ ⇒
                         (null, null)
                 }
