@@ -24,6 +24,7 @@ import ch.ninecode.model.Fuse
 import ch.ninecode.model.GroundDisconnector
 import ch.ninecode.model.Jumper
 import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
@@ -93,41 +94,42 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
     }
 
     /**
-     * Predicate for external switches.
+     * Predicate for external equipment.
      *
-     * @param swtch The switch to test.
-     * @return <code>true</code> if the switch has PSRType not equal to PSRType_Substation
+     * @param equipment The equipment to test.
+     * @return <code>true</code> if the equipment is not in a substation
      */
-    def isExternal (swtch: Switch): Boolean =
+    def isExternal (equipment: ConductingEquipment): Boolean =
     {
-        log.info ("%s %s".format (swtch.id, swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
-        val ret = swtch.ConductingEquipment.Equipment.PowerSystemResource.PSRType != "PSRType_Substation"
-        ret
+        val eq = equipment.Equipment
+        val in_station =
+            eq.PowerSystemResource.PSRType == "PSRType_Substation" ||
+            (eq.PowerSystemResource.PSRType == "PSRType_Unknown" && eq.EquipmentContainer != null)
+        !in_station
     }
 
     /**
      * Method to determine if the element is an external switch.
      *
      * @param element The element to test.
-     * @return <code>true</code> if the element is a switch, <code>false</code> otherwise.
+     * @return <code>true</code> if the element is an external switch, <code>false</code> otherwise.
      */
     def isExternalSwitch (element: Element): Boolean =
     {
         element match
         {
-            case s: Switch ⇒ isExternal (s)
-            case c: Cut ⇒ isExternal (c.Switch)
-            case d: Disconnector ⇒ isExternal (d.Switch)
-            case f: Fuse ⇒ isExternal (f.Switch)
-            case g: GroundDisconnector ⇒ isExternal (g.Switch)
-            case j: Jumper ⇒ isExternal (j.Switch)
-            case p: ProtectedSwitch ⇒ isExternal (p.Switch)
-            case s: Sectionaliser ⇒ isExternal (s.Switch)
-            case b: Breaker ⇒ isExternal (b.ProtectedSwitch.Switch)
-            case l: LoadBreakSwitch ⇒ isExternal (l.ProtectedSwitch.Switch)
-            case r: Recloser ⇒ isExternal (r.ProtectedSwitch.Switch)
-            case _ ⇒
-                false
+            case s: Switch ⇒             isExternal (s.ConductingEquipment)
+            case c: Cut ⇒                isExternal (c.Switch.ConductingEquipment)
+            case d: Disconnector ⇒       isExternal (d.Switch.ConductingEquipment)
+            case f: Fuse ⇒               isExternal (f.Switch.ConductingEquipment)
+            case g: GroundDisconnector ⇒ isExternal (g.Switch.ConductingEquipment)
+            case j: Jumper ⇒             isExternal (j.Switch.ConductingEquipment)
+            case p: ProtectedSwitch ⇒    isExternal (p.Switch.ConductingEquipment)
+            case s: Sectionaliser ⇒      isExternal (s.Switch.ConductingEquipment)
+            case b: Breaker ⇒            isExternal (b.ProtectedSwitch.Switch.ConductingEquipment)
+            case l: LoadBreakSwitch ⇒    isExternal (l.ProtectedSwitch.Switch.ConductingEquipment)
+            case r: Recloser ⇒           isExternal (r.ProtectedSwitch.Switch.ConductingEquipment)
+            case _ ⇒                     false
         }
     }
 
@@ -209,7 +211,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
      *
      * @return RDD of 4tuples (stationid, abgang#, description, feeder)
      */
-    def feederStations: RDD[(String, String, String, Element)] =
+    def feederStations: RDD[FeederMetadata] =
     {
         def parseNumber (description: String): String =
         {
@@ -232,7 +234,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
             }
         }
 
-        def station_fn (x: (Connector, Element)): (String, String, String, Element) =
+        def station_fn (x: (Connector, Element)): FeederMetadata =
         {
             val description = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
             val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
@@ -243,9 +245,9 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
             // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
             x._2 match
             {
-                case station: Substation => (station.id, number, header, feeder)
-                case bay: Bay => (bay.Substation, number, header, feeder)
-                case level: VoltageLevel => (level.Substation, number, header, feeder)
+                case station: Substation => FeederMetadata (station.id, number, header, feeder)
+                case bay: Bay => FeederMetadata (bay.Substation, number, header, feeder)
+                case level: VoltageLevel => FeederMetadata (level.Substation, number, header, feeder)
                 case _ => throw new Exception ("unknown container type for %s".format (x._1))
             }
         }
@@ -265,44 +267,44 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
      */
     def edges: RDD[Edge[EdgeData]] =
     {
-        val t = getOrElse[Terminal].keyBy (_.TopologicalNode).join (getOrElse[TopologicalNode].keyBy (_.id)).values
+        val equipment_islands = getOrElse[Terminal].keyBy (_.TopologicalNode).join (getOrElse[TopologicalNode].keyBy (_.id)).values
             .map (x ⇒ (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-        getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
-            .join (t).values // (Element, [Terminal])
-            .flatMap (
-                x ⇒
-                {
-                    if ((x._2.size == 2) // ToDo: handle 3 terminal devices
-                        && (null != x._2.head)
-                        && (null != x._2.tail.head)
-                        && isExternalSwitch (x._1)
-                        && (x._2.head != x._2.tail.head)) // switches only on the boundary
+        val equipment = getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+            .join (equipment_islands).values // (Element, [islandid])
+        equipment.flatMap (
+            x ⇒
+            {
+                val island1 = x._2.head
+                if (isExternalSwitch (x._1))
+                    for
                     {
-                        val edge = EdgeData (x._1.id, x._2.head, x._2.tail.head)
-                        List (Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge))
+                        island2 ← x._2.tail
+                        if island2 != island1 // switches only on the boundary
+                        edge = EdgeData (x._1.id, island1, island2)
                     }
-                    else
-                        List ()
-                }
-            ).cache // Edge[EdgeData]
+                    yield Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge)
+                else
+                    List ()
+            }
+        ).persist (storage) // Edge[EdgeData]
     }
 
     /**
      * Get the list of vertices.
      *
-     * @return An RDD of VertexId and data pairs suitable for GraphX initialization.
+     * @return An RDD of VertexId and vertex data pairs suitable for GraphX initialization.
      */
     def vertices: RDD[(VertexId, VertexData)] =
     {
         val sources = feederIslands.groupByKey
         edges.flatMap (x ⇒ List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
             .map (
-            x ⇒
+                x ⇒
                 {
                     val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set[String] ())
                     (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
                 }
-            ).cache
+            ).persist (storage) // (vertexid, VertexData)
     }
 
     /**
@@ -364,6 +366,6 @@ case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean 
         // label every node (not just the ones on the boundary switches
         val island_feeders = g.vertices.map (x ⇒ (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
         getOrElse[TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
-                .flatMap (x ⇒ x._2.map (y ⇒ (x._1.id, y))) // (nodeid, feederid)
+            .flatMap (x ⇒ x._2.map (y ⇒ (x._1.id, y))) // (nodeid, feederid)
     }
 }

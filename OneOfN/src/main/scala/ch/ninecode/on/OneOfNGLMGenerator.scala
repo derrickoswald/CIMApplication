@@ -8,7 +8,6 @@ import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerSet
 
 /**
  * Medium voltage GridLAB-D model file exporter.
@@ -17,6 +16,7 @@ import ch.ninecode.gl.TransformerSet
  * @param temperature The temperature of the elements in the .glm file (°C).
  * @param date_format The date format to use within the .glm file.
  * @param feeder The elements to be generated.
+ * @param voltages The voltage levels present in the CIM file.
  */
 case class OneOfNGLMGenerator (
     one_phase: Boolean,
@@ -26,9 +26,9 @@ case class OneOfNGLMGenerator (
     voltages: collection.Map[String, Double])
 extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = true) // ToDo: get library base temperature and target temperature as command line input
 {
-    override def name: String = "%s_%s".format (feeder.station, feeder.number)
+    override def name: String = "%s_%s".format (feeder.metadata.station, feeder.metadata.connector)
 
-    override def header: String = feeder.description
+    override def header: String = feeder.metadata.description
 
     override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[TransformerEdge])
 
@@ -81,8 +81,14 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
             "%s_A,%s_B,%s_C".format (property, property, property)
 
     def three_or_one (value: Complex): String =
-        (for (i ← 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
+        (for (_ ← 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
 
+    /**
+     * Add switch player to toggle the SWING bus.
+     *
+     * @param node The swing node to emit.
+     * @return The .glm file text for the swing bus.
+     */
     override def emit_slack (node: GLMNode): String =
     {
         val swing = node.asInstanceOf[FeederNode]
@@ -122,6 +128,12 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
             swing._id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage)
     }
 
+    /**
+     * Add load for each (low voltage) transformer.
+     *
+     * @param transformer the edge to emit
+     * @return The .glm file text for the transformer.
+     */
     override def emit_transformer (transformer: TransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name

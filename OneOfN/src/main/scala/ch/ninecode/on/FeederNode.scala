@@ -31,7 +31,7 @@ object FeederNode
      */
     def toFeederNode (elements: Iterable[Element], id: String, nominal_voltage: Double): FeederNode =
     {
-        FeederNode (id, if (null != elements) elements.head else null, nominal_voltage)
+        FeederNode (id, if (null == elements) null else elements.headOption.orNull, nominal_voltage)
     }
 }
 

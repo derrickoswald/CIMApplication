@@ -187,7 +187,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
         log.info ("creating models")
-        val feeders = needed_nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_._4.id))
+        val feeders = needed_nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
             .map (
                 x ⇒
@@ -224,7 +224,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                         }
                     }
                     val edges = x._2._2.groupBy (_.id).map (pickbest)
-                    FeederArea (x._1, x._2._3._1, x._2._3._2, x._2._3._3, nodes, edges)
+                    FeederArea (x._1, x._2._3, nodes, edges)
                 }).cache
         log.info ("%s feeders".format (feeders.count))
 
@@ -253,7 +253,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                   |    echo %s,%s>$file.csv
                   |done""".stripMargin.format (switches, UNIX_EPOC, "CLOSED").getBytes (StandardCharsets.UTF_8)
             gridlabd.writeInputFile (generator.name + "/input_data", "gen", text, "ugo-rwx")
-            log.info ("%10s %8s %s".format (area.feeder, area.station, area.description))
+            log.info ("%10s %8s %s".format (area.feeder, area.metadata.station, area.metadata.description))
             1
         }
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = options.storage, workdir = options.workdir)

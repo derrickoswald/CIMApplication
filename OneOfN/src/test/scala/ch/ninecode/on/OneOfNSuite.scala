@@ -25,6 +25,7 @@ class OneOfNSuite extends FunSuite
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         configuration.set ("spark.ui.showConsoleProgress", "false")
+        configuration.set ("spark.graphx.pregel.checkpointInterval", "8")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
