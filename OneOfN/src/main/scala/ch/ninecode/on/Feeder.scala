@@ -24,7 +24,6 @@ import ch.ninecode.model.Fuse
 import ch.ninecode.model.GroundDisconnector
 import ch.ninecode.model.Jumper
 import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser

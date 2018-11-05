@@ -12,7 +12,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
+import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -25,6 +25,8 @@ import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
+import ch.ninecode.model.Equipment
+import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
@@ -78,6 +80,46 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         }
     }
 
+    def deleteSubstationElements (): Unit =
+    {
+        // determine feeders as medium voltage (1e3 < V < 50e3) Connector in substations (PSRType_Substation)
+        val feeder = Feeder (session, options.storage)
+        val keep = feeder.feeders
+
+        // create an RDD of elements in substations (PSRType_Substation)
+        val markers = get[PowerSystemResource].filter (_.PSRType == "PSRType_Substation")
+
+        // create an RDD of EquipmentContainer id values for these elements
+        val containers = get[Equipment].keyBy (_.id).join (markers.keyBy (_.id)).map (x ⇒ x._2._1.EquipmentContainer).distinct. map (x ⇒ (x, x))
+
+        //  delete all CIM elements where EquipmentContainer is in that RDD
+        // (this will also include cables with PSRType_Underground or PSRType_Unknown)
+        // but excluding the feeder objects from the first step
+        val in_station = get[Equipment].keyBy (_.EquipmentContainer).join (containers)
+            .map (x ⇒ (x._2._1.id, x._2._1.id))
+            .join (get[Element]("Elements").keyBy (_.id))
+            .map (x ⇒ (x._1, x._2._2))
+        val doomed = in_station.subtractByKey (keep.keyBy (_.id))
+        val elements = get[Element]("Elements")
+        val new_elements = elements.keyBy (_.id).subtractByKey (doomed).map (_._2)
+        log.info (new_elements.count + " elements after substation deletion")
+
+        // update Elements named RDD
+        elements.unpersist (false)
+        elements.name = "old_Elements"
+        new_elements.name = "Elements"
+        new_elements.persist (options.storage)
+
+        // update all persistent RDD
+        CHIM.apply_to_all_classes (
+            subsetter =>
+            {
+                if (session.sparkContext.getPersistentRDDs.exists (_._2.name == subsetter.cls))
+                    subsetter.make (session.sqlContext, new_elements, options.storage)
+            }
+        )
+    }
+
     def run (): Long =
     {
         val start = System.nanoTime ()
@@ -92,24 +134,23 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         reader_options.put ("StorageLevel", storage_level_tostring (options.storage))
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
-        log.info (elements.count () + " elements")
+        log.info (elements.count + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
-        // identify topological nodes if necessary
-        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalIsland")
-        if (tns.isEmpty || tns.head._2.isEmpty)
-        {
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = ForceTrue,
-                    force_retain_fuses = Unforced,
-                    storage = options.storage))
-            log.info (ele.count () + " elements")
-        }
+        // eliminate elements in substations
+        deleteSubstationElements ()
+
+        // identify topological nodes
+        val ntp = CIMNetworkTopologyProcessor (session)
+        val ele = ntp.process (
+            CIMTopologyOptions (
+                identify_islands = true,
+                force_retain_switches = ForceTrue,
+                force_retain_fuses = Unforced,
+                storage = options.storage))
+        log.info (ele.count () + " elements")
 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
@@ -279,11 +320,12 @@ object OneOfN
             classOf[ch.ninecode.on.EdgeData],
             classOf[ch.ninecode.on.Feeder],
             classOf[ch.ninecode.on.FeederArea],
+            classOf[ch.ninecode.on.FeederMetadata],
             classOf[ch.ninecode.on.FeederNode],
-            classOf[ch.ninecode.on.OneOfN],
-            classOf[ch.ninecode.on.OneOfNOptions],
             classOf[ch.ninecode.on.MediumVoltageGLMGenerator],
+            classOf[ch.ninecode.on.OneOfN],
             classOf[ch.ninecode.on.OneOfNGLMGenerator],
+            classOf[ch.ninecode.on.OneOfNOptions],
             classOf[ch.ninecode.on.PlayerSwitchEdge],
             classOf[ch.ninecode.on.USTKreis],
             classOf[ch.ninecode.on.USTNode],
