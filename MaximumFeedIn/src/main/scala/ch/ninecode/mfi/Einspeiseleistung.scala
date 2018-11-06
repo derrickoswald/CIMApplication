@@ -32,13 +32,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 {
     if (options.verbose)
     {
-        val el = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Einspeiseleistung")
+        val el = org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.Einspeiseleistung")
         if (!el.isInfoEnabled)
             el.setLevel (org.apache.log4j.Level.INFO)
-        val fl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding")
+        val fl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.PowerFeeding")
         if (!fl.isInfoEnabled)
             fl.setLevel (org.apache.log4j.Level.INFO)
-        val pl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$")
+        val pl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.PowerFeeding$")
         if (!pl.isInfoEnabled)
             pl.setLevel (org.apache.log4j.Level.INFO)
     }

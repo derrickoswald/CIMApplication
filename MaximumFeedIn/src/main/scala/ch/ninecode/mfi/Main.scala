@@ -229,7 +229,7 @@ object Main
         {
             case Some (arguments) =>
 
-                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.Main$").setLevel (org.apache.log4j.Level.INFO)
+                if (!arguments.quiet) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.Main$").setLevel (org.apache.log4j.Level.INFO)
                 val log = LoggerFactory.getLogger (getClass)
                 val begin = System.nanoTime ()
 
