@@ -12,7 +12,9 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -80,11 +82,18 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         }
     }
 
-    def deleteSubstationElements (): Unit =
+    def externalCable (equipment: Equipment): Boolean =
+    {
+        equipment.PowerSystemResource.PSRType == "PSRType_Underground" ||
+        equipment.PowerSystemResource.PSRType == "PSRType_Overhead"
+    }
+
+    def deleteSubstationElements (): RDD[Element] =
     {
         // determine feeders as medium voltage (1e3 < V < 50e3) Connector in substations (PSRType_Substation)
         val feeder = Feeder (session, options.storage)
         val keep = feeder.feeders
+        log.info (keep.count + " medium voltage feeders")
 
         // create an RDD of elements in substations (PSRType_Substation)
         val markers = get[PowerSystemResource].filter (_.PSRType == "PSRType_Substation")
@@ -92,20 +101,25 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // create an RDD of EquipmentContainer id values for these elements
         val containers = get[Equipment].keyBy (_.id).join (markers.keyBy (_.id)).map (x ⇒ x._2._1.EquipmentContainer).distinct. map (x ⇒ (x, x))
 
-        //  delete all CIM elements where EquipmentContainer is in that RDD
-        // (this will also include cables with PSRType_Underground or PSRType_Unknown)
-        // but excluding the feeder objects from the first step
-        val in_station = get[Equipment].keyBy (_.EquipmentContainer).join (containers)
+        // delete all CIM elements and their terminals where EquipmentContainer is in that RDD
+        // except for equipment (cables) with PSRType_Underground or PSRType_Overhead
+        // and excluding the feeder objects from the first step
+        val elements = get[Element]("Elements")
+        val kelements = elements.keyBy (_.id).persist (options.storage)
+        val in_station = get[Equipment].filter (!externalCable (_)).keyBy (_.EquipmentContainer).join (containers)
             .map (x ⇒ (x._2._1.id, x._2._1.id))
-            .join (get[Element]("Elements").keyBy (_.id))
+            .join (kelements)
             .map (x ⇒ (x._1, x._2._2))
         val doomed = in_station.subtractByKey (keep.keyBy (_.id))
-        val elements = get[Element]("Elements")
-        val new_elements = elements.keyBy (_.id).subtractByKey (doomed).map (_._2)
-        log.info (new_elements.count + " elements after substation deletion")
+        val doomed_terminals = get[Terminal].keyBy (_.ConductingEquipment).join (doomed)
+            .map (x ⇒ (x._2._1.id, x._2._1.id))
+            .join (kelements)
+            .map (x ⇒ (x._1, x._2._2))
+        val new_elements = kelements.subtractByKey (doomed.union (doomed_terminals)).map (_._2)
 
         // update Elements named RDD
         elements.unpersist (false)
+        kelements.unpersist (false)
         elements.name = "old_Elements"
         new_elements.name = "Elements"
         new_elements.persist (options.storage)
@@ -118,6 +132,8 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                     subsetter.make (session.sqlContext, new_elements, options.storage)
             }
         )
+
+        new_elements
     }
 
     def run (): Long =
@@ -140,7 +156,8 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // eliminate elements in substations
-        deleteSubstationElements ()
+        val new_elements = deleteSubstationElements ()
+        log.info (new_elements.count + " elements after substation deletion")
 
         // identify topological nodes
         val ntp = CIMNetworkTopologyProcessor (session)
@@ -150,10 +167,13 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                 force_retain_switches = ForceTrue,
                 force_retain_fuses = Unforced,
                 storage = options.storage))
-        log.info (ele.count () + " elements")
+        log.info (ele.count + " elements after topology generation")
 
         val topo = System.nanoTime ()
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+
+//        val export = new CIMExport (session)
+//        export.exportAll (options.files.head.replace (".", "_with_topology."), "PSRType_Substation removed")
 
         // get all the transformers
         val _transformers = new Transformers (session, options.storage)
@@ -176,7 +196,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         )
         val zeros = end_voltages.filter (_._2 == 0.0)
         if (!zeros.isEmpty ())
-            log.warn ("""transformer ends with no nominal voltage, e.g. %s""".format (zeros.take (5).map (_._1).mkString (",")))
+            log.warn ("""%s transformer ends with no nominal voltage, e.g. %s""".format (zeros.count, zeros.take (5).map (_._1).mkString (",")))
         val equipment_voltages = getOrElse[Terminal].keyBy (_.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).values.map (
             x ⇒
             {
@@ -191,7 +211,9 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // put it all together
         val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
         val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
-            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).cache
+            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List(_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
+        if (options.verbose)
+            log.info ("%s nodes".format (nodes.count))
 
         // get equipment with nodes & terminals
         log.info ("creating edges")
@@ -199,8 +221,6 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // eliminate 0Ω links
         val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
         val eq: RDD[(Iterable[(String, Terminal)], Element)] = get[ConductingEquipment]
-//            // eliminate edges inside substations
-//            .filter (x ⇒ "PSRType_Substation" != x.Equipment.PowerSystemResource.PSRType)
             .keyBy (_.id).join (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (elementid, Element)
             .join (hh).values.map (_.swap) // ([(nodeid, terminal)], Element)
             // eliminate edges with only one end
@@ -221,15 +241,17 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             AbgangKreis.toGLMEdge (transformers, options.base_temperature) (args.map (_._2), id_cn_1, id_cn_2)
         }
         // make one edge for each unique feeder it's in
-        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2))))).cache
+        val edges: RDD[(String, GLMEdge)] = kk.flatMap (x ⇒ x.map (_._1).toArray.distinct.map (y ⇒ (y, make_edge (transformers) (x.filter (_._1 == y).map (_._2))))).persist (options.storage)
+        if (options.verbose)
+            log.info ("%s edges".format (edges.count))
 
         // keep only nodes we need
-        val needed_nodes = edges.flatMap (x ⇒ List ((x._2.cn1, x._2.cn1), (x._2.cn2, x._2.cn2))).join (nodes.keyBy (_._2._id)).map (_._2._2)
+        val needed_nodes: RDD[(String, FeederNode)] = edges.flatMap (x ⇒ List ((x._2.cn1, x._2.cn1), (x._2.cn2, x._2.cn2))).join (nodes.keyBy (_._2._id)).map (_._2._2)
 
         // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
         log.info ("creating models")
         val feeders = needed_nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_.id))
-            .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], (stationid, abgang#, header, feeder))
+            .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], FeederMetadata)
             .map (
                 x ⇒
                 {
@@ -266,7 +288,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                     }
                     val edges = x._2._2.groupBy (_.id).map (pickbest)
                     FeederArea (x._1, x._2._3, nodes, edges)
-                }).cache
+                }).persist (options.storage)
         log.info ("%s feeders".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =

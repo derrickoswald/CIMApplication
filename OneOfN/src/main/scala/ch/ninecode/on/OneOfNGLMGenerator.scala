@@ -24,7 +24,7 @@ case class OneOfNGLMGenerator (
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = true) // ToDo: get library base temperature and target temperature as command line input
+extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = "%s_%s".format (feeder.metadata.station, feeder.metadata.connector)
 

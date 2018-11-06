@@ -42,7 +42,7 @@ import ch.ninecode.model.VoltageLevel
  * @param session the Spark session object
  * @param debug flag to turn on debug output
  */
-case class Feeder (session: SparkSession, storage: StorageLevel, debug: Boolean = false) extends CIMRDD
+case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, debug: Boolean = false) extends CIMRDD
 {
     if (debug)
         org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.DEBUG)
