@@ -182,6 +182,11 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         log.info ("the simulation number is " + simulation)
 
+        // update each element in the transformer service area with bad value (just choose the first)
+        val problem_trafos = has.filter (_.problem).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1, x._2.head.reason))
+        if (!problem_trafos.isEmpty)
+            Database.invalidate_precalculation (simulation, problem_trafos)
+
         def mapGraphEdges(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
             val source = triplet.srcAttr.source_obj

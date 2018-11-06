@@ -72,6 +72,11 @@ with Serializable
     {
         element match
         {
+            case cable: ACLineSegment ⇒
+                if (cable.r < 5.0) // ToDo: use PSRType_Bogus
+                    "invalid element (%s r=%s)".format (cable.id, cable.r)
+                else
+                    null
             case _: PowerTransformer ⇒
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)

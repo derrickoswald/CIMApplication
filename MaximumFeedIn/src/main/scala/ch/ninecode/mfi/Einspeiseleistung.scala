@@ -553,8 +553,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
             precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network"))
 
+        // get a list of invalid nodes and group by transformer
+        val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
+
         val tl = session.sparkContext.parallelize (transformers)
-        val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)
+        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (tl.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
         if (log.isDebugEnabled)
             trafo_list.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
