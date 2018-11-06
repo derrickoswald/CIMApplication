@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.esl._
+import ch.ninecode.mfi._
 import ch.ninecode.gl._
 import ch.ninecode.model._
 
@@ -47,7 +47,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
     if (options.verbose)
     {
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.lv.LowVoltage").setLevel (org.apache.log4j.Level.INFO)
-        org.apache.log4j.LogManager.getLogger ("ch.ninecode.esl.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
     }
     val log: Logger = LoggerFactory.getLogger (getClass)
 

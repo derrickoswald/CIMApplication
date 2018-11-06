@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.esl.Einspeiseleistung
+import ch.ninecode.mfi.Einspeiseleistung
 import ch.ninecode.gl.GridLABD
 
 object Main

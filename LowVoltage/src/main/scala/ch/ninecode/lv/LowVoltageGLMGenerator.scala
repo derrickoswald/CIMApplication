@@ -3,8 +3,8 @@ package ch.ninecode.lv
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.esl.PowerFeedingNode
-import ch.ninecode.esl.Trafokreis
+import ch.ninecode.mfi.PowerFeedingNode
+import ch.ninecode.mfi.Trafokreis
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
