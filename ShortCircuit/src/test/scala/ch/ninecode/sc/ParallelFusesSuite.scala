@@ -71,7 +71,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             cosphi = 0.65,
             workdir="simulation/")
         val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
-        val results = shortcircuit.run ().cache ()
+        val results = shortcircuit.run ()
 
         Database.store (sc_options) (results)
         results

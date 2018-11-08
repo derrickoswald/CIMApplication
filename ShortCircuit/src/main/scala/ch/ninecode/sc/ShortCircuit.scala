@@ -129,34 +129,29 @@ with Serializable
                     }
                     (terminal_end._1, voltage, impedance)
                 })
-            // Note: we eliminate 230V edges because transformer information doesn't exist and
-            // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
-            if (!terminals.map (_._2).contains (230.0))
+            // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
+            val eq = terminals(0)._1.ConductingEquipment
+            val id1 = terminals(0)._1.ACDCTerminal.id
+            val node1 = terminals(0)._1.TopologicalNode
+            val voltage1 = terminals(0)._2
+            val z = terminals(0)._3
+            for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
             {
-                // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
-                val eq = terminals(0)._1.ConductingEquipment
-                val id1 = terminals(0)._1.ACDCTerminal.id
-                val node1 = terminals(0)._1.TopologicalNode
-                val voltage1 = terminals(0)._2
-                val z = terminals(0)._3
-                for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                {
-                    val node2 = terminals(i)._1.TopologicalNode
-                    // eliminate edges with only one connectivity node, or the same connectivity node
-                    if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
-                        ret = ret :+ ScEdge (
-                            id1,
-                            node1,
-                            voltage1,
-                            terminals(i)._1.ACDCTerminal.id,
-                            node2,
-                            terminals(i)._2,
-                            terminals.length,
-                            eq,
-                            element,
-                            z
-                        )
-                }
+                val node2 = terminals(i)._1.TopologicalNode
+                // eliminate edges with only one connectivity node, or the same connectivity node
+                if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
+                    ret = ret :+ ScEdge (
+                        id1,
+                        node1,
+                        voltage1,
+                        terminals(i)._1.ACDCTerminal.id,
+                        node2,
+                        terminals(i)._2,
+                        terminals.length,
+                        eq,
+                        element,
+                        z
+                    )
             }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
@@ -517,7 +512,7 @@ with Serializable
                 generate (gridlabd, x)
                 x.experiments
             }
-        ).cache
+        ).persist (storage_level)
         def short (exp: ScExperiment): Array[Byte] =
         {
             val ret = new StringBuilder ()
@@ -588,7 +583,7 @@ with Serializable
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
             val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
-            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
+            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
@@ -604,13 +599,13 @@ with Serializable
                         directory = x._2.transformer_name)
             )
             // perform remedial simulations
-            val zlo: RDD[(String, String, String, Double, Complex, Branch)] = remedial (simulations, options.low_temperature, true).cache // (trafoid, nodeid, equipment, voltage, Z)
+            val zlo: RDD[(String, String, String, Double, Complex, Branch)] = remedial (simulations, options.low_temperature, true).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
             val zhi: RDD[(String, String, String, Double, Complex, Branch)] =
                 // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
                 if (options.low_temperature != options.high_temperature)
                 {
-                    val _z = remedial (simulations, options.high_temperature, false).cache // (trafoid, nodeid, equipment, voltage, Z)
+                    val _z = remedial (simulations, options.high_temperature, false).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
                     log.info ("""ran %s experiments at high temperature""".format (_z.count ()))
                     _z
                 }
@@ -647,7 +642,7 @@ with Serializable
                 }
             )
             // calculate new short circuit result records
-            val replacements = new_nodes.map (calculate_short_circuit).cache
+            val replacements = new_nodes.map (calculate_short_circuit).persist (storage_level)
             // merge them into the existing set
             val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.node)
             // ToDo: should we remove all records from the problem transformers?
@@ -674,37 +669,42 @@ with Serializable
             options.default_short_circuit_power_min,
             options.default_short_circuit_impedance_min)
 
-        val transformers: Array[Array[TData]] = if (null != options.trafos && "" != options.trafos && "all" != options.trafos) {
+        val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos)
+        {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
             val selected = tdata.filter (t ⇒ { trafos.contains (t.transformer.id) })
-            selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray).collect
+            selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray)
         }
-        else {
+        else
+        {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
             val niederspannug = tdata.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
         }
 
         val transformersets = transformers.map (txs ⇒ TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance))
-        val starting_nodes = transformersets.map (trafo_mapping)
-        log.info ("%s starting transformers".format (starting_nodes.length))
+        val starting_nodes: RDD[StartingTrafos] = transformersets.map (trafo_mapping)
+        log.info ("%s starting transformers".format (starting_nodes.count))
 
         // create the initial Graph with ScNode vertices
-        def starting_map (starting_nodes: Array[StartingTrafos]) (id: VertexId, v: ScNode): ScNode =
-        {
-            starting_nodes.find (trafo ⇒ trafo.nsPin == id) match
-            {
-                case Some (node) ⇒
-                    val errors = if (node.transformer.total_impedance._2) List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance))) else null
-                    ScNode (v.id_seq, v.voltage, node.transformer.transformer_name, "self", node.secondary_impedance, null, errors)
-                case None ⇒
-                    v
-            }
-        }
-
         val initial = get_inital_graph ()
-        val initial_with_starting_nodes = initial.mapVertices (starting_map (starting_nodes)).persist (storage_level)
+        def both_ends (edge: Edge[ScEdge]): Iterable[(VertexId, ScEdge)] = List ((edge.srcId, edge.attr), (edge.dstId, edge.attr))
+        def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
+        {
+            val trafo = attached._1
+            val edges = attached._2
+
+            val errors =
+                if (trafo.transformer.total_impedance._2)
+                    List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
+                else
+                    null.asInstanceOf[List[ScError]]
+            val problems = edges.foldLeft (errors) ((errors, edge) => edge.hasIssues (errors, options.messagemax))
+            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, "self", trafo.secondary_impedance, null, problems)
+        }
+        val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
+        val initial_with_starting_nodes = initial.joinVertices (starting_trafos_with_edges)(add_starting_trafo).persist (storage_level)
         val sct = ShortCircuitTrace (session, options)
         val graph = sct.trace (initial_with_starting_nodes)
 
@@ -738,13 +738,13 @@ with Serializable
         val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
 
         // compute results
-        var results: RDD[ScResult] = g.map (calculate_short_circuit).cache
+        var results: RDD[ScResult] = g.map (calculate_short_circuit).persist (storage_level)
 
         // find transformers where there are non-radial networks and fix them
-        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ result.tx).distinct.cache
-        def toTransformerSet (trafo: String): TransformerSet = transformersets.find (_.transformer_name == trafo).get
-        val problem_trafosets = problem_trafos.map (toTransformerSet)
-        if (0 != problem_trafos.count)
+        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
+        val verboten_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ !s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
+        val problem_trafosets = problem_trafos.subtractByKey (verboten_trafos).join (transformersets.keyBy (_.transformer_name)).map (_._2._2)
+        if (0 != problem_trafosets.count)
             results = fix (problem_trafosets, results)
 
         results

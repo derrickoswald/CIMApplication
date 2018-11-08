@@ -104,17 +104,25 @@ case class ScEdge (
     }
 
     /**
-     * Warn of special cases of transformers that preclude accurate short-circuit calculation.
+     * Warn of special cases of cables and transformers that preclude accurate short-circuit calculation.
      *
-     * @param id_cn TopologicalNode to test
      * @param errors current list of errors in the trace
      * @param messagemax the maximum number of error messages to be maintained
      * @return a new list of errors with additional information about validity.
      */
-    def hasIssues (id_cn: String, errors: List[ScError], messagemax: Int): List[ScError] =
+    def hasIssues (errors: List[ScError], messagemax: Int): List[ScError] =
     {
         element match
         {
+            case cable: ACLineSegment ⇒
+                // ToDo: use PSRType_Bogus
+                if (cable.r >= 5.0)
+                {
+                    val error = ScError (false, true, "invalid element (%s)".format (cable.id))
+                    ScError.combine_errors (errors, List (error), messagemax)
+                }
+                else
+                    errors
             case _: PowerTransformer ⇒
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)

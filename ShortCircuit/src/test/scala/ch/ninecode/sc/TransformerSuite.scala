@@ -77,7 +77,6 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 low_temperature = 20.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             val string = results.sortBy (_.tx).map (_.csv)
             val csv = string.collect
@@ -134,7 +133,6 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 low_temperature = 20.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             val string = results.sortBy (_.tx).map (_.csv)
             val csv = string.collect
@@ -143,9 +141,9 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0001").first ().errors.forall (!_.startsWith ("INVALID")), "USR0001 should be valid")
-            assert (results.filter (_.equipment == "USR0002").first ().errors.forall (!_.startsWith ("INVALID")), "USR0002 should be valid")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (!_.startsWith ("INVALID")), "USR0003 should be valid")
+            assert (results.filter (_.equipment == "USR0001").first ().errors.isEmpty, "USR0001 should be valid (TX0001)")
+            assert (results.filter (_.equipment == "USR0002").first ().errors.isEmpty, "USR0002 should be valid (TX0001)")
+            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (_.startsWith ("INVALID")), "USR0003 should be invalid (TX0002)")
 
             /**
              * ToDo: handling the subtransmission in this test case is problematic,
@@ -199,7 +197,6 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 low_temperature = 20.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             val string = results.sortBy (_.tx).map (_.csv)
             val csv = string.collect

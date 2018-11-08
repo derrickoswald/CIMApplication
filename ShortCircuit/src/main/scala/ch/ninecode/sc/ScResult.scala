@@ -96,5 +96,5 @@ case class ScResult (
 
 object ScResult
 {
-    val csv_header: String = "node;equipment;terminal;container;errors;transformer;ik;ik3pol;ip;r;x;r0;x0;sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;r;x;r0;x0;ik;ik3pol;ip;sk;fuses;last_fuses;fusemax;fuseOK"
+    val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;fusemax;fuseOK"
 }

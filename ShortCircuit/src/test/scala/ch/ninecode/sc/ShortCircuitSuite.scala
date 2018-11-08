@@ -103,7 +103,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -169,7 +168,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -237,7 +235,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -307,7 +304,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "sak_sample_ganged.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -377,7 +373,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -445,7 +440,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -509,7 +503,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 trafos = FILE_DEPOT + "sak_sample.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -577,7 +570,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 cosphi = 1.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -656,7 +648,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -725,7 +716,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 cmin = 0.95)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
@@ -794,7 +784,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 messagemax = MESSAGELIMIT)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
-            results.cache ()
 
             // write output to file and console
             val output = FILE_DEPOT + "result"
