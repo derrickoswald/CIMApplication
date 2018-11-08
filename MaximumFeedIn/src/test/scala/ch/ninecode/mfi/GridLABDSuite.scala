@@ -199,4 +199,58 @@ class GridLABDSuite extends FunSuite
             statement.close ()
             connection.close ()
     }
+
+    test ("Too many open files")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val root = "EKZ_Testcase4_STA333"
+            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 1.5,
+                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                files = List(filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results) and trafo = 'TRA8208'")
+            var records: Int = 0
+            while (resultset.next)
+            {
+//                 Einspeiseleistung|TRA8208|HAS2760|81000.0|current limit|KLE12754 > 115.0 Amps|1541685757548
+                if (resultset.getString (2) == "HAS2760")
+                    assert (resultset.getDouble (3) == 81000.0, "maximum")
+
+//                Einspeiseleistung|TRA8208|HAS2807|48000.0|current limit|KLE13149 > 68.0 Amps|1541685757548
+                if (resultset.getString (2) == "HAS2807")
+                    assert (resultset.getDouble (3) == 48000.0, "maximum")
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+    }
 }

@@ -442,6 +442,7 @@ class GridLABD (
                         "-c",
                         "while read line; do " +
                             "export FILE=$line; " +
+                            "ulimit -Sn `ulimit -Hn`; " +
                             "pushd " + workdir_path + "$FILE; " +
                             "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                             "cat output_data/* > output.txt; " +
@@ -459,6 +460,7 @@ class GridLABD (
                         "export FILE=$line; " +
                         "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
                         "HADOOP_USER_NAME=$SPARK_USER; " +
+                        "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
                         "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
