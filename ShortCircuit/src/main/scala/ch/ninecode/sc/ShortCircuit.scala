@@ -569,6 +569,42 @@ with Serializable
         )
     }
 
+    def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
+    {
+         results.keyBy (_.tx).leftOuterJoin (list).values.map (
+             _ match
+             {
+                 case (result: ScResult, None) ⇒ result
+                 case (result: ScResult, Some (error)) ⇒
+                     result.copy(
+                         errors = if (result.errors == null || result.errors.isEmpty) List(error) else result.errors,
+                         low_r = 0.0,
+                         low_x = 0.0,
+                         low_r0 = 0.0,
+                         low_x0 = 0.0,
+                         low_ik = 0.0,
+                         low_ik3pol = 0.0,
+                         low_ip = 0.0,
+                         low_sk = 0.0,
+                         imax_3ph_low = 0.0,
+                         imax_1ph_low = 0.0,
+                         imax_2ph_low = 0.0,
+                         imax_3ph_med = 0.0,
+                         imax_1ph_med = 0.0,
+                         imax_2ph_med = 0.0,
+                         high_r = 0.0,
+                         high_x = 0.0,
+                         high_r0 = 0.0,
+                         high_x0 = 0.0,
+                         high_ik = 0.0,
+                         high_ik3pol = 0.0,
+                         high_ip = 0.0,
+                         high_sk = 0.0,
+                         fuses = null)
+             }
+         )
+    }
+
     // execute GridLAB-D to approximate the impedances and replace the error records
     def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
     {
@@ -697,7 +733,7 @@ with Serializable
 
             val errors =
                 if (trafo.transformer.total_impedance._2)
-                    List (ScError (false, true, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
+                    List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
                 else
                     null.asInstanceOf[List[ScError]]
             val problems = edges.foldLeft (errors) ((errors, edge) => edge.hasIssues (errors, options.messagemax))
@@ -741,9 +777,14 @@ with Serializable
         var results: RDD[ScResult] = g.map (calculate_short_circuit).persist (storage_level)
 
         // find transformers where there are non-radial networks and fix them
-        val problem_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
-        val verboten_trafos = results.filter (result ⇒ result.errors.exists (s ⇒ !s.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
+        val problem_trafos = results.filter (result ⇒ result.errors.exists (_.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
+        // but not the ones that have another error
+        def other_error (s: String): Boolean = !s.startsWith ("FATAL: non-radial network detected") && s.startsWith ("INVALID")
+        val verboten_trafos = results.filter (result ⇒ result.errors.exists (other_error)).map (result ⇒ (result.tx, result.errors.filter (other_error).head)).distinct.persist (storage_level)
         val problem_trafosets = problem_trafos.subtractByKey (verboten_trafos).join (transformersets.keyBy (_.transformer_name)).map (_._2._2)
+        if (0 != verboten_trafos.count)
+            // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
+            results = zero (verboten_trafos, results)
         if (0 != problem_trafosets.count)
             results = fix (problem_trafosets, results)
 

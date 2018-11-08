@@ -85,8 +85,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0002").first ().errors.forall (!_.startsWith ("INVALID")), "USR0002 should be valid")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (!_.startsWith ("INVALID")), "USR0003 should be valid")
+            assert (results.filter (_.equipment == "USR0002").first ().errors.exists (_.startsWith ("INVALID")), "USR0002 should be invalid")
+            assert (results.filter (_.equipment == "USR0003").first ().errors.exists (_.startsWith ("INVALID")), "USR0003 should be invalid")
             assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")), "USR0004 should be invalid")
     }
 
@@ -205,7 +205,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0001").first ().errors.forall (!_.startsWith ("INVALID")), "USR0001 should be valid")
+            assert (results.filter (_.equipment == "USR0001").first ().errors.exists (_.startsWith ("INVALID")), "USR0001 should be invalid")
             assert (results.filter (_.equipment == "USR0002").first ().errors.exists (_.startsWith ("INVALID")), "USR0002 should be invalid")
     }
 }
