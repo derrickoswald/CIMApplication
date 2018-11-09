@@ -73,22 +73,21 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
      * NOTE: we don't have to sort by time, since the power is monotonically increasing,
      * just by selecting the minimum power solution we've chosen the first measurement over the limit
      */
-    def finder (values: Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)]): MaxEinspeiseleistung =
+    def finder (experiment: Experiment, values: Iterable[(ThreePhaseComplexDataElement, String, String)]): MaxEinspeiseleistung =
     {
-        def seqop (current: MaxEinspeiseleistung, arg: (Experiment, ThreePhaseComplexDataElement, String, String)): MaxEinspeiseleistung =
+        def seqop (current: MaxEinspeiseleistung, arg: (ThreePhaseComplexDataElement, String, String)): MaxEinspeiseleistung =
         {
-            val experiment = arg._1
-            val data = arg._2
-            val reason = arg._3
-            val details = arg._4
+            val data = arg._1
+            val reason = arg._2
+            val details = arg._3
             val steps = Math.round((data.millis - experiment.t1.getTimeInMillis) / (experiment.interval * 1000))
             val ok_steps = if (0 < steps) steps - 1 else 0 // subtract off the mandatory first zero step required by GridLAB-D
             val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match {
                 case None ⇒
-                    MaxEinspeiseleistung (experiment.trafo, experiment.house, Some (kw), reason, details)
+                    MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, Some (kw), reason, details)
                 case Some(kw1) ⇒
-                    if (kw1 < kw) current else MaxEinspeiseleistung(experiment.trafo, experiment.house, Some(kw), reason, details)
+                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, Some(kw), reason, details)
             }
         }
         def combop(a: MaxEinspeiseleistung, b: MaxEinspeiseleistung): MaxEinspeiseleistung =
@@ -107,9 +106,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     }
             }
         }
-        val trafo = values.head._1.trafo
-        val house = values.head._1.house
-        values.aggregate(MaxEinspeiseleistung(trafo, house, None, "unknown", ""))(seqop, combop)
+        values.aggregate (MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, None, "unknown", ""))(seqop, combop)
     }
 
     def voltcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
@@ -252,22 +249,27 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
 
             // establish a "no limit found" default
-            val s = experiments.map(
+            val s = experiments.map (
                 x ⇒
-                    {
-                        (
-                            x,
-                            ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                            "no limit",
-                            "")
-                    })
+                {
+                    (
+                        x,
+                        ThreePhaseComplexDataElement (x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                        "no limit",
+                        ""
+                    )
+                }
+            )
 
-            val ret = s ++ v ++ i ++ p groupBy (k ⇒ k._1.house)
-            ret.values.map (v ⇒ finder(v)).toList
+            // rearrange results from "by node" to results "by house"
+            val g = s ++ v ++ i ++ p groupBy (_._1.node)
+            val shuffle = experiments.map (x ⇒ (x, g.get (x.node))).filter (_._2.isDefined).map (x ⇒ (x._1, x._2.orNull))
+            val ret = shuffle.map (x ⇒ (x._1, x._2.map (y ⇒ (y._2, y._3, y._4))))
+            ret.map (x ⇒ finder (x._1, x._2)).toList
             // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
-            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.house, None, "gridlab failed", "no results")).toList
+            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.node, e.house, None, "gridlab failed", "no results")).toList
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
@@ -372,34 +374,36 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("results: " + ret.count)
 
             val b4_experiment = System.nanoTime()
-            val experiments2 = experiments.keyBy(_.house).leftOuterJoin(ret.keyBy(_.house)).map(house ⇒ {
-                val experiment = house._2._1
-                val max_option = house._2._2
+            val experiments2 = experiments.keyBy (_.house).leftOuterJoin (ret.keyBy (_.house)).map (
+                house ⇒
+                {
+                    val experiment = house._2._1
+                    val max_option = house._2._2
 
-                val step = 1000.0
-                var riser = step
-                var to = experiment.to
-                var from = to - experiment.step
-                if (max_option.isDefined) {
-                    val max = max_option.get
-                    if (max.reason != "no limit" && max.max.isDefined) {
-                        val max_val = max.max.get
-                        if (max_val > experiment.step) {
-                            to = max_val + step
-                            from = max_val - experiment.step
-                        }
-                        else {
-                            to = experiment.step
-                            from = 0
-                        }
-                        val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
-                        if (!(steps * step >= (to - from)))
-                            riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
+                    val step = 1000.0
+                    var riser = step
+                    var to = experiment.to
+                    var from = to - experiment.step
+                    if (max_option.isDefined) {
+                        val max = max_option.get
+                        if (max.reason != "no limit" && max.max.isDefined) {
+                            val max_val = max.max.get
+                            if (max_val > experiment.step) {
+                                to = max_val + step
+                                from = max_val - experiment.step
+                            }
+                            else {
+                                to = experiment.step
+                                from = 0
+                            }
+                            val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
+                            if (!(steps * step >= (to - from)))
+                                riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
 
+                        }
                     }
-                }
-                experiment.copy(from = from, to = to, step = riser)
-            }).cache
+                    experiment.copy(from = from, to = to, step = riser)
+                }).cache
 
             val experiment_adjusted = System.nanoTime()
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")

@@ -78,31 +78,9 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         "        };\n"
     }
 
-    /**
-     * Get the NIS database id of a node.
-     *
-     * The NIS id is suffixed with "_node" or "_topo", and this just gets the prefix.
-     * For example "ABG123401_node" is converted to "ABG123401".
-     *
-     * @param string The node id to split.
-     * @return The NIS number from the node id.
-     */
-    def nis_number (string: String): String =
-    {
-        val n = string.indexOf ("_")
-        if (0 < n)
-            string.substring (0, n)
-        else
-            string
-    }
-
     def generate_load (node: GLMNode): String =
     {
-        val experiments = trafokreis.experiments
-        val house = nis_number (node.id)
-        val filtered = experiments.filter(p ⇒ p.house == house)
-        val experiment = if (0 != filtered.length) filtered(0) else null
-
+        val experiment = trafokreis.experiments.find (_.node == node.id).orNull
         if (null != experiment)
             "\n" +
             "        object load\n" +
@@ -115,29 +93,29 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                 "            object player\n" +
                 "            {\n" +
                 "                property \"constant_power_A\";\n" +
-                "                file \"input_data/" + house + ".csv\";\n" +
+                "                file \"input_data/" + experiment.house + ".csv\";\n" +
                 "            };\n"
             else
                 "            object player\n" +
                 "            {\n" +
                 "                property \"constant_power_A\";\n" +
-                "                file \"input_data/" + house + "_R.csv\";\n" +
+                "                file \"input_data/" + experiment.house + "_R.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
                 "                property \"constant_power_B\";\n" +
-                "                file \"input_data/" + house + "_S.csv\";\n" +
+                "                file \"input_data/" + experiment.house + "_S.csv\";\n" +
                 "            };\n" +
                 "            object player\n" +
                 "            {\n" +
                 "                property \"constant_power_C\";\n" +
-                "                file \"input_data/" + house + "_T.csv\";\n" +
+                "                file \"input_data/" + experiment.house + "_T.csv\";\n" +
                 "            };\n") +
             "        };\n" +
             "\n" + // only need a recorder if there is a load
             "        object recorder\n" +
             "        {\n" +
-            "            name \"" + nis_number (node.id) + "_voltage_recorder\";\n" +
+            "            name \"" + experiment.house + "_voltage_recorder\";\n" +
             "            parent \"" + node.id + "\";\n" +
             "            property " + ( if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
             "            interval 5;\n" +
