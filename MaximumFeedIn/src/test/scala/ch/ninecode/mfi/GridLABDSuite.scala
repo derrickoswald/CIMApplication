@@ -49,7 +49,7 @@ class GridLABDSuite extends FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    ignore ("Basic")
+    test ("Basic")
     {
         session: SparkSession ⇒
 
@@ -88,7 +88,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    ignore ("Parallel")
+    test ("Parallel")
     {
         session: SparkSession ⇒
 
@@ -146,7 +146,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    ignore ("Three windng transformer")
+    test ("Three windng transformer")
     {
         session: SparkSession ⇒
 
@@ -200,7 +200,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    ignore ("Too many open files")
+    test ("Too many open files")
     {
         session: SparkSession ⇒
 

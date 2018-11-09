@@ -264,7 +264,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // rearrange results from "by node" to results "by house"
             val g = s ++ v ++ i ++ p groupBy (_._1.node)
             val shuffle = experiments.map (x ⇒ (x, g.get (x.node))).filter (_._2.isDefined).map (x ⇒ (x._1, x._2.orNull))
-            val ret = shuffle.map (x ⇒ (x._1, x._2.map (y ⇒ (y._2, y._3, y._4))))
+            val ret = shuffle.map (x ⇒ (x._2.head._1.copy (house = x._1.house), x._2.map (y ⇒ (y._2, y._3, y._4)))) // need to grab the experiment from the node for this house
             ret.map (x ⇒ finder (x._1, x._2)).toList
             // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
