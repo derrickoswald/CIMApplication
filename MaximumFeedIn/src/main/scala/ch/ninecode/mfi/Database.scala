@@ -261,7 +261,7 @@ object Database
             {
                 val trafo_id = records(i).source_obj
                 val eea = if (records(i).eea != null) records(i).eea.size else 0
-                val has_id =  records(i).nis_number
+                val has_id =  records(i).mrid
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
                 datainsert.setString (3, trafo_id)

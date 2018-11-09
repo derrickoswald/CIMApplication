@@ -49,7 +49,7 @@ class GridLABDSuite extends FunSuite
         finally session.stop () // clean up the fixture
     }
 
-    test ("Basic")
+    ignore ("Basic")
     {
         session: SparkSession ⇒
 
@@ -88,7 +88,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    test ("Parallel")
+    ignore ("Parallel")
     {
         session: SparkSession ⇒
 
@@ -146,7 +146,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    test ("Three windng transformer")
+    ignore ("Three windng transformer")
     {
         session: SparkSession ⇒
 
@@ -200,7 +200,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    test ("Too many open files")
+    ignore ("Too many open files")
     {
         session: SparkSession ⇒
 
@@ -252,5 +252,71 @@ class GridLABDSuite extends FunSuite
             resultset.close ()
             statement.close ()
             connection.close ()
+    }
+
+    test ("Verstärkern")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val root = "EKZ_Testcase1_STA866"
+            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 1.5,
+                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                files = List(filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and trafo = 'TRA5036'")
+            var records: Int = 0
+            var HAS108891 = false
+            var HAS14977 = false
+            var HAS108891_power: Option[Double] = None
+            var HAS14977_power: Option[Double] = None
+            while (resultset.next)
+            {
+                if (resultset.getString (2) == "HAS108891")
+                {
+                    HAS108891 = true
+                    HAS108891_power = Some (resultset.getDouble (3))
+                }
+
+                if (resultset.getString (2) == "HAS14977")
+                {
+                    HAS14977 = true
+                    HAS14977_power = Some (resultset.getDouble (3))
+                }
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+
+            assert (HAS108891, "HAS108891")
+            assert (HAS14977, "HAS14977")
+            assert (HAS108891_power == HAS14977_power, "maximum")
     }
 }

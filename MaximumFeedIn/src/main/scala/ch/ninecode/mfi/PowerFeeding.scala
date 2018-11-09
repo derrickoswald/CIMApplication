@@ -13,7 +13,6 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PV
@@ -21,7 +20,7 @@ import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.EnergyConsumer
+import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
 
 class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
@@ -111,10 +110,11 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         )
     }
 
-    def calc_max_feeding_power(args: (PowerFeedingNode, Option[String])): MaxPowerFeedingNodeEEA =
+    def calc_max_feeding_power (args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
     {
         val node: PowerFeedingNode = args._1
-        val psrtype: Option[String] = args._2
+        val mrid = args._2.map (_._1).orNull
+        val psrtype = args._2.map (_._2).orNull
         val r = node.sum_r
         val v = node.nominal_voltage
         val min_ir = node.min_ir
@@ -135,7 +135,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
             else
                 (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, psrtype.orNull, trafo_id, p_max, null, reason, details)
+        MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, mrid, psrtype, trafo_id, p_max, null, reason, details)
     }
 
     def has(string: String): String =
@@ -143,10 +143,11 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         string.substring (0, string.indexOf ("_"))
     }
 
-    def get_treshold_per_has(nodes: RDD[PowerFeedingNode]): RDD[MaxPowerFeedingNodeEEA] =
+    def get_threshold_per_has (nodes: RDD[PowerFeedingNode]): RDD[MaxPowerFeedingNodeEEA] =
     {
-        val houses: RDD[PowerFeedingNode] = nodes.filter (_.sum_r > 0.0)
-        val psrtype = get[Terminal].keyBy (_.ConductingEquipment).join (get[EnergyConsumer].keyBy(_.id)).values.map (x ⇒ (x._1.TopologicalNode, x._2.ConductingEquipment.Equipment.PowerSystemResource.PSRType))
+        val houses = nodes.filter (_.sum_r > 0.0)
+        val psrtype = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy(_.id))
+            .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, (x._2._2.id, x._2._2.Equipment.PowerSystemResource.PSRType)))
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power)
     }
 
@@ -165,7 +166,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         val start_ids = transformers.map (trafo_mapping)
 
         val graph = trace (initial, start_ids)
-        val house_nodes = get_treshold_per_has (graph.vertices.values.filter(_.source_obj != null))
+        val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null))
         val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(sdata).values
 
         val has = traced_house_nodes_EEA.map(node =>
@@ -177,7 +178,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
                 case None =>
                     node._1
             }
-        })
+        }).persist (storage_level)
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ()) (has)
         log.info ("the simulation number is " + simulation)
@@ -205,7 +206,6 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         val vertices = graph.vertices.values
         val edges = graph.triplets.map(mapGraphEdges)
 
-        has.persist (storage_level)
         vertices.persist (storage_level)
         edges.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) { has.checkpoint (); vertices.checkpoint (); edges.checkpoint () }

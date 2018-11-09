@@ -5,8 +5,9 @@ import ch.ninecode.gl.PV
 /**
  * Results record.
  *
- * @param id_seq House connection mRID.
+ * @param id_seq TopologicalNode mRID.
  * @param voltage Nominal voltage at the house connection.
+ * @param mrid EnergyConsumer mRID.
  * @param psr_type Power system resource type.
  * @param source_obj Feeding transformer mRID.
  * @param max_power_feeding Calculated maximum feed-in power (Watts).
@@ -17,6 +18,7 @@ import ch.ninecode.gl.PV
 case class MaxPowerFeedingNodeEEA (
     id_seq: String,
     voltage: Double,
+    mrid: String,
     psr_type: String,
     source_obj: String,
     max_power_feeding: Double,
@@ -24,15 +26,6 @@ case class MaxPowerFeedingNodeEEA (
     reason: String,
     details: String)
 {
-    def nis_number: String =
-    {
-        val n = id_seq.indexOf("_")
-        if (0 < n)
-            id_seq.substring(0, n)
-        else
-            id_seq
-    }
-
     def problem: Boolean =
         reason.indexOf ("invalid element") != -1 ||
         reason.indexOf ("transformer windings for edge") != -1 ||

@@ -37,7 +37,7 @@ case class Trafokreis
     def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
     {
-        val house = h._1.nis_number // the house under test
+        val house = h._1.mrid // the house under test
         val index = h._2 // experiment #
         def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
         val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test

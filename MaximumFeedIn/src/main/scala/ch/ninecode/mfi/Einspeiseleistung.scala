@@ -547,8 +547,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has
         else if (-1 != options.reference)
         {
-            val changed = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta)
-            precalc_results.has.filter (x => changed.contains (x.nis_number))
+            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta)
+            precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else
             precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network"))

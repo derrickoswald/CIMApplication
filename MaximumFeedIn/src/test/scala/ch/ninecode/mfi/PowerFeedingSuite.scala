@@ -110,11 +110,11 @@ class PowerFeedingSuite extends FunSuite
 
         val start_ids = transformers.map (power_feeding.trafo_mapping)
         val graph = power_feeding.trace (initial, start_ids)
-        val house_nodes = power_feeding.get_treshold_per_has(graph.vertices.values.filter(_.source_obj != null))
+        val house_nodes = power_feeding.get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null))
 
         val HAS138130: MaxPowerFeedingNodeEEA =
         {
-            val nodes = house_nodes.filter (_.nis_number == "HAS138130").collect
+            val nodes = house_nodes.filter (_.mrid == "HAS138130").collect
             assert (1 == nodes.length, "HAS138130 not found")
             nodes(0)
         }
