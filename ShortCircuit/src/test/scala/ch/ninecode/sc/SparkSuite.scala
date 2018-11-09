@@ -171,6 +171,7 @@ class SparkSuite extends FunSuite
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
         configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)

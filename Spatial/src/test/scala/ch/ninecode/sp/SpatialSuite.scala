@@ -27,7 +27,8 @@ class SpatialSuite extends FunSuite
         configuration.setAppName ("SpatialOperationsSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "1g")
-        configuration.set ("spark.executor.memory", "4g")
+        configuration.set ("spark.executor.memory", "2g")
+        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
