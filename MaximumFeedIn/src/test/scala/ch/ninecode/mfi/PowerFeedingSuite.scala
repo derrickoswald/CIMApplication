@@ -109,7 +109,7 @@ class PowerFeedingSuite extends FunSuite
         val power_feeding = new PowerFeeding (session)
 
         val start_ids = transformers.map (power_feeding.trafo_mapping)
-        val graph = power_feeding.trace (initial, start_ids)
+        val graph = power_feeding.trace (initial, start_ids, power_feeding.feeders)
         val house_nodes = power_feeding.get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null))
 
         val HAS138130: MaxPowerFeedingNodeEEA =

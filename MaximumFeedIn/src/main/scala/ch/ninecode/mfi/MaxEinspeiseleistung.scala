@@ -4,6 +4,7 @@ package ch.ninecode.mfi
  * Final result record.
  *
  * @param trafo mRID of transformer feeding the house.
+ * @param feeder mRID of substation feeding connector
  * @param node mRID of the topological node.
  * @param house mRID of the house.
  * @param max Maximum feed-in power (kW) or None if no limit was found.
@@ -12,6 +13,7 @@ package ch.ninecode.mfi
  */
 case class MaxEinspeiseleistung(
     trafo: String,
+    feeder: String,
     node: String,
     house: String,
     max: Option[Double],

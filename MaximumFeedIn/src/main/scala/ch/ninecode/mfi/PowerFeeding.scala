@@ -13,17 +13,20 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Connector
+import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 
-class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
+class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -52,8 +55,9 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.srcAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.srcAttr.min_ir, ir)
+                    val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
                     val problem = if (null != triplet.srcAttr.problem) triplet.srcAttr.problem else triplet.attr.problem
-                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, sum_r, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_r, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString,  message.asString))
                     Iterator ((triplet.dstId, message))
@@ -63,8 +67,9 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
                     val (dist_km, r, ir) = line_details (triplet.attr)
                     val sum_r = triplet.dstAttr.sum_r + r * dist_km
                     val min_ir = math.min(triplet.dstAttr.min_ir, ir)
+                    val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
                     val problem = if (null != triplet.dstAttr.problem) triplet.dstAttr.problem else triplet.attr.problem
-                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, sum_r, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_r, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                     Iterator ((triplet.srcId, message))
@@ -85,25 +90,23 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         node
     }
 
-    def trace (initial: Graph[PreNode, PreEdge], starting_nodes: RDD[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
+    def trace (initial: Graph[PreNode, PreEdge], starting_nodes: RDD[StartingTrafo], feeders: RDD[Feeder]): Graph[PowerFeedingNode, PreEdge] =
     {
         log.info ("trace")
 
         // create the initial Graph with PowerFeedingNode vertices
-        def starting_map (id: VertexId, v: PreNode, trafo: Option[StartingTrafos]): PowerFeedingNode =
-        {
-            trafo match
-            {
-                case Some (transformer) =>
-                    PowerFeedingNode (v.id, v.nominal_voltage, transformer, 0.0, Double.PositiveInfinity, v.problem)
-                case None =>
-                    PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
-            }
-        }
-        val graph = initial.outerJoinVertices (starting_nodes.keyBy (_.nsPin)) (starting_map)
+        def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
+            PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
+        val pregraph = initial.outerJoinVertices (feeders.keyBy (_.node)) (add_feeder)
+        def starting_map (id: VertexId, v: PowerFeedingNode, trafo: Option[StartingTrafo]): PowerFeedingNode =
+            if (trafo.isDefined)
+                v.copy (source_obj = trafo.get, sum_r = 0.0)
+            else
+                v
+        val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin)) (starting_map)
 
         // run Pregel
-        val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, null)
+        val default_message = PowerFeedingNode (null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
         graph.pregel[PowerFeedingNode] (default_message, 10000, EdgeDirection.Either) (
             vertexProgram,
             sendMessage,
@@ -120,6 +123,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         val v = node.nominal_voltage
         val min_ir = node.min_ir
         val trafo_id = node.source_obj.trafo_id
+        val feeder_id = if (null != node.feeder) node.feeder.feeder_id else null
         val trafo_ratedS = node.source_obj.ratedS
         val trafo_r = node.source_obj.z.re
         val r_summe = math.sqrt(3) * r + trafo_r
@@ -136,7 +140,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
             else
                 (p_max_i, "current limit", "assuming no EEA")
 
-        MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, mrid, psrtype, trafo_id, p_max, null, reason, details)
+        MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, mrid, psrtype, trafo_id, feeder_id, p_max, null, reason, details)
     }
 
     def has(string: String): String =
@@ -152,21 +156,50 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power)
     }
 
-    def trafo_mapping (transformers: TransformerSet): StartingTrafos =
+    def trafo_mapping (transformers: TransformerSet): StartingTrafo =
     {
         val pn = PreNode ("", 0.0, null)
         val v0 = pn.vertex_id (transformers.node0)
         val v1 = pn.vertex_id (transformers.node1)
         val ratedS = transformers.power_rating
         val impedance = transformers.total_impedance_per_unit._1
-        StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
+        StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
+    /**
+     * The RDD of feeder objects.
+     *
+     * @return The RDD of feeders.
+     */
+    def feeders: RDD[Feeder] =
     {
-        val start_ids = transformers.map (trafo_mapping)
+        // get the list of N7 voltages and allowed power system resource types
+        // ToDo: fix this 1000V multiplier
+        val low_voltages = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage <= 1.0).map (_.id).collect
+        val allowed_PSRTypes = Array ("PSRType_Substation")
+        def isFeeder (element: Element): Boolean =
+            element match
+            {
+                case c: Connector ⇒
+                    low_voltages.contains (c.ConductingEquipment.BaseVoltage) &&
+                    allowed_PSRTypes.contains (c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
+                case _ ⇒ false
+            }
 
-        val graph = trace (initial, start_ids)
+        // get the list of M7 level feeders in substations
+        val pn = PreNode ("", 0.0, null)
+        val ret = getOrElse[Element]("Elements").keyBy (_.id).join (getOrElse[Terminal].keyBy (_.ConductingEquipment)).values
+            .flatMap (a ⇒ if (isFeeder (a._1)) List (Feeder (pn.vertex_id (a._2.TopologicalNode), a._1.id)) else List ())
+
+        ret.persist (storage_level)
+        ret.name = "Feeders"
+        ret
+    }
+
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet]): PreCalculationResults =
+    {
+
+        val graph = trace (initial, transformers.map (trafo_mapping), feeders)
         val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null))
         val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(sdata).values
 

@@ -159,7 +159,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def feeders: RDD[Element] =
     {
-        // get the list of M5 voltages
+        // get the list of N5 voltages
         // ToDo: fix this 1000V multiplier
         val medium_voltages = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
 

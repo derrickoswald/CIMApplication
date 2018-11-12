@@ -37,6 +37,7 @@ case class Trafokreis
     def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
     {
+        val feeder = h._1.feeder
         val node = h._1.id_seq // the node under test
         val house = h._1.mrid // the house under test (could be multiple houses per node)
         val index = h._2 // experiment #
@@ -45,7 +46,7 @@ case class Trafokreis
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-        Experiment (trafo, node, house, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
+        Experiment (trafo, feeder, node, house, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
     }
 
     // generate experiments

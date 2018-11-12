@@ -8,6 +8,7 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -15,6 +16,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -22,7 +24,6 @@ import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
-import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
@@ -84,9 +85,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match {
                 case None ⇒
-                    MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, Some (kw), reason, details)
+                    MaxEinspeiseleistung (experiment.trafo, experiment.feeder, experiment.node, experiment.house, Some (kw), reason, details)
                 case Some(kw1) ⇒
-                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, Some(kw), reason, details)
+                    if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.feeder, experiment.node, experiment.house, Some(kw), reason, details)
             }
         }
         def combop(a: MaxEinspeiseleistung, b: MaxEinspeiseleistung): MaxEinspeiseleistung =
@@ -105,7 +106,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     }
             }
         }
-        values.aggregate (MaxEinspeiseleistung (experiment.trafo, experiment.node, experiment.house, None, "unknown", ""))(seqop, combop)
+        values.aggregate (MaxEinspeiseleistung (experiment.trafo, experiment.feeder, experiment.node, experiment.house, None, "unknown", ""))(seqop, combop)
     }
 
     def voltcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
@@ -268,7 +269,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
-            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.node, e.house, None, "gridlab failed", "no results")).toList
+            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, "gridlab failed", "no results")).toList
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
@@ -520,7 +521,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
-        val transformers: RDD[TransformerSet] = if (null != trafos)
+        val transformers = if (null != trafos)
         {
             val selected = tdata.filter (x => trafos.contains (x.transformer.id)).distinct
             selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
@@ -531,6 +532,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
+        transformers.persist (storage_level)
+        transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
@@ -542,8 +545,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
-            val pf = new PowerFeeding (session)
-            pf.threshold_calculation (initial, sdata, transformers, gridlabd, storage_level)
+            val pf = new PowerFeeding (session, storage_level)
+            pf.threshold_calculation (initial, sdata, transformers)
         }
 
         val houses = if (options.all)
@@ -607,12 +610,13 @@ object Einspeiseleistung
             classOf[ch.ninecode.mfi.EinspeiseleistungGLMGenerator],
             classOf[ch.ninecode.mfi.EinspeiseleistungOptions],
             classOf[ch.ninecode.mfi.Experiment],
+            classOf[ch.ninecode.mfi.Feeder],
             classOf[ch.ninecode.mfi.MaxEinspeiseleistung],
             classOf[ch.ninecode.mfi.MaxPowerFeedingNodeEEA],
             classOf[ch.ninecode.mfi.PowerFeeding],
             classOf[ch.ninecode.mfi.PowerFeedingNode],
             classOf[ch.ninecode.mfi.PreCalculationResults],
-            classOf[ch.ninecode.mfi.StartingTrafos],
+            classOf[ch.ninecode.mfi.StartingTrafo],
             classOf[ch.ninecode.mfi.Trafokreis]
         )
     }

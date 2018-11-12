@@ -48,7 +48,8 @@ object Database
                   |(
                   |    id integer primary key autoincrement, -- unique id for each simulation result
                   |    simulation integer,                   -- foreign key to corresponding simulation table program execution
-                  |    trafo text,                           -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |    trafo text,                           -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+                  |    feeder text,                          -- mRID of the Connector supplying the house from the substation
                   |    house text,                           -- mRID of the EnergyConsumer at this feed-in node
                   |    maximum double,                       -- maximum feed-in power (W)
                   |    eea integer,                          -- the number of PV installations at this feed-in node
@@ -71,7 +72,8 @@ object Database
                   |        s.description Analysis, -- 'Threshold Precalculation'
                   |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
                   |        s.time When_Epoc,       -- numeric program execution time
-                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+                  |        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
                   |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
                   |        r.maximum Maximum,      -- maximum feed-in power (W)
                   |        r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -88,7 +90,8 @@ object Database
                   |        s.description Analysis, -- 'Einspeiseleistung'
                   |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
                   |        s.time When_Epoc,       -- numeric program execution time
-                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+                  |        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
                   |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
                   |        r.maximum Maximum,      -- maximum feed-in power (W)
                   |        r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -104,7 +107,8 @@ object Database
                   |    -- view of the most recent best estimated value of maximum feed-in power
                   |    select
                   |        i.Analysis,             -- type of analysis, prefer 'Einspeiseleistung'
-                  |        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+                  |        i.Feeder,               -- mRID of the Connector supplying the house from the substation
                   |        i.House,                -- mRID of the EnergyConsumer at this feed-in node
                   |        i.Maximum,              -- maximum feed-in power (W)
                   |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -120,6 +124,7 @@ object Database
                   |    select
                   |        i.Analysis,             -- type of analysis, fall back to 'Threshold Precalculation'
                   |        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+                  |        i.Feeder,               -- mRID of the Connector supplying the house from the substation
                   |        i.House,                -- mRID of the EnergyConsumer at this feed-in node
                   |        i.Maximum,              -- maximum feed-in power (W)
                   |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -171,22 +176,23 @@ object Database
                 statement.close ()
 
                 // insert the results
-                val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?)")
+                val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, feeder, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
                     datainsert.setNull (1, Types.INTEGER)
                     datainsert.setInt (2, id)
                     datainsert.setString (3, records(i).trafo)
-                    datainsert.setString (4, records(i).house)
+                    datainsert.setString (4, records(i).feeder)
+                    datainsert.setString (5, records(i).house)
                     records(i).max match
                     {
                         case None =>
-                            datainsert.setNull (5, Types.DOUBLE)
+                            datainsert.setNull (6, Types.DOUBLE)
                         case Some (kw) =>
-                            datainsert.setDouble (5, kw)
+                            datainsert.setDouble (6, kw)
                     }
-                    datainsert.setString (6, records(i).reason)
-                    datainsert.setString (7, records(i).details)
+                    datainsert.setString (7, records(i).reason)
+                    datainsert.setString (8, records(i).details)
                     datainsert.executeUpdate ()
                 }
                 datainsert.close ()
@@ -256,26 +262,24 @@ object Database
             // insert the results
             val records = results.collect ()
 
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, feeder, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
             for (i <- records.indices)
             {
-                val trafo_id = records(i).source_obj
-                val eea = if (records(i).eea != null) records(i).eea.size else 0
-                val has_id =  records(i).mrid
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
-                datainsert.setString (3, trafo_id)
-                datainsert.setString (4, has_id)
-                datainsert.setDouble (5, records(i).max_power_feeding)
-                datainsert.setInt(6, eea)
-                datainsert.setString (7, records(i).reason)
+                datainsert.setString (3, records(i).source_obj)
+                datainsert.setString (4, records(i).feeder)
+                datainsert.setString (5, records(i).mrid)
+                datainsert.setDouble (6, records(i).max_power_feeding)
+                datainsert.setInt (7, if (records(i).eea != null) records(i).eea.size else 0)
+                datainsert.setString (8, records(i).reason)
                 if (null == records(i).details)
                 {
-                    datainsert.setNull (8, Types.VARCHAR)
-                    datainsert.setNull (5, Types.DECIMAL) // also set the maximum to null
+                    datainsert.setNull (9, Types.VARCHAR)
+                    datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
                 }
                 else
-                    datainsert.setString (8, records(i).details)
+                    datainsert.setString (9, records(i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close ()

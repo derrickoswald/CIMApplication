@@ -7,6 +7,7 @@ import java.util.Calendar
  * Stepped experiment parameters.
  *
  * @param trafo CIM mRID of the transformer feeding the house.
+ * @param feeder CIM mRID of the connector in the substation feeding the house.
  * @param node CIM mRID of the topological node being experimented on
  * @param house CIM mRID of house being experimented on.
  * @param t0 Origin for all experiments.
@@ -19,6 +20,7 @@ import java.util.Calendar
  */
 case class Experiment(
     trafo: String,
+    feeder: String,
     node: String,
     house: String,
     t0: Calendar,
@@ -47,6 +49,7 @@ case class Experiment(
 
     override def toString: String = "Experiment(" +
         trafo + "," +
+        feeder + "," +
         node + "," +
         house + "," +
         new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
