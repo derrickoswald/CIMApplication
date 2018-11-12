@@ -26,45 +26,6 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    /**
-     * Retain only PV that are in service or have a valid application pending.
-     * @param pv The PV to filter.
-     * @return The valid PV.
-     */
-    def filterValidSolarUnits (pv: RDD[PV]): RDD[PV] =
-    {
-        val lifecycle_per_eea = getOrElse[Asset].keyBy (_.lifecycle).join (getOrElse[LifecycleDate].keyBy (_.id)).map (l ⇒ (l._2._1.IdentifiedObject.name, l._2._2))
-        val pv_lifecycle = pv.keyBy (_.solar.id).leftOuterJoin (lifecycle_per_eea)
-
-        def lifecycleValid (lifecycle: LifecycleDate): Boolean =
-        {
-            if (lifecycle.installationDate != null)
-                true
-            else if (lifecycle.receivedDate != null)
-            {
-                val _DateFormat = new SimpleDateFormat ("dd.MM.yyyy")
-                val receivedDate = _DateFormat.parse (lifecycle.receivedDate)
-                val now = new Date ()
-                val diffTime = now.getTime - receivedDate.getTime
-                val diffDays = diffTime / (1000 * 60 * 60 * 24)
-                diffDays < 400
-            }
-            else
-                false
-        }
-
-        val valid_pv = pv_lifecycle.filter (
-            p ⇒
-                p._2._2 match
-                {
-                    case Some (date) ⇒ lifecycleValid (date)
-                    case _ ⇒ false
-                }
-        )
-
-        valid_pv.map (_._2._1)
-    }
-
     // get the existing photo-voltaic installations keyed by terminal
     def getSolarInstallations: RDD[(String, Iterable[PV])] =
     {
@@ -98,8 +59,7 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
             x ⇒ PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-        val filteredPV = filterValidSolarUnits (t)
-        val pv = filteredPV.groupBy (_.node)
+        val pv = t.groupBy (_.node)
 
         pv.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) pv.checkpoint ()
