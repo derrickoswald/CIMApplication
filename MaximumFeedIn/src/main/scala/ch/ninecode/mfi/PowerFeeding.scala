@@ -176,7 +176,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         // get the list of N7 voltages and allowed power system resource types
         // ToDo: fix this 1000V multiplier
         val low_voltages = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage <= 1.0).map (_.id).collect
-        val allowed_PSRTypes = Array ("PSRType_Substation")
+        val allowed_PSRTypes = Array ("PSRType_Substation", "PSRType_TransformerStation")
         def isFeeder (element: Element): Boolean =
             element match
             {

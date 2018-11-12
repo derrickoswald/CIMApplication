@@ -27,7 +27,7 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
 
     override def extra: Iterable[String] =
     {
-        def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null)
+        def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null).groupBy (_.id_seq).values. map (_.head)
 
         def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
         {

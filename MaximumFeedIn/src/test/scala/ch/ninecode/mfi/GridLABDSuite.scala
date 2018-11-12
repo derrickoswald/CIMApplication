@@ -252,7 +252,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    ignore ("Verstärkern")
+    test ("Verstärkern")
     {
         session: SparkSession ⇒
 
