@@ -364,56 +364,6 @@ object Database
 
     }
 
-    def fetchHouseMaximumsForTransformer (simulation: Int, transformer: String): Array[(String,Double)] =
-    {
-        var ret = new ArrayBuffer[(String,Double)] ()
-
-        // check if the directory exists
-        val file = Paths.get ("simulation/results.db")
-        if (!Files.exists (file))
-            log.error ("database file " + file + " does not exist")
-        else
-        {
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-
-            var connection: Connection = null
-            try
-            {
-                // create a database connection
-                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-
-                val statement = connection.prepareStatement ("select house, maximum from results where simulation = ? and trafo = ?")
-                statement.setInt (1, simulation)
-                statement.setString (2, transformer)
-                val resultset = statement.executeQuery ()
-                while (resultset.next ())
-                    ret += ((resultset.getString (1), resultset.getDouble (2)))
-                resultset.close ()
-            }
-            catch
-            {
-                // if the error message is "out of memory",
-                // it probably means no database file is found
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
-            }
-            finally
-            {
-                try
-                {
-                    if (connection != null)
-                        connection.close ()
-                }
-                catch
-                {
-                    // connection close failed
-                    case e: SQLException ⇒ log.error ("exception caught: " + e);
-                }
-            }
-        }
-        ret.toArray
-    }
-
     def fetchTransformersWithEEA (simulation: Int): Array[String] =
     {
         var ret = new ArrayBuffer[String] ()
