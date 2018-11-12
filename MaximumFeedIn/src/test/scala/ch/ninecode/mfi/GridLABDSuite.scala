@@ -135,18 +135,18 @@ class GridLABDSuite extends FunSuite
                 assert (resultset.getString (4) == "current limit", "reason")
                 assert (resultset.getString (5) == "CAB0001 > 134.0 Amps", "details")
                 records = records + 1
-                assert (records == 1, "number of records")
             }
             resultset.close ()
             statement.close ()
             connection.close ()
+            assert (records == 1, "number of records")
     }
 
 
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    test ("Three windng transformer")
+    test ("Three winding transformer")
     {
         session: SparkSession ⇒
 
@@ -184,7 +184,6 @@ class GridLABDSuite extends FunSuite
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results)")
-            var records: Int = 0
             while (resultset.next)
             {
                 if (resultset.getString (2) == "USR0004" || resultset.getString (2) == "USR0005")
@@ -238,7 +237,6 @@ class GridLABDSuite extends FunSuite
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results) and trafo = 'TRA8208'")
-            var records: Int = 0
             while (resultset.next)
             {
 //                 Einspeiseleistung|TRA8208|HAS2760|81000.0|current limit|KLE12754 > 115.0 Amps|1541685757548
@@ -292,7 +290,6 @@ class GridLABDSuite extends FunSuite
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and trafo = 'TRA5036'")
-            var records: Int = 0
             var HAS108891 = false
             var HAS14977 = false
             var HAS108891_power: Option[Double] = None

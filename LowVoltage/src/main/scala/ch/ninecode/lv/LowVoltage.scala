@@ -227,13 +227,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val transformers = if (null != trafos)
         {
             val selected = tdata.filter (x => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
         }
         else
         {
             // do all low voltage power transformers
             val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
         }
 
         val prepare = System.nanoTime ()
@@ -250,8 +250,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
 
         val houses = precalc_results.has
 
-        val tl: RDD[TransformerSet] = session.sparkContext.parallelize (transformers)
-        val trafo_list: RDD[TransformerSet] = houses.keyBy (_.source_obj).groupByKey.join (tl.keyBy (_.transformer_name)).values.map (_._2)
+        val trafo_list: RDD[TransformerSet] = houses.keyBy (_.source_obj).groupByKey.join (transformers.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
 
         val precalc = System.nanoTime ()

@@ -8,7 +8,6 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -16,7 +15,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -24,6 +22,7 @@ import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
+import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
@@ -521,22 +520,22 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
-        val transformers: Array[TransformerSet] = if (null != trafos)
+        val transformers: RDD[TransformerSet] = if (null != trafos)
         {
             val selected = tdata.filter (x => trafos.contains (x.transformer.id)).distinct
-            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
+            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
         else
         {
             // do all low voltage power transformers
             val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
-            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray)).collect
+            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
         if (log.isDebugEnabled)
-            transformers.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
+            transformers.map (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
 
         // do the pre-calculation
         val precalc_results =
@@ -560,8 +559,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
 
-        val tl = session.sparkContext.parallelize (transformers)
-        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (tl.keyBy (_.transformer_name)).values.map (_._2)
+        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (transformers.keyBy (_.transformer_name)).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
         if (log.isDebugEnabled)
             trafo_list.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))

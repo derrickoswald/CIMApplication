@@ -85,21 +85,22 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         node
     }
 
-    def trace (initial: Graph[PreNode, PreEdge], starting_nodes: Array[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
+    def trace (initial: Graph[PreNode, PreEdge], starting_nodes: RDD[StartingTrafos]): Graph[PowerFeedingNode, PreEdge] =
     {
         log.info ("trace")
-        // create the initial Graph with PowerFeedingNode vertecies
-        def starting_map (id: VertexId, v: PreNode): PowerFeedingNode =
+
+        // create the initial Graph with PowerFeedingNode vertices
+        def starting_map (id: VertexId, v: PreNode, trafo: Option[StartingTrafos]): PowerFeedingNode =
         {
-            starting_nodes.find (s ⇒ s.nsPin == id) match
+            trafo match
             {
-                case Some (node) =>
-                    PowerFeedingNode (v.id, v.nominal_voltage, node, 0.0, Double.PositiveInfinity, v.problem)
+                case Some (transformer) =>
+                    PowerFeedingNode (v.id, v.nominal_voltage, transformer, 0.0, Double.PositiveInfinity, v.problem)
                 case None =>
                     PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
             }
         }
-        val graph = initial.mapVertices (starting_map)
+        val graph = initial.outerJoinVertices (starting_nodes.keyBy (_.nsPin)) (starting_map)
 
         // run Pregel
         val default_message = PowerFeedingNode(null, 0, null.asInstanceOf[StartingTrafos], Double.NegativeInfinity, Double.PositiveInfinity, null)
@@ -161,7 +162,7 @@ class PowerFeeding (session: SparkSession) extends CIMRDD with Serializable
         StartingTrafos (v0, v1, transformers.transformer_name, impedance, ratedS)
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: Array[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], gridlabd: GridLABD, storage_level: StorageLevel): PreCalculationResults =
     {
         val start_ids = transformers.map (trafo_mapping)
 

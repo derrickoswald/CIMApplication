@@ -98,7 +98,7 @@ class PowerFeedingSuite extends FunSuite
         tdata.persist (storage_level)
         // ToDo: fix this 1kV multiplier on the voltages
         val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
-        val transformers = niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).map (TransformerSet (_)).collect
+        val transformers = niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (_.toArray).map (TransformerSet (_))
 
         // get the existing photo-voltaic installations keyed by terminal
         val solar = Solar (session, use_topological_nodes, storage_level)
