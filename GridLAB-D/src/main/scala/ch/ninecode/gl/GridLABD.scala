@@ -430,7 +430,7 @@ class GridLABD (
                 val os = System.getProperty("os.name")
                 if (os.startsWith("Windows"))
                 {
-                    val scriptPath = "D:/workspace_projects/CIMApplication/GridLAB-D/src/test/resources/pipe.sh"
+                    val scriptPath = "../GridLAB-D/src/test/resources/pipe.sh"
                     Array[String](
                         "bash",
                         scriptPath

@@ -1,6 +1,7 @@
 #!/bin/bash
 while read line; do
     export FILE=${line/$'\r'/};
+    ulimit -Sn `ulimit -Hn`;
     pushd simulation/$FILE > /dev/null;
     gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON["FILE"] " " $0}' > $FILE.out;
     cat output_data/* > output.txt;
