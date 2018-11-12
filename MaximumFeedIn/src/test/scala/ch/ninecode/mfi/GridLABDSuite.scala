@@ -252,7 +252,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    test ("Verstärkern")
+    ignore ("Verstärkern")
     {
         session: SparkSession ⇒
 
@@ -289,7 +289,7 @@ class GridLABDSuite extends FunSuite
             val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
             val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and trafo = 'TRA5036'")
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and trafo = 'TRA5036'  AND details != 'no results'")
             var HAS108891 = false
             var HAS14977 = false
             var HAS108891_power: Option[Double] = None
@@ -315,5 +315,6 @@ class GridLABDSuite extends FunSuite
             assert (HAS108891, "HAS108891")
             assert (HAS14977, "HAS14977")
             assert (HAS108891_power == HAS14977_power, "maximum")
+            assert (HAS14977_power.getOrElse(0.0) > 0, "maximum greater 0")
     }
 }
