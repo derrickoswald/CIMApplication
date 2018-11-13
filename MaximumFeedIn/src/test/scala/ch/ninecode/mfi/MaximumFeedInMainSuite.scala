@@ -1,10 +1,10 @@
-package ch.ninecode.on
+package ch.ninecode.mfi
 
 import org.scalatest.FunSuite
 
-import ch.ninecode.on.Main.main
+import ch.ninecode.mfi.Main.main
 
-class OneOfNMainSuite extends FunSuite
+class MaximumFeedInMainSuite extends FunSuite
 {
     test ("Help")
     {
