@@ -131,11 +131,20 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         val voltage = node.voltage
         var load = ""
         var index = 1
+
+        def active_part(s: Double, cosPhi: Double) = s * cosPhi
+        def reactive_part(s: Double, cosPhi: Double) =
+            {
+                val p_val = active_part(s, cosPhi)
+                Math.sqrt(s*s - p_val * p_val)
+            }
+
         for (solargeneratingunit ← solargeneratingunits)
         {
-            val power = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-            val power3 = power / 3 // per phase
-            if (power > 0) {
+            val ratedNetMaxP = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
+            val normalPF = solargeneratingunit.GeneratingUnit.normalPF
+            val cosPhi = if (normalPF > 0.0 ) normalPF else 1
+            if (ratedNetMaxP > 0) {
                 load +=
                     "\n" +
                     "        object load\n" +
@@ -143,12 +152,19 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                     "            name \"" + parent + "_pv_" + index + "\";\n" +
                     "            parent \"" + parent + "\";\n" +
                     "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                    (if (one_phase)
-                        "            constant_power_A -" + power + ";\n"
+                    (if (one_phase) {
+                        val active_power = active_part(ratedNetMaxP, cosPhi)
+                        val reactive_power = reactive_part(ratedNetMaxP, cosPhi)
+                            "            constant_power_A -" + active_power + "-" + reactive_power + "j;\n"
+                    }
                     else
-                        "            constant_power_A -" + power3 + ";\n" +
-                        "            constant_power_B -" + power3 + ";\n" +
-                        "            constant_power_C -" + power3 + ";\n") +
+                    {
+                        val active_power = active_part(ratedNetMaxP / 3, cosPhi)
+                        val reactive_power = reactive_part(ratedNetMaxP / 3, cosPhi)
+                        "            constant_power_A -" + active_power + "-" + reactive_power + "j;\n" +
+                        "            constant_power_B -" + active_power + "-" + reactive_power + "j;\n" +
+                        "            constant_power_C -" + active_power + "-" + reactive_power + "j;\n"
+                    }) +
                     "            nominal_voltage " + voltage + "V;\n" +
                     "            load_class R;\n" +
                     "        }\n"
