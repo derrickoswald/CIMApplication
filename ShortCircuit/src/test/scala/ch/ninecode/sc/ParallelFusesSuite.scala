@@ -98,6 +98,22 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             assert(filtered_results.count == 52, "52 HAS with parallel fuses expected")
     }
 
+    test ("Testcase4")
+    {
+        session: SparkSession ⇒
+
+            val filename = FILE_DEPOT + FILENAME4
+            val results = processFile(session, filename)
+
+            val HAS93543 = results.filter (_.equipment == "HAS93543").first ()
+            assert (HAS93543.errors == List ("computed by load-flow"), "HAS93543 should be valid")
+            assert (Math.abs (HAS93543.low_sk - 1381776) < 5e3, "expected 1.381MVA for HAS93543")
+
+            val HAS87363 = results.filter (_.equipment == "HAS87363").first ()
+            assert (HAS87363.errors == List ("computed by load-flow"), "HAS87363 should be valid")
+            assert (Math.abs (HAS87363.low_sk - 2219547) < 5e3, "expected 2.220MVA for HAS87363")
+    }
+
     test ("Testcase6")
     {
         session: SparkSession ⇒
