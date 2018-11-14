@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import ch.ninecode.gl._
+import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
@@ -142,8 +143,11 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         for (solargeneratingunit ← solargeneratingunits)
         {
             val ratedNetMaxP = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-            val normalPF = solargeneratingunit.GeneratingUnit.normalPF
-            val cosPhi = if (normalPF > 0.0 ) normalPF else 1
+            val normalPFMask = GeneratingUnit.fields.indexOf ("normalPF")
+            val cosPhi = if (0 != (solargeneratingunit.GeneratingUnit.bitfields (normalPFMask / 32) & (1 << (normalPFMask % 32))))
+                solargeneratingunit.GeneratingUnit.normalPF
+            else
+                1.0
             if (ratedNetMaxP > 0) {
                 load +=
                     "\n" +
