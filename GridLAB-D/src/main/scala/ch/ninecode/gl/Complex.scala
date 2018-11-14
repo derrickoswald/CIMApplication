@@ -87,7 +87,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
             case Complex (0, i) ⇒ numberformat (i, digits) + "j"
             case _ ⇒ asString (digits)
         }
-    private def asString (digits: Int) =
+    def asString (digits: Int) =
         numberformat (re, digits) + numberformat (im, digits, true) + "j"
     def asPair: (Double, Double) = (re, im)
 

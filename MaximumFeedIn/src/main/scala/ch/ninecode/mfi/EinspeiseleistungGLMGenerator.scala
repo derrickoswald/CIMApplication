@@ -3,6 +3,8 @@ package ch.ninecode.mfi
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
+import scala.math._
+
 import ch.ninecode.gl._
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
@@ -133,13 +135,6 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         var load = ""
         var index = 1
 
-        def active_part(s: Double, cosPhi: Double) = s * cosPhi
-        def reactive_part(s: Double, cosPhi: Double) =
-            {
-                val p_val = active_part(s, cosPhi)
-                Math.sqrt(s*s - p_val * p_val)
-            }
-
         for (solargeneratingunit ← solargeneratingunits)
         {
             val ratedNetMaxP = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
@@ -148,6 +143,12 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                 solargeneratingunit.GeneratingUnit.normalPF
             else
                 1.0
+            val ratedP = if (one_phase) ratedNetMaxP else ratedNetMaxP / 3
+            // https://en.wikipedia.org/wiki/Power_factor
+            // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+            // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+            // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
+            val maxP = - new Complex (ratedP * math.abs (cosPhi), ratedP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
             if (ratedNetMaxP > 0) {
                 load +=
                     "\n" +
@@ -156,18 +157,13 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                     "            name \"" + parent + "_pv_" + index + "\";\n" +
                     "            parent \"" + parent + "\";\n" +
                     "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                    (if (one_phase) {
-                        val active_power = active_part(ratedNetMaxP, cosPhi)
-                        val reactive_power = reactive_part(ratedNetMaxP, cosPhi)
-                            "            constant_power_A -" + active_power + "-" + reactive_power + "j;\n"
-                    }
+                    (if (one_phase)
+                        "            constant_power_A %s;\n".format (maxP.asString (6))
                     else
                     {
-                        val active_power = active_part(ratedNetMaxP / 3, cosPhi)
-                        val reactive_power = reactive_part(ratedNetMaxP / 3, cosPhi)
-                        "            constant_power_A -" + active_power + "-" + reactive_power + "j;\n" +
-                        "            constant_power_B -" + active_power + "-" + reactive_power + "j;\n" +
-                        "            constant_power_C -" + active_power + "-" + reactive_power + "j;\n"
+                        "            constant_power_A %s;\n".format (maxP.asString (6)) +
+                        "            constant_power_A %s;\n".format (maxP.asString (6)) +
+                        "            constant_power_A %s;\n".format (maxP.asString (6))
                     }) +
                     "            nominal_voltage " + voltage + "V;\n" +
                     "            load_class R;\n" +

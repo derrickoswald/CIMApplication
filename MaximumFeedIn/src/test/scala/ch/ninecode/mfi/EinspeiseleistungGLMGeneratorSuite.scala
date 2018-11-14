@@ -2,8 +2,7 @@ package ch.ninecode.mfi
 
 import org.scalatest.FunSuite
 import ch.ninecode.model.SolarGeneratingUnit
-import ch.ninecode.cim.{CHIM}
-
+import ch.ninecode.cim.CHIM
 
 class EinspeiseleistungGLMGeneratorSuite extends FunSuite {
 
@@ -36,7 +35,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite {
 
         assert(power_list.length == 1, "1 phase")
         power_list.foreach(p => {
-            assert(p == "-10000.0-0.0j", "active power only")
+            assert(p == "-10000.0+0.0j", "active power only")
         })
     }
 
@@ -56,7 +55,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite {
         val power_list = getConstantPower(solargen)
         assert(power_list.length == 1, "1 phase")
         power_list.foreach(p => {
-            assert(p == "-11000.0-0.0j", "active power only")
+            assert(p == "-11000.0+0.0j", "active power only")
         })
     }
 
@@ -80,6 +79,26 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite {
         })
     }
 
+    test("emit pv with cosphi -0.8, 1 phase") {
+        val xml =
+            """
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
+            """.stripMargin
+
+        val solargen = parseSolarGen(xml)
+        assert(solargen.sup.normalPF == -0.8, "normalPf should be -0.8")
+        assert(solargen.sup.ratedNetMaxP == 5.0, "ratedNetMaxP should be 5.0")
+
+        val power_list = getConstantPower(solargen)
+        assert(power_list.length == 1, "1 phase")
+        power_list.foreach(p => {
+            assert(p == "-4000.0+3000.0j", "active power only")
+        })
+    }
+
     test("emit pv with cosphi 0.8, 3 phase") {
         val xml =
             """
@@ -97,6 +116,26 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite {
         assert(power_list.length == 3, "3 phase")
         power_list.foreach(p => {
             assert(p == "-4000.0-3000.0j", "active power only")
+        })
+    }
+
+    test("emit pv with cosphi -0.8, 3 phase") {
+        val xml =
+            """
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
+            """.stripMargin
+
+        val solargen = parseSolarGen(xml)
+        assert(solargen.sup.normalPF == -0.8, "normalPf should be -0.8")
+        assert(solargen.sup.ratedNetMaxP == 15.0, "ratedNetMaxP should be 15.0")
+
+        val power_list = getConstantPower(solargen, false)
+        assert(power_list.length == 3, "3 phase")
+        power_list.foreach(p => {
+            assert(p == "-4000.0+3000.0j", "active power only")
         })
     }
 }
