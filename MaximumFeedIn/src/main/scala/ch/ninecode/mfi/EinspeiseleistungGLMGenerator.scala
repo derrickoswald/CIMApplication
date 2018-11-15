@@ -8,6 +8,7 @@ import scala.math._
 import ch.ninecode.gl._
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
+import ch.ninecode.model.Switch
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
 extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
@@ -47,6 +48,36 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         super.emit_node (node) + generate_load (node)
     }
 
+    /**
+     * Emit a switch or fuse with large current limit.
+     *
+     * @param edge the details about the switch or fuse
+     * @param generator the driver program
+     * @return A switch string (.glm text) for this edge.
+     */
+    def emit_switch (edge: SwitchEdge, generator: GLMGenerator): String =
+    {
+        val status = if (edge.switch.normalOpen) "OPEN" else "CLOSED"
+        val current = 9999.0 // override so it never trips
+        val fuse_details = if (edge.fuse)
+            """
+                mean_replacement_time 3600.0;
+                current_limit %sA;""".format (current)
+        else
+            ""
+
+            """
+              |        object %s
+              |        {
+              |            name "%s";
+              |            phases %s;
+              |            from "%s";
+              |            to "%s";
+              |            status "%s";%s
+              |        };
+              |""".stripMargin.format (if (edge.fuse) "fuse" else "switch", edge.id, if (generator.isSinglePhase) "AN" else "ABCN", edge.cn1, edge.cn2, status, fuse_details)
+    }
+
     override def emit_edge (edge: GLMEdge): String =
     {
         def current_recorder: String =
@@ -62,7 +93,12 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
             "        };\n"
         }
 
-        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) current_recorder else "")
+        edge match
+        {
+            case cable: LineEdge ⇒ super.emit_edge (cable) + current_recorder
+            case swtch: SwitchEdge ⇒ emit_switch (swtch, this)
+            case _ ⇒ super.emit_edge (edge)
+        }
     }
 
     override def emit_transformer (transformer: TransformerEdge): String =

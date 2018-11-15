@@ -8,7 +8,6 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -16,10 +15,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -27,6 +27,8 @@ import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Terminal
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
 {
@@ -118,7 +120,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val limit = "voltage limit"
 
         // swap the list around so we can look up node to get feeder
-        val lookup = feeders.map (x ⇒ (x._2, x._1)).toMap
+        val lookup = feeders.toMap
         // assign an experiment to each measurement - if it's over-voltage
         elements.filter (_.units == "Volts").flatMap (
             x ⇒
@@ -497,6 +499,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val ele = ntp.process (
                 CIMTopologyOptions (
                     identify_islands = false,
+                    force_retain_switches = Unforced,
+                    force_retain_fuses = ForceTrue,
+                    default_switch_open_state = false,
+                    debug = false,
                     storage = storage_level))
             log.info (ele.count () + " elements")
         }
@@ -589,7 +595,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("filtered_trafos: " + count)
             if (0 != count)
             {
-                val feeder_map = vertices.map (x ⇒ (x.source_obj.trafo_id, (if (null != x.feeder) x.feeder.feeder_id else null, x.id))).groupByKey
+                val trafos_nodes_feeders = vertices.map (x ⇒ (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null)))
+                val nodes_equipment = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy(_.id))
+                    .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, x._2._2.id))
+                val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values.map (x ⇒ (x._2._1, (x._1, x._2._2._2)))
+                val feeder_map = trafo_equipment_feeder.groupByKey
                 einspeiseleistung (gridlabd, filtered_trafos, feeder_map, storage_level)
                 log.info ("finished " + count + " trafokreis")
             }
