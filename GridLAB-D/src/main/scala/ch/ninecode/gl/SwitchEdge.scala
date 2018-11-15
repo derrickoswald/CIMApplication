@@ -11,7 +11,7 @@ case class SwitchEdge
 )
 extends GLMEdge
 {
-    def id: String = switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
+    def id: String = switch.id
 
     /**
      * Emit a switch or fuse.

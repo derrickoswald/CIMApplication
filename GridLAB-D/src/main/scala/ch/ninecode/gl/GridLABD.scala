@@ -689,6 +689,7 @@ object GridLABD
             classOf[ch.ninecode.gl.TData],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
             classOf[ch.ninecode.gl.Trace],
+            classOf[ch.ninecode.gl.TransformerData],
             classOf[ch.ninecode.gl.TransformerEdge],
             classOf[ch.ninecode.gl.TransformerServiceArea],
             classOf[ch.ninecode.gl.VertexData],

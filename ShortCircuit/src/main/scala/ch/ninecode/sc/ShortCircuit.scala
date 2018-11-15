@@ -24,7 +24,6 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
-import ch.ninecode.gl.TData
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.TransformerSet
