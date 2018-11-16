@@ -119,7 +119,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     {
         val limit = "voltage limit"
 
-        // swap the list around so we can look up node to get feeder
+        // look up node to get feeder
         val lookup = feeders.toMap
         // assign an experiment to each measurement - if it's over-voltage
         elements.filter (_.units == "Volts").flatMap (
@@ -138,49 +138,36 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         )
     }
 
-    def ampcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+    def overcurrent_one_phase (r: ThreePhaseComplexDataElement, threshold: Double): Boolean = r.value_a.abs / Math.sqrt(3) > threshold
+    def overcurrent_three_phase (r: ThreePhaseComplexDataElement, threshold: Double): Boolean = (r.value_a.abs > threshold) || (r.value_b.abs > threshold) || (r.value_c.abs > threshold)
+    val overcurrent: (ThreePhaseComplexDataElement, Double) ⇒ Boolean = if (options.three) overcurrent_three_phase else overcurrent_one_phase
+
+    def ampcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
         val limit = "current limit"
 
-        // eliminate measurements below capacity
-        def interesting1ph(arg: (ThreePhaseComplexDataElement, Double)): Boolean =
-        {
-            val r = arg._1
-            val max = arg._2
-            r.value_a.abs / Math.sqrt(3) > max
-        }
-        def interesting3ph(arg: (ThreePhaseComplexDataElement, Double)): Boolean =
-        {
-            val r = arg._1
-            val max = arg._2
-            (r.value_a.abs > max) || (r.value_b.abs > max) || (r.value_c.abs > max)
-        }
+        // look up node to get feeder
+        val lookup = feeders.toMap
 
-        // assign an experiment to each measurement
-        def assign(experiments: Iterable[Experiment])(arg: (ThreePhaseComplexDataElement, Double)): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
-        {
-            val r = arg._1
-            val max = arg._2
-            for
-            {
-                e ← experiments
-                if (e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis)
-            }
-            yield (e, r, limit, r.element + " > " + max + " Amps")
-        }
-
+        // look up cable to get current rating
         val cdata_map = cdata.toMap
-        val joined_elements = elements.map(e ⇒ {
-            val max_val = cdata_map.get(e.element)
-            val max = if (max_val.isDefined)
-                max_val.get
-            else
-                Double.PositiveInfinity
-            (e, max)
-        })
 
-        val overI = joined_elements.filter (if (options.three) interesting3ph else interesting1ph)
-        overI.flatMap (assign (experiments))
+        // assign an experiment to each measurement - if it's over-current
+        elements.filter (_.units == "Amps").flatMap (
+            x ⇒
+            {
+                for
+                {
+                    e ← experiments
+                    if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
+                    feeder = lookup.getOrElse (x.element, null)
+                    if feeder == e.feeder
+                    threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
+                    if overcurrent (x, threshold)
+                }
+                yield (e, x, limit, x.element + " > " + threshold + " Amps")
+            }
+        )
     }
 
     def powercheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], power: Double, trafo_name: String): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
@@ -247,7 +234,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val experiments = trafo._2._2._2
 
             val v = voltcheck (experiments, complexDataElements, max, neighbormax, feeders)
-            val i = ampcheck (experiments, complexDataElements, cdata)
+            val i = ampcheck (experiments, complexDataElements, cdata, feeders)
             val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
 
             // establish a "no limit found" default
