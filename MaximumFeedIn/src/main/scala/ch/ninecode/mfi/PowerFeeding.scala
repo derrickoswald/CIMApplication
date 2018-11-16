@@ -103,7 +103,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 v.copy (source_obj = trafo.get, sum_r = 0.0)
             else
                 v
-        val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin)) (starting_map)
+        val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin)) (starting_map).persist (storage_level)
 
         // run Pregel
         val default_message = PowerFeedingNode (null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
