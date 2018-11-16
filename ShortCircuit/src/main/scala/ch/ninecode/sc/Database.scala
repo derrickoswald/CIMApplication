@@ -270,7 +270,7 @@ object Database
                             datainsert2.setString (18, batch(i).fuseString)
                             datainsert2.setString (19, batch(i).lastFusesString)
                             datainsert2.setDouble (20, FData.fuse (batch(i).high_ik))
-                            if (FData.hasMissingValues(batch(i).fuses))
+                            if (FData.lastFuseHasMissingValues(batch(i).fuses))
                                 datainsert2.setNull (21, Types.BOOLEAN)
                             else
                                 datainsert2.setBoolean (21, FData.fuseOK (batch(i).high_ik, batch(i).fuses))

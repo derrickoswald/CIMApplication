@@ -98,7 +98,7 @@ object FData
             ok
         }
     }
-    def hasMissingValues (fuses: Branch): Boolean =
+    def lastFuseHasMissingValues (fuses: Branch): Boolean =
     {
         if (null == fuses)
             false
@@ -107,8 +107,8 @@ object FData
             val missing = fuses match
             {
                 case sim: SimpleBranch ⇒ sim.rating.getOrElse (Double.MinValue) <= 0.0
-                case ser: SeriesBranch ⇒ ser.series.exists (hasMissingValues)
-                case par: ParallelBranch ⇒ par.parallel.exists (hasMissingValues)
+                case ser: SeriesBranch ⇒ ser.lastFuses.exists (lastFuseHasMissingValues)
+                case par: ParallelBranch ⇒ par.parallel.exists (lastFuseHasMissingValues)
             }
             missing
         }
