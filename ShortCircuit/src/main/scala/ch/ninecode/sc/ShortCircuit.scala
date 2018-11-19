@@ -366,7 +366,7 @@ with Serializable
         {
             case Some (data) ⇒
                 val values = data.map (_._2)
-                val voltage = values.find (x ⇒ x.units == "Volts" && arg._1.mrid == extract_node (x.element))
+                val voltage = values.find (x ⇒ x.units == "Volts" && arg._1.mrid == x.element) // extract_node() is unnecessary here, voltage recorder file names are not suffixed
                 val currents = values.filter (x ⇒ x.units == "Amps" && arg._1.mrid == extract_node (x.element)).map (_.value_a)
                 voltage match
                 {
