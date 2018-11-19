@@ -47,6 +47,7 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                     trafokreis.transformers.node0,
                     trafokreis.transformers.v0,
                     null,
+                    null,
                     0.0,
                     Double.PositiveInfinity,
                     null)))
