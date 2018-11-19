@@ -123,7 +123,7 @@ class ParallelFusesSuite extends SparkSuite with BeforeAndAfter
             val filtered_results = filterResults(results, "TRA6864")
 
             assert(filtered_results.count == 1, "1 HAS with parallel fuses expected")
-            assert(FData.hasMissingValues(filtered_results.filter (_.equipment == "HAS112021").first.fuses), "has missing fuse value (-1)")
+            assert(FData.lastFuseHasMissingValues(filtered_results.filter (_.equipment == "HAS112021").first.fuses), "has missing fuse value (-1)")
             checkParallelFuse(filtered_results, "HAS112021", "([630.0,630.0],-1.0)")
     }
 

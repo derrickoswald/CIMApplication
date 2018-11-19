@@ -365,8 +365,9 @@ with Serializable
         val (z, path): (Complex, Branch) = arg._2 match
         {
             case Some (data) ⇒
-                val voltage: Option[ThreePhaseComplexDataElement] = data.map (_._2).find (x ⇒ x.units == "Volts" && arg._1.mrid == x.element)
-                val current: Iterable[Complex] = data.filter (x ⇒ x._2.units == "Amps" && arg._1.mrid == extract_node (x._2.element)).map (_._2.value_a)
+                val values = data.map (_._2)
+                val voltage = values.find (x ⇒ x.units == "Volts" && arg._1.mrid == extract_node (x.element))
+                val currents = values.filter (x ⇒ x.units == "Amps" && arg._1.mrid == extract_node (x.element)).map (_.value_a)
                 voltage match
                 {
                     case Some (volts) ⇒
@@ -374,8 +375,8 @@ with Serializable
                         val route = traceroute (arg._1.mrid, live)
                         val v = volts.value_a
                         implicit val zero: Complex = Complex(0)
-                        // val i = current.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
-                        val i = current.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
+                        // val i = currents.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
+                        val i = currents.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
                         val z = if (i == zero)
                         {
                             log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
@@ -385,46 +386,19 @@ with Serializable
                             (arg._1.voltage - v) / i
                         (z, route)
                     case _ ⇒
-                        (null, null)
+                    {
+                        log.error ("""no voltage records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                        (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+                    }
                 }
             case _ ⇒
-                (null, null)
+            {
+                log.error ("""no data records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+            }
         }
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z, path)
     }
-
-//    /**
-//     * Demultiplex file names into element and type.
-//     *
-//     * Converts a filename into the node mrid and type of recording - current or voltage.
-//     * For example, for a node called PIN767 with a node id of PIN767_topo, there may be files with names like:
-//     * <ul>
-//     * <li>PIN767_topo%FLE7941_current.csv</li>
-//     * <li>PIN767_topo%FLT1024_current.csv</li>
-//     * <li>PIN767_topo_voltage.csv</li>
-//     * </ul>
-//     * which would produce the pairs:
-//     * <ul>
-//     * <li>("PIN767_topo", "Amps)</li>
-//     * <li>("PIN767_topo", "Amps)</li>
-//     * <li>("PIN767_topo", "Volts)</li>
-//     * </ul>
-//     *
-//     * @param filename the filename to demultiplex
-//     * @return the pair of node id and type of recorder
-//     */
-//    def special_filenameparser (filename: String): (String, String) =
-//    {
-//        val elementindex = filename.indexOf ("%")
-//        val element = if (-1 == elementindex) filename.substring (0, filename.lastIndexOf ("_")) else filename.substring (0, elementindex)
-//        val units = if (filename.endsWith ("_voltage.csv"))
-//            "Volts"
-//        else if (filename.endsWith ("_current.csv"))
-//            "Amps"
-//        else
-//            ""
-//        (element, units)
-//    }
 
     /**
      * Get the name element (possible multiplexed, e.g. node%edge) and type of measurement.
