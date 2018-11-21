@@ -114,6 +114,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             val description = "equivalent generation injection at %s primary".format (id)
             val element = BasicElement (null, mRID)
             element.bitfields = Array (Integer.parseInt ("1", 2))
+            // Note: use aliasName as a primary key temporarily
             val obj = IdentifiedObject (element, id, description, mRID, id + " equivalent injection", null, null)
             obj.bitfields = Array (Integer.parseInt ("1111", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
@@ -140,15 +141,16 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
 
     def table_exists (name: String): Boolean = session.catalog.tableExists (name)
 
-    def toTerminalsAndLocations (pair: (EquivalentInjection, TransformerDetails)): List[Element] =
+    def toTerminalsAndLocations (pairs: Iterable[(EquivalentInjection, TransformerDetails)]): List[Element] =
     {
+        val pair = pairs.head
         val eq_inj = pair._1
         val details = pair._2
 
         // only keep transformers with matching primary voltage
         if (eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage == details.voltage)
         {
-            val mRID = details.transformer + "_equivalent_injection"
+            val mRID = pairs.map (_._2.transformer).toArray.sortWith (_ < _).mkString ("_") + "_equivalent_injection"
 
             // create the location object
             val loc_element = BasicElement (null, mRID + "_location")
@@ -296,7 +298,9 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
         // join transformers by station and add Terminal, Location and PositionPoint
         val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName)
         val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.transformer)
-        val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)
+        // group transformers by (primary) TopologicalNode
+        val grouped = injections.join (transformers).values.groupBy (_._2.topological_node).values
+        val all = grouped.flatMap (toTerminalsAndLocations)
         all.persist (storage_level)
         all
     }
