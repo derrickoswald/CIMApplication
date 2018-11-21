@@ -20,7 +20,7 @@ Reads a .CSV file with the format:
 StructType(StructField(id,StringType,true), StructField(Fehlerort,StringType,true), StructField(Un,DoubleType,true), StructField(Ikw...RST.,DoubleType,true), StructField(Sk..RST.,DoubleType,true), StructField(Beschreibung..SAP.Nr..,StringType,true), StructField(Abgang,StringType,true), StructField(NIS.ID,StringType,true), StructField(NIS.Name,StringType,true))
 ```
 and matches the **Fehlerort** value to Substation CIM elements,
-attaching an EquivalentInjection at each transformer contained in the station the values:
+attaching an EquivalentInjection at each transformer contained in the station with the values:
 
 - available network power: **Sk..RST.**
 - network impedance angle: **Ikw...RST.**
@@ -39,6 +39,19 @@ file with the **Typ** field of the second attaching an EquivalentInjection to ea
 - worst case maximum network resistance to reactance ratio: **R(1)/X(1) max**
 - worst case minimum network available power **Sk"min_MVA**
 - worst case minimum network resistance to reactance ratio: **R(1)/X(1) min**
+
+# Customer3_NetworkParameters
+
+Reads a .CSV file with the format:
+```
+StructType(StructField(OBJEKT,StringType,true), StructField(KS-LEISTUNG MS-NETZ SK,DoubleType,true), StructField(R-X-VERHAELTNIS,DoubleType,true), StructField(SR_TYP_IN_KVA,DoubleType,true), StructField(UR1_NENNSPANNUNG1,DoubleType,true), StructField(UR2_NENNSPANNUNG1,DoubleType,true), StructField(URR1_KURZSCHLUSSVERLUSTE_IN_W,DoubleType,true), StructField(URR1_KURZSCHLUSSVERLUSTE_IN_PR,DoubleType,true), StructField(UKR1_KURZSCHLUSSSPANNUNG_IN_PR,DoubleType,true), StructField(EIGENTUEMER,StringType,true))
+```
+
+and matches OBJEKT with PowerTransformer CIM elements,
+attaching an EquivalentInjection at each transformer contained in the station with the values:
+
+- available network power: **KS-LEISTUNG MS-NETZ SK**
+- network impedance ratio: **R-X-VERHAELTNIS**
 
 # Execution
 

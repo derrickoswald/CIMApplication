@@ -85,11 +85,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             val r = rx_ratio * x
             val sk = row.getDouble (1) * 1e6
 
-            val ort = ""
-            val sap = ""
-            val feeder = ""
-            val station = ""
-            val name = ""
+            val station = "unknown"
 
             val c = 1.0
             //val ratioZ0Z1 = 4
@@ -115,10 +111,10 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
 
             val voltage = voltages.getOrElse (v1, findClosestVoltage (v1))
             val mRID = "EquivalentInjection_" + id
-            val description = "equivalent generation injection at %s from %s".format (ort, feeder)
+            val description = "equivalent generation injection at %s primary".format (id)
             val element = BasicElement (null, mRID)
             element.bitfields = Array (Integer.parseInt ("1", 2))
-            val obj = IdentifiedObject (element, sap, description, mRID, name + " equivalent injection", null, null)
+            val obj = IdentifiedObject (element, id, description, mRID, id + " equivalent injection", null, null)
             obj.bitfields = Array (Integer.parseInt ("1111", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
             psr.bitfields = Array (0)
@@ -298,8 +294,8 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
         val equivalents = read_csv (csv)
 
         // join transformers by station and add Terminal, Location and PositionPoint
-        val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.EquipmentContainer)
-        val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.station)
+        val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName)
+        val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.transformer)
         val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)
         all.persist (storage_level)
         all
