@@ -210,29 +210,28 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         }
 
         // prepare for precalculation
-        val topological_nodes = true
-        val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, options.workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         val _transformers = new Transformers (session, storage_level)
-        val tdata = _transformers.getTransformerData (topological_nodes)
+        val transformer_data = _transformers.getTransformers ()
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, topological_nodes, storage_level)
+        val solar = Solar (session, topologicalnodes = true, storage_level)
         val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
-            val selected = tdata.filter (x => trafos.contains (x.transformer.id))
+            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id))
             selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            val niederspannug = transformer_data.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
         }
 

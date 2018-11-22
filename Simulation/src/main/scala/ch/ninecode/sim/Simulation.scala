@@ -36,7 +36,7 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
 import ch.ninecode.gl.TransformerSet
-import ch.ninecode.gl.TData
+import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -401,12 +401,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
 
         // get the transformer(s)
-        val tdata = new Transformers (session, storage).getTransformerData (topological_nodes = true)
-        val tx = tdata.keyBy (_.node1) // (low_voltage_node_name, TData)
-            .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TData, TopologicalNode))
-            .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TData, island))
-            .groupByKey.values // Iterable[(TData, island)]
-        def toTransformerSet (transformers: Iterable[(TData, String)]): (String, TransformerSet) =
+        val transformer_data = new Transformers (session, storage).getTransformers ()
+        val tx = transformer_data.keyBy (_.node1) // (low_voltage_node_name, TransformerData)
+            .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
+            .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
+            .groupByKey.values // Iterable[(TransformerData, island)]
+        def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
         {
             val island = transformers.head._2
             if (!transformers.forall (_._2 == island))

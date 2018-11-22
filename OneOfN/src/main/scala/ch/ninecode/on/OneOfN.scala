@@ -177,7 +177,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // get all the transformers
         val _transformers = new Transformers (session, options.storage)
-        val tdata = _transformers.getTransformerData (topological_nodes = true, transformer_filter = transformer ⇒ true)
+        val transformer_data = _transformers.getTransformers (transformer_filter = transformer ⇒ true)
 
         // feeder service area calculations
         val feeder = Feeder (session, options.storage)
@@ -232,7 +232,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // make edges
         // ToDo: fix this collect
-        val transformers = tdata.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
+        val transformers = transformer_data.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
         def make_edge (transformers: Array[TransformerSet]) (args: Iterable[(Iterable[(String, Terminal)], Element)]): GLMEdge =
         {
             // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head

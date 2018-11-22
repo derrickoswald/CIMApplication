@@ -197,11 +197,11 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             val _transformers = new Transformers (session, StorageLevel.MEMORY_AND_DISK_SER)
-            val tdata = _transformers.getTransformerData (true)
+            val transformer_data = _transformers.getTransformers ()
 
             // get all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
+            val niederspannug = transformer_data.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
             val transformers = niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
 
             val trafo = System.nanoTime ()

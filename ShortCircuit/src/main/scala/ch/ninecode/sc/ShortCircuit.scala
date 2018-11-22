@@ -158,12 +158,12 @@ with Serializable
         ret
     }
 
-    def trafo_mapping (tdata: TransformerSet): StartingTrafos =
+    def trafo_mapping (transformer_set: TransformerSet): StartingTrafos =
     {
         val pn = default_node
-        val v0 = pn.vertex_id (tdata.node0)
-        val v1 = pn.vertex_id (tdata.node1)
-        StartingTrafos (v0, v1, tdata)
+        val v0 = pn.vertex_id (transformer_set.node0)
+        val v1 = pn.vertex_id (transformer_set.node1)
+        StartingTrafos (v0, v1, transformer_set)
     }
 
     case class End (PowerTransformer: String, endNumber: Int, BaseVoltage: String, r: Double, x: Double)
@@ -671,8 +671,7 @@ with Serializable
         assert (null != get[TopologicalNode], "no topology")
 
         val _transformers = new Transformers (spark, storage_level)
-        val tdata = _transformers.getTransformerData (
-            true,
+        val transformer_data = _transformers.getTransformers (
             options.default_short_circuit_power_max,
             options.default_short_circuit_impedance_max,
             options.default_short_circuit_power_min,
@@ -681,14 +680,14 @@ with Serializable
         val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos)
         {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-            val selected = tdata.filter (t ⇒ { trafos.contains (t.transformer.id) })
+            val selected = transformer_data.filter (t ⇒ { trafos.contains (t.transformer.id) })
             selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray)
         }
         else
         {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = tdata.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
+            val niederspannug = transformer_data.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
         }
 

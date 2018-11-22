@@ -500,32 +500,31 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         log.info ("topology: " + (topo - read) / 1e9 + " seconds")
 
         // prepare for precalculation
-        val topological_nodes = true
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
-        val gridlabd = new GridLABD (session, topological_nodes, !options.three, storage_level, workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir)
 
         // get the distribution transformers
-        val tdata = new Transformers (session, storage_level).getTransformerData (topological_nodes)
+        val transformer_data = new Transformers (session, storage_level).getTransformers ()
         if (log.isDebugEnabled)
-            tdata.map (_.asString).collect.foreach (log.debug)
+            transformer_data.map (_.asString).collect.foreach (log.debug)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, topological_nodes, storage_level)
+        val solar = Solar (session, topologicalnodes = true, storage_level)
         val sdata = solar.getSolarInstallations
 
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
-            val selected = tdata.filter (x => trafos.contains (x.transformer.id)).distinct
+            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
             selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = tdata.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
+            val niederspannug = transformer_data.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
         transformers.persist (storage_level)

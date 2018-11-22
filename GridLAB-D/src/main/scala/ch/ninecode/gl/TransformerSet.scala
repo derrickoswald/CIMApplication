@@ -31,7 +31,7 @@ import ch.ninecode.model.EquivalentInjection
  * @param default_power_rating the default power rating, VA
  * @param default_impedance the default characteristic impedance, Ω
  */
-case class TransformerSet (transformers: Array[TData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
+case class TransformerSet (transformers: Array[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -39,7 +39,7 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     transformers.length match
     {
         case 0 ⇒
-            throw new IllegalStateException ("no transformers in TData array")
+            throw new IllegalStateException ("no transformers in TransformerData array")
         case _ ⇒
     }
 
@@ -56,19 +56,17 @@ case class TransformerSet (transformers: Array[TData], default_power_rating: Dou
     // primary and secondary voltage should be the same on all edges - use the first
     val v0: Double =
     {
-        val v = transformers.head.voltage0
-        if (!transformers.forall (_.voltage0 == v))
-            log.error ("transformer set " + transformer_name + " has different voltages on terminal 0 " + transformers.map (_.voltage0).mkString (" "))
-        // ToDo: fix this 1kV multiplier on the voltages
-        1000.0 * v
+        val v = transformers.head.v0
+        if (!transformers.forall (_.v0 == v))
+            log.error ("transformer set " + transformer_name + " has different voltages on terminal 0 " + transformers.map (_.v0).mkString (" "))
+        v
     }
     val v1: Double =
     {
-        val v = transformers.head.voltage1
-        if (!transformers.forall (_.voltage1 == v))
-            log.error ("transformer set " + transformer_name + " has different voltages on terminal 1 " + transformers.map (_.voltage1).mkString (" "))
-        // ToDo: fix this 1kV multiplier on the voltages
-        1000.0 * v
+        val v = transformers.head.v1
+        if (!transformers.forall (_.v1 == v))
+            log.error ("transformer set " + transformer_name + " has different voltages on terminal 1 " + transformers.map (_.v1).mkString (" "))
+        v
     }
 
     // all primaries and secondaries should be connected to the same nodes (respectively)

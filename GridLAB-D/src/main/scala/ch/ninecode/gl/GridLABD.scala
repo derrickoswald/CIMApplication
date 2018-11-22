@@ -686,7 +686,6 @@ object GridLABD
             classOf[ch.ninecode.gl.Solar],
             classOf[ch.ninecode.gl.SwingNode],
             classOf[ch.ninecode.gl.SwitchEdge],
-            classOf[ch.ninecode.gl.TData],
             classOf[ch.ninecode.gl.ThreePhaseComplexDataElement],
             classOf[ch.ninecode.gl.Trace],
             classOf[ch.ninecode.gl.TransformerData],
