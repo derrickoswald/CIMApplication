@@ -69,7 +69,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         }
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
-        val ends = ends_terminals_voltages.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size < 2)
+        val ends = ends_terminals_voltages.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
         val transformers = getOrElse[PowerTransformer].filter (transformer_filter)
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
