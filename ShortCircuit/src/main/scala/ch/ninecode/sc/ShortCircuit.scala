@@ -53,16 +53,6 @@ with Serializable
         Complex (Double.PositiveInfinity, Double.PositiveInfinity))
     val default_node = ScNode ("", 0.0, null, null, null, null, null)
 
-    def make_graph_vertices (v: ScNode): (VertexId, ScNode) =
-    {
-        (v.vertex_id (v.id_seq), v)
-    }
-
-    def make_graph_edges (e: ScEdge): Edge[ScEdge] =
-    {
-        Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e)
-    }
-
     def topological_node_operator (arg: ((TopologicalNode, Terminal), ScEdge)): ScNode =
     {
         val node = arg._1._1
@@ -140,10 +130,8 @@ with Serializable
                 // eliminate edges with only one connectivity node, or the same connectivity node
                 if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
                     ret = ret :+ ScEdge (
-                        id1,
                         node1,
                         voltage1,
-                        terminals(i)._1.ACDCTerminal.id,
                         node2,
                         terminals(i)._2,
                         terminals.length,
@@ -201,14 +189,14 @@ with Serializable
         val edges = get[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
-        val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
+        val tv = edges.keyBy (_.id_cn_1).union (edges.keyBy (_.id_cn_2)).distinct
 
         // map the topological nodes to short circuit nodes with voltages
-        val nodes = get[TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
+        val nodes = get[TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).join (tv).values.map (topological_node_operator).distinct
 
         // persist edges and nodes to avoid recompute
-        val xedges = edges.map (make_graph_edges)
-        val xnodes = nodes.map (make_graph_vertices)
+        val xedges = edges.map (e ⇒ Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e))
+        val xnodes = nodes.map (v ⇒ (v.vertex_id (v.id_seq), v))
         xedges.name = "xedges"
         xedges.persist (storage_level)
         xnodes.name = "xnodes"
@@ -386,16 +374,12 @@ with Serializable
                             (arg._1.voltage - v) / i
                         (z, route)
                     case _ ⇒
-                    {
                         log.error ("""no voltage records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
                         (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
-                    }
                 }
             case _ ⇒
-            {
                 log.error ("""no data records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
                 (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
-            }
         }
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z, path)
     }
@@ -544,38 +528,37 @@ with Serializable
 
     def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
     {
-         results.keyBy (_.tx).leftOuterJoin (list).values.map (
-             _ match
-             {
-                 case (result: ScResult, None) ⇒ result
-                 case (result: ScResult, Some (error)) ⇒
-                     result.copy(
-                         errors = if (result.errors == null || result.errors.isEmpty) List(error) else result.errors,
-                         low_r = 0.0,
-                         low_x = 0.0,
-                         low_r0 = 0.0,
-                         low_x0 = 0.0,
-                         low_ik = 0.0,
-                         low_ik3pol = 0.0,
-                         low_ip = 0.0,
-                         low_sk = 0.0,
-                         imax_3ph_low = 0.0,
-                         imax_1ph_low = 0.0,
-                         imax_2ph_low = 0.0,
-                         imax_3ph_med = 0.0,
-                         imax_1ph_med = 0.0,
-                         imax_2ph_med = 0.0,
-                         high_r = 0.0,
-                         high_x = 0.0,
-                         high_r0 = 0.0,
-                         high_x0 = 0.0,
-                         high_ik = 0.0,
-                         high_ik3pol = 0.0,
-                         high_ip = 0.0,
-                         high_sk = 0.0,
-                         fuses = null)
-             }
-         )
+         results.keyBy (_.tx).leftOuterJoin (list).values.map
+         {
+             case (result: ScResult, None) ⇒ result
+             case (result: ScResult, Some (error)) ⇒
+                 result.copy (
+                     errors = if (result.errors == null || result.errors.isEmpty) List (error)
+                     else result.errors,
+                     low_r = 0.0,
+                     low_x = 0.0,
+                     low_r0 = 0.0,
+                     low_x0 = 0.0,
+                     low_ik = 0.0,
+                     low_ik3pol = 0.0,
+                     low_ip = 0.0,
+                     low_sk = 0.0,
+                     imax_3ph_low = 0.0,
+                     imax_1ph_low = 0.0,
+                     imax_2ph_low = 0.0,
+                     imax_3ph_med = 0.0,
+                     imax_1ph_med = 0.0,
+                     imax_2ph_med = 0.0,
+                     high_r = 0.0,
+                     high_x = 0.0,
+                     high_r0 = 0.0,
+                     high_x0 = 0.0,
+                     high_ik = 0.0,
+                     high_ik3pol = 0.0,
+                     high_ip = 0.0,
+                     high_sk = 0.0,
+                     fuses = null)
+         }
     }
 
     // execute GridLAB-D to approximate the impedances and replace the error records
@@ -691,7 +674,7 @@ with Serializable
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
         }
 
-        val transformersets = transformers.map (txs ⇒ TransformerSet (txs, options.default_transformer_power_rating, options.default_transformer_impedance))
+        val transformersets = transformers.map (x ⇒ TransformerSet (x, options.default_transformer_power_rating, options.default_transformer_impedance))
         val starting_nodes: RDD[StartingTrafos] = transformersets.map (trafo_mapping)
         log.info ("%s starting transformers".format (starting_nodes.count))
 

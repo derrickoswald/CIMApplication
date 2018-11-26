@@ -20,10 +20,8 @@ import ch.ninecode.model.Switch
 /**
  * Short circuit extended GraphX edge.
  *
- * @param id_seq_1 Terminal 1 mRID
  * @param id_cn_1 TopologicalNode 1 mRID
  * @param v1 voltage on Terminal 1 (V)
- * @param id_seq_2 Terminal 2 mRID
  * @param id_cn_2 TopologicalNode 2 mRID
  * @param v2 voltage on Terminal 2 (V)
  * @param num_terminals the number of terminals on the equipment (could be more than 2)
@@ -32,10 +30,8 @@ import ch.ninecode.model.Switch
  * @param impedance impedance of the edge (Ω)
  */
 case class ScEdge (
-    id_seq_1: String,
     id_cn_1: String,
     v1: Double,
-    id_seq_2: String,
     id_cn_2: String,
     v2: Double,
     num_terminals: Int,
