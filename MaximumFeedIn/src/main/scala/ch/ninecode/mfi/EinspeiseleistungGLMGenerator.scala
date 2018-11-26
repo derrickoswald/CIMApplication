@@ -197,9 +197,10 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                         "            constant_power_A %s;\n".format (maxP.asString (6))
                     else
                     {
-                        "            constant_power_A %s;\n".format (maxP.asString (6)) +
-                        "            constant_power_A %s;\n".format (maxP.asString (6)) +
-                        "            constant_power_A %s;\n".format (maxP.asString (6))
+                        val maxP3 = maxP / 3.0
+                        "            constant_power_A %s;\n".format (maxP3.asString (6)) +
+                        "            constant_power_B %s;\n".format (maxP3.asString (6)) +
+                        "            constant_power_C %s;\n".format (maxP3.asString (6))
                     }) +
                     "            nominal_voltage " + voltage + "V;\n" +
                     "            load_class R;\n" +

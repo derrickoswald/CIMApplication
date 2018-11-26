@@ -15,6 +15,7 @@ import scala.collection.mutable.HashMap
  * @param simulation The prior simulation number to use in determining the transformers to process. Default -1 - use either the trafos list if specified or all low voltage transformers.
  * @param reference The prior simulation number to determine if the photo-voltaic installation status is changed. Default -1 - use the current precalculation simulation.
  * @param delta The difference threshold to determine if the maximum feed-in power has changed between precalculations. Default 1.0e-6.
+ * @param cosphi The maximum feed-in power factor, i.e. the power factor for new photo-voltaic installations, +lagging, -leading. Default 1.0.
  * @param workdir The shared directory (among Spark executors) to use for staging GridLAB-D simulations. Each simulation is created in a subdirectory of this directory.
  * @param files The list of input CIM files (RDF).
  * @param precalc_factor The scale factor to apply to precalculation maximum values - which is used as an upper bound for the stepped simulation calculation. Default 1.5.
@@ -31,6 +32,7 @@ case class EinspeiseleistungOptions (
     simulation: Int = -1,
     reference: Int = -1,
     delta: Double = 1e-6,
+    cosphi: Double = 1.0,
     workdir: String = "",
     files: Seq[String] = Seq(),
     precalc_factor: Double = 1.5

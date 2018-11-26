@@ -80,9 +80,10 @@ object Main
         simulation: Int = -1,
         reference: Int = -1,
         delta: Double = 1e-6,
+        precalc_factor: Double = 1.5,
+        cosphi: Double = 1.0,
         workdir: String = "",
-        files: Seq[String] = Seq(),
-        precalc_factor: Double = 1.5
+        files: Seq[String] = Seq()
     )
 
     var do_exit = true
@@ -184,6 +185,10 @@ object Main
         opt[Double]("precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
             text ("factor to multiply precalculation results for gridlabd [%g]".format (default.precalc_factor))
+
+        opt[Double]("cosphi").valueName ("D").
+            action ((x, c) => c.copy (cosphi = x)).
+            text ("power factor for new photo-voltaic installations [%g]".format (default.cosphi))
 
         opt[String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -316,6 +321,7 @@ object Main
                         simulation = arguments.simulation,
                         reference = arguments.reference,
                         delta = arguments.delta,
+                        cosphi = arguments.cosphi,
                         workdir = workdir,
                         files = arguments.files,
                         precalc_factor = arguments.precalc_factor

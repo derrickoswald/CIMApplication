@@ -8,6 +8,9 @@ import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
 import scala.io.Source
+import scala.math.acos
+import scala.math.sin
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -15,11 +18,13 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
+import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -283,22 +288,23 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
     {
         val ret = new StringBuilder ()
+        // https://en.wikipedia.org/wiki/Power_factor
+        // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+        // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+        // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
+        val phi = acos (math.abs (options.cosphi)) + angle
+        val cosphi = math.cos (phi)
+        val sinphi = math.signum (options.cosphi) * sin (phi) // ToDo: check this for three phase
         def addrow (time: Calendar, power: Double, angle: Double): Unit =
         {
+            val maxP = - new Complex (power * cosphi, power * sinphi)
             ret.append (_DateFormat.format(time.getTime))
             ret.append (",")
             if (!options.three)
-            {
-                ret.append (-power)
-                ret.append ("\n")
-            }
+                ret.append (maxP.asString (6))
             else
-            {
-                ret.append (-power / 3) // negative load injects power, 1/3 per phase
-                ret.append ("<")
-                ret.append (angle)
-                ret.append ("d\n")
-            }
+                ret.append ((maxP / 3).asString (6)) // negative load injects power, 1/3 per phase
+            ret.append ("\n")
             time.add (Calendar.SECOND, exp.interval)
         }
         val time = exp.t1
