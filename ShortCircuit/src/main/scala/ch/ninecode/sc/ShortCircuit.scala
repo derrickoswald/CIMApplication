@@ -146,12 +146,12 @@ with Serializable
         ret
     }
 
-    def trafo_mapping (transformer_set: TransformerSet): StartingTrafos =
+    def trafo_mapping (transformer_set: TransformerSet): Iterator[StartingTrafos] =
     {
         val pn = default_node
+        val nsnodes = transformer_set.transformers.flatMap (x ⇒ x.terminals.tail.map (_.TopologicalNode))
         val v0 = pn.vertex_id (transformer_set.node0)
-        val v1 = pn.vertex_id (transformer_set.node1)
-        StartingTrafos (v0, v1, transformer_set)
+        nsnodes.map (x ⇒ StartingTrafos (v0, pn.vertex_id (x), transformer_set)).toIterator
     }
 
     case class End (PowerTransformer: String, endNumber: Int, BaseVoltage: String, r: Double, x: Double)
@@ -670,12 +670,12 @@ with Serializable
         {
             // do all low voltage power transformers
             // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannug = transformer_data.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
+            val niederspannung = transformer_data.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
+            niederspannung.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
         }
 
         val transformersets = transformers.map (x ⇒ TransformerSet (x, options.default_transformer_power_rating, options.default_transformer_impedance))
-        val starting_nodes: RDD[StartingTrafos] = transformersets.map (trafo_mapping)
+        val starting_nodes: RDD[StartingTrafos] = transformersets.flatMap (trafo_mapping)
         log.info ("%s starting transformers".format (starting_nodes.count))
 
         // create the initial Graph with ScNode vertices

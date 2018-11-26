@@ -144,14 +144,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             assert (results.filter (_.equipment == "USR0001").first ().errors.isEmpty, "USR0001 should be valid (TX0001)")
             assert (results.filter (_.equipment == "USR0002").first ().errors.isEmpty, "USR0002 should be valid (TX0001)")
             assert (results.filter (_.equipment == "USR0003").first ().errors.forall (_.startsWith ("INVALID")), "USR0003 should be invalid (TX0002)")
-
-            /**
-             * ToDo: handling the subtransmission in this test case is problematic,
-             * multiple TransformerEnd cases need to be handled all the way upstream from TransformerData and TransformerSet,
-             * through to StartingTrafos with initial error messages and to initial.mapVertices to assign the low voltage impedance for all windings
-             */
-//            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")), "USR0004 should be invalid")
-//            assert (results.filter (_.equipment == "USR0005").first ().errors.exists (_.startsWith ("INVALID")), "USR0005 should be invalid")
+            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")), "USR0004 should be invalid")
+            assert (results.filter (_.equipment == "USR0005").first ().errors.exists (_.startsWith ("INVALID")), "USR0005 should be invalid")
     }
 
     test ("Subtransmission")
