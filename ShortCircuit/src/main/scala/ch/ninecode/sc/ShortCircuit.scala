@@ -507,13 +507,29 @@ with Serializable
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments)
     }
 
-    def node_maker (rdd: RDD[(node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))])]): RDD[(identifier, GLMNode)] =
+    def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
     {
-        val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values.map (x ⇒ (x._1._1, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
-        ss.map (args ⇒ (args._2.head._1, SimulationNode (args._1, args._2.head._2._3.nominalVoltage * 1000.0, args._2.head._2._2.id, args._2.head._2._2.Equipment.PowerSystemResource.PSRType)))
+        val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values
+            .map (x ⇒ (x._1._1, x._1._2.head._2._2, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
+        // ToDo: fix this 1kV multiplier on the voltages
+        def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
+        def house (element: Element): Boolean = element match { case _: EnergyConsumer ⇒ true case _ ⇒ false }
+        def busbar (element: Element): Boolean = element match { case _: BusbarSection ⇒ true case _ ⇒ false }
+        ss.map (
+            args ⇒
+                (
+                    args._3.head._1,
+                    SimulationNode (
+                        args._1,
+                        voltage (args._3.head._2._3),
+                        args._2.id,
+                        house (args._2),
+                        busbar (args._2))
+                )
+            )
     }
 
-    def edge_maker (rdd: RDD[Iterable[(Iterable[(identifier, Terminal)], Element)]]): RDD[(identifier, GLMEdge)] =
+    def edge_maker (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
     {
         rdd.map (
             args ⇒
@@ -635,11 +651,10 @@ with Serializable
             )
             // calculate new short circuit result records
             val replacements = new_nodes.map (calculate_short_circuit).persist (storage_level)
-            // merge them into the existing set
-            val replacements_keyed = replacements.keyBy (x ⇒ x.tx + "_" + x.node)
-            // ToDo: should we remove all records from the problem transformers?
-            val some = original_keyed.subtractByKey (replacements_keyed)
-            some.union (replacements_keyed).values
+            // replace the bad elements
+            val bad_transformers = problem_transformers.map (_.transformer_name).collect.toSet
+            val some = original_results.filter (x ⇒ !bad_transformers.contains (x.tx))
+            some.union (replacements)
         }
         else
         {

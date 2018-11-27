@@ -34,12 +34,15 @@ case class SimulationTransformerServiceArea (
     val name: String = transformer.transformer_name
     val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))
 
-    // we can filter out only house nodes based on PSRType if the CIM profile supports that
-    val only_houses: Boolean = false
-    val n: Iterable[GLMNode] = if (only_houses) nodes.filter (_.asInstanceOf[SimulationNode].psrtype == "PSRType_HouseService") else nodes
+    // experiment only on houses and busbars
+    def keep (node: GLMNode): Boolean =
+    {
+        val e = node.asInstanceOf[SimulationNode]
+        e.consumer || e.busbar
+    }
 
     // generate experiments as 5 seconds short circuit (100Ω) at each node
-    lazy val experiments: Array[ScExperiment] = n.zipWithIndex // (node, index)
+    lazy val experiments: Array[ScExperiment] = nodes.filter (keep).zipWithIndex // (node, index)
         .map (
             x ⇒
             {

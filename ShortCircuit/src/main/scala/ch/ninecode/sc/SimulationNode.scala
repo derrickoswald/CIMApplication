@@ -8,13 +8,15 @@ import ch.ninecode.gl.GLMNode
  * @param id TopologicalNode mRID.
  * @param nominal_voltage Node voltage (V).
  * @param equipment ConductingEquipment mRID.
- * @param psrtype The type of node according to the power system resource type.
+ * @param consumer Flag indicating the node is an EnergyConsumer.
+ * @param busbar Flag indicating the node is a BusbarSection.
  */
 case class SimulationNode (
     id: String,
     nominal_voltage: Double,
     equipment: String,
-    psrtype: String
+    consumer: Boolean,
+    busbar: Boolean
 )
 extends GLMNode
 
