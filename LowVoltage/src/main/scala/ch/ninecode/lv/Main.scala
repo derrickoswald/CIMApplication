@@ -217,19 +217,15 @@ object Main
                 log.info (s"Spark $version session established")
                 if (session.version != SPARK)
                     log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
                 val setup = System.nanoTime ()
                 log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-                val ro = HashMap[String,String] ()
-                ro.put ("StorageLevel", arguments.storage)
-                ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
-                val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
+
                 val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = ro,
+                    cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                     three = arguments.three,
                     trafos = arguments.trafos,
-                    workdir = workdir,
+                    workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
                     files = arguments.files
                 )
                 val lv = LowVoltage (session, storage, options)

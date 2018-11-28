@@ -302,16 +302,12 @@ object Main
                     log.info (s"Spark $version session established")
                     if (version.take (SPARK.length) != SPARK.take (version.length))
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-                    val ro = HashMap[String,String] ()
-                    ro.put ("StorageLevel", arguments.storage)
-                    ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
-                    val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
+
                     val options = EinspeiseleistungOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = ro,
+                        cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         precalculation = arguments.precalculation,
                         trafos = arguments.trafos,
@@ -322,7 +318,7 @@ object Main
                         reference = arguments.reference,
                         delta = arguments.delta,
                         cosphi = arguments.cosphi,
-                        workdir = workdir,
+                        workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
                         files = arguments.files,
                         precalc_factor = arguments.precalc_factor
                     )

@@ -124,7 +124,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     {
         val limit = "voltage limit"
 
-        // look up node to get feeder
+        // look up node to get feeder (discard duplicates, all nodes have a single feeder)
         val lookup = feeders.toMap
         // assign an experiment to each measurement - if it's over-voltage
         elements.filter (_.units == "Volts").flatMap (
@@ -151,8 +151,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     {
         val limit = "current limit"
 
-        // look up node to get feeder
-        val lookup = feeders.toMap
+        // look up node to get feeders
+        val lookup = new HashMap[String,List[String]] ()
+        for (pair ← feeders)
+        {
+            val l = lookup.getOrElse (pair._1, List ())
+            if (!l.contains (pair._2))
+                lookup.put (pair._1, l :+ pair._2)
+        }
 
         // look up cable to get current rating
         val cdata_map = cdata.toMap
@@ -165,8 +171,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
-                    feeder = lookup.getOrElse (x.element, null)
-                    if feeder == e.feeder
+                    feeders = lookup.getOrElse (x.element, List ())
+                    if feeders.contains (e.feeder)
                     threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
                     if overcurrent (x, threshold)
                 }
@@ -470,10 +476,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
-        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
-            elements.explain
-        else
-            log.info (elements.count () + " elements")
+        log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
@@ -587,10 +590,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("filtered_trafos: " + count)
             if (0 != count)
             {
-                val trafos_nodes_feeders = vertices.map (x ⇒ (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null)))
+                val trafos_nodes_feeders = vertices.map (x ⇒ (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null))) // (trafoid (nodeid, feeder))
                 val nodes_equipment = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy(_.id))
-                    .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, x._2._2.id))
-                val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values.map (x ⇒ (x._2._1, (x._1, x._2._2._2)))
+                    .flatMap (x ⇒ x._2._1.map (y ⇒ y.TopologicalNode).toSet.map ((z: String) ⇒ (z, x._2._2.id))) // (nodeid, equipmentid)
+                val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
+                    .map (x ⇒ (x._2._1, (x._1, x._2._2._2))) // (trafoid, (equipment, feeder)) -- with duplicates, possibly with different feeders, for two terminal equipment
                 val feeder_map = trafo_equipment_feeder.groupByKey
                 einspeiseleistung (gridlabd, filtered_trafos, feeder_map, storage_level)
                 log.info ("finished " + count + " trafokreis")

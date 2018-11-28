@@ -261,21 +261,17 @@ object Main
                     log.info (s"Spark $version session established")
                     if (version.take (SPARK.length) != SPARK.take (version.length))
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-                    val ro = HashMap[String,String] ()
-                    ro.put ("StorageLevel", arguments.storage)
-                    ro.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
-                    val workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir
+
                     val options = OneOfNOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = ro,
+                        cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         base_temperature = arguments.base_temperature,
                         temperature = arguments.temperature,
                         storage = storage,
-                        workdir = workdir,
+                        workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
                         files = arguments.files
                     )
                     val on = OneOfN (session, options)
