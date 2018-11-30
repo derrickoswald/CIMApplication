@@ -5,56 +5,111 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
+/**
+ * Organize the simple branches of an experiment into a single series or parallel branch.
+ *
+ * Proceeds by orienting the branches by current flow (current flows in the direction from⇒to),
+ * then aggregating the simple branches into increasingly simplified series and parallel branches.
+ */
 class TraceRoute
 {
+    val log: Logger = LoggerFactory.getLogger (getClass)
+
+    /**
+     * Orient each branch according to current flow.
+     *
+     * Beginning at the branch to the "source" follow the trail of currents, splitting and joining at parallel
+     * nodes, to always ensure that Kirchhoff's current law (currents in and out of node must sum to zero).
+     *
+     * @param starting the starting nodes with source/sink current
+     * @param branches the list of simple branches to orient
+     * @return the oriented branch list
+     */
     def make_directed (starting: Iterable[(String, Double)], branches: Iterable[Branch]): Iterable[Branch] =
     {
-        def split (endings: Set[String]) (branch: Branch): (Option[Branch], Option[Branch]) = // (unordered, ordered)
+        /**
+         * Split the branches into two options, those not terminating on the starting nodes, and those that do
+         * @param ending the node to look for the starting nodes in
+         * @param branch the branch to test
+         * @return a 2tuple of, the option of branch not terminating on endings and the option that it does
+         */
+        def split (ending:String) (branch: Branch): (Option[Branch], Option[Branch]) = // (unordered, ordered)
         {
-            if (endings.contains (branch.from))
+            if (ending == branch.from)
                 (None, Some (branch.reverse)) // flip direction
-            else if (endings.contains (branch.to))
+            else if (ending == branch.to)
                 (None, Some (branch)) // already directed correctly
             else
                 (Some (branch), None)
         }
 
-        def kcl (branches: Iterable[Branch]) (start: (String, Double)): (Iterable[Branch], Iterable[(String, Double)]) =
+        /**
+         * Apply Kirchhoff's current law to branches terminating on the starting node.
+         * @param branches the list of branches to check
+         * @param ordered the branches that have already been ordered
+         * @param start the node and current at the 'to' end of the branches of interest
+         * @return a 2tuple of, if successful, the branches terminating on the node and a list of from nodes
+         *         or if not successful the original start node and current
+         */
+        def kcl (branches: Iterable[Branch], ordered: Iterable[Branch], start: (String, Double)): (Iterable[Branch], Iterable[(String, Double)]) =
         {
-            val fanout = branches.filter (_.to == start._1)
-            val ok = Math.abs (start._2 - fanout.map (_.current).sum) < 0.1
+            val fan_in = branches.filter (_.to == start._1)
+            val i_in = fan_in.map (_.current).sum
+            val fan_out = ordered.filter (_.from == start._1)
+            val i_out = fan_out.map (_.current).sum
+            val ok =
+                if (i_out > 0.0)
+                    Math.abs (i_out - i_in) < 0.1
+                else
+                    Math.abs (start._2 - i_in) < 0.1
             if (ok)
-                (fanout, fanout.map (x ⇒ (x.from, x.current)))
+                (fan_in, fan_in.map (x ⇒ (x.from, x.current)))
             else
                 (Iterable(), Iterable(start))
         }
 
-        val (un, or) = branches.map (split (starting.map (_._1).toSet)).unzip
-        val unordered: Iterable[Branch] = un.flatten
-        val ordered: Iterable[Branch] = or.flatten
-        if (ordered.isEmpty)
-            unordered
-        else
+        var ret: Iterable[Branch] = Seq()
+        var start: Map[String, Double] = starting.toMap
+        var next = branches
+        var done = false
+        do
         {
-            val step: Iterable[(Iterable[Branch], Iterable[(String, Double)])] = starting.map (kcl (ordered))
-            val good: Iterable[Branch] = step.flatMap (_._1)
-            val good_nodes = good.map (_.to).toSet
-            val bad = ordered.filter (x ⇒ !good_nodes.contains (x.to))
-            val start: Map[String, Double] = step.flatMap (_._2).groupBy (x ⇒ x._1).map (x ⇒ (x._1, x._2.map (_._2).sum))
-            val next: Iterable[Branch] = unordered ++ bad
-            val better = next.size < branches.size  || start.keys.toArray.sortWith (_ < _).mkString != starting.map (_._1).toArray.sortWith (_ < _).toString
+            done = false
+            var new_start = new mutable.HashMap[String, Double]()
+            var new_next = next
+            for (node ← start)
+            {
+                val (un, or) = new_next.map (split (node._1)).unzip
+                val unordered: Iterable[Branch] = un.flatten
+                val ordered: Iterable[Branch] = or.flatten
+                val step: (Iterable[Branch], Iterable[(String, Double)]) = kcl (ordered, ret, node)
+                val good = step._1
+                val good_nodes = good.map (_.to).toSet
+                val bad = ordered.filter (x ⇒ !good_nodes.contains (x.to))
+                ret = ret ++ good
+                new_start ++= step._2
+                new_next = unordered ++ bad
+            }
+
+            val new_starts = new_start.groupBy (x ⇒ x._1).map (x ⇒ (x._1, x._2.values.sum))
+            val better = new_next.size < next.size || (new_starts.keys.toArray.sortWith (_ < _).mkString != start.keys.toArray.sortWith (_ < _).mkString)
             if (!better)
             {
-                val log: Logger = LoggerFactory.getLogger (getClass)
-                log.error ("cannot make branches directed (%s branches cannot be resolved)".format (next.size))
+                log.error ("cannot make branches directed (%s branches cannot be resolved)".format (new_next.size))
                 if (log.isDebugEnabled)
-                    log.debug ("start %s: branches: %s".format (start.map (y ⇒ "" + y._1 + "@" + y._2 + "A").mkString (","), next.mkString (",")))
+                    log.debug ("start %s: branches: %s".format (start.map (y ⇒ "" + y._1 + "@" + y._2 + "A").mkString (","), new_next.mkString (",")))
             }
-            if (next.isEmpty)
-                good
+            if (new_next.isEmpty || !better)
+                done = true
             else
-                good ++ make_directed (start, next)
+            {
+                start = new_starts
+                next = new_next
+                done = false
+            }
         }
+        while (!done)
+        ret
     }
 
     /**
@@ -118,27 +173,7 @@ class TraceRoute
             (true, Seq (pair._1.add_in_series (if (flip) pair._2.reverse else pair._2)) ++ rest)
         }
         else
-        {
-//            // check for series elements reverse direction
-//            val series = for
-//            {
-//                branch ← network
-//                buddies = network.filter (x ⇒ branch != x && (branch.from == x.from || branch.to == x.to))
-//                parallel = network.filter (x ⇒ branch.from == x.from)
-//                if buddies.size == 1 && parallel.size == 1 && parallel.head == branch
-//                buddy = buddies.head
-//            }
-//            yield (branch, buddy)
-//            if (series.nonEmpty)
-//            {
-//                val pair = series.head
-//                val flip = Math.abs (pair._2.current - pair._1.current) > 0.1
-//                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-//                (true, Seq (pair._2.add_in_series (if (flip) pair._1.reverse else pair._1)) ++ network.filter (x ⇒ pair._1 != x && pair._2 != x))
-//            }
-//            else
-                (false, network)
-        }
+            (false, network)
     }
 
     /**
@@ -206,12 +241,12 @@ class TraceRoute
      *
      * @param start the starting node id for which the fuse specificity is required
      * @param data the recorder data as tuples of node id, encoded equipment mRID and current
-     * @return
+     * @return the single equivalent branch
      */
     def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[Branch] =
     {
         // print out the data
-        println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
+        // println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
 
         var network: Iterable[Branch] = toBranches (start, data)
         // print out the starting branches
