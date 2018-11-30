@@ -54,12 +54,12 @@ class TraceRoute
         def kcl (branches: Iterable[Branch], ordered: Iterable[Branch], start: (String, Double)): (Iterable[Branch], Iterable[(String, Double)]) =
         {
             val fan_in = branches.filter (_.to == start._1)
-            val i_in = fan_in.map (_.current).sum
+            val i_in = fan_in.map (x ⇒ Math.abs (x.current)).sum
             val fan_out = ordered.filter (_.from == start._1)
-            val i_out = fan_out.map (_.current).sum
+            val i_out = fan_out.map (x ⇒ Math.abs (x.current)).sum
             val ok =
                 if (i_out > 0.0)
-                    Math.abs (i_out - i_in) < 0.1
+                    Math.abs (i_out - i_in) < 0.1 // ToDo: this 0.1 value is a heuristic value determined by testing, maybe a parameter is needed
                 else
                     Math.abs (start._2 - i_in) < 0.1
             if (ok)
