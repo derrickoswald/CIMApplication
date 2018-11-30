@@ -208,8 +208,14 @@ class GridLABDSuite extends FunSuite
             val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
             val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results)")
+            val countset = statement.executeQuery ("select count() from results where simulation = (select max(simulation) from results)")
+            while (countset.next)
+            {
+                assert (countset.getInt(1) == 11, "should have 11 results")
+            }
+            countset.close()
 
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results)")
             while (resultset.next)
             {
                 if (resultset.getString (1) == "TX0003")
