@@ -1102,7 +1102,7 @@
 		<cim:IdentifiedObject.name>TX0002_end_2</cim:IdentifiedObject.name>
 		<cim:IdentifiedObject.description>PowerTransformer End 2</cim:IdentifiedObject.description>
 		<cim:TransformerEnd.endNumber>2</cim:TransformerEnd.endNumber>
-		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_1000"/>
 		<cim:TransformerEnd.Terminal rdf:resource="#TX0002_terminal_2"/>
 		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
 		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
@@ -1118,7 +1118,7 @@
 		<cim:IdentifiedObject.name>TX0002_end_3</cim:IdentifiedObject.name>
 		<cim:IdentifiedObject.description>PowerTransformer End 3</cim:IdentifiedObject.description>
 		<cim:TransformerEnd.endNumber>3</cim:TransformerEnd.endNumber>
-		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_1000"/>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_400"/>
 		<cim:TransformerEnd.Terminal rdf:resource="#TX0002_terminal_3"/>
 		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
 		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
