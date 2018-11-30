@@ -1,0 +1,1711 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<rdf:RDF xmlns:cim='http://iec.ch/TC57/2013/CIM-schema-cim16#' xmlns:md='http://iec.ch/TC57/61970-552/ModelDescription/1#' xmlns:dm='http://iec.ch/2002/schema/CIM_difference_model#' xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>
+	<md:FullModel rdf:about="transformer test case three winding transformer">
+		<md:Model.created>2018-08-31T08:42:54.191Z</md:Model.created>
+		<md:Model.description>all elements on the 1000V leg should be invalid</md:Model.description>
+		<md:Model.modelingAuthoritySet>http://9code.ch/</md:Model.modelingAuthoritySet>
+		<md:Model.profile>https://github.com/derrickoswald/CIMSpace</md:Model.profile>
+	</md:FullModel>
+	<cim:ElectronicAddress rdf:ID="_96407ba6-781c-4379-b860-b05575aeb251">
+		<cim:ElectronicAddress.email1>info@brugg.com</cim:ElectronicAddress.email1>
+		<cim:ElectronicAddress.web>http://www.bruggcables.com</cim:ElectronicAddress.web>
+	</cim:ElectronicAddress>
+	<cim:TelephoneNumber rdf:ID="_2efe50f8-2aac-43b9-8f7d-bf25c32deb44">
+		<cim:TelephoneNumber.areaCode>56</cim:TelephoneNumber.areaCode>
+		<cim:TelephoneNumber.countryCode>+41</cim:TelephoneNumber.countryCode>
+		<cim:TelephoneNumber.localNumber>460 33 33</cim:TelephoneNumber.localNumber>
+	</cim:TelephoneNumber>
+	<cim:StreetAddress rdf:ID="_e8c4bb96-2e05-460d-955c-46b0a09906e4">
+		<cim:StreetAddress.status rdf:resource="#_245ea9ae-cef4-4e81-b7c6-3ef4a155d46c"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#_78474698-7780-4b90-acf2-633474fc1103"/>
+		<cim:StreetAddress.townDetail rdf:resource="#_bbbf6ba4-d1da-4bce-a469-071710db51c8"/>
+	</cim:StreetAddress>
+	<cim:ProductAssetModel rdf:ID="_56f68023-8658-4735-b4d6-0fb71e93fce7">
+		<cim:IdentifiedObject.aliasName>4x10, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three solid core copper cable with copper concentric neutral, each with 10 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>58496</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>690.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:Manufacturer rdf:ID="_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6">
+		<cim:IdentifiedObject.aliasName>Brugg</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>Brugg Kabel AG</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>A company of the Brugg Group, one of Switzerland's leading cable manufacturers.</cim:IdentifiedObject.description>
+		<cim:OrganisationRole.Organisation rdf:resource="#_20e07e33-7383-498e-8b30-3e0e790e354b"/>
+	</cim:Manufacturer>
+	<cim:Organisation rdf:ID="_20e07e33-7383-498e-8b30-3e0e790e354b">
+		<cim:IdentifiedObject.aliasName>Brugg</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>Brugg Kabel AG</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>A company of the Brugg Group, one of Switzerland's leading cable manufacturers.</cim:IdentifiedObject.description>
+		<cim:Organisation.electronicAddress rdf:resource="#_96407ba6-781c-4379-b860-b05575aeb251"/>
+		<cim:Organisation.phone1 rdf:resource="#_2efe50f8-2aac-43b9-8f7d-bf25c32deb44"/>
+		<cim:Organisation.streetAddress rdf:resource="#_e8c4bb96-2e05-460d-955c-46b0a09906e4"/>
+	</cim:Organisation>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_c246ef3a-3015-4e8e-9fa6-334b633e27fb">
+		<cim:IdentifiedObject.aliasName>4x10, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_56f68023-8658-4735-b4d6-0fb71e93fce7"/>
+		<cim:WireInfo.coreRadius>1.784124116e-3</cim:WireInfo.coreRadius>
+		<cim:WireInfo.coreStrandCount>1</cim:WireInfo.coreStrandCount>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>2.118</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>19e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>67</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>1.83</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x10 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.solid"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.outerJacketKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableOuterJacketKind.insulating"/>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>1.83</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:PerLengthSequenceImpedance rdf:ID="_20480b94-e981-4a76-9c88-4aef3d1b8be2">
+		<cim:IdentifiedObject.aliasName>4x25, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x25rm/25 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_8c498939-5f85-4d48-adc7-0147aa30f19c"/>
+		<cim:PerLengthSequenceImpedance.r>0.727</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>2.908</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.075</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.3</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_8c498939-5f85-4d48-adc7-0147aa30f19c">
+		<cim:IdentifiedObject.aliasName>4x25, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x25rm/25 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_4b740ffe-c274-4ce5-9e5c-00e0eb9d11a6"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>0.842</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>26.0e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>115</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>0.727</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x25 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_20480b94-e981-4a76-9c88-4aef3d1b8be2"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.stranded"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.outerJacketKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableOuterJacketKind.insulating"/>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>0.727</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_4b740ffe-c274-4ce5-9e5c-00e0eb9d11a6">
+		<cim:IdentifiedObject.aliasName>4x25, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x25rm/25 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 25 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_8c498939-5f85-4d48-adc7-0147aa30f19c"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>47582</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>1450.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_a62be941-4f47-48cf-a103-c69b7bd928b0">
+		<cim:IdentifiedObject.aliasName>4x50, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x50rm/50 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_007972d4-87b7-44e8-8379-c2d1f9faf237"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>0.455</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>32e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>168</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>0.387</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x50 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_e6146ff6-4bd4-4c69-99f0-915e87a482bf"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.stranded"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.outerJacketKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableOuterJacketKind.insulating"/>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>0.387</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_007972d4-87b7-44e8-8379-c2d1f9faf237">
+		<cim:IdentifiedObject.aliasName>4x50, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x50rm/50 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 50 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_a62be941-4f47-48cf-a103-c69b7bd928b0"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>47583</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>2570</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:PerLengthSequenceImpedance rdf:ID="_85d0b44b-7e9a-4520-b87a-1981e3cef73a">
+		<cim:IdentifiedObject.aliasName>4x95, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x95se/95 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire sectored plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_a5a4a4fc-997c-459c-a6d5-34a409308627"/>
+		<cim:PerLengthSequenceImpedance.r>0.193</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>0.772</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.070</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.28</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_a5a4a4fc-997c-459c-a6d5-34a409308627">
+		<cim:IdentifiedObject.aliasName>4x95, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x95se/95 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (sector core, concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_888ba1bc-edac-470c-b76a-2234166a3203"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>0.225</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>41e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>254</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>0.193</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x95 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_85d0b44b-7e9a-4520-b87a-1981e3cef73a"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.sector"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>0.193</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_888ba1bc-edac-470c-b76a-2234166a3203">
+		<cim:IdentifiedObject.aliasName>4x95, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x95se/95 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 95 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_a5a4a4fc-997c-459c-a6d5-34a409308627"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>58477</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>4550.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:PerLengthSequenceImpedance rdf:ID="_e6146ff6-4bd4-4c69-99f0-915e87a482bf">
+		<cim:IdentifiedObject.aliasName>4x50, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x50rm/50 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_a62be941-4f47-48cf-a103-c69b7bd928b0"/>
+		<cim:PerLengthSequenceImpedance.r>0.387</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>1.548</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.072</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.288</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:PerLengthSequenceImpedance rdf:ID="_b820b617-2d30-490c-b85d-ce2bcd172f39">
+		<cim:IdentifiedObject.aliasName>4x150, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x150se/150 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_27041c0f-4097-40a0-a342-4775036c0fa8"/>
+		<cim:PerLengthSequenceImpedance.r>0.124</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>0.496</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.070</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.28</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_27041c0f-4097-40a0-a342-4775036c0fa8">
+		<cim:IdentifiedObject.aliasName>4x150, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x150se/150 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (sector core, concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_0b162d13-87f9-458c-8b4e-1cbc1af13942"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>0.146</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>50e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>326</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>0.124</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x150 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_b820b617-2d30-490c-b85d-ce2bcd172f39"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.sector"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>0.124</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_0b162d13-87f9-458c-8b4e-1cbc1af13942">
+		<cim:IdentifiedObject.aliasName>4x150, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x150se/150 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 150 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_27041c0f-4097-40a0-a342-4775036c0fa8"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>47732</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>7030.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:PerLengthSequenceImpedance rdf:ID="_d8503de3-4c1c-402b-9633-8a8f542cb9ce">
+		<cim:IdentifiedObject.aliasName>4x240, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x240se/240 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (sector core, concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_1d65b0d8-ac40-4d53-a5ba-39de8da7c0b3"/>
+		<cim:PerLengthSequenceImpedance.r>0.0754</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>0.3016</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.069</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.276</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_1d65b0d8-ac40-4d53-a5ba-39de8da7c0b3">
+		<cim:IdentifiedObject.aliasName>4x240, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x240se/240 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (sector core, concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_8cecdd29-5cd7-4e68-9999-dabc97661234"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>0.091</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>62e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>432</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>0.0754</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x240 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_d8503de3-4c1c-402b-9633-8a8f542cb9ce"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.sector"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>0.0754</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_8cecdd29-5cd7-4e68-9999-dabc97661234">
+		<cim:IdentifiedObject.aliasName>4x240, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x240se/240 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 240 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_1d65b0d8-ac40-4d53-a5ba-39de8da7c0b3"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>61134</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>10900.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:PerLengthSequenceImpedance rdf:ID="_1880ab2b-813a-4a44-b5c0-18cb5d870b59">
+		<cim:IdentifiedObject.aliasName>4x10, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PerLengthSequenceImpedance.r>1.83</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>8.476</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.080</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.32</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ConcentricNeutralCableInfo rdf:ID="_fbd62bd8-049f-4b0c-a372-9ee334d509b8">
+		<cim:IdentifiedObject.aliasName>4x16, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x16rm/16 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>four wire (concentric neutral) copper EPR insulated underground cable</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_f9cd62ad-b038-4bb4-a84a-2c7061e0ab98"/>
+		<cim:WireInfo.insulated>true</cim:WireInfo.insulated>
+		<cim:WireInfo.insulationMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireInsulationKind.ethylenePropyleneRubber"/>
+		<cim:WireInfo.material rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WireMaterialKind.copper"/>
+		<cim:WireInfo.rAC50>1.331</cim:WireInfo.rAC50>
+		<cim:WireInfo.radius>22e-3</cim:WireInfo.radius>
+		<cim:WireInfo.ratedCurrent>88.0</cim:WireInfo.ratedCurrent>
+		<cim:WireInfo.rDC20>1.15</cim:WireInfo.rDC20>
+		<cim:WireInfo.sizeDescription>4x16 sq mm</cim:WireInfo.sizeDescription>
+		<cim:WireInfo.strandCount>3</cim:WireInfo.strandCount>
+		<cim:WireInfo.PerLengthParameters rdf:resource="#_b95f1837-5bdc-4878-89ce-d6c7a37b8f12"/>
+		<cim:CableInfo.constructionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableConstructionKind.stranded"/>
+		<cim:CableInfo.nominalTemperature>90.0</cim:CableInfo.nominalTemperature>
+		<cim:CableInfo.outerJacketKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableOuterJacketKind.insulating"/>
+		<cim:CableInfo.sheathAsNeutral>true</cim:CableInfo.sheathAsNeutral>
+		<cim:CableInfo.shieldMaterial rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CableShieldMaterialKind.copper"/>
+		<cim:ConcentricNeutralCableInfo.neutralStrandRDC20>1.15</cim:ConcentricNeutralCableInfo.neutralStrandRDC20>
+	</cim:ConcentricNeutralCableInfo>
+	<cim:ProductAssetModel rdf:ID="_f9cd62ad-b038-4bb4-a84a-2c7061e0ab98">
+		<cim:IdentifiedObject.aliasName>4x16, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x16rm/16 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three stranded core copper cable with copper concentric neutral, each with 16 sq mm cross section</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_fbd62bd8-049f-4b0c-a372-9ee334d509b8"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>58483</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>30.06.2017</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.distributionUnderground"/>
+		<cim:ProductAssetModel.weightTotal>970.0</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_54ba5e07-6802-4b6b-a54b-f6c4a3c598b6"/>
+	</cim:ProductAssetModel>
+	<cim:PerLengthSequenceImpedance rdf:ID="_b95f1837-5bdc-4878-89ce-d6c7a37b8f12">
+		<cim:IdentifiedObject.aliasName>4x16, Ceanderkabel</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>GKN 3x16rm/16 1/0.6 kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>three wire plus concentric neutral</cim:IdentifiedObject.description>
+		<cim:PerLengthLineParameter.WireInfos rdf:resource="#_fbd62bd8-049f-4b0c-a372-9ee334d509b8"/>
+		<cim:PerLengthSequenceImpedance.r>1.15</cim:PerLengthSequenceImpedance.r>
+		<cim:PerLengthSequenceImpedance.r0>5.324</cim:PerLengthSequenceImpedance.r0>
+		<cim:PerLengthSequenceImpedance.x>0.075</cim:PerLengthSequenceImpedance.x>
+		<cim:PerLengthSequenceImpedance.x0>0.3</cim:PerLengthSequenceImpedance.x0>
+	</cim:PerLengthSequenceImpedance>
+	<cim:ElectronicAddress rdf:ID="_89ab3eef-ac91-48d2-894a-8fda2b69c676">
+		<cim:ElectronicAddress.web>http://new.abb.com/</cim:ElectronicAddress.web>
+	</cim:ElectronicAddress>
+	<cim:TelephoneNumber rdf:ID="_0af3dfc6-aff9-4117-87e9-5bc993a19d0c">
+		<cim:TelephoneNumber.areaCode>84</cim:TelephoneNumber.areaCode>
+		<cim:TelephoneNumber.countryCode>+41</cim:TelephoneNumber.countryCode>
+		<cim:TelephoneNumber.localNumber>484 58 45</cim:TelephoneNumber.localNumber>
+	</cim:TelephoneNumber>
+	<cim:StreetDetail rdf:ID="_d418e973-073b-4237-91cd-93cd015caf2f">
+		<cim:StreetDetail.name>Brown Boveri Strasse</cim:StreetDetail.name>
+		<cim:StreetDetail.number>6</cim:StreetDetail.number>
+		<cim:StreetDetail.withinTownLimits>true</cim:StreetDetail.withinTownLimits>
+	</cim:StreetDetail>
+	<cim:TownDetail rdf:ID="_32e2473e-9a37-49a9-a2f4-da7e8c2fc5a4">
+		<cim:TownDetail.code>CH-5400</cim:TownDetail.code>
+		<cim:TownDetail.country>Switzerland</cim:TownDetail.country>
+		<cim:TownDetail.name>Baden</cim:TownDetail.name>
+		<cim:TownDetail.section>Bezirk Baden</cim:TownDetail.section>
+		<cim:TownDetail.stateOrProvince>Aargau</cim:TownDetail.stateOrProvince>
+	</cim:TownDetail>
+	<cim:TownDetail rdf:ID="_bbbf6ba4-d1da-4bce-a469-071710db51c8">
+		<cim:TownDetail.code>CH-5201</cim:TownDetail.code>
+		<cim:TownDetail.country>Switzerland</cim:TownDetail.country>
+		<cim:TownDetail.name>Brugg</cim:TownDetail.name>
+		<cim:TownDetail.section>Windisch, Bezirk Brugg</cim:TownDetail.section>
+		<cim:TownDetail.stateOrProvince>Aargau</cim:TownDetail.stateOrProvince>
+	</cim:TownDetail>
+	<cim:Status rdf:ID="_e59e9605-92e8-4683-87f0-821b77c64264">
+		<cim:Status.dateTime>2018-04-07T19:10:37.104Z</cim:Status.dateTime>
+		<cim:Status.reason>transformer library capture</cim:Status.reason>
+		<cim:Status.remark>scraped from website</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:Status rdf:ID="_245ea9ae-cef4-4e81-b7c6-3ef4a155d46c">
+		<cim:Status.dateTime>2018-02-19T15:18:54.535Z</cim:Status.dateTime>
+		<cim:Status.reason>cable library capture</cim:Status.reason>
+		<cim:Status.remark>scraped from website</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetAddress rdf:ID="_ebc3e31d-66e5-4b40-9bc5-3b3293f88bcc">
+		<cim:StreetAddress.status rdf:resource="#_e59e9605-92e8-4683-87f0-821b77c64264"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#_d418e973-073b-4237-91cd-93cd015caf2f"/>
+		<cim:StreetAddress.townDetail rdf:resource="#_32e2473e-9a37-49a9-a2f4-da7e8c2fc5a4"/>
+	</cim:StreetAddress>
+	<cim:StreetDetail rdf:ID="_78474698-7780-4b90-acf2-633474fc1103">
+		<cim:StreetDetail.name>Klosterzelgstrasse</cim:StreetDetail.name>
+		<cim:StreetDetail.number>28</cim:StreetDetail.number>
+		<cim:StreetDetail.withinTownLimits>true</cim:StreetDetail.withinTownLimits>
+	</cim:StreetDetail>
+	<cim:ProductAssetModel rdf:ID="_aade7c7b-2c36-4296-a440-55d3d6302c19">
+		<cim:IdentifiedObject.aliasName>630kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>630kVA 3ph 20kV/400V 50Hz Dyn5 ONAN</cim:IdentifiedObject.description>
+		<cim:AssetModel.AssetInfo rdf:resource="#_2844668c-c663-4e76-ade9-9c7f673dab35"/>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>TNOSCTN-630/20-15PNSm</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>2014</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.substation"/>
+		<cim:ProductAssetModel.weightTotal>2031</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_d1a06742-35dd-44f5-8a22-2099e58e1bd0"/>
+	</cim:ProductAssetModel>
+	<cim:Manufacturer rdf:ID="_d1a06742-35dd-44f5-8a22-2099e58e1bd0">
+		<cim:IdentifiedObject.aliasName>ABB</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>ABB Schweiz AG</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Vertrieb Energietechnik</cim:IdentifiedObject.description>
+		<cim:OrganisationRole.Organisation rdf:resource="#_fb2643d2-a4f7-4cd0-8ffb-71fa7b9f6caa"/>
+	</cim:Manufacturer>
+	<cim:Organisation rdf:ID="_fb2643d2-a4f7-4cd0-8ffb-71fa7b9f6caa">
+		<cim:IdentifiedObject.aliasName>ABB</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>ABB Asea Brown Boveri Ltd</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>ABB is a pioneering technology leader in electrification products, robotics and motion, industrial automation and power grids, serving customers in utilities, industry and transport and infrastructure globally.</cim:IdentifiedObject.description>
+		<cim:Organisation.electronicAddress rdf:resource="#_89ab3eef-ac91-48d2-894a-8fda2b69c676"/>
+		<cim:Organisation.phone1 rdf:resource="#_0af3dfc6-aff9-4117-87e9-5bc993a19d0c"/>
+		<cim:Organisation.streetAddress rdf:resource="#_ebc3e31d-66e5-4b40-9bc5-3b3293f88bcc"/>
+	</cim:Organisation>
+	<cim:PowerTransformerInfo rdf:ID="_2844668c-c663-4e76-ade9-9c7f673dab35">
+		<cim:IdentifiedObject.aliasName>630kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>630kVA 3ph 20kV/400V 50Hz Dyn5 ONAN</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_aade7c7b-2c36-4296-a440-55d3d6302c19"/>
+	</cim:PowerTransformerInfo>
+	<cim:TransformerTankInfo rdf:ID="_4c0feafc-a0e3-4772-b3d8-21e7a2890926">
+		<cim:IdentifiedObject.aliasName>630kVA Tank</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>Tank 630kVA</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>ONAN tank containing Mineral Nytro Taurus, 461kg</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_aade7c7b-2c36-4296-a440-55d3d6302c19"/>
+		<cim:TransformerTankInfo.PowerTransformerInfo rdf:resource="#_2844668c-c663-4e76-ade9-9c7f673dab35"/>
+	</cim:TransformerTankInfo>
+	<cim:TransformerEndInfo rdf:ID="_0551a23c-5102-47e0-9b73-59812ef299f3">
+		<cim:IdentifiedObject.aliasName>630kVA low voltage winding</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN Low Voltage Winding</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>400V Secondary</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_aade7c7b-2c36-4296-a440-55d3d6302c19"/>
+		<cim:TransformerEndInfo.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:TransformerEndInfo.endNumber>2</cim:TransformerEndInfo.endNumber>
+		<cim:TransformerEndInfo.phaseAngleClock>5</cim:TransformerEndInfo.phaseAngleClock>
+		<cim:TransformerEndInfo.ratedS>630000.0</cim:TransformerEndInfo.ratedS>
+		<cim:TransformerEndInfo.ratedU>400.0</cim:TransformerEndInfo.ratedU>
+		<cim:TransformerEndInfo.TransformerTankInfo rdf:resource="#_4c0feafc-a0e3-4772-b3d8-21e7a2890926"/>
+	</cim:TransformerEndInfo>
+	<cim:TransformerEndInfo rdf:ID="_0ac3972a-1518-461d-8c04-f90ddbf447f8">
+		<cim:IdentifiedObject.aliasName>630kVA high voltage winding</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN High Voltage Winding</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>20000V (15000V) 5 Tap Primary</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_aade7c7b-2c36-4296-a440-55d3d6302c19"/>
+		<cim:TransformerEndInfo.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.D"/>
+		<cim:TransformerEndInfo.endNumber>1</cim:TransformerEndInfo.endNumber>
+		<cim:TransformerEndInfo.phaseAngleClock>0</cim:TransformerEndInfo.phaseAngleClock>
+		<cim:TransformerEndInfo.ratedS>630000</cim:TransformerEndInfo.ratedS>
+		<cim:TransformerEndInfo.ratedU>20000</cim:TransformerEndInfo.ratedU>
+		<cim:TransformerEndInfo.TransformerTankInfo rdf:resource="#_4c0feafc-a0e3-4772-b3d8-21e7a2890926"/>
+	</cim:TransformerEndInfo>
+	<cim:TransformerMeshImpedance rdf:ID="_49dda951-48b3-47d9-ad77-43a8fbec6b1a">
+		<cim:IdentifiedObject.aliasName>Primary Equivalent Impedance 630kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN Primary Equivalent Impedance</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>impedance seen at the high voltage winding</cim:IdentifiedObject.description>
+		<cim:TransformerMeshImpedance.r>5.55</cim:TransformerMeshImpedance.r>
+		<cim:TransformerMeshImpedance.r0>5.55</cim:TransformerMeshImpedance.r0>
+		<cim:TransformerMeshImpedance.x>25</cim:TransformerMeshImpedance.x>
+		<cim:TransformerMeshImpedance.x0>25</cim:TransformerMeshImpedance.x0>
+		<cim:TransformerMeshImpedance.ToTransformerEndInfos rdf:resource="#_0551a23c-5102-47e0-9b73-59812ef299f3"/>
+		<cim:TransformerMeshImpedance.FromTransformerEndInfo rdf:resource="#_0ac3972a-1518-461d-8c04-f90ddbf447f8"/>
+	</cim:TransformerMeshImpedance>
+	<cim:TransformerMeshImpedance rdf:ID="_76c633df-022c-4905-ba24-101fabadf9a3">
+		<cim:IdentifiedObject.aliasName>Secondary Equivalent Impedance 630kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>630kVA ABB TNOSCTN Secondary Equivalent Impedance</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>impedance seen at the low voltage winding</cim:IdentifiedObject.description>
+		<cim:TransformerMeshImpedance.r>0.00222</cim:TransformerMeshImpedance.r>
+		<cim:TransformerMeshImpedance.r0>0.00222</cim:TransformerMeshImpedance.r0>
+		<cim:TransformerMeshImpedance.x>0.01</cim:TransformerMeshImpedance.x>
+		<cim:TransformerMeshImpedance.x0>0.01</cim:TransformerMeshImpedance.x0>
+		<cim:TransformerMeshImpedance.ToTransformerEndInfos rdf:resource="#_0ac3972a-1518-461d-8c04-f90ddbf447f8"/>
+		<cim:TransformerMeshImpedance.FromTransformerEndInfo rdf:resource="#_0551a23c-5102-47e0-9b73-59812ef299f3"/>
+	</cim:TransformerMeshImpedance>
+	<cim:ProductAssetModel rdf:ID="_a6489001-1ab8-4ea1-a0b9-c8819938111c">
+		<cim:IdentifiedObject.aliasName>400kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>400kVA 3ph 20kV/400V 50Hz Dyn5 ONAN</cim:IdentifiedObject.description>
+		<cim:ProductAssetModel.corporateStandardKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#CorporateStandardKind.standard"/>
+		<cim:ProductAssetModel.modelNumber>TNOSCTN-400/20-PNS</cim:ProductAssetModel.modelNumber>
+		<cim:ProductAssetModel.modelVersion>2001</cim:ProductAssetModel.modelVersion>
+		<cim:ProductAssetModel.usageKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#AssetModelUsageKind.substation"/>
+		<cim:ProductAssetModel.weightTotal>1310</cim:ProductAssetModel.weightTotal>
+		<cim:ProductAssetModel.Manufacturer rdf:resource="#_d1a06742-35dd-44f5-8a22-2099e58e1bd0"/>
+	</cim:ProductAssetModel>
+	<cim:PowerTransformerInfo rdf:ID="_66cf91c6-86b2-4527-9559-9a385d562541">
+		<cim:IdentifiedObject.aliasName>400kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>400kVA 3ph 20kV/400V 50Hz Dyn5 ONAN</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_a6489001-1ab8-4ea1-a0b9-c8819938111c"/>
+	</cim:PowerTransformerInfo>
+	<cim:TransformerTankInfo rdf:ID="_4ff248a4-ec6d-4af3-9caf-98a953f45b66">
+		<cim:IdentifiedObject.aliasName>400kVA Tank</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>Tank 400kVA</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>ONAN tank containing Mineral Nytro Taurus, 255kg</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_a6489001-1ab8-4ea1-a0b9-c8819938111c"/>
+		<cim:TransformerTankInfo.PowerTransformerInfo rdf:resource="#_66cf91c6-86b2-4527-9559-9a385d562541"/>
+	</cim:TransformerTankInfo>
+	<cim:TransformerEndInfo rdf:ID="_4b4ff64e-6cb1-49f2-b723-f94f7dfb10e6">
+		<cim:IdentifiedObject.aliasName>400kVA high voltage winding</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN High Voltage Winding</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>20000V 5 Tap Primary</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_a6489001-1ab8-4ea1-a0b9-c8819938111c"/>
+		<cim:TransformerEndInfo.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.D"/>
+		<cim:TransformerEndInfo.endNumber>1</cim:TransformerEndInfo.endNumber>
+		<cim:TransformerEndInfo.phaseAngleClock>0</cim:TransformerEndInfo.phaseAngleClock>
+		<cim:TransformerEndInfo.ratedS>400000</cim:TransformerEndInfo.ratedS>
+		<cim:TransformerEndInfo.ratedU>20000</cim:TransformerEndInfo.ratedU>
+		<cim:TransformerEndInfo.TransformerTankInfo rdf:resource="#_4ff248a4-ec6d-4af3-9caf-98a953f45b66"/>
+	</cim:TransformerEndInfo>
+	<cim:TransformerEndInfo rdf:ID="_caff4eea-1a47-46e0-895a-00255499db0f">
+		<cim:IdentifiedObject.aliasName>400kVA low voltage winding</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN Low Voltage Winding</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>400V Secondary</cim:IdentifiedObject.description>
+		<cim:AssetInfo.AssetModel rdf:resource="#_a6489001-1ab8-4ea1-a0b9-c8819938111c"/>
+		<cim:TransformerEndInfo.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:TransformerEndInfo.endNumber>2</cim:TransformerEndInfo.endNumber>
+		<cim:TransformerEndInfo.phaseAngleClock>5</cim:TransformerEndInfo.phaseAngleClock>
+		<cim:TransformerEndInfo.ratedS>400000.0</cim:TransformerEndInfo.ratedS>
+		<cim:TransformerEndInfo.ratedU>400.0</cim:TransformerEndInfo.ratedU>
+		<cim:TransformerEndInfo.TransformerTankInfo rdf:resource="#_4ff248a4-ec6d-4af3-9caf-98a953f45b66"/>
+	</cim:TransformerEndInfo>
+	<cim:TransformerMeshImpedance rdf:ID="_0a972ae6-fe93-4fb0-84e0-1bcc1e84f67b">
+		<cim:IdentifiedObject.aliasName>Primary Equivalent Impedance 400kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN Primary Equivalent Impedance</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>impedance seen at the high voltage winding</cim:IdentifiedObject.description>
+		<cim:TransformerMeshImpedance.r>13.2</cim:TransformerMeshImpedance.r>
+		<cim:TransformerMeshImpedance.r0>13.2</cim:TransformerMeshImpedance.r0>
+		<cim:TransformerMeshImpedance.x>42</cim:TransformerMeshImpedance.x>
+		<cim:TransformerMeshImpedance.x0>42</cim:TransformerMeshImpedance.x0>
+		<cim:TransformerMeshImpedance.ToTransformerEndInfos rdf:resource="#_caff4eea-1a47-46e0-895a-00255499db0f"/>
+		<cim:TransformerMeshImpedance.FromTransformerEndInfo rdf:resource="#_4b4ff64e-6cb1-49f2-b723-f94f7dfb10e6"/>
+	</cim:TransformerMeshImpedance>
+	<cim:TransformerMeshImpedance rdf:ID="_686f082f-5102-4849-873f-a37e398e7786">
+		<cim:IdentifiedObject.aliasName>Secondary Equivalent Impedance 400kVA</cim:IdentifiedObject.aliasName>
+		<cim:IdentifiedObject.name>400kVA ABB TNOSCTN Secondary Equivalent Impedance</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>impedance seen at the low voltage winding</cim:IdentifiedObject.description>
+		<cim:TransformerMeshImpedance.r>0.0053</cim:TransformerMeshImpedance.r>
+		<cim:TransformerMeshImpedance.r0>0.0053</cim:TransformerMeshImpedance.r0>
+		<cim:TransformerMeshImpedance.x>0.0168</cim:TransformerMeshImpedance.x>
+		<cim:TransformerMeshImpedance.x0>0.0168</cim:TransformerMeshImpedance.x0>
+		<cim:TransformerMeshImpedance.ToTransformerEndInfos rdf:resource="#_4b4ff64e-6cb1-49f2-b723-f94f7dfb10e6"/>
+		<cim:TransformerMeshImpedance.FromTransformerEndInfo rdf:resource="#_caff4eea-1a47-46e0-895a-00255499db0f"/>
+	</cim:TransformerMeshImpedance>
+	<cim:PowerTransformer rdf:ID="TX0001">
+		<cim:IdentifiedObject.name>TX0001</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>400kVA ABB TNOSCTN</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_66cf91c6-86b2-4527-9559-9a385d562541"/>
+		<cim:PowerSystemResource.Location rdf:resource="#TX0001_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:PowerTransformer.vectorGroup>Dyn5</cim:PowerTransformer.vectorGroup>
+	</cim:PowerTransformer>
+	<cim:CoordinateSystem rdf:ID="wgs84">
+		<cim:IdentifiedObject.name>WGS 84</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>new World Geodetic System</cim:IdentifiedObject.description>
+		<cim:CoordinateSystem.crsUrn>EPSG::4326</cim:CoordinateSystem.crsUrn>
+	</cim:CoordinateSystem>
+	<cim:CoordinateSystem rdf:ID="pseudo_wgs84">
+		<cim:IdentifiedObject.name>WGS 84 (internal)</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>schematic coordinates translated to the new World Geodetic System</cim:IdentifiedObject.description>
+		<cim:CoordinateSystem.crsUrn>EPSG::4326</cim:CoordinateSystem.crsUrn>
+	</cim:CoordinateSystem>
+	<cim:Location rdf:ID="TX0001_location">
+		<cim:Location.mainAddress rdf:resource="#TX0001_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="TX0001_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353881594426127</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76580222132887</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#TX0001_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="TX0001_status">
+		<cim:Status.dateTime>2018-08-31T08:20:30.275Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.76580222132887&lon=7.353881594426127&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="TX0001_street">
+		<cim:StreetDetail.addressGeneral>33, Dorf, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3156, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>yes</cim:StreetDetail.code>
+		<cim:StreetDetail.name>Dorf</cim:StreetDetail.name>
+		<cim:StreetDetail.number>33</cim:StreetDetail.number>
+		<cim:StreetDetail.suffix>building</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:TownDetail rdf:ID="ch-3156">
+		<cim:TownDetail.code>3156</cim:TownDetail.code>
+		<cim:TownDetail.country>Switzerland</cim:TownDetail.country>
+		<cim:TownDetail.section>Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland</cim:TownDetail.section>
+		<cim:TownDetail.stateOrProvince>Bern</cim:TownDetail.stateOrProvince>
+	</cim:TownDetail>
+	<cim:StreetAddress rdf:ID="TX0001_address">
+		<cim:StreetAddress.status rdf:resource="#TX0001_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#TX0001_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3156"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="TX0001_node_1">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="TX0001_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="TX0001_terminal_1">
+		<cim:IdentifiedObject.name>TX0001_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0001_node_1"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="TX0001_terminal_2">
+		<cim:IdentifiedObject.name>TX0001_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0001_node_2"/>
+	</cim:Terminal>
+	<cim:BaseVoltage rdf:ID="BaseVoltage_150000">
+		<cim:IdentifiedObject.name>150kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>high voltage</cim:IdentifiedObject.description>
+		<cim:BaseVoltage.nominalVoltage>150</cim:BaseVoltage.nominalVoltage>
+	</cim:BaseVoltage>
+	<cim:BaseVoltage rdf:ID="BaseVoltage_20000">
+		<cim:IdentifiedObject.name>20kV</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>medium voltage</cim:IdentifiedObject.description>
+		<cim:BaseVoltage.nominalVoltage>20</cim:BaseVoltage.nominalVoltage>
+	</cim:BaseVoltage>
+	<cim:BaseVoltage rdf:ID="BaseVoltage_1000">
+		<cim:IdentifiedObject.name>1000V</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>subtransmission</cim:IdentifiedObject.description>
+		<cim:BaseVoltage.nominalVoltage>1.0</cim:BaseVoltage.nominalVoltage>
+	</cim:BaseVoltage>
+	<cim:BaseVoltage rdf:ID="BaseVoltage_400">
+		<cim:IdentifiedObject.name>400V</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>low voltage</cim:IdentifiedObject.description>
+		<cim:BaseVoltage.nominalVoltage>0.4</cim:BaseVoltage.nominalVoltage>
+	</cim:BaseVoltage>
+	<cim:SvStatus rdf:ID="in_use">
+		<cim:SvStatus.inService>true</cim:SvStatus.inService>
+	</cim:SvStatus>
+	<cim:SvStatus rdf:ID="not_in_use">
+		<cim:SvStatus.inService>false</cim:SvStatus.inService>
+	</cim:SvStatus>
+	<cim:PowerTransformerEnd rdf:ID="TX0001_end_1">
+		<cim:IdentifiedObject.name>TX0001_end_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 1</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>1</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_20000"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0001_terminal_1"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.D"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>0</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>13.2</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>13.2</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>20000</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>42</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>42</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0001"/>
+	</cim:PowerTransformerEnd>
+	<cim:PowerTransformerEnd rdf:ID="TX0001_end_2">
+		<cim:IdentifiedObject.name>TX0001_end_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 2</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>2</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0001_terminal_2"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>0.0053</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>0.0053</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000.0</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>400.0</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>0.0168</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>0.0168</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0001"/>
+	</cim:PowerTransformerEnd>
+	<cim:EnergyConsumer rdf:ID="USR0001">
+		<cim:PowerSystemResource.Location rdf:resource="#USR0001_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_HouseService"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:EnergyConsumer.customerCount>1</cim:EnergyConsumer.customerCount>
+		<cim:EnergyConsumer.phaseConnection rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseShuntConnectionKind.Yn"/>
+	</cim:EnergyConsumer>
+	<cim:Location rdf:ID="USR0001_location">
+		<cim:Location.mainAddress rdf:resource="#USR0001_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="USR0001_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353125505654987</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765702231654046</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#USR0001_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="USR0001_status">
+		<cim:Status.dateTime>2018-08-31T08:21:32.521Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.765702231654046&lon=7.353125505654987&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="USR0001_street">
+		<cim:StreetDetail.addressGeneral>Gasthof Löwen Riffenmatt, 32, Dorf, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3156, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>restaurant</cim:StreetDetail.code>
+		<cim:StreetDetail.name>Dorf</cim:StreetDetail.name>
+		<cim:StreetDetail.number>32</cim:StreetDetail.number>
+		<cim:StreetDetail.prefix>Gasthof Löwen Riffenmatt</cim:StreetDetail.prefix>
+		<cim:StreetDetail.suffix>amenity</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:StreetAddress rdf:ID="USR0001_address">
+		<cim:StreetAddress.status rdf:resource="#USR0001_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#USR0001_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3156"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="USR0001_node">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="USR0001_terminal">
+		<cim:IdentifiedObject.name>USR0001_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0001_node"/>
+	</cim:Terminal>
+	<cim:PSRType rdf:ID="PSRType_HouseService">
+		<cim:IdentifiedObject.name>House Service</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Consumer/Customer</cim:IdentifiedObject.description>
+	</cim:PSRType>
+	<cim:PSRType rdf:ID="PSRType_StreetLight">
+		<cim:IdentifiedObject.name>Street Light</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Street Lighting</cim:IdentifiedObject.description>
+	</cim:PSRType>
+	<cim:Fuse rdf:ID="FUS0001">
+		<cim:PowerSystemResource.Location rdf:resource="#FUS0001_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Switch.normalOpen>false</cim:Switch.normalOpen>
+		<cim:Switch.ratedCurrent>75</cim:Switch.ratedCurrent>
+		<cim:Switch.open>false</cim:Switch.open>
+	</cim:Fuse>
+	<cim:Location rdf:ID="FUS0001_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="FUS0001_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353125505654987</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765702231654046</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#FUS0001_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="FUS0001_terminal_1">
+		<cim:IdentifiedObject.name>FUS0001_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0001_node"/>
+	</cim:Terminal>
+	<cim:ConnectivityNode rdf:ID="FUS0001_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="FUS0001_terminal_2">
+		<cim:IdentifiedObject.name>FUS0001_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0001_node_2"/>
+	</cim:Terminal>
+	<cim:EnergyConsumer rdf:ID="USR0002">
+		<cim:PowerSystemResource.Location rdf:resource="#USR0002_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_HouseService"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:EnergyConsumer.customerCount>1</cim:EnergyConsumer.customerCount>
+		<cim:EnergyConsumer.phaseConnection rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseShuntConnectionKind.Yn"/>
+	</cim:EnergyConsumer>
+	<cim:Location rdf:ID="USR0002_location">
+		<cim:Location.mainAddress rdf:resource="#USR0002_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="USR0002_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353860466872334</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765079410852195</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#USR0002_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="USR0002_status">
+		<cim:Status.dateTime>2018-08-31T08:21:35.049Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.765079410852195&lon=7.353860466872334&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="USR0002_street">
+		<cim:StreetDetail.addressGeneral>Mehrzweckgebäude Riffenmatt, 35, Dorf, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3156, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.buildingName>Mehrzweckgebäude Riffenmatt</cim:StreetDetail.buildingName>
+		<cim:StreetDetail.code>yes</cim:StreetDetail.code>
+		<cim:StreetDetail.name>Dorf</cim:StreetDetail.name>
+		<cim:StreetDetail.number>35</cim:StreetDetail.number>
+		<cim:StreetDetail.prefix>Mehrzweckgebäude Riffenmatt</cim:StreetDetail.prefix>
+		<cim:StreetDetail.suffix>building</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:StreetAddress rdf:ID="USR0002_address">
+		<cim:StreetAddress.status rdf:resource="#USR0002_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#USR0002_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3156"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="USR0002_node">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="USR0002_terminal">
+		<cim:IdentifiedObject.name>USR0002_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0002_node"/>
+	</cim:Terminal>
+	<cim:Fuse rdf:ID="FUS0002">
+		<cim:PowerSystemResource.Location rdf:resource="#FUS0002_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Switch.normalOpen>false</cim:Switch.normalOpen>
+		<cim:Switch.ratedCurrent>75</cim:Switch.ratedCurrent>
+		<cim:Switch.open>false</cim:Switch.open>
+	</cim:Fuse>
+	<cim:Location rdf:ID="FUS0002_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="FUS0002_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353860466872334</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765079410852195</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#FUS0002_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="FUS0002_terminal_1">
+		<cim:IdentifiedObject.name>FUS0002_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0002_node"/>
+	</cim:Terminal>
+	<cim:ConnectivityNode rdf:ID="FUS0002_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="FUS0002_terminal_2">
+		<cim:IdentifiedObject.name>FUS0002_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0002_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0001">
+		<cim:IdentifiedObject.name>CAB0001</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0001_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>77.92179492931811</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.14259688472065216</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.6604651338209003</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.006233743594345449</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.024934974377381795</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0001_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0001_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353882670671879</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76576407835398</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0001_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0001_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353598675963127</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76591874656373</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0001_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0001_location_point_3">
+		<cim:PositionPoint.sequenceNumber>3</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353211092999288</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76555360131084</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0001_location"/>
+	</cim:PositionPoint>
+	<cim:PSRType rdf:ID="PSRType_Underground">
+		<cim:IdentifiedObject.name>Underground cable</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Buried cable in duct or trench.</cim:IdentifiedObject.description>
+	</cim:PSRType>
+	<cim:PSRType rdf:ID="PSRType_Overhead">
+		<cim:IdentifiedObject.name>Overhead wires</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Aerial suspended conductors.</cim:IdentifiedObject.description>
+	</cim:PSRType>
+	<cim:ConnectivityNode rdf:ID="CAB0001_node_1">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="CAB0001_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="CAB0001_terminal_2">
+		<cim:IdentifiedObject.name>CAB0001_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0001 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#CAB0001_node_2"/>
+	</cim:Terminal>
+	<cim:Junction rdf:ID="JCN0001">
+		<cim:PowerSystemResource.Location rdf:resource="#JCN0001_location"/>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+	</cim:Junction>
+	<cim:Location rdf:ID="JCN0001_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="JCN0001_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.3532110545784235</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765553588648345</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#JCN0001_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="JCN0001_terminal">
+		<cim:IdentifiedObject.name>JCN0001_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#JCN0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#CAB0001_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0002">
+		<cim:IdentifiedObject.name>CAB0002</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0002_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>17.78751689009234</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.032551155908868985</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.1507669931604227</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.0014230013512073873</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.005692005404829549</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0002_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0002_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353125475347042</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76570223535944</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0002_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0002_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.3532110545784235</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765553588648345</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0002_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="CAB0002_terminal_1">
+		<cim:IdentifiedObject.name>CAB0002_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0002 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0001_node"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0002_terminal_2">
+		<cim:IdentifiedObject.name>CAB0002_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0002 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#CAB0001_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0003">
+		<cim:IdentifiedObject.name>CAB0003</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0003_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>72.37908817555562</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.13245373136126679</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.6134851513760095</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.00579032705404445</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.0231613082161778</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0003_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0003_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353860484436154</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76507939773143</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0003_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0003_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.3532110545784235</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.765553588648345</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0003_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="CAB0003_terminal_1">
+		<cim:IdentifiedObject.name>CAB0003_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0003 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0002_node"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0003_terminal_2">
+		<cim:IdentifiedObject.name>CAB0003_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0003 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#CAB0001_node_2"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0001_terminal_1">
+		<cim:IdentifiedObject.name>CAB0001_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0001 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0001"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0001_node_2"/>
+	</cim:Terminal>
+	<cim:PowerTransformer rdf:ID="TX0002">
+		<cim:IdentifiedObject.name>TX0002</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Fake 20000V:1000V:400V three-terminal transformer</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.Location rdf:resource="#TX0002_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:PowerTransformer.vectorGroup>Dyn5</cim:PowerTransformer.vectorGroup>
+	</cim:PowerTransformer>
+	<cim:Location rdf:ID="TX0002_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="TX0002_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.3539741001286245</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76580351839306</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#TX0002_location"/>
+	</cim:PositionPoint>
+	<cim:ConnectivityNode rdf:ID="TX0002_node_1">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="TX0002_node_2">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="TX0002_node_3">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="TX0002_terminal_1">
+		<cim:IdentifiedObject.name>TX0002_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_1"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="TX0002_terminal_2">
+		<cim:IdentifiedObject.name>TX0002_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_2"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="TX0002_terminal_3">
+		<cim:IdentifiedObject.name>TX0002_terminal_3</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>3</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0002"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_3"/>
+	</cim:Terminal>
+	<cim:PowerTransformerEnd rdf:ID="TX0002_end_1">
+		<cim:IdentifiedObject.name>TX0002_end_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 1</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>1</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_20000"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0002_terminal_1"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.D"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>0</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>13.2</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>13.2</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>20000</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>42</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>42</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0002"/>
+	</cim:PowerTransformerEnd>
+	<cim:PowerTransformerEnd rdf:ID="TX0002_end_2">
+		<cim:IdentifiedObject.name>TX0002_end_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 2</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>2</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0002_terminal_2"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>0.0053</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>0.0053</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000.0</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>400.0</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>0.0168</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>0.0168</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0002"/>
+	</cim:PowerTransformerEnd>
+	<cim:PowerTransformerEnd rdf:ID="TX0002_end_3">
+		<cim:IdentifiedObject.name>TX0002_end_3</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 3</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>3</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_1000"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0002_terminal_3"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>0.033</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>0.033</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000.0</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>1000.0</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>0.105</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>0.105</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0002"/>
+	</cim:PowerTransformerEnd>
+	<cim:EnergyConsumer rdf:ID="USR0003">
+		<cim:PowerSystemResource.Location rdf:resource="#USR0003_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_HouseService"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:EnergyConsumer.customerCount>1</cim:EnergyConsumer.customerCount>
+		<cim:EnergyConsumer.phaseConnection rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseShuntConnectionKind.Yn"/>
+	</cim:EnergyConsumer>
+	<cim:Location rdf:ID="USR0003_location">
+		<cim:Location.mainAddress rdf:resource="#USR0003_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="USR0003_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.354060948862184</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76558382434635</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#USR0003_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="USR0003_status">
+		<cim:Status.dateTime>2018-08-31T08:25:39.768Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.76558382434635&lon=7.354060948862184&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="USR0003_street">
+		<cim:StreetDetail.addressGeneral>34, Dorf, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3156, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>yes</cim:StreetDetail.code>
+		<cim:StreetDetail.name>Dorf</cim:StreetDetail.name>
+		<cim:StreetDetail.number>34</cim:StreetDetail.number>
+		<cim:StreetDetail.suffix>building</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:StreetAddress rdf:ID="USR0003_address">
+		<cim:StreetAddress.status rdf:resource="#USR0003_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#USR0003_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3156"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="USR0003_node">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="USR0003_terminal">
+		<cim:IdentifiedObject.name>USR0003_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0003_node"/>
+	</cim:Terminal>
+	<cim:Fuse rdf:ID="FUS0003">
+		<cim:PowerSystemResource.Location rdf:resource="#FUS0003_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Switch.normalOpen>false</cim:Switch.normalOpen>
+		<cim:Switch.ratedCurrent>75</cim:Switch.ratedCurrent>
+		<cim:Switch.open>false</cim:Switch.open>
+	</cim:Fuse>
+	<cim:Location rdf:ID="FUS0003_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="FUS0003_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.354060948862184</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76558382434635</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#FUS0003_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="FUS0003_terminal_1">
+		<cim:IdentifiedObject.name>FUS0003_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0003_node"/>
+	</cim:Terminal>
+	<cim:ConnectivityNode rdf:ID="FUS0003_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="FUS0003_terminal_2">
+		<cim:IdentifiedObject.name>FUS0003_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0003_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0004">
+		<cim:IdentifiedObject.name>CAB0004</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0004_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>20.74914847573436</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.03797094171059388</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.17586978248032445</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.0016599318780587489</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.0066397275122349955</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0004_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0004_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.354060979560018</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76558384623925</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0004_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0004_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353976344396614</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76576099395854</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0004_location"/>
+	</cim:PositionPoint>
+	<cim:ConnectivityNode rdf:ID="CAB0004_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="CAB0004_terminal_1">
+		<cim:IdentifiedObject.name>CAB0004_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0004 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0004"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0003_node"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0004_terminal_2">
+		<cim:IdentifiedObject.name>CAB0004_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0004 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0004"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0005">
+		<cim:IdentifiedObject.name>CAB0005</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x16rm/16 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_fbd62bd8-049f-4b0c-a372-9ee334d509b8"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0005_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_1000"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>587.2587989479763</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.6753476187901727</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>3.1265658455990257</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.04404440992109822</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.17617763968439287</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_b95f1837-5bdc-4878-89ce-d6c7a37b8f12"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0005_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358869178475004</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.769330582489516</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358475299094437</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76931803444893</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_3">
+		<cim:PositionPoint.sequenceNumber>3</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358548578966946</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76905452512344</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_4">
+		<cim:PositionPoint.sequenceNumber>4</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.357211221096122</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.767686765504806</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_5">
+		<cim:PositionPoint.sequenceNumber>5</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.355754783399647</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.767316586056694</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_6">
+		<cim:PositionPoint.sequenceNumber>6</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.354683065099664</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76677072358922</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_7">
+		<cim:PositionPoint.sequenceNumber>7</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353895306371356</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.766074270329085</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0005_location_point_8">
+		<cim:PositionPoint.sequenceNumber>8</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.353967896255853</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76584863041134</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0005_location"/>
+	</cim:PositionPoint>
+	<cim:ConnectivityNode rdf:ID="CAB0005_node_1">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="CAB0005_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="CAB0005_terminal_2">
+		<cim:IdentifiedObject.name>CAB0005_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0005 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0005"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_3"/>
+	</cim:Terminal>
+	<cim:PowerTransformer rdf:ID="TX0003">
+		<cim:IdentifiedObject.name>TX0003</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>Fake 1000V:400V subtransmission transformer</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.Location rdf:resource="#TX0003_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:PowerTransformer.vectorGroup>Dyn5</cim:PowerTransformer.vectorGroup>
+	</cim:PowerTransformer>
+	<cim:Location rdf:ID="TX0003_location">
+		<cim:Location.mainAddress rdf:resource="#TX0003_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="TX0003_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358908442665268</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76935058832828</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#TX0003_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="TX0003_status">
+		<cim:Status.dateTime>2018-08-31T08:28:24.725Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.76935058832828&lon=7.358908442665268&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="TX0003_street">
+		<cim:StreetDetail.addressGeneral>1209, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3158, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>tertiary</cim:StreetDetail.code>
+		<cim:StreetDetail.name>1209</cim:StreetDetail.name>
+		<cim:StreetDetail.prefix>1209</cim:StreetDetail.prefix>
+		<cim:StreetDetail.suffix>road</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:TownDetail rdf:ID="ch-3158">
+		<cim:TownDetail.code>3158</cim:TownDetail.code>
+		<cim:TownDetail.country>Switzerland</cim:TownDetail.country>
+		<cim:TownDetail.section>Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland</cim:TownDetail.section>
+		<cim:TownDetail.stateOrProvince>Bern</cim:TownDetail.stateOrProvince>
+	</cim:TownDetail>
+	<cim:StreetAddress rdf:ID="TX0003_address">
+		<cim:StreetAddress.status rdf:resource="#TX0003_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#TX0003_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3158"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="TX0003_node_1">
+	</cim:ConnectivityNode>
+	<cim:ConnectivityNode rdf:ID="TX0003_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="TX0003_terminal_1">
+		<cim:IdentifiedObject.name>TX0003_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0003_node_1"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="TX0003_terminal_2">
+		<cim:IdentifiedObject.name>TX0003_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#TX0003"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0003_node_2"/>
+	</cim:Terminal>
+	<cim:PowerTransformerEnd rdf:ID="TX0003_end_1">
+		<cim:IdentifiedObject.name>TX0003_end_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 1</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>1</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_1000"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0003_terminal_1"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.D"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>0</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>0.033</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>0.033</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>1000</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>0.105</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>0.105</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0003"/>
+	</cim:PowerTransformerEnd>
+	<cim:PowerTransformerEnd rdf:ID="TX0003_end_2">
+		<cim:IdentifiedObject.name>TX0003_end_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>PowerTransformer End 2</cim:IdentifiedObject.description>
+		<cim:TransformerEnd.endNumber>2</cim:TransformerEnd.endNumber>
+		<cim:TransformerEnd.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:TransformerEnd.Terminal rdf:resource="#TX0003_terminal_2"/>
+		<cim:PowerTransformerEnd.connectionKind rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#WindingConnection.Yn"/>
+		<cim:PowerTransformerEnd.phaseAngleClock>5</cim:PowerTransformerEnd.phaseAngleClock>
+		<cim:PowerTransformerEnd.r>0.0053</cim:PowerTransformerEnd.r>
+		<cim:PowerTransformerEnd.r0>0.0053</cim:PowerTransformerEnd.r0>
+		<cim:PowerTransformerEnd.ratedS>400000.0</cim:PowerTransformerEnd.ratedS>
+		<cim:PowerTransformerEnd.ratedU>400.0</cim:PowerTransformerEnd.ratedU>
+		<cim:PowerTransformerEnd.x>0.0168</cim:PowerTransformerEnd.x>
+		<cim:PowerTransformerEnd.x0>0.0168</cim:PowerTransformerEnd.x0>
+		<cim:PowerTransformerEnd.PowerTransformer rdf:resource="#TX0003"/>
+	</cim:PowerTransformerEnd>
+	<cim:EnergyConsumer rdf:ID="USR0004">
+		<cim:PowerSystemResource.Location rdf:resource="#USR0004_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_HouseService"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:EnergyConsumer.customerCount>1</cim:EnergyConsumer.customerCount>
+		<cim:EnergyConsumer.phaseConnection rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseShuntConnectionKind.Yn"/>
+	</cim:EnergyConsumer>
+	<cim:Location rdf:ID="USR0004_location">
+		<cim:Location.mainAddress rdf:resource="#USR0004_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="USR0004_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.35891588259156</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76963255968161</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#USR0004_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="USR0004_status">
+		<cim:Status.dateTime>2018-08-31T08:28:42.983Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.76963255968161&lon=7.35891588259156&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="USR0004_street">
+		<cim:StreetDetail.addressGeneral>1209, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3158, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>tertiary</cim:StreetDetail.code>
+		<cim:StreetDetail.name>1209</cim:StreetDetail.name>
+		<cim:StreetDetail.prefix>1209</cim:StreetDetail.prefix>
+		<cim:StreetDetail.suffix>road</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:StreetAddress rdf:ID="USR0004_address">
+		<cim:StreetAddress.status rdf:resource="#USR0004_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#USR0004_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3158"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="USR0004_node">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="USR0004_terminal">
+		<cim:IdentifiedObject.name>USR0004_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0004"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0004_node"/>
+	</cim:Terminal>
+	<cim:Fuse rdf:ID="FUS0004">
+		<cim:PowerSystemResource.Location rdf:resource="#FUS0004_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Switch.normalOpen>false</cim:Switch.normalOpen>
+		<cim:Switch.ratedCurrent>75</cim:Switch.ratedCurrent>
+		<cim:Switch.open>false</cim:Switch.open>
+	</cim:Fuse>
+	<cim:Location rdf:ID="FUS0004_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="FUS0004_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.35891588259156</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76963255968161</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#FUS0004_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="FUS0004_terminal_1">
+		<cim:IdentifiedObject.name>FUS0004_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0004"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0004_node"/>
+	</cim:Terminal>
+	<cim:ConnectivityNode rdf:ID="FUS0004_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="FUS0004_terminal_2">
+		<cim:IdentifiedObject.name>FUS0004_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0004"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0004_node_2"/>
+	</cim:Terminal>
+	<cim:EnergyConsumer rdf:ID="USR0005">
+		<cim:PowerSystemResource.Location rdf:resource="#USR0005_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_HouseService"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:EnergyConsumer.customerCount>1</cim:EnergyConsumer.customerCount>
+		<cim:EnergyConsumer.phaseConnection rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseShuntConnectionKind.Yn"/>
+	</cim:EnergyConsumer>
+	<cim:Location rdf:ID="USR0005_location">
+		<cim:Location.mainAddress rdf:resource="#USR0005_address"/>
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="USR0005_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.359450317371397</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76974381906638</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#USR0005_location"/>
+	</cim:PositionPoint>
+	<cim:Status rdf:ID="USR0005_status">
+		<cim:Status.dateTime>2018-08-31T08:28:44.438Z</cim:Status.dateTime>
+		<cim:Status.reason>Nominatim initialization</cim:Status.reason>
+		<cim:Status.remark>http://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=46.76974381906638&lon=7.359450317371397&zoom=18&addressdetails=1</cim:Status.remark>
+		<cim:Status.value>valid</cim:Status.value>
+	</cim:Status>
+	<cim:StreetDetail rdf:ID="USR0005_street">
+		<cim:StreetDetail.addressGeneral>1209, Guggisberg, Verwaltungskreis Bern-Mittelland, Verwaltungsregion Bern-Mittelland, Bern, 3158, Switzerland</cim:StreetDetail.addressGeneral>
+		<cim:StreetDetail.code>tertiary</cim:StreetDetail.code>
+		<cim:StreetDetail.name>1209</cim:StreetDetail.name>
+		<cim:StreetDetail.prefix>1209</cim:StreetDetail.prefix>
+		<cim:StreetDetail.suffix>road</cim:StreetDetail.suffix>
+	</cim:StreetDetail>
+	<cim:StreetAddress rdf:ID="USR0005_address">
+		<cim:StreetAddress.status rdf:resource="#USR0005_status"/>
+		<cim:StreetAddress.streetDetail rdf:resource="#USR0005_street"/>
+		<cim:StreetAddress.townDetail rdf:resource="#ch-3158"/>
+	</cim:StreetAddress>
+	<cim:ConnectivityNode rdf:ID="USR0005_node">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="USR0005_terminal">
+		<cim:IdentifiedObject.name>USR0005_terminal</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#USR0005"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0005_node"/>
+	</cim:Terminal>
+	<cim:Fuse rdf:ID="FUS0005">
+		<cim:PowerSystemResource.Location rdf:resource="#FUS0005_location"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Switch.normalOpen>false</cim:Switch.normalOpen>
+		<cim:Switch.ratedCurrent>75</cim:Switch.ratedCurrent>
+		<cim:Switch.open>false</cim:Switch.open>
+	</cim:Fuse>
+	<cim:Location rdf:ID="FUS0005_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="FUS0005_location_point">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.359450317371397</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76974381906638</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#FUS0005_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="FUS0005_terminal_1">
+		<cim:IdentifiedObject.name>FUS0005_terminal_1</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0005"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0005_node"/>
+	</cim:Terminal>
+	<cim:ConnectivityNode rdf:ID="FUS0005_node_2">
+	</cim:ConnectivityNode>
+	<cim:Terminal rdf:ID="FUS0005_terminal_2">
+		<cim:IdentifiedObject.name>FUS0005_terminal_2</cim:IdentifiedObject.name>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#FUS0005"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#FUS0005_node_2"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0006">
+		<cim:IdentifiedObject.name>CAB0006</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0006_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>27.139639090067273</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.04966553953482311</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.23003558092741022</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.002171171127205382</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.008684684508821528</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0006_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0006_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358910922640661</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76938880741852</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0006_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0006_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358915861696005</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76963258347283</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0006_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="CAB0006_terminal_1">
+		<cim:IdentifiedObject.name>CAB0006_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0006 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0006"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0003_node_2"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0006_terminal_2">
+		<cim:IdentifiedObject.name>CAB0006_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0006 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0006"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0004_node"/>
+	</cim:Terminal>
+	<cim:ACLineSegment rdf:ID="CAB0007">
+		<cim:IdentifiedObject.name>CAB0007</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>GKN 3x10re/10 1/0.6 kV</cim:IdentifiedObject.description>
+		<cim:PowerSystemResource.AssetDatasheet rdf:resource="#_c246ef3a-3015-4e8e-9fa6-334b633e27fb"/>
+		<cim:PowerSystemResource.Location rdf:resource="#CAB0007_location"/>
+		<cim:PowerSystemResource.PSRType rdf:resource="#PSRType_Underground"/>
+		<cim:Equipment.normallyInService>true</cim:Equipment.normallyInService>
+		<cim:ConductingEquipment.BaseVoltage rdf:resource="#BaseVoltage_400"/>
+		<cim:ConductingEquipment.SvStatus rdf:resource="#in_use"/>
+		<cim:Conductor.length>57.03724608810829</cim:Conductor.length>
+		<cim:ACLineSegment.r>0.10437816034123817</cim:ACLineSegment.r>
+		<cim:ACLineSegment.r0>0.48344769784280595</cim:ACLineSegment.r0>
+		<cim:ACLineSegment.x>0.004562979687048664</cim:ACLineSegment.x>
+		<cim:ACLineSegment.x0>0.018251918748194654</cim:ACLineSegment.x0>
+		<cim:ACLineSegment.PerLengthImpedance rdf:resource="#_1880ab2b-813a-4a44-b5c0-18cb5d870b59"/>
+	</cim:ACLineSegment>
+	<cim:Location rdf:ID="CAB0007_location">
+		<cim:Location.type>geographic</cim:Location.type>
+		<cim:Location.CoordinateSystem rdf:resource="#wgs84"/>
+	</cim:Location>
+	<cim:PositionPoint rdf:ID="CAB0007_location_point_1">
+		<cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.358910916373134</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76938881814206</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0007_location"/>
+	</cim:PositionPoint>
+	<cim:PositionPoint rdf:ID="CAB0007_location_point_2">
+		<cim:PositionPoint.sequenceNumber>2</cim:PositionPoint.sequenceNumber>
+		<cim:PositionPoint.xPosition>7.359450291842222</cim:PositionPoint.xPosition>
+		<cim:PositionPoint.yPosition>46.76974384481383</cim:PositionPoint.yPosition>
+		<cim:PositionPoint.Location rdf:resource="#CAB0007_location"/>
+	</cim:PositionPoint>
+	<cim:Terminal rdf:ID="CAB0007_terminal_1">
+		<cim:IdentifiedObject.name>CAB0007_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0007 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0007"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0003_node_2"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0007_terminal_2">
+		<cim:IdentifiedObject.name>CAB0007_terminal_2</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0007 ending terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0007"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#USR0005_node"/>
+	</cim:Terminal>
+	<cim:Terminal rdf:ID="CAB0005_terminal_1">
+		<cim:IdentifiedObject.name>CAB0005_terminal_1</cim:IdentifiedObject.name>
+		<cim:IdentifiedObject.description>CAB0005 starting terminal</cim:IdentifiedObject.description>
+		<cim:ACDCTerminal.connected>true</cim:ACDCTerminal.connected>
+		<cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
+		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0005"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0003_node_1"/>
+	</cim:Terminal>
+</rdf:RDF>
