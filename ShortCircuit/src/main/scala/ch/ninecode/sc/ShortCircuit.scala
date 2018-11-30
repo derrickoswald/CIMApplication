@@ -328,9 +328,6 @@ with Serializable
      */
     def traceroute (start: String, data: Iterable[(String, String, Double)]): Branch =
     {
-        // print out the data
-        // println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
-
         val tr = new TraceRoute ()
         val branches = tr.traceroute (start, data)
         if (branches.nonEmpty)

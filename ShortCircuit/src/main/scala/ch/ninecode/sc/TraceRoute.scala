@@ -1,92 +1,70 @@
 package ch.ninecode.sc
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 
 class TraceRoute
 {
+    def make_directed (starting: Iterable[(String, Double)], branches: Iterable[Branch]): Iterable[Branch] =
+    {
+        def split (endings: Set[String]) (branch: Branch): (Option[Branch], Option[Branch]) = // (unordered, ordered)
+        {
+            if (endings.contains (branch.from))
+                (None, Some (branch.reverse)) // flip direction
+            else if (endings.contains (branch.to))
+                (None, Some (branch)) // already directed correctly
+            else
+                (Some (branch), None)
+        }
+
+        def kcl (branches: Iterable[Branch]) (start: (String, Double)): (Iterable[Branch], Iterable[(String, Double)]) =
+        {
+            val fanout = branches.filter (_.to == start._1)
+            val ok = Math.abs (start._2 - fanout.map (_.current).sum) < 0.1
+            if (ok)
+                (fanout, fanout.map (x ⇒ (x.from, x.current)))
+            else
+                (Iterable(), Iterable(start))
+        }
+
+        val (un, or) = branches.map (split (starting.map (_._1).toSet)).unzip
+        val unordered: Iterable[Branch] = un.flatten
+        val ordered: Iterable[Branch] = or.flatten
+        if (ordered.isEmpty)
+            unordered
+        else
+        {
+            val step: Iterable[(Iterable[Branch], Iterable[(String, Double)])] = starting.map (kcl (ordered))
+            val good: Iterable[Branch] = step.flatMap (_._1)
+            val good_nodes = good.map (_.to).toSet
+            val bad = ordered.filter (x ⇒ !good_nodes.contains (x.to))
+            val start: Map[String, Double] = step.flatMap (_._2).groupBy (x ⇒ x._1).map (x ⇒ (x._1, x._2.map (_._2).sum))
+            val next: Iterable[Branch] = unordered ++ bad
+            val better = next.size < branches.size  || start.keys.toArray.sortWith (_ < _).mkString != starting.map (_._1).toArray.sortWith (_ < _).toString
+            if (!better)
+            {
+                val log: Logger = LoggerFactory.getLogger (getClass)
+                log.error ("cannot make branches directed (%s branches cannot be resolved)".format (next.size))
+                if (log.isDebugEnabled)
+                    log.debug ("start %s: branches: %s".format (start.map (y ⇒ "" + y._1 + "@" + y._2 + "A").mkString (","), next.mkString (",")))
+            }
+            if (next.isEmpty)
+                good
+            else
+                good ++ make_directed (start, next)
+        }
+    }
+
     /**
      * Convert the starting data structure into branches (mRID with both nodes).
      *
      * @param data raw recorder data for the experiment as tuples of node id, encoded equipment mRID and current
      * @return a simple electrical branch for each path
      */
-    def toBranches (start: String, data: Iterable[(String, String, Double)]): Iterable[SimpleBranch] =
+    def toBranches (start: String, data: Iterable[(String, String, Double)]): Iterable[Branch] =
     {
-        def split (endings: Set[String]) (branch: SimpleBranch): (Option[SimpleBranch], Option[SimpleBranch], Option[String]) = // (unordered, ordered, next)
-        {
-            if (endings.contains (branch.from))
-                (None, Some (Branch (branch.to, branch.from, branch.current, branch.mRID, branch.rating)), Some (branch.to)) // flip direction
-            else if (endings.contains (branch.to))
-                (None, Some (branch), Some (branch.from)) // already directed correctly
-            else
-                (Some (branch), None, None)
-        }
-
-        def make_directed (starting: Set[String], branches: Iterable[SimpleBranch]): Iterable[SimpleBranch] =
-        {
-            val (un, or, next) = branches.map (split (starting)).unzip3
-            val unordered = un.flatten
-            val ordered = or.flatten
-            if (ordered.isEmpty || unordered.isEmpty)
-                ordered
-            else
-                ordered ++ make_directed (next.flatten.toSet, unordered)
-        }
-
-        // check each node using Kirchoff's Current Law (KCL)
-        def kcl_violations (branches: Iterable[SimpleBranch]): Set[(String, Iterable[(String, Double)])] =
-        {
-            for
-            {
-                node:String ← branches.flatMap (x ⇒ List (x.from, x.to)).filter (node ⇒ (node != start) && (node != "source")).toSet
-                in =  for { branch ← branches if branch.to   == node } yield (branch.mRID,   branch.current)
-                out = for { branch ← branches if branch.from == node } yield (branch.mRID, - branch.current)
-                both = in ++ out
-                sum = both.map (_._2).sum
-                if Math.abs (sum) > 0.1
-            }
-            yield (node, both)
-        }
-
-        def find_candidates (delinquents: Set[(String, Iterable[(String, Double)])], branches: Iterable[SimpleBranch]): Set[String] =
-        {
-            delinquents.flatMap (_._2.map (_._1)).filter (candidate ⇒ !branches.exists (y ⇒ y.mRID == candidate && (y.to == "source" || y.from == start)))
-        }
-
-
-        def better (tried: Set[String], candidates: Set[String], branches: Iterable[SimpleBranch]): Option[Iterable[SimpleBranch]] =
-        {
-            if (candidates.nonEmpty)
-            {
-                val candidate = candidates.head
-                val flipped = branches.map (x ⇒ if (x.mRID != candidate) x else SimpleBranch (x.to, x.from, x.current, x.mRID, x.rating))
-                val delinquents = kcl_violations (flipped)
-                if (delinquents.isEmpty)
-                    Some (flipped)
-                else
-                {
-                    val done = tried ++ Seq (candidate)
-                    val depth_first = better (done, find_candidates (delinquents, branches).diff (done), flipped)
-                    depth_first match
-                    {
-                        case Some (arrangement) ⇒ Some (arrangement)
-                        case None ⇒ better (done, candidates.tail, branches)
-                    }
-                }
-            }
-            else
-                None
-        }
-
-        def best (branches: Iterable[SimpleBranch]): Iterable[SimpleBranch] =
-        {
-            val delinquents = kcl_violations (branches)
-            if (delinquents.nonEmpty)
-                better (Set (), find_candidates (delinquents, branches), branches).getOrElse (branches)
-            else
-                branches
-        }
-
         // create unordered branches
         val undirected = mutable.Map[String, SimpleBranch]()
         def get_mrid (element: String): String =
@@ -110,9 +88,7 @@ class TraceRoute
         }
         data.foreach (make_branch)
         // walk backwards from ending node
-        val branches = make_directed (Set("source"), undirected.values)
-        // flip branches that violate KCL
-        best (branches)
+        make_directed (Iterable(("source", undirected.find (x ⇒ x._2.to == "source").map (_._2.current).getOrElse (0.0))), undirected.values)
     }
 
     /**
@@ -123,35 +99,44 @@ class TraceRoute
      */
     def reduce_series (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
-        // check for series elements forward direction
+        // check for series elements
         val series = for
         {
             branch ← network
             buddies = network.filter (x ⇒ branch.to == x.from)
-            parallel = network.filter (x ⇒ branch.to == x.to)
-            if buddies.size == 1 && parallel.size == 1 && parallel.head == branch
+            parallel = network.filter (x ⇒ branch != x && branch.to == x.to)
+            if buddies.size == 1 && parallel.isEmpty
             buddy = buddies.head
         }
         yield (branch, buddy)
         if (series.nonEmpty)
+        {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-            (true, Seq (series.head._1.add_in_series (series.head._2)) ++ network.filter (x ⇒ series.head._1 != x && series.head._2 != x))
+            val pair = series.head
+            val rest = network.filter (x ⇒ pair._1 != x && pair._2 != x)
+            val flip = Math.abs (pair._1.current - pair._2.current) > 0.1
+            (true, Seq (pair._1.add_in_series (if (flip) pair._2.reverse else pair._2)) ++ rest)
+        }
         else
         {
-            // check for series elements forward direction
-            val series = for
-            {
-                branch ← network
-                buddies = network.filter (x ⇒ branch.from == x.to)
-                parallel = network.filter (x ⇒ branch.from == x.from)
-                if buddies.size == 1 && parallel.size == 1 && parallel.head == branch
-                buddy = buddies.head
-            }
-            yield (branch, buddy)
-            if (series.nonEmpty)
-                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                (true, Seq (series.head._1.add_in_series (series.head._2)) ++ network.filter (x ⇒ series.head._1 != x && series.head._2 != x))
-            else
+//            // check for series elements reverse direction
+//            val series = for
+//            {
+//                branch ← network
+//                buddies = network.filter (x ⇒ branch != x && (branch.from == x.from || branch.to == x.to))
+//                parallel = network.filter (x ⇒ branch.from == x.from)
+//                if buddies.size == 1 && parallel.size == 1 && parallel.head == branch
+//                buddy = buddies.head
+//            }
+//            yield (branch, buddy)
+//            if (series.nonEmpty)
+//            {
+//                val pair = series.head
+//                val flip = Math.abs (pair._2.current - pair._1.current) > 0.1
+//                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
+//                (true, Seq (pair._2.add_in_series (if (flip) pair._1.reverse else pair._1)) ++ network.filter (x ⇒ pair._1 != x && pair._2 != x))
+//            }
+//            else
                 (false, network)
         }
     }
@@ -164,17 +149,54 @@ class TraceRoute
      */
     def reduce_parallel (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
-        // check for parallel elements
-        val parallel: Iterable[(Branch, Iterable[Branch])] = for
+        // check each node using Kirchoff's Current Law (KCL)
+        def kcl (input: Double, output: Double, fixed: Iterable[Branch], undecided: Iterable[Branch]): (Boolean, Iterable[Branch]) =
         {
-            branch ← network
-            buddies = network.filter (x ⇒ (branch.from == x.from) && (branch.to == x.to) && (branch != x))
-            if buddies.nonEmpty
+            // we need only test either from or to since all elements have the same from and to
+            val currents = fixed.map (- _.current) ++ undecided.map (- _.current)
+            if ((Math.abs (input + currents.sum) < 0.1) || (Math.abs (output + currents.sum) < 0.1))
+                (true, fixed ++ undecided)
+            else
+            {
+                // try adding reversed elements
+                val ok = for
+                {
+                    test ← undecided
+                    solid = fixed.toList :+ test.reverse
+                    rest = undecided.filter (_ != test)
+                    result = kcl (input, output, solid, rest)
+                    if result._1
+                }
+                yield solid ++ rest
+                if (ok.isEmpty)
+                    (false, List())
+                else
+                    (true, ok.head)
+            }
         }
-        yield (branch, buddies)
+
+        // check for parallel elements
+        val parallel: Iterable[Iterable[Branch]] =
+            for
+            {
+                branch: Branch ← network
+                buddies: Iterable[Branch] = network.filter (x ⇒ ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
+                if buddies.nonEmpty
+            }
+            yield buddies ++ Seq (branch)
         if (parallel.nonEmpty)
+        {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-            (true, Seq (parallel.head._1.add_in_parallel (parallel.head._2)) ++ network.filter (x ⇒ parallel.head._1 != x && !parallel.head._2.toSeq.contains (x)))
+            val set: Iterable[Branch] = parallel.head
+            // alter set to satisfy KCL
+            val input = network.filter (_.to == set.head.from).map (_.current).sum
+            val output = network.filter (_.from == set.head.to).map (_.current).sum
+            val arranged = kcl (input, output, List(), set)
+            if (arranged._1)
+                (true, Seq (arranged._2.head.add_in_parallel (arranged._2.tail)) ++ network.filter (x ⇒ !set.toSeq.contains (x)))
+            else
+                (false, network)
+        }
         else
             (false, network)
     }
@@ -189,7 +211,7 @@ class TraceRoute
     def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[Branch] =
     {
         // print out the data
-        // println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
+        println ("""traceroute ("%s", List (%s))""".format (start, data.map (x ⇒ """("%s", "%s", %s )""".format (x._1, x._2, x._3)).mkString (",")))
 
         var network: Iterable[Branch] = toBranches (start, data)
         // print out the starting branches
