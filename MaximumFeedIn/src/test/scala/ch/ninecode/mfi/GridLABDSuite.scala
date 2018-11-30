@@ -168,9 +168,9 @@ class GridLABDSuite extends FunSuite
 
 
     /**
-     * Test for the correct current limit on a parallel set of cables.
+     * Test for the correct handling of special transformers.
      */
-    test ("Three winding transformer")
+    test ("Special transformer")
     {
         session: SparkSession ⇒
 
@@ -208,15 +208,20 @@ class GridLABDSuite extends FunSuite
             val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
             val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results)")
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results)")
+
             while (resultset.next)
             {
-                if (resultset.getString (2) == "USR0004" || resultset.getString (2) == "USR0005")
+                if (resultset.getString (1) == "TX0003")
                 {
-                    assert (resultset.getString (1) == "TX0003", "transformer name")
-                    assert (resultset.getDouble (3) == 0.0, "maximum")
-                    assert (resultset.wasNull, "maximum should be null")
+                    assert (resultset.getObject (3) == null, "maximum")
                     assert (resultset.getString (4) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
+                } else if (resultset.getString(1) == "TX0002")
+                {
+                    assert (resultset.getObject(3) == null, "all results on TX00002 have no value for maximum")
+                    assert (resultset.getString(4) == "3 transformer windings for edge TX0002", "three winding transformer")
+                } else {
+                    assert (resultset.getString(4) == "current limit", "normal transformer")
                 }
             }
             resultset.close ()
