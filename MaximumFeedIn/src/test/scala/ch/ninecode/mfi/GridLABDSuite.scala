@@ -110,7 +110,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    ignore ("Parallel")
+    test ("Parallel")
     {
         session: SparkSession ⇒
 
@@ -169,7 +169,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct handling of special transformers.
      */
-    ignore ("Special transformer")
+    test ("Special transformer")
     {
         session: SparkSession ⇒
 
@@ -234,7 +234,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    ignore ("Too many open files")
+    test ("Too many open files")
     {
         session: SparkSession ⇒
 
@@ -288,7 +288,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    ignore ("Verstärkern")
+    test ("Verstärkern")
     {
         session: SparkSession ⇒
 
@@ -355,7 +355,7 @@ class GridLABDSuite extends FunSuite
             assert (HAS14977_power.getOrElse(0.0) > 0, "maximum greater 0")
     }
 
-    ignore ("Cos Φ")
+    test ("Cos Φ")
     {
         session: SparkSession ⇒
 
