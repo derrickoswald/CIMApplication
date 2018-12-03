@@ -2,7 +2,9 @@ package ch.ninecode.mfi
 
 import java.sql.DriverManager
 
+import scala.collection.mutable
 import org.scalatest.fixture.FunSuite
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
@@ -53,65 +55,62 @@ class GridLABDSuite extends FunSuite
     {
         session: SparkSession ⇒
 
-        val begin = System.nanoTime ()
+            val begin = System.nanoTime ()
 
-        val root = if (false)
-            "bkw_cim_export_sias_current_20161220_Haelig"
-        else
-            "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355"
-        val filename =
-            PRIVATE_FILE_DEPOT + root + ".rdf"
+            val root = if (false)
+                    "bkw_cim_export_sias_current_20161220_Haelig"
+                else
+                    "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355"
+            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
 
-        val options = EinspeiseleistungOptions (
-            verbose = true,
-            cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
-            three = false,
-            precalculation = false,
-            trafos = "",
-            export_only = false,
-            all = true,
-            erase = false,
-            simulation = -1,
-            reference = -1,
-            delta = 1e-6,
-            precalc_factor = 1.5,
-            cosphi = 1.0,
-            workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-            files = List(filename)
-        )
-        val eins = Einspeiseleistung (session, options)
-        val count = eins.run ()
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/basic_cache"),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 1.5,
+                cosphi = 1.0,
+                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                files = List(filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
 
-        val total = System.nanoTime ()
-        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-        // create a database connection
-        val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
-        val statement = connection.createStatement ()
-        val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200')")
-        var records: Int = 0
-        while (resultset.next)
-        {
-            assert (resultset.getString (1) == "TRA5200", "transformer name")
-            assert (resultset.getString (2) == "HAS138124", "energy consumer name")
-            assert (resultset.getDouble (3) == 20000.0, "maximum")
-            assert (resultset.getString (4) == "voltage limit", "reason")
-            assert (resultset.getString (5) == "HAS138124 > 412.0 Volts", "details")
-            records = records + 1
-        }
-        resultset.close ()
-        statement.close ()
-        connection.close ()
-        assert (records == 1, "number of records")
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200' and house = 'HAS138124')")
+            var records: Int = 0
+            while (resultset.next)
+            {
+                assert (resultset.getDouble (3) == 20000.0, "maximum")
+                assert (resultset.getString (4) == "voltage limit", "reason")
+                assert (resultset.getString (5) == "HAS138124 > 412.0 Volts", "details")
+                records = records + 1
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+            assert (records == 1, "number of records")
     }
 
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    test ("Parallel")
+    ignore ("Parallel")
     {
         session: SparkSession ⇒
 
@@ -122,7 +121,7 @@ class GridLABDSuite extends FunSuite
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/parallel_cable_sample_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -141,7 +140,7 @@ class GridLABDSuite extends FunSuite
             val count = eins.run ()
 
             val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
@@ -170,7 +169,7 @@ class GridLABDSuite extends FunSuite
     /**
      * Test for the correct handling of special transformers.
      */
-    test ("Special transformer")
+    ignore ("Special transformer")
     {
         session: SparkSession ⇒
 
@@ -181,7 +180,7 @@ class GridLABDSuite extends FunSuite
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/special_transformer_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -200,7 +199,7 @@ class GridLABDSuite extends FunSuite
             val count = eins.run ()
 
             val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
@@ -235,7 +234,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    test ("Too many open files")
+    ignore ("Too many open files")
     {
         session: SparkSession ⇒
 
@@ -246,7 +245,7 @@ class GridLABDSuite extends FunSuite
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/too_many_open_files_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -265,7 +264,7 @@ class GridLABDSuite extends FunSuite
             val count = eins.run ()
 
             val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
@@ -289,7 +288,7 @@ class GridLABDSuite extends FunSuite
             connection.close ()
     }
 
-    test ("Verstärkern")
+    ignore ("Verstärkern")
     {
         session: SparkSession ⇒
 
@@ -300,7 +299,7 @@ class GridLABDSuite extends FunSuite
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/verstärkern_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -319,7 +318,7 @@ class GridLABDSuite extends FunSuite
             val count = eins.run ()
 
             val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
@@ -356,7 +355,7 @@ class GridLABDSuite extends FunSuite
             assert (HAS14977_power.getOrElse(0.0) > 0, "maximum greater 0")
     }
 
-    test ("Cos Φ")
+    ignore ("Cos Φ")
     {
         session: SparkSession ⇒
 
@@ -366,7 +365,7 @@ class GridLABDSuite extends FunSuite
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/cosΦ_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -385,7 +384,7 @@ class GridLABDSuite extends FunSuite
             val count = eins.run ()
 
             val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise\n")
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
 
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
@@ -393,7 +392,7 @@ class GridLABDSuite extends FunSuite
             val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
 
             val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200')")
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200' and house = 'HAS138124')")
             var records: Int = 0
             while (resultset.next)
             {

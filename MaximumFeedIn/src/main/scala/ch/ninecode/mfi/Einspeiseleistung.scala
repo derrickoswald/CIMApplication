@@ -19,11 +19,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.cim.ForceTrue
-import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
@@ -471,15 +467,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val reader_options = new HashMap[String, String] ()
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
-        reader_options.put ("ch.ninecode.cim.make_edges", "false")
-        reader_options.put ("ch.ninecode.cim.do_join", "false")
-        reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
+        reader_options.put ("ch.ninecode.cim.do_topo", "true")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
-        log.info (elements.count () + " elements")
-
-        val read = System.nanoTime ()
-        log.info ("read: " + (read - start) / 1e9 + " seconds")
+        reader_options.put ("ch.ninecode.cim.force_retain_switches", "Unforced")
+        reader_options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
+        reader_options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
+        reader_options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
+        reader_options.put ("ch.ninecode.cim.default_switch_open_state", "false")
 
         val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
         {
@@ -487,26 +481,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
         }
 
-        // identify topological nodes if necessary
-        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
-        if (tns.isEmpty || tns.head._2.isEmpty)
-        {
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = false,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = false,
-                    storage = storage_level))
-            log.info (ele.count () + " elements")
-        }
-        else
-            log.info (session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.count () + " elements")
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
+        log.info (elements.count () + " elements")
 
-        val topo = System.nanoTime ()
-        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+        val read = System.nanoTime ()
+        log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // prepare for precalculation
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
@@ -540,7 +519,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
-        log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
+        log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
         if (log.isDebugEnabled)
             transformers.map (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
 
