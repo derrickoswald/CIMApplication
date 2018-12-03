@@ -127,7 +127,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // look up node to get feeder (discard duplicates, all nodes have a single feeder)
         val lookup = feeders.toMap
         // assign an experiment to each measurement - if it's over-voltage
-        elements.filter (_.units == "Volts").flatMap (
+        elements.filter (x ⇒ (x.units == "Volts") && overvoltage (x, Math.min (max, neighbormax))).flatMap (
             x ⇒
             {
                 for
@@ -164,7 +164,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val cdata_map = cdata.toMap
 
         // assign an experiment to each measurement - if it's over-current
-        elements.filter (_.units == "Amps").flatMap (
+        elements.filter (x ⇒ (x.units == "Amps") && overcurrent (x, 0.1)).flatMap (
             x ⇒
             {
                 for
