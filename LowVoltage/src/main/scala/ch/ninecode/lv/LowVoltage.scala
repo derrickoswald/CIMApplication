@@ -34,7 +34,8 @@ import ch.ninecode.model._
 //        <md:Model.scenarioTime>2017-05-31T23:32:36</md:Model.scenarioTime>
 //        <md:Model.version>103</md:Model.version>
 //  </md:FullModel>
-case class Header (
+case class Header
+(
     created: Calendar,
     description: String,
     modelingAuthoritySet: String,
@@ -68,13 +69,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
     def getCIMheader (gridlabd: GridLABD): String =
     {
         val file = options.files.head.split (",")(0) // need to watch out for comma separated file list
-        val lead = "<md:FullModel"
+    val lead = "<md:FullModel"
         val trail = "</md:FullModel>"
 
         val raw = if ((gridlabd.workdir_scheme == "file") || (gridlabd.workdir_scheme == ""))
         {
             val in = Files.newInputStream (java.nio.file.FileSystems.getDefault.getPath (file))
-            val buffer = new Array[Byte] (4 * 1024)
+            val buffer = new Array[Byte](4 * 1024)
             in.read (buffer)
             in.close ()
             new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
@@ -87,7 +88,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
             val hdfs = FileSystem.get (URI.create (gridlabd.workdir_uri), hdfs_configuration)
 
             val in = hdfs.open (new Path (file))
-            val buffer = new Array[Byte] (4 * 1024)
+            val buffer = new Array[Byte](4 * 1024)
             in.read (0L, buffer, 0, buffer.length)
             in.close ()
             new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
@@ -95,7 +96,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val start = raw.indexOf (lead)
         val end = raw.indexOf (trail)
         if ((-1 != start) && (-1 != end))
-           raw.substring (start, end + trail.length ())
+            raw.substring (start, end + trail.length ())
         else
             ""
     }
@@ -114,13 +115,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
                 (x \\ "Model.profile").head.text,
                 toDate ((x \\ "Model.scenarioTime").head.text),
                 (x \\ "Model.version").head.text
-                )
+            )
         }
-        catch 
+        catch
         {
             case e: Exception => log.error ("exception caught parsing rdf header: " + e)
-            val now = Calendar.getInstance ()
-            Header (now, "no description", "no modeling authority", "no profile", now, "no version")
+                val now = Calendar.getInstance ()
+                Header (now, "no description", "no modeling authority", "no profile", now, "no version")
         }
     }
 
@@ -138,7 +139,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
 
     def generate (gridlabd: GridLABD, trafokreise: RDD[Trafokreis]): Unit =
     {
-        val start = System.nanoTime()
+        val start = System.nanoTime ()
 
         def doit (trafokreis: Trafokreis): Int =
         {
@@ -146,12 +147,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
             gridlabd.export (generator)
             1
         }
-        log.info ("exporting: " + trafokreise.count() + " transformer service areas")
+
+        log.info ("exporting: " + trafokreise.count () + " transformer service areas")
         val files = trafokreise.map (doit).cache
-        val fc = files.fold (0)(_+_)
+        val fc = files.fold (0)(_ + _)
         log.info ("exported: " + fc + " transformer service areas")
 
-        val write = System.nanoTime()
+        val write = System.nanoTime ()
         log.info ("export: " + (write - start) / 1e9 + " seconds")
     }
 
@@ -161,25 +163,25 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
 
         // determine transformer list if any
         val trafos = if ("" != options.trafos)
-            // do all transformers listed in the file
+        // do all transformers listed in the file
             Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
         else
             null
         if ((null != trafos) && (0 == trafos.length))
         {
-            log.error  ("no transformers to process")
+            log.error ("no transformers to process")
             sys.exit (1)
         }
 
         // read the file
-        val reader_options = new HashMap[String, String] ()
+        val reader_options = new HashMap[String, String]()
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.make_edges", "false")
         reader_options.put ("ch.ninecode.cim.do_join", "false")
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files:_*)
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
         if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
             elements.explain
         else
@@ -196,7 +198,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
 
         // identify topological nodes if necessary
         var topo = System.nanoTime ()
-        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        val tns = session.sparkContext.getPersistentRDDs.filter (_._2.name == "TopologicalNode")
         if (tns.isEmpty || tns.head._2.isEmpty)
         {
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -242,9 +244,9 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level)
-            pf.threshold_calculation (initial, sdata, transformers)
+            pf.threshold_calculation (initial, sdata, transformers, cosphi = 1.0)
         }
 
         val houses = precalc_results.has
@@ -255,21 +257,21 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val precalc = System.nanoTime ()
         log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
 
-        val vertices = precalc_results.vertices.filter(_.source_obj != null).keyBy(_.source_obj.trafo_id)
-        val edges  = precalc_results.edges.filter(_._1 != null)
-        val has = precalc_results.has.keyBy(_.source_obj)
-        val grouped_precalc_results = vertices.groupWith(edges, has)
+        val vertices = precalc_results.vertices.filter (_.source_obj != null).keyBy (_.source_obj.trafo_id)
+        val edges = precalc_results.edges.filter (_._1 != null)
+        val has = precalc_results.has.keyBy (_.source_obj)
+        val grouped_precalc_results = vertices.groupWith (edges, has)
 
-        val trafokreise = trafo_list.keyBy(_.transformer_name).leftOuterJoin(grouped_precalc_results)
+        val trafokreise = trafo_list.keyBy (_.transformer_name).leftOuterJoin (grouped_precalc_results)
 
         val raw = getCIMheader (gridlabd)
         val header = if ("" != raw)
             parseHeader (raw)
         else
-            Header (Calendar.getInstance(), "generated header", "", "", Calendar.getInstance(), "")
+            Header (Calendar.getInstance (), "generated header", "", "", Calendar.getInstance (), "")
         val t0 = header.scenarioTime
 
-        def makeTrafokreis (start: Calendar) (arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+        def makeTrafokreis (start: Calendar)(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
         {
             arg match
             {
@@ -279,13 +281,14 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
                     null
             }
         }
-        val filtered_trafos = trafokreise.filter(_._2._2.isDefined).map (makeTrafokreis (t0))
+
+        val filtered_trafos = trafokreise.filter (_._2._2.isDefined).map (makeTrafokreis (t0))
         log.info ("filtered_trafos: " + filtered_trafos.count)
-        val terminals = session.sparkContext.getPersistentRDDs.filter(_._2.name == "Terminal").head._2.asInstanceOf[RDD[Terminal]]
+        val terminals = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Terminal").head._2.asInstanceOf [RDD[Terminal]]
         generate (gridlabd, filtered_trafos)
 
         // rename to the created date
-        val format = new java.text.SimpleDateFormat("yyyyMMdd")
+        val format = new java.text.SimpleDateFormat ("yyyyMMdd")
         val timestamp = format.format (header.created.getTime)
         rename (gridlabd, timestamp)
 

@@ -7,7 +7,6 @@ import org.scalatest.fixture.FunSuite
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
@@ -15,8 +14,6 @@ import ch.ninecode.model.Element
 
 class LowVoltageSuite extends FunSuite
 {
-    val FILE_DEPOT = "private_data/"
-
     type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -53,40 +50,21 @@ class LowVoltageSuite extends FunSuite
     def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")
-        val options = new HashMap[String, String] ()
+        val options = new HashMap[String, String]()
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", "false")
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         println (elements.count () + " elements")
-        session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
+        session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
     }
 
     test ("Basic")
     {
         session: SparkSession ⇒
-
-        val begin = System.nanoTime ()
-
-        val root = "bkw_cim_export_haelig"
-        val filename =
-            FILE_DEPOT + root + ".rdf"
-
-        val options = LowVoltageOptions (
-            verbose = true,
-            cim_reader_options = scala.collection.mutable.HashMap[String, String] (),
-            three = false,
-            trafos = "",
-            workdir = "./target/",
-            files = List(filename)
-        )
-        val lv = LowVoltage (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), options)
-        val count = lv.run ()
-
-        val total = System.nanoTime ()
-        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " UST\n")
+            println ("placeholder")
     }
 }

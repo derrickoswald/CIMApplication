@@ -39,83 +39,84 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
-    (s) =>
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+        (s) =>
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
     )
 
     case class Arguments (
-        quiet: Boolean = false,
-        master: String = "",
-        opts: Map[String,String] = Map(),
-        storage: String = "MEMORY_AND_DISK_SER",
-        dedup: Boolean = false,
-        three: Boolean = false,
-        trafos: String = "",
-        log_level: LogLevels.Value = LogLevels.OFF,
-        checkpoint_dir: String = "",
-        workdir: String = "",
-        files: Seq[String] = Seq()
-    )
+                             quiet: Boolean = false,
+                             master: String = "",
+                             opts: Map[String, String] = Map (),
+                             storage: String = "MEMORY_AND_DISK_SER",
+                             dedup: Boolean = false,
+                             three: Boolean = false,
+                             trafos: String = "",
+                             log_level: LogLevels.Value = LogLevels.OFF,
+                             checkpoint_dir: String = "",
+                             workdir: String = "",
+                             files: Seq[String] = Seq ()
+                         )
 
     val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        opt[Unit]('q', "quiet").
+        opt [Unit]('q', "quiet").
             action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages")
 
-        opt[String]('m', "master").valueName ("MASTER_URL").
+        opt [String]('m', "master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt[Map[String,String]]('o', "opts").valueName ("k1=v1,k2=v2").
+        opt [Map[String, String]]('o', "opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = x)).
             text ("Spark options")
 
-        opt[String]('s', "storage_level").
+        opt [String]('s', "storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
 
-        opt[Unit]('u', "deduplicate").
+        opt [Unit]('u', "deduplicate").
             action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files")
 
-        opt[Unit]('3', "three").
+        opt [Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
 
-        opt[String]('t', "trafos").valueName ("<TRA file>").
+        opt [String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt[LogLevels.Value]('l', "logging").
+        opt [LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
 
-        opt[String]('k', "checkpointdir").valueName ("<dir>").
+        opt [String]('k', "checkpointdir").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt[String]('w', "workdir").valueName ("<dir>").
+        opt [String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
-        arg[String]("<CIM> <CIM> ...").unbounded ().
+        arg [String]("<CIM> <CIM> ...").unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -161,10 +162,10 @@ object Main
 
     /**
      * Build jar with dependencies (target/LowVoltage-2.11-2.3.1-2.4.0-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/LowVoltage-2.11-2.3.1-2.4.0-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/LowVoltage-2.11-2.3.1-2.4.0-jar-with-dependencies.jar --three --trafos Export_Trafos.txt "hdfs://sandbox:8020/data/bkw_cim_export_equipmentsstripe5.rdf"
      */
     def main (args: Array[String])
     {
@@ -222,7 +223,7 @@ object Main
 
                 val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                    cim_reader_options = HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                     three = arguments.three,
                     trafos = arguments.trafos,
                     workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
