@@ -15,7 +15,6 @@
     <inceptionYear>2017</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/OneOfN</url>
 
-
     <dependencies>
 
         <dependency>
@@ -139,7 +138,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.on.OneOfNMainSuite,ch.ninecode.on.OneOfNSuite</suites>
+                    <suites>ch.ninecode.on.OneOfNMainSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
