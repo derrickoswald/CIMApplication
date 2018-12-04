@@ -11,11 +11,11 @@ import ch.ninecode.model.Terminal
  *
  * Everything you need to know about a transformer.
  *
- * @param transformer The PowerTransformer object.
- * @param ends The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
- * @param terminals The terminals ordered the same as the ends.
- * @param voltages The voltages ordered the same as the ends (V).
- * @param station The Substation object where the transformer is located.
+ * @param transformer  The PowerTransformer object.
+ * @param ends         The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
+ * @param terminals    The terminals ordered the same as the ends.
+ * @param voltages     The voltages ordered the same as the ends (V).
+ * @param station      The Substation object where the transformer is located.
  * @param shortcircuit The EquivalentInjection object with the available short circuit power and impedance at the primary.
  */
 case class TransformerData
@@ -35,33 +35,33 @@ case class TransformerData
     val secondary: Int = 1
 
     /** @return the (assumed) primary (high voltage) PowerTransformerEnd */
-    def end0: PowerTransformerEnd = ends(primary)
+    def end0: PowerTransformerEnd = ends (primary)
 
     /** @return the voltage for the transformer primary (high voltage) end (V) */
-    def v0: Double = voltages(primary)._2
+    def v0: Double = voltages (primary)._2
 
     /** @return the voltage for the transformer primary (high voltage) end (kV)
-     *  @deprecated use v0 / 1000.0 */
+     * @deprecated use v0 / 1000.0 */
     def voltage0: Double = v0 / 1000.0
 
     /** @return the Terminal for the transformer primary (high voltage) end */
-    def terminal0: Terminal = terminals(primary)
+    def terminal0: Terminal = terminals (primary)
 
     /** @return the mRID of the TopologicalNode for the transformer primary (high voltage) end */
     def node0: String = terminal0.TopologicalNode
 
     /** @return the (assumed) secondary (low voltage) PowerTransformerEnd, for three or more winding transformers this may not be the one you want */
-    def end1: PowerTransformerEnd = ends(secondary)
+    def end1: PowerTransformerEnd = ends (secondary)
 
     /** @return the voltage for the transformer secondary (low voltage) end (V) */
-    def v1: Double = voltages(secondary)._2
+    def v1: Double = voltages (secondary)._2
 
     /** @return the voltage for the transformer secondary (low voltage) end (kV)
-     *  @deprecated use v1 / 1000.0 */
+     * @deprecated use v1 / 1000.0 */
     def voltage1: Double = v1 / 1000.0
 
     /** @return the Terminal for the transformer secondary (low voltage) end */
-    def terminal1: Terminal = terminals(secondary)
+    def terminal1: Terminal = terminals (secondary)
 
     /** @return the mRID of the TopologicalNode for the transformer secondary (low voltage) end */
     def node1: String = terminal1.TopologicalNode

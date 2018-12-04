@@ -46,6 +46,7 @@ object GLMNode
      *   - PreNode/PreEdge trace results
      *   - Island trace results
      *   - multi-island trace results
+     *
      * @param elements
      * @param id
      * @param cn2

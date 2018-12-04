@@ -10,14 +10,15 @@ import java.util.{Calendar, TimeZone}
  * details for the actual export to be valid, such as edges, nodes, swing node,
  * simulation start and stop times, etc.
  *
- * @param one_phase If <code>true</code> generate a single phase .glm file.
- * @param temperature The temperature of the elements in the .glm file (°C).
- * @param date_format The date format to use within the .glm file.
- * @param emit_voltage_dump if <code>true</code> add a voltage dump element to the .glm prefix text
+ * @param one_phase           If <code>true</code> generate a single phase .glm file.
+ * @param temperature         The temperature of the elements in the .glm file (°C).
+ * @param date_format         The date format to use within the .glm file.
+ * @param emit_voltage_dump   if <code>true</code> add a voltage dump element to the .glm prefix text
  * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
- * @param emit_fault_check if <code>true</code> add a fault check element to the .glm prefix text
+ * @param emit_fault_check    if <code>true</code> add a fault check element to the .glm prefix text
  */
-class GLMGenerator (
+class GLMGenerator
+(
     one_phase: Boolean = true,
     temperature: Double = 60.0,
     date_format: SimpleDateFormat =
@@ -29,7 +30,7 @@ class GLMGenerator (
     emit_voltage_dump: Boolean = false,
     emit_impedance_dump: Boolean = false,
     emit_fault_check: Boolean = false)
-extends Serializable
+    extends Serializable
 {
     /**
      * The name of the generated GLM file.
@@ -86,33 +87,33 @@ extends Serializable
         val t0 = date_format.format (start_time.getTime)
         val t1 = date_format.format (finish_time.getTime)
         val preamble =
-          """// %s.glm
-            |// %s
-            |//*********************************************
-            |
-            |        module tape;
-            |
-            |        module powerflow
-            |        {
-            |            solver_method NR;
-            |            default_maximum_voltage_error 10e-6;
-            |            NR_iteration_limit 500;
-            |            NR_superLU_procs 16;
-            |            nominal_frequency 50;
-            |        };
-            |
-            |        clock
-            |        {
-            |            timezone "%s";
-            |            starttime "%s";
-            |            stoptime "%s";
-            |        };
-            |
-            |        class player
-            |        {
-            |            complex value;
-            |        };
-            |""".stripMargin.format (name, header, tzString, t0, t1)
+            """// %s.glm
+              |// %s
+              |//*********************************************
+              |
+              |        module tape;
+              |
+              |        module powerflow
+              |        {
+              |            solver_method NR;
+              |            default_maximum_voltage_error 10e-6;
+              |            NR_iteration_limit 500;
+              |            NR_superLU_procs 16;
+              |            nominal_frequency 50;
+              |        };
+              |
+              |        clock
+              |        {
+              |            timezone "%s";
+              |            starttime "%s";
+              |            stoptime "%s";
+              |        };
+              |
+              |        class player
+              |        {
+              |            complex value;
+              |        };
+              |""".stripMargin.format (name, header, tzString, t0, t1)
         val voltage_dump =
             if (emit_voltage_dump)
                 """
@@ -148,9 +149,9 @@ extends Serializable
                 ""
 
         preamble +
-        voltage_dump +
-        impedance_dump +
-        fault_check
+            voltage_dump +
+            impedance_dump +
+            fault_check
     }
 
     /**
@@ -158,14 +159,14 @@ extends Serializable
      *
      * @return The edges to be included in the export.
      */
-    def edges: Iterable[GLMEdge] = List()
+    def edges: Iterable[GLMEdge] = List ()
 
     /**
      * The nodes to be included in the .glm file.
      *
      * @return The ConnectivityNode or TopologicalNode elements to include in the export.
      */
-    def nodes: Iterable[GLMNode] = List()
+    def nodes: Iterable[GLMNode] = List ()
 
     /**
      * Details about transformers used in the edges list.
@@ -182,7 +183,7 @@ extends Serializable
      *
      * @return The id and voltage of the node or nodes that are a swing bus (or slack bus).
      */
-    def swing_nodes: Iterable[GLMNode] = List()
+    def swing_nodes: Iterable[GLMNode] = List ()
 
     /**
      * Additional text to add to the .glm file.
@@ -192,7 +193,7 @@ extends Serializable
      *
      * @return Text to add to the .glm file.
      */
-    def extra: Iterable[String] = List()
+    def extra: Iterable[String] = List ()
 
     /**
      * Time zone.
@@ -200,12 +201,11 @@ extends Serializable
      * Form the time zone into an appropriate string, e.g. "CET-1CEST".
      *
      * @todo fractional hour time zones
-     *
      * @return A formatted time zone string.
      */
     def tzString: String =
     {
-        if ((date_format.getTimeZone == TimeZone.getTimeZone("UTC")) || (date_format.getTimeZone == TimeZone.getTimeZone("GMT")))
+        if ((date_format.getTimeZone == TimeZone.getTimeZone ("UTC")) || (date_format.getTimeZone == TimeZone.getTimeZone ("GMT")))
             "UTC0UTC"
         else
         {
@@ -239,7 +239,7 @@ extends Serializable
      */
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.isInstanceOf [LineEdge]).map (_.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
     /**
@@ -265,7 +265,7 @@ extends Serializable
      */
     def gather (rdd: Iterable[String]): String =
     {
-        rdd.fold("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
+        rdd.fold ("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
     }
 
     /**
@@ -309,22 +309,22 @@ extends Serializable
                 """            voltage_A %s;
                   |""".stripMargin.format (voltage)
             else
-                // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
+            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
                 """            voltage_A %s+30.0d;
                   |            voltage_B %s-90.0d;
                   |            voltage_C %s+150.0d;
                   |""".stripMargin.format (voltage, voltage, voltage)
 
         """
-        |        object meter
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            bustype SWING;
-        |            nominal_voltage %sV;
-        |%s
-        |        };
-        |""".stripMargin.format (name, if (one_phase) "AN" else "ABCN", voltage, swing)
+          |        object meter
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            bustype SWING;
+          |            nominal_voltage %sV;
+          |%s
+          |        };
+          |""".stripMargin.format (name, if (one_phase) "AN" else "ABCN", voltage, swing)
 
     }
 
@@ -371,7 +371,7 @@ extends Serializable
         val e_strings = extra
 
         // create the output file.
-        val result = new StringBuilder()
+        val result = new StringBuilder ()
         result.append (prefix)
         result.append (gather (t_string))
         result.append (gather (l_strings))

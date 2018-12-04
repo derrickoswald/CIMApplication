@@ -13,19 +13,19 @@ case class Trace (initial: Graph[PreNode, PreEdge])
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def vertexProgram (starting_nodes: Array[VertexId]) (id: VertexId, v: Boolean, message: Boolean): Boolean =
+    def vertexProgram (starting_nodes: Array[VertexId])(id: VertexId, v: Boolean, message: Boolean): Boolean =
     {
         if (message)
             true
         else
-            // on the first pass through the Pregel algorithm all nodes get a false message
-            // if this node is in in the list of starting nodes, set the vertex data to true
+        // on the first pass through the Pregel algorithm all nodes get a false message
+        // if this node is in in the list of starting nodes, set the vertex data to true
             starting_nodes.contains (id)
     }
 
     def sendMessage (triplet: EdgeTriplet[Boolean, PreEdge]): Iterator[(VertexId, Boolean)] =
     {
-        var ret:Iterator[(VertexId, Boolean)] = Iterator.empty
+        var ret: Iterator[(VertexId, Boolean)] = Iterator.empty
 
         if (triplet.srcAttr && !triplet.dstAttr) // see if a message is needed
             if (triplet.attr.connected)
@@ -58,14 +58,15 @@ case class Trace (initial: Graph[PreNode, PreEdge])
     // trace the graph with the Pregel algorithm
     def run (starting_nodes: Array[VertexId]): (RDD[PreNode], RDD[PreEdge]) =
     {
-        log.info ("trace([" + starting_nodes.mkString (",") +"]) begin")
+        log.info ("trace([" + starting_nodes.mkString (",") + "]) begin")
         val begin = System.nanoTime ()
 
         // make a similar graph with boolean values as vertex data (false = not traced, true = traced)
-        val binary = initial.mapVertices { case (_, _) => false }
+        val binary = initial.mapVertices
+        { case (_, _) => false }
 
         // perform the trace, marking all traced nodes true
-        val graph = binary.pregel[Boolean] (false, 10000, EdgeDirection.Either) (
+        val graph = binary.pregel [Boolean](false, 10000, EdgeDirection.Either)(
             vertexProgram (starting_nodes),
             sendMessage,
             mergeMessage
@@ -106,7 +107,7 @@ case class Trace (initial: Graph[PreNode, PreEdge])
         val all_traced_nodes = traced_edges.keyBy (_.cn1).union (traced_edges.keyBy (_.cn2)).join (initial.vertices.values.keyBy (_.id)).reduceByKey ((a, b) ⇒ a).values.values
 
         val read = System.nanoTime ()
-        log.info ("trace([" + starting_nodes.mkString (",") +"]) end " + ((read - begin) / 1e9) + " seconds")
+        log.info ("trace([" + starting_nodes.mkString (",") + "]) end " + ((read - begin) / 1e9) + " seconds")
 
         (all_traced_nodes, traced_edges)
     }

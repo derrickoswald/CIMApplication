@@ -9,7 +9,7 @@ case class SwitchEdge
     switch: Switch,
     fuse: Boolean
 )
-extends GLMEdge
+    extends GLMEdge
 {
     def id: String = switch.id
 
@@ -25,6 +25,7 @@ extends GLMEdge
         var current = switch.ratedCurrent
         if (current <= 0)
             current = 9999.0 // ensure it doesn't trip immediately
+
         // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
         val fuse_details = if (fuse)
             """
@@ -34,14 +35,14 @@ extends GLMEdge
             ""
 
         """
-        |        object %s
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            from "%s";
-        |            to "%s";
-        |            status "%s";%s
-        |        };
-        |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
+          |        object %s
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            from "%s";
+          |            to "%s";
+          |            status "%s";%s
+          |        };
+          |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
     }
 }

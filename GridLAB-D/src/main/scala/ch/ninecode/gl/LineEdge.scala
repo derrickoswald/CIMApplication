@@ -11,15 +11,17 @@ case class LineEdge
     DEFAULT_R: Double = 0.225,
     DEFAULT_X: Double = 0.068
 )
-extends GLMEdge
+    extends GLMEdge
 {
     /**
      * Return the name of the (possibly parallel) line.
      *
      * Uses the lowest alphabetic name of the ACLineSegments that make up this line.
+     *
      * @return The ID of the edge (the mRID of the electrical element).
      */
-    def id: String = lines.map (_.id).toArray.sortWith (_ < _) (0)
+    def id: String = lines.map (_.id).toArray.sortWith (_ < _)(0)
+
     /**
      * Emit a overhead or underground line.
      *
@@ -79,10 +81,11 @@ extends GLMEdge
         val psr = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource
         if (null != psr.AssetDatasheet)
             psr.AssetDatasheet // ToDo: this is not really what is needed, it should be ConcentricNeutralCableInfo.name e.g. GKN 3x16rm/16 1/0.6 kV
-        else if (null != psr.IdentifiedObject.name)
-            psr.IdentifiedObject.name // ToDo: this is a NIS specific characteristic where the ACLineSegment.name is the article.type
         else
-            "_" + line.hashCode.toString
+            if (null != psr.IdentifiedObject.name)
+                psr.IdentifiedObject.name // ToDo: this is a NIS specific characteristic where the ACLineSegment.name is the article.type
+            else
+                "_" + line.hashCode.toString
     }
 
     /**
@@ -101,7 +104,7 @@ extends GLMEdge
         //     int balance; /* unused */
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode())
+            "_" + Math.abs (n.hashCode ())
         else
             n
     }
@@ -129,8 +132,8 @@ extends GLMEdge
      * Temperature adjusted resistance.
      *
      * @param temperature target temperature (°C)
-     * @param base current temperature for the given resistance (°C)
-     * @param r the given resistance (Ω)
+     * @param base        current temperature for the given resistance (°C)
+     * @param r           the given resistance (Ω)
      * @return the temperature compensated resistance (Ω)
      */
     def resistanceAt (temperature: Double, base: Double, r: Double): Double = (1.0 + (alpha * (temperature - base))) * r
@@ -138,13 +141,13 @@ extends GLMEdge
     /**
      * Convert the 0/1 sequence values from the CIM format into a Z matrix.
      *
-     * @param r ACLineSegment.r value
-     * @param x ACLineSegment.x value
-     * @param r0 ACLineSegment.r0 value
-     * @param x0 ACLineSegment.x0 value
+     * @param r         ACLineSegment.r value
+     * @param x         ACLineSegment.x value
+     * @param r0        ACLineSegment.r0 value
+     * @param x0        ACLineSegment.x0 value
      * @param generator the driver program
      * @return The diagonal and off-diagonal values for the Z matrix representation of line impedance,
-     * plus a boolean flag indicating whether the values are the default <code>true</code> or not <code>false</code>.
+     *         plus a boolean flag indicating whether the values are the default <code>true</code> or not <code>false</code>.
      */
     def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double, generator: GLMGenerator): (Complex, Complex, Boolean) =
     {
@@ -167,11 +170,11 @@ extends GLMEdge
     /**
      * Emit a GridLAB-D line_configuration.
      *
-     * @param config The name of the line configuration.
-     * @param r ACLineSegment.r value
-     * @param x ACLineSegment.x value
-     * @param r0 ACLineSegment.r0 value
-     * @param x0 ACLineSegment.x0 value
+     * @param config    The name of the line configuration.
+     * @param r         ACLineSegment.r value
+     * @param x         ACLineSegment.x value
+     * @param r0        ACLineSegment.r0 value
+     * @param x0        ACLineSegment.x0 value
      * @param generator the driver program
      * @return A string suitable for inclusion in the .glm file.
      */

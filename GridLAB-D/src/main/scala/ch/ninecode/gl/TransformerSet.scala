@@ -27,9 +27,9 @@ import ch.ninecode.model.EquivalentInjection
  * <li>x ÷ base_ohms = 0.01 / 0.25397 = 0.04</li>
  * </ul>
  *
- * @param transformers the set of transformers in this gang
+ * @param transformers         the set of transformers in this gang
  * @param default_power_rating the default power rating, VA
- * @param default_impedance the default characteristic impedance, Ω
+ * @param default_impedance    the default characteristic impedance, Ω
  */
 case class TransformerSet (transformers: Array[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
@@ -150,10 +150,10 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     )
 
     /**
-     *  Return the total impedance at the secondary and a flag indicating if it is the default value (some impedance was zero).
+     * Return the total impedance at the secondary and a flag indicating if it is the default value (some impedance was zero).
      *  i.e. (total_impedance, default)
      *
-     *  Calculate the impedance as 1 / sum (1/Zi)
+     * Calculate the impedance as 1 / sum (1/Zi)
      */
     val total_impedance: (Complex, Boolean) =
     {
@@ -169,6 +169,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     val network_short_circuit_power_max: Double =
     {
         def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
+
         val power = Sk (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Sk (x.shortcircuit) == power))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit powers " + transformers.map (x ⇒ Sk (x.shortcircuit)).mkString (" "))
@@ -183,6 +184,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     val network_short_circuit_power_min: Double =
     {
         def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
+
         val power = Sk (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Sk (x.shortcircuit) == power))
             log.error ("transformer set " + transformer_name + " has differing minimum network short circuit powers " + transformers.map (x ⇒ Sk (x.shortcircuit)).mkString (" "))
@@ -197,14 +199,18 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     val network_short_circuit_impedance_max: Complex =
     {
         def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r, equiv.x)
+
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == z))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the r and x")
+
         // check against Sk
         def Z2 (equiv: EquivalentInjection): Complex =
         {
             def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
+
             def Wik (equiv: EquivalentInjection): Double = math.atan2 (equiv.maxQ, equiv.maxP)
+
             val power = Sk (transformers.head.shortcircuit)
             val angle = Wik (transformers.head.shortcircuit)
             val c = 1.0
@@ -213,6 +219,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
             val x = z * Math.sin (angle)
             Complex (r, x)
         }
+
         val z2 = Z2 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Z2 (x.shortcircuit) == z2))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x ⇒ Z2 (x.shortcircuit)).mkString (" ") + " using the maxP and maxQ")
@@ -236,6 +243,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
                     p = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
                 p
             }
+
             def Wik (equiv: EquivalentInjection): Double =
             {
                 if (0.0 == equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
@@ -243,6 +251,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
                 else
                     math.atan2 (equiv.minQ, equiv.minP)
             }
+
             val power = Sk (transformers.head.shortcircuit)
             val angle = Wik (transformers.head.shortcircuit)
             val c = 1.0
@@ -251,6 +260,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
             val x = z * Math.sin (angle)
             Complex (r, x)
         }
+
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == z))
             log.error ("transformer set " + transformer_name + " has differing minimum network short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the minP and minQ")
@@ -266,6 +276,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     val network_short_circuit_zero_sequence_impedance_max: Complex =
     {
         def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r0, equiv.x0)
+
         val impedance = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x ⇒ Z (x.shortcircuit) == impedance))
             log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x ⇒ Z (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
@@ -273,9 +284,9 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     }
 
     /**
-     *  Return the total impedance and a flag indicating if it includes a default value (an impedance was zero)
+     * Return the total impedance and a flag indicating if it includes a default value (an impedance was zero)
      *  i.e. (total_impedance, default)
-     *  calculate the impedance as 1 / sum (1/Zi)
+     * calculate the impedance as 1 / sum (1/Zi)
      */
     val total_impedance_per_unit: (Complex, Boolean) =
     {

@@ -14,10 +14,12 @@ import org.slf4j.LoggerFactory
 /**
  * Photovoltaic attachment.
  * Generating equipment attached to a node.
- * @param node ConnectivityNode or TopologicalNode MRID.
+ *
+ * @param node  ConnectivityNode or TopologicalNode MRID.
  * @param solar SolarGeneratingUnit object attached to the node.
  */
-case class PV (
+case class PV
+(
     node: String,
     solar: SolarGeneratingUnit)
 
@@ -34,10 +36,10 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         // - ServiceLocation to EnergyConsumer
 
         // link to service location ids via UserAttribute
-        val attributes = getOrElse[UserAttribute]
+        val attributes = getOrElse [UserAttribute]
 
         // user attributes link through string quantities
-        val strings = getOrElse[StringQuantity]
+        val strings = getOrElse [StringQuantity]
 
         // get solar to service linkage, e.g. ("EEA5280", "MST115133")
         // and service to house linkage, e.g. ("MST115133", "HAS138130")
@@ -47,13 +49,13 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val links = pairs.join (pairs.map (_.swap)).values
 
         // get the pv stations
-        val solars = getOrElse[SolarGeneratingUnit]
+        val solars = getOrElse [SolarGeneratingUnit]
 
         // get a simple list of house to pv pairs
         val house_solars = links.map (x ⇒ (x._2, x._1)).join (solars.keyBy (_.id)).values
 
         // get the terminals
-        val terminals = getOrElse[Terminal]
+        val terminals = getOrElse [Terminal]
 
         // link to the connectivity/topological node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (

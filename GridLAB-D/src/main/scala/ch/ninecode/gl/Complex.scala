@@ -19,8 +19,11 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
 
     // unary operators
     def unary_+ : Complex = this
+
     def unary_- : Complex = Complex (-re, -im)
+
     def unary_~ : Complex = Complex (re, -im) // conjugate
+
     def unary_! : Double = modulus
 
     // comparison
@@ -28,14 +31,18 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
 
     // arithmetic operations
     def + (c: Complex): Complex = Complex (re + c.re, im + c.im)
+
     def - (c: Complex): Complex = this + -c
+
     def * (c: Complex): Complex = Complex (re * c.re - im * c.im, im * c.re + re * c.im)
+
     def / (c: Complex): Complex =
     {
         require (c.re != 0.0 || c.im != 0.0)
         val d = pow (c.re, 2) + pow (c.im, 2)
         Complex ((re * c.re + im * c.im) / d, (im * c.re - re * c.im) / d)
     }
+
     def / (that: Double): Complex =
     {
         require (that != 0)
@@ -43,6 +50,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     }
 
     def abs: Double = sqrt (re * re + im * im)
+
     def reciprocal: Complex = // https://en.wikipedia.org/wiki/Complex_number#Reciprocal
     {
         val d = re * re + im * im
@@ -65,7 +73,9 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
         bd = bd.setScale (digits, java.math.RoundingMode.HALF_UP)
         bd.doubleValue ()
     }
+
     override def toString: String = toString (8)
+
     def numberformat (number: Double, digits: Int, leading_sign: Boolean = false): String =
     {
         number match
@@ -80,15 +90,19 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
                     round (number, digits).toString
         }
     }
+
     def toString (digits: Int): String =
-        this match {
+        this match
+        {
             case Complex.j ⇒ "j"
             case Complex (r, 0) ⇒ numberformat (r, digits)
             case Complex (0, i) ⇒ numberformat (i, digits) + "j"
             case _ ⇒ asString (digits)
         }
+
     def asString (digits: Int) =
         numberformat (re, digits) + numberformat (im, digits, true) + "j"
+
     def asPair: (Double, Double) = (re, im)
 
     // Numeric[Complex]
@@ -114,7 +128,8 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     override def compare (x: Complex, y: Complex): Int = x.compare (y)
 }
 
-object Complex {
+object Complex
+{
     // constants
     val j = Complex (0, 1)
 
@@ -122,6 +137,7 @@ object Complex {
 
     // factory methods
     def apply (re: Double): Complex = new Complex (re)
+
     def apply (s: String): Complex = Complex.parseString (s)
 
     // to/from polar coordinates
@@ -139,10 +155,15 @@ object Complex {
 
     // implicit conversions
     implicit def fromDouble (d: Double): Complex = new Complex (d)
+
     implicit def fromFloat (f: Float): Complex = new Complex (f)
+
     implicit def fromLong (l: Long): Complex = new Complex (l)
+
     implicit def fromInt (i: Int): Complex = new Complex (i)
+
     implicit def fromShort (s: Short): Complex = new Complex (s)
+
     def parseString (string: String): Complex =
     {
         val matcher = regex.matcher (string)
@@ -158,5 +179,6 @@ object Complex {
         else
             Complex (0.0) // ToDo: warning
     }
+
     implicit def fromString (string: String): Complex = parseString (string)
 }

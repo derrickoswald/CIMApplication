@@ -28,7 +28,7 @@ import ch.ninecode.model.VoltageLevel
  * Get information about transformers.
  * Joins PowerTransformer, PowerTransformerEnd and BaseVoltage objects to form complete details about transformers.
  *
- * @param session the Spark session
+ * @param session       the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
  */
 class Transformers (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
@@ -36,21 +36,22 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def getTransformers (
-       default_supply_network_short_circuit_power_max: Double = 200.0e6,
-       default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
-       default_supply_network_short_circuit_power_min: Double = 100.0e6,
-       default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
-       transformer_filter: PowerTransformer ⇒ Boolean = _.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern",
-       substation_filter: Substation ⇒ Boolean = _.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
+    def getTransformers
+    (
+        default_supply_network_short_circuit_power_max: Double = 200.0e6,
+        default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+        default_supply_network_short_circuit_power_min: Double = 100.0e6,
+        default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
+        transformer_filter: PowerTransformer ⇒ Boolean = _.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern",
+        substation_filter: Substation ⇒ Boolean = _.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
     ): RDD[TransformerData] =
     {
         // get ends and terminals
-        val ends_terminals = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse[Terminal].keyBy (_.id)).values
+        val ends_terminals = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse [Terminal].keyBy (_.id)).values
 
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // attach them to the ends
         val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals.map (
@@ -70,7 +71,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
         val ends = ends_terminals_voltages.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
-        val transformers = getOrElse[PowerTransformer].filter (transformer_filter)
+        val transformers = getOrElse [PowerTransformer].filter (transformer_filter)
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
 
@@ -93,10 +94,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
         // add station if any
         // ToDo: should we invent a dummy station?
-        val substations_by_id = getOrElse[Substation].filter (substation_filter).keyBy (_.id)
+        val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
         val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
-            .leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
-            .map (x ⇒  (station_fn (x._2), x._1))
+            .leftOuterJoin (get [Element]("Elements").keyBy (_.id)).values
+            .map (x ⇒ (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
             .map (x ⇒ x._1.copy (station = x._2.orNull))
 
@@ -111,9 +112,9 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
             obj.bitfields = Array (Integer.parseInt ("110", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
             psr.bitfields = Array (0)
-            val equipment = Equipment (psr, false, true, List(), List(), station, List(), List(), List(), List(), List(), List(), List(), List(), List())
+            val equipment = Equipment (psr, false, true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
             equipment.bitfields = Array (Integer.parseInt ("10010", 2))
-            val conducting = ConductingEquipment (equipment, voltage._1, null, null, List(), List(), null, List())
+            val conducting = ConductingEquipment (equipment, voltage._1, null, null, List (), List (), null, List ())
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
@@ -127,9 +128,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
             injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
             injection
         }
-        val injections_by_node =  getOrElse[EquivalentInjection].keyBy (_.id).join (getOrElse[Terminal].keyBy (_.ConductingEquipment)).values.map (x ⇒ (x._2.TopologicalNode, x._1))
+
+        val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id).join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values.map (x ⇒ (x._2.TopologicalNode, x._1))
         transformers_stations.keyBy (_.node0).leftOuterJoin (injections_by_node).values
-            .map (x ⇒ x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages(x._1.primary)))))
+            .map (x ⇒ x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
             .persist (storage_level)
     }
 }

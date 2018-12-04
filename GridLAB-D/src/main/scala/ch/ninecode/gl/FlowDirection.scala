@@ -3,10 +3,20 @@ package ch.ninecode.gl
 case class FlowDirection (flags: Int)
 {
     def this (serialized: String) = this (FlowDirection.parse (serialized))
+
     def bits (mask: Int): Boolean = mask == (flags & mask)
-    def a: Double = if (bits (0x003)) 0.0 else if (bits (0x002)) -1.0 else if (bits (0x001)) 1.0 else Double.NaN
-    def b: Double = if (bits (0x030)) 0.0 else if (bits (0x020)) -1.0 else if (bits (0x010)) 1.0 else Double.NaN
-    def c: Double = if (bits (0x300)) 0.0 else if (bits (0x200)) -1.0 else if (bits (0x100)) 1.0 else Double.NaN
+
+    def a: Double = if (bits (0x003)) 0.0 else
+        if (bits (0x002)) -1.0 else
+            if (bits (0x001)) 1.0 else Double.NaN
+
+    def b: Double = if (bits (0x030)) 0.0 else
+        if (bits (0x020)) -1.0 else
+            if (bits (0x010)) 1.0 else Double.NaN
+
+    def c: Double = if (bits (0x300)) 0.0 else
+        if (bits (0x200)) -1.0 else
+            if (bits (0x100)) 1.0 else Double.NaN
 }
 
 object FlowDirection
