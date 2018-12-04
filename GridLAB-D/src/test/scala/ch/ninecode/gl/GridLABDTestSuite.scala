@@ -12,7 +12,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 
-class GridLABDTestSuite extends SparkSuite  with BeforeAndAfter
+class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "data/"
     val FILENAME1 = "DemoData.rdf"
@@ -36,17 +36,17 @@ class GridLABDTestSuite extends SparkSuite  with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new mutable.HashMap[String, String] ()
+            val options = new mutable.HashMap[String, String]()
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
             options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
             options.put ("ch.ninecode.cim.do_topo_islands", "false")
             val storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -68,8 +68,8 @@ class GridLABDTestSuite extends SparkSuite  with BeforeAndAfter
             val generate = System.nanoTime ()
             println ("generate: " + (generate - topo) / 1e9 + " seconds")
 
-            assert (text  ==
-"""// gridlabd.glm
+            assert (text ==
+                """// gridlabd.glm
 // GridLAB-D
 //*********************************************
 
