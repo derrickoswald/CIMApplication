@@ -22,19 +22,6 @@ import ch.ninecode.ingest.Main.main
 
 class IngestSuite extends FunSuite with BeforeAndAfterAll
 {
-    val FILE_DEPOT = "private_data/"
-    val FILENAME1 = "Stoerung_Messstellen2.csv"
-    val FILENAME2 = "20180412_080258_Belvis_manuell_TS Amalerven.zip"
-    val FILENAME3 = "20180412_122100_Belvis_manuell_TS Ara_BadRagaz .zip"
-    val FILENAME4 = "20180412_150702_Belvis_manuell_TS BahnhofWienacht.zip"
-    val FILENAME5 = "20180412_150901_Belvis_manuell_TS Bahnhofplatz.zip"
-    val FILENAME6 = "20180412_122400_Belvis_manuell_TSAuenVaettis.zip"
-    val FILENAME7 = "20180419_111102_Belvis_manuell_Bad_Ragaz1.zip"
-    val FILENAME8 = "20180412_122600_Belvis_manuell_TS Bach.zip"
-    val FILENAME9 = "20180419_115102_Belvis_manuell_Bad_Ragaz2.zip"
-    val FILENAME10 = "20180412_123800_Belvis_manuell_TS Badrieb.zip"
-    val FILENAME11 = "20180412_124500_Belvis_manuell_TS Bahnhof Sargans.zip"
-
     /**
      * Add to the process environment.
      *
@@ -200,39 +187,5 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     test ("Help")
     {
         main (Array ("--unittest", "--help"))
-    }
-
-    test ("Ingest")
-    {
-        main (Array ("--unittest", "--verbose",
-            "--master", "spark://sandbox:7077",
-            "--host", "beach",
-            "--mapping", FILE_DEPOT + FILENAME1,
-            "--mintime", "2017-10-22 00:00:00", "--maxtime", "2018-02-14 00:00:00",
-            FILE_DEPOT + FILENAME2,
-            FILE_DEPOT + FILENAME3,
-            FILE_DEPOT + FILENAME4,
-            FILE_DEPOT + FILENAME5,
-            FILE_DEPOT + FILENAME6,
-            FILE_DEPOT + FILENAME7,
-            FILE_DEPOT + FILENAME8,
-            FILE_DEPOT + FILENAME9,
-            FILE_DEPOT + FILENAME10,
-            FILE_DEPOT + FILENAME11))
-    }
-
-    test ("Full")
-    {
-        val prefix = "/home/derrick/trial/aws/"
-        val root = prefix + "Messdaten_20180424/"
-        val dir = new File (root)
-        val files = dir.list.filter (_.endsWith (".zip")).map (root + _)
-        val args = concat (Array (
-            "--unittest", "--verbose",
-            "--master", "spark://sandbox:7077",
-            "--host", "beach",
-            "--mapping", prefix + "Messdaten_20180424/Steuerung_Messstellen2.csv"),
-            files)
-        main (args)
     }
 }
