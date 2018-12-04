@@ -2,7 +2,6 @@ package ch.ninecode.mfi
 
 import java.sql.DriverManager
 
-import scala.collection.mutable
 import org.scalatest.fixture.FunSuite
 
 import org.apache.spark.SparkConf
@@ -13,7 +12,6 @@ import ch.ninecode.gl.GridLABD
 
 class GridLABDSuite extends FunSuite
 {
-    val PRIVATE_FILE_DEPOT = "private_data/"
     val FILE_DEPOT = "data/"
 
     type FixtureParam = SparkSession
@@ -49,62 +47,6 @@ class GridLABDSuite extends FunSuite
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
         finally session.stop () // clean up the fixture
-    }
-
-    test ("Basic")
-    {
-        session: SparkSession ⇒
-
-            val begin = System.nanoTime ()
-
-            val root = if (false)
-                    "bkw_cim_export_sias_current_20161220_Haelig"
-                else
-                    "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355"
-            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
-
-            val options = EinspeiseleistungOptions (
-                verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/basic_cache"),
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                precalc_factor = 1.5,
-                cosphi = 1.0,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
-            )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
-
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-            // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200' and house = 'HAS138124')")
-            var records: Int = 0
-            while (resultset.next)
-            {
-                assert (resultset.getDouble (3) == 20000.0, "maximum")
-                assert (resultset.getString (4) == "voltage limit", "reason")
-                assert (resultset.getString (5) == "HAS138124 > 412.0 Volts", "details")
-                records = records + 1
-            }
-            resultset.close ()
-            statement.close ()
-            connection.close ()
-            assert (records == 1, "number of records")
     }
 
     /**
@@ -232,180 +174,5 @@ class GridLABDSuite extends FunSuite
             resultset.close ()
             statement.close ()
             connection.close ()
-    }
-
-    test ("Too many open files")
-    {
-        session: SparkSession ⇒
-
-            val begin = System.nanoTime ()
-
-            val root = "EKZ_Testcase4_STA333"
-            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
-
-            val options = EinspeiseleistungOptions (
-                verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/too_many_open_files_cache"),
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                precalc_factor = 1.5,
-                cosphi = 1.0,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
-            )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
-
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-            // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results) and trafo = 'TRA8208'")
-            while (resultset.next)
-            {
-//                 Einspeiseleistung|TRA8208|HAS2760|81000.0|current limit|KLE12754 > 115.0 Amps|1541685757548
-                if (resultset.getString (2) == "HAS2760")
-                    assert (resultset.getDouble (3) == 81000.0, "maximum")
-
-//                Einspeiseleistung|TRA8208|HAS2807|48000.0|current limit|KLE13149 > 68.0 Amps|1541685757548
-                if (resultset.getString (2) == "HAS2807")
-                    assert (resultset.getDouble (3) == 48000.0, "maximum")
-            }
-            resultset.close ()
-            statement.close ()
-            connection.close ()
-    }
-
-    test ("Verstärkern")
-    {
-        session: SparkSession ⇒
-
-            val begin = System.nanoTime ()
-
-            val root = "EKZ_Testcase1_STA866"
-            val filename = PRIVATE_FILE_DEPOT + root + ".rdf"
-
-            val options = EinspeiseleistungOptions (
-                verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/verstärkern_cache"),
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                precalc_factor = 1.5,
-                cosphi = 1.0,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
-            )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
-
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-            // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and trafo = 'TRA5036'  AND details != 'no results'")
-            var HAS108891 = false
-            var HAS14977 = false
-            var HAS108891_power: Option[Double] = None
-            var HAS14977_power: Option[Double] = None
-            while (resultset.next)
-            {
-                if (resultset.getString (2) == "HAS108891")
-                {
-                    HAS108891 = true
-                    HAS108891_power = Some (resultset.getDouble (3))
-                }
-
-                if (resultset.getString (2) == "HAS14977")
-                {
-                    HAS14977 = true
-                    HAS14977_power = Some (resultset.getDouble (3))
-                }
-            }
-            resultset.close ()
-            statement.close ()
-            connection.close ()
-
-            assert (HAS108891, "HAS108891")
-            assert (HAS14977, "HAS14977")
-            assert (HAS108891_power == HAS14977_power, "maximum")
-            assert (HAS14977_power.getOrElse(0.0) > 0, "maximum greater 0")
-    }
-
-    test ("Cos Φ")
-    {
-        session: SparkSession ⇒
-
-            val begin = System.nanoTime ()
-
-            val filename = PRIVATE_FILE_DEPOT + "bkw_cim_export_sias_current_20161220_Haelig_no_EEA7355.rdf"
-
-            val options = EinspeiseleistungOptions (
-                verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/cosΦ_cache"),
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                precalc_factor = 1.5,
-                cosphi = 0.9,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
-            )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
-
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-            // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results where trafo = 'TRA5200' and house = 'HAS138124')")
-            var records: Int = 0
-            while (resultset.next)
-            {
-                assert (resultset.getString (1) == "TRA5200", "transformer name")
-                assert (resultset.getString (2) == "HAS138124", "energy consumer name")
-                assert (resultset.getDouble (3) == 19000.0, "maximum")
-                assert (resultset.getString (4) == "voltage limit", "reason")
-                assert (resultset.getString (5) == "HAS138124 > 412.0 Volts", "details")
-                records = records + 1
-            }
-            resultset.close ()
-            statement.close ()
-            connection.close ()
-            assert (records == 1, "number of records")
     }
 }
