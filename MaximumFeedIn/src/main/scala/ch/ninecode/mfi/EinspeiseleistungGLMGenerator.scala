@@ -179,12 +179,12 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
                 solargeneratingunit.GeneratingUnit.normalPF
             else
                 1.0
-            val ratedP = if (one_phase) ratedNetMaxP else ratedNetMaxP / 3
+
             // https://en.wikipedia.org/wiki/Power_factor
             // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
             // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
             // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-            val maxP = - new Complex (ratedP * math.abs (cosPhi), ratedP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
+            val maxP = - new Complex (ratedNetMaxP * math.abs (cosPhi), ratedNetMaxP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
             if (ratedNetMaxP > 0) {
                 load +=
                     "\n" +
