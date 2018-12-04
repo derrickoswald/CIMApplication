@@ -529,7 +529,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge] (xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level)
-            pf.threshold_calculation (initial, sdata, transformers)
+            pf.threshold_calculation (initial, sdata, transformers, options.cosphi)
         }
 
         val houses = if (options.all)

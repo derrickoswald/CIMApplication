@@ -109,7 +109,7 @@ class PowerFeedingSuite extends FunSuite
 
         val start_ids = transformers.map (power_feeding.trafo_mapping)
         val graph = power_feeding.trace (initial, start_ids, power_feeding.feeders)
-        val house_nodes = power_feeding.get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null))
+        val house_nodes = power_feeding.get_threshold_per_has (nodes = graph.vertices.values.filter (_.source_obj != null), cosphi = 1.0)
 
         val HAS138130: MaxPowerFeedingNodeEEA =
         {
@@ -117,7 +117,7 @@ class PowerFeedingSuite extends FunSuite
             assert (1 == nodes.length, "HAS138130 not found")
             nodes(0)
         }
-        assert (Math.abs (HAS138130.max_power_feeding - 87273.723) < 0.5, "expected 87kW")
+        assert (Math.abs (HAS138130.max_power_feeding - 82458) < 0.5, "expected 82kW")
 
         val traced_house_nodes_EEA = house_nodes.keyBy(_.id_seq).leftOuterJoin(solars).values
         val has = traced_house_nodes_EEA.map (
