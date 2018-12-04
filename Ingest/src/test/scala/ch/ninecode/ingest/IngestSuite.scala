@@ -53,7 +53,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
                     val field = cl.getDeclaredField ("m")
                     field.setAccessible (true)
                     val obj = field.get (env)
-                    val map = obj.asInstanceOf[java.util.Map[String, String]]
+                    val map = obj.asInstanceOf [java.util.Map[String, String]]
                     map.putAll (newenv)
                 }
             }
@@ -69,6 +69,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
      * Set SPARK_LOCAL_IP to the IP address in dotted-quad format (e.g. 1.2.3.4) if it isn't set.
      *
      * Avoids "Set SPARK_LOCAL_IP if you need to bind to another address" warning message.
+     *
      * @see findLocalInetAddress: https://github.com/apache/spark/blob/master/core/src/main/scala/org/apache/spark/util/Utils.scala
      */
     def setLocalIP (): Unit =
@@ -95,7 +96,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
                         // because of Inet6Address.toHostName may add interface at the end if it knows about it
                         val ip = InetAddress.getByAddress (addr.getAddress)
                         // We've found an address that looks reasonable!
-                        val newenv = new java.util.HashMap[String, String] ()
+                        val newenv = new java.util.HashMap[String, String]()
                         newenv.put ("SPARK_LOCAL_IP", ip.getHostAddress)
                         setEnv (newenv)
                     }
@@ -108,7 +109,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     {
         if (null == System.getenv ("HADOOP_CONF_DIR"))
         {
-            val newenv = new java.util.HashMap[String, String] ()
+            val newenv = new java.util.HashMap[String, String]()
             newenv.put ("HADOOP_CONF_DIR", path)
             setEnv (newenv)
         }
@@ -128,7 +129,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
          *
          * The directory will be created if does not exist.
          *
-         * @param file The Zip file.
+         * @param file      The Zip file.
          * @param directory The directory to extract it to
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -159,7 +160,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         /**
          * Extracts a zip entry (file entry).
          *
-         * @param zip The Zip input stream for the file.
+         * @param zip  The Zip input stream for the file.
          * @param path The path to extract he file to.
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -169,16 +170,25 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             val bos = new BufferedOutputStream (new FileOutputStream (path))
             val bytesIn = new Array[Byte](4096)
             var read = -1
-            while ({ read = zip.read (bytesIn); read != -1 })
+            while (
+            {
+                read = zip.read (bytesIn); read != -1
+            })
                 bos.write (bytesIn, 0, read)
             bos.close ()
         }
     }
 
-    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {
-        try { block (resource) }
-        finally { resource.close () }
+        try
+        {
+            block (resource)
+        }
+        finally
+        {
+            resource.close ()
+        }
     }
 
     override def beforeAll ()

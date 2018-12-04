@@ -23,7 +23,7 @@ case class IngestOptions
     /**
      * Spark options.
      */
-    options: Map[String,String] = Map(),
+    options: Map[String, String] = Map (),
 
     /**
      * Cassandra connection host.

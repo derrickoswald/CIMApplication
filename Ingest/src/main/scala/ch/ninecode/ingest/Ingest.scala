@@ -72,7 +72,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def map_csv_options: mutable.HashMap[String, String] =
     {
-        val mapping_options = new mutable.HashMap[String, String] ()
+        val mapping_options = new mutable.HashMap[String, String]()
 
         val header = "true"
         val ignoreLeadingWhiteSpace = "false"
@@ -113,7 +113,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def measurement_csv_options: mutable.HashMap[String, String] =
     {
-        val measurement_options = new mutable.HashMap[String,String] ()
+        val measurement_options = new mutable.HashMap[String, String]()
 
         val header = "false"
         val ignoreLeadingWhiteSpace = "false"
@@ -160,12 +160,15 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     def to_reading (s: (String, Row)): (String, Reading) =
     {
         val time = s._2.getTimestamp (0)
-        (s._1 + time.toString, Reading (s._1, time, s._2.getInt (6) * 60, (for (i <- 0 until 96) yield { if (s._2.isNullAt (7 + (2 * i))) 0.0 else s._2.getDouble (7 + (2 * i)) } ).toArray))
+        (s._1 + time.toString, Reading (s._1, time, s._2.getInt (6) * 60, (for (i <- 0 until 96) yield
+            {
+                if (s._2.isNullAt (7 + (2 * i))) 0.0 else s._2.getDouble (7 + (2 * i))
+            }).toArray))
     }
 
-    def sum (a: Reading, b:Reading): Reading =
+    def sum (a: Reading, b: Reading): Reading =
     {
-        Reading (a.mRID, a.time, a.period, (for (i <- 0 until 96) yield a.values(i) + b.values(i)).toArray)
+        Reading (a.mRID, a.time, a.period, (for (i <- 0 until 96) yield a.values (i) + b.values (i)).toArray)
     }
 
     /**
@@ -182,23 +185,25 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
+
         def inrange (i: Int): Boolean =
         {
             val offset = (reading.period * i) * 1000
             val measurement_time = new Date (timestamp.getTime + offset).getTime
             (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
         }
+
         for (
             i <- 0 until 96
             if inrange (i)
         )
-        yield
-        {
-            val offset = (reading.period * i) * 1000
-            val measurement_time = new Date (timestamp.getTime + offset)
-            val time = ZuluTimestampFormat.format (measurement_time)
-            (reading.mRID, "energy", time, (reading.period * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
-        }
+            yield
+                {
+                    val offset = (reading.period * i) * 1000
+                    val measurement_time = new Date (timestamp.getTime + offset)
+                    val time = ZuluTimestampFormat.format (measurement_time)
+                    (reading.mRID, "energy", time, (reading.period * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
+                }
     }
 
     // build a file system configuration, including core-site.xml
@@ -221,6 +226,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     // get the file system
     def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
     def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
@@ -243,22 +249,22 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             case e: Exception =>
                 log.error ("""ingest failed for file "%s"""".format (file), e)
-                Array()
+                Array ()
         }
     }
 
     def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
     {
-        var ret = Seq[String]()
+        var ret = Seq [String]()
 
         val file = new Path (hdfs.getUri.toString, path)
         // write the file
         try
         {
             val parent = if (path.endsWith ("/")) file else file.getParent
-            hdfs.mkdirs (parent, new FsPermission("ugoa-rwx"))
+            hdfs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
             if (!parent.isRoot)
-                hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
+                hdfs.setPermission (parent, new FsPermission ("ugoa-rwx"))
 
             if (0 != data.length && !path.endsWith ("/"))
             {
@@ -275,8 +281,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                             if (entry.isDirectory)
                             {
                                 val path = new Path (parent, entry.getName)
-                                hdfs.mkdirs (path, new FsPermission("ugoa-rwx"))
-                                hdfs.setPermission (path, new FsPermission("ugoa-rwx"))
+                                hdfs.mkdirs (path, new FsPermission ("ugoa-rwx"))
+                                hdfs.setPermission (path, new FsPermission ("ugoa-rwx"))
                             }
                             else
                             {
@@ -342,7 +348,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         ok.unpersist (false)
     }
 
-    def process (measurement_options: Map[String, String], join_table: Map[String, String]) (file: String): Unit =
+    def process (measurement_options: Map[String, String], join_table: Map[String, String])(file: String): Unit =
     {
         val belvis_files =
         {
@@ -372,7 +378,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         if (mapping_files.nonEmpty)
         {
             val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-            val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
+        val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
             val read = System.nanoTime ()
             log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
