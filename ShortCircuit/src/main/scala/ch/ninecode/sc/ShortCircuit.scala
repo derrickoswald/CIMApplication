@@ -35,13 +35,11 @@ import ch.ninecode.model._
  * Short circuit calculation.
  * Uses GraphX to trace the topology and generate the short circuit results at each node.
  *
- * @param session the Spark session
+ * @param session       the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
- * @param options options for short-circuit processing
+ * @param options       options for short-circuit processing
  */
-case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions)
-extends CIMRDD
-with Serializable
+case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -62,9 +60,9 @@ with Serializable
         ScNode (node.id, voltage, null, null, null, null, null)
     }
 
-    def edge_operator (voltages: Map[String, Double]) (arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
+    def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
-        var ret = List[ScEdge] ()
+        var ret = List [ScEdge]()
 
         val element = arg._1
         val t_it = arg._2
@@ -77,63 +75,68 @@ with Serializable
         if (null != c)
         {
             // get the equipment
-            val equipment = c.asInstanceOf[ConductingEquipment]
+            val equipment = c.asInstanceOf [ConductingEquipment]
 
             // sort terminals by sequence number
             // except if it has ends, and then sort so the primary is index 0
-            def sortnumber (arg: (Terminal, Option[End])) = arg._2 match { case Some (end) ⇒ end.endNumber case None ⇒ arg._1.ACDCTerminal.sequenceNumber }
+            def sortnumber (arg: (Terminal, Option[End])) = arg._2 match
+            {
+                case Some (end) ⇒ end.endNumber
+                case None ⇒ arg._1.ACDCTerminal.sequenceNumber
+            }
+
             // the equipment voltage - doesn't work for transformers
             val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
             val terminals = t_it.toArray.sortWith (sortnumber (_) < sortnumber (_)).map (terminal_end ⇒
+            {
+                val voltage =
+                    terminal_end._2 match
+                    {
+                        case Some (end) ⇒
+                            1000.0 * voltages.getOrElse (end.BaseVoltage, 0.0)
+                        case None ⇒
+                            volt
+                    }
+                val impedance = element match
                 {
-                    val voltage =
+                    case line: ACLineSegment ⇒
+                        val dist_km = line.Conductor.len / 1000.0
+                        Impedanzen (
+                            Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                            Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
+                            Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                            Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+                    case transformer: PowerTransformer ⇒
                         terminal_end._2 match
                         {
                             case Some (end) ⇒
-                                1000.0 * voltages.getOrElse (end.BaseVoltage, 0.0)
+                                val z = Complex (end.r, end.x)
+                                Impedanzen (z, z, z, z)
                             case None ⇒
-                                volt
+                                Impedanzen (0.0, 0.0, 0.0, 0.0) // no end on a transformer terminal? WTF?
                         }
-                    val impedance = element match
-                    {
-                        case line: ACLineSegment ⇒
-                            val dist_km = line.Conductor.len / 1000.0
-                            Impedanzen (
-                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
-                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
-                        case transformer: PowerTransformer ⇒
-                            terminal_end._2 match
-                            {
-                                case Some (end) ⇒
-                                    val z = Complex (end.r, end.x)
-                                    Impedanzen (z, z, z, z)
-                                case None ⇒
-                                    Impedanzen (0.0, 0.0, 0.0, 0.0) // no end on a transformer terminal? WTF?
-                            }
 
-                        case _ ⇒
-                            Impedanzen (0.0, 0.0, 0.0, 0.0)
-                    }
-                    (terminal_end._1, voltage, impedance)
-                })
+                    case _ ⇒
+                        Impedanzen (0.0, 0.0, 0.0, 0.0)
+                }
+                (terminal_end._1, voltage, impedance)
+            })
             // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
-            val eq = terminals(0)._1.ConductingEquipment
-            val id1 = terminals(0)._1.ACDCTerminal.id
-            val node1 = terminals(0)._1.TopologicalNode
-            val voltage1 = terminals(0)._2
-            val z = terminals(0)._3
+            val eq = terminals (0)._1.ConductingEquipment
+            val id1 = terminals (0)._1.ACDCTerminal.id
+            val node1 = terminals (0)._1.TopologicalNode
+            val voltage1 = terminals (0)._2
+            val z = terminals (0)._3
             for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
             {
-                val node2 = terminals(i)._1.TopologicalNode
+                val node2 = terminals (i)._1.TopologicalNode
                 // eliminate edges with only one connectivity node, or the same connectivity node
                 if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
                     ret = ret :+ ScEdge (
                         node1,
                         voltage1,
                         node2,
-                        terminals(i)._2,
+                        terminals (i)._2,
                         terminals.length,
                         eq,
                         element,
@@ -155,6 +158,7 @@ with Serializable
     }
 
     case class End (PowerTransformer: String, endNumber: Int, BaseVoltage: String, r: Double, x: Double)
+
     def make_ends_meet (arg: (Terminal, Option[PowerTransformerEnd])): (Terminal, Option[End]) =
     {
         val terminal = arg._1
@@ -171,28 +175,28 @@ with Serializable
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = get[BaseVoltage].map (v ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get [BaseVoltage].map (v ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
-        val terminals = get[Terminal].filter (null != _.TopologicalNode)
+        val terminals = get [Terminal].filter (null != _.TopologicalNode)
 
         // handle transformers specially, by attaching PowerTransformerEnd objects to the terminals
 
         // get the transformer ends keyed by terminal, only one end can reference any one terminal
-        val ends = get[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val ends = get [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
         // attach the ends to terminals
         val t = terminals.keyBy (_.id).leftOuterJoin (ends).values.map (make_ends_meet)
         // get the terminals keyed by equipment and filter for two (or more) terminals
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = get[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = get [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_cn_1).union (edges.keyBy (_.id_cn_2)).distinct
 
         // map the topological nodes to short circuit nodes with voltages
-        val nodes = get[TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).join (tv).values.map (topological_node_operator).distinct
+        val nodes = get [TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).join (tv).values.map (topological_node_operator).distinct
 
         // persist edges and nodes to avoid recompute
         val xedges = edges.map (e ⇒ Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e))
@@ -201,9 +205,12 @@ with Serializable
         xedges.persist (storage_level)
         xnodes.name = "xnodes"
         xnodes.persist (storage_level)
-        if (spark.sparkContext.getCheckpointDir.isDefined) { xedges.checkpoint (); xnodes.checkpoint () }
+        if (spark.sparkContext.getCheckpointDir.isDefined)
+        {
+            xedges.checkpoint (); xnodes.checkpoint ()
+        }
 
-        Graph[ScNode, ScEdge] (xnodes, xedges, default_node, storage_level, storage_level)
+        Graph [ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
     }
 
     def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
@@ -230,10 +237,11 @@ with Serializable
         val kappa =
         if ((0.0 == impedanz.im) && (0.0 == impedanz.re))
             1.02 + 0.98 * Math.exp (-3.0)
-        else if (0.0 == impedanz.im)
-            0.0
         else
-            1.02 + 0.98 * Math.exp (-3.0 * impedanz.re / impedanz.im)
+            if (0.0 == impedanz.im)
+                0.0
+            else
+                1.02 + 0.98 * Math.exp (-3.0 * impedanz.re / impedanz.im)
         val ip = kappa * Math.sqrt (2) * ik3pol
 
         // short-circuit power at the point of common coupling
@@ -260,15 +268,15 @@ with Serializable
                 (ScIntermediate (), ScIntermediate ())
             else
                 (calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low),
-                 calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high))
+                    calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high))
         val costerm = MaximumStartingCurrent.costerm (node.impedance.impedanz_low, options)
 
         ScResult (node.id_seq, equipment, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
             node.source, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
-            low.ik,  low.ik3pol,  low.ip,  low.sk, costerm,
-            low.imax_3ph_low,  low.imax_1ph_low,  low.imax_2ph_low,  low.imax_3ph_med,  low.imax_1ph_med,  low.imax_2ph_med,
+            low.ik, low.ik3pol, low.ip, low.sk, costerm,
+            low.imax_3ph_low, low.imax_1ph_low, low.imax_2ph_low, low.imax_3ph_med, low.imax_1ph_med, low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
             high.ik, high.ik3pol, high.ip, high.sk, node.fuses)
     }
@@ -323,7 +331,7 @@ with Serializable
      * Where parallel paths exist make a List.
      *
      * @param start starting node (e.g. EnergyConsumer)
-     * @param data list of live branches
+     * @param data  list of live branches
      * @return the traced fuses
      */
     def traceroute (start: String, data: Iterable[(String, String, Double)]): Branch =
@@ -352,30 +360,30 @@ with Serializable
             case Some (data) ⇒
                 val values = data.map (_._2)
                 val voltage = values.find (x ⇒ x.units == "Volts" && arg._1.mrid == x.element) // extract_node() is unnecessary here, voltage recorder file names are not suffixed
-                val currents = values.filter (x ⇒ x.units == "Amps" && arg._1.mrid == extract_node (x.element)).map (_.value_a)
+            val currents = values.filter (x ⇒ x.units == "Amps" && arg._1.mrid == extract_node (x.element)).map (_.value_a)
                 voltage match
                 {
                     case Some (volts) ⇒
                         val live = data.flatMap (alive)
                         val route = traceroute (arg._1.mrid, live)
                         val v = volts.value_a
-                        implicit val zero: Complex = Complex(0)
+                        implicit val zero: Complex = Complex (0)
                         // val i = currents.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
                         val i = currents.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
-                        val z = if (i == zero)
-                        {
-                            log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
-                            Complex (Double.PositiveInfinity, 0.0)
-                        }
-                        else
-                            (arg._1.voltage - v) / i
+                    val z = if (i == zero)
+                    {
+                        log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
+                        Complex (Double.PositiveInfinity, 0.0)
+                    }
+                    else
+                        (arg._1.voltage - v) / i
                         (z, route)
                     case _ ⇒
-                        log.error ("""no voltage records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                        log.error ("""no voltage records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
                         (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
                 }
             case _ ⇒
-                log.error ("""no data records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot*arg._1.window / 60, arg._1.slot*arg._1.window % 60))
+                log.error ("""no data records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
                 (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
         }
         (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z, path)
@@ -383,6 +391,7 @@ with Serializable
 
     /**
      * Get the name element (possible multiplexed, e.g. node%edge) and type of measurement.
+     *
      * @param filename the recorder file name
      * @return tuple of the element and type of recorder
      */
@@ -391,18 +400,19 @@ with Serializable
         val element = filename.substring (0, filename.lastIndexOf ("_"))
         val units = if (filename.endsWith ("_voltage.csv"))
             "Volts"
-        else if (filename.endsWith ("_current.csv"))
-            "Amps"
         else
-            ""
+            if (filename.endsWith ("_current.csv"))
+                "Amps"
+            else
+                ""
         (element, units)
     }
 
     /**
      * Perform gridlabd via Spark pipe() and collect the experimental results.
      *
-     * @param gridlabd the object to solve the .glm files and read the recorders
-     * @param one_phase if <code>true</code>, create single phase results, otherwise three phase results
+     * @param gridlabd    the object to solve the .glm files and read the recorders
+     * @param one_phase   if <code>true</code>, create single phase results, otherwise three phase results
      * @param experiments the experiments contained in the players, that can be extracted from the recorders
      * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
@@ -414,14 +424,14 @@ with Serializable
         val solved = System.nanoTime ()
         log.info ("solve: %s seconds %s".format ((solved - b4_solve) / 1e9, if (success) "successful" else "failed"))
         val output = gridlabd.read_output_files (one_phase, special_filenameparser) // (trafoid, value_3ph)
-        val read = System.nanoTime ()
+    val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
         // key by trafo_time to join
         val values = output.keyBy (x ⇒ x._1 + "_" + x._2.millis.toString).groupByKey
         val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.t1.getTimeInMillis.toString)
         val dd = exp.leftOuterJoin (values)
         val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
-        val anal = System.nanoTime ()
+    val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
     }
@@ -435,7 +445,7 @@ with Serializable
      *
      * @param simulations the RDD of transformer service areas to which this analysis should be applied
      * @param temperature the temerature at which to evaluate the impedances (°C)
-     * @param isMax If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
+     * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and fuse network
      */
     def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex, Branch)] =
@@ -459,6 +469,7 @@ with Serializable
             val generator = ScGLMGenerator (one_phase = true, temperature = temperature, date_format = _DateFormat, trafokreis, isMax = isMax)
             gridlabd.export (generator)
         }
+
         val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = storage_level, workdir = options.workdir)
         val experiments = simulations.flatMap (
             x ⇒
@@ -467,10 +478,12 @@ with Serializable
                 x.experiments
             }
         ).persist (storage_level)
+
         def short (exp: ScExperiment): Array[Byte] =
         {
             val ret = new StringBuilder ()
             val gigaohm = Complex (1e9, 0)
+
             def addrow (time: Calendar, impedance: Complex): Unit =
             {
                 ret.append (_DateFormat.format (time.getTime))
@@ -480,13 +493,15 @@ with Serializable
                 ret.append (impedance.im)
                 ret.append ("\n")
             }
+
             addrow (exp.t0, gigaohm) // gridlab extends the first and last rows till infinity -> make them zero
             addrow (exp.t1, exp.impedance)
             addrow (exp.t2, gigaohm) // gridlab extends the first and last rows till infinity -> make them zero
 
             ret.toString.getBytes (StandardCharsets.UTF_8)
         }
-        def generate_player_file (gridlabd: GridLABD) (experiment: ScExperiment): Int =
+
+        def generate_player_file (gridlabd: GridLABD)(experiment: ScExperiment): Int =
         {
             if (false)
             {
@@ -498,6 +513,7 @@ with Serializable
                 gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.mrid + ".csv", short (experiment))
             1
         }
+
         val n = experiments.map (generate_player_file (gridlabd)).count
         log.info ("""running %s experiments at %s°C""".format (n, temperature))
 
@@ -506,12 +522,24 @@ with Serializable
 
     def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
     {
-        val ss = rdd.keyBy (_._2.head._2._2.id).join (get[ConductingEquipment].keyBy (_.id)).values
+        val ss = rdd.keyBy (_._2.head._2._2.id).join (get [ConductingEquipment].keyBy (_.id)).values
             .map (x ⇒ (x._1._1, x._1._2.head._2._2, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
+
         // ToDo: fix this 1kV multiplier on the voltages
         def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
-        def house (element: Element): Boolean = element match { case _: EnergyConsumer ⇒ true case _ ⇒ false }
-        def busbar (element: Element): Boolean = element match { case _: BusbarSection ⇒ true case _ ⇒ false }
+
+        def house (element: Element): Boolean = element match
+        {
+            case _: EnergyConsumer ⇒ true
+            case _ ⇒ false
+        }
+
+        def busbar (element: Element): Boolean = element match
+        {
+            case _: BusbarSection ⇒ true
+            case _ ⇒ false
+        }
+
         ss.map (
             args ⇒
                 (
@@ -523,7 +551,7 @@ with Serializable
                         house (args._2),
                         busbar (args._2))
                 )
-            )
+        )
     }
 
     def edge_maker (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
@@ -541,37 +569,37 @@ with Serializable
 
     def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
     {
-         results.keyBy (_.tx).leftOuterJoin (list).values.map
-         {
-             case (result: ScResult, None) ⇒ result
-             case (result: ScResult, Some (error)) ⇒
-                 result.copy (
-                     errors = if (result.errors == null || result.errors.isEmpty) List (error)
-                     else result.errors,
-                     low_r = 0.0,
-                     low_x = 0.0,
-                     low_r0 = 0.0,
-                     low_x0 = 0.0,
-                     low_ik = 0.0,
-                     low_ik3pol = 0.0,
-                     low_ip = 0.0,
-                     low_sk = 0.0,
-                     imax_3ph_low = 0.0,
-                     imax_1ph_low = 0.0,
-                     imax_2ph_low = 0.0,
-                     imax_3ph_med = 0.0,
-                     imax_1ph_med = 0.0,
-                     imax_2ph_med = 0.0,
-                     high_r = 0.0,
-                     high_x = 0.0,
-                     high_r0 = 0.0,
-                     high_x0 = 0.0,
-                     high_ik = 0.0,
-                     high_ik3pol = 0.0,
-                     high_ip = 0.0,
-                     high_sk = 0.0,
-                     fuses = null)
-         }
+        results.keyBy (_.tx).leftOuterJoin (list).values.map
+        {
+            case (result: ScResult, None) ⇒ result
+            case (result: ScResult, Some (error)) ⇒
+                result.copy (
+                    errors = if (result.errors == null || result.errors.isEmpty) List (error)
+                    else result.errors,
+                    low_r = 0.0,
+                    low_x = 0.0,
+                    low_r0 = 0.0,
+                    low_x0 = 0.0,
+                    low_ik = 0.0,
+                    low_ik3pol = 0.0,
+                    low_ip = 0.0,
+                    low_sk = 0.0,
+                    imax_3ph_low = 0.0,
+                    imax_1ph_low = 0.0,
+                    imax_2ph_low = 0.0,
+                    imax_3ph_med = 0.0,
+                    imax_1ph_med = 0.0,
+                    imax_2ph_med = 0.0,
+                    high_r = 0.0,
+                    high_x = 0.0,
+                    high_r0 = 0.0,
+                    high_x0 = 0.0,
+                    high_ik = 0.0,
+                    high_ik3pol = 0.0,
+                    high_ip = 0.0,
+                    high_sk = 0.0,
+                    fuses = null)
+        }
     }
 
     // execute GridLAB-D to approximate the impedances and replace the error records
@@ -585,15 +613,15 @@ with Serializable
         if (tsa.hasIslands)
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-            val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-            val island_helper = new Island (session, storage_level)
+        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+        val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
-            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
+        val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
                 .map (
-                    x ⇒
+                x ⇒
                     SimulationTransformerServiceArea (
                         simulation = x._1,
                         island = x._1,
@@ -607,7 +635,7 @@ with Serializable
             val zlo: RDD[(String, String, String, Double, Complex, Branch)] = remedial (simulations, options.low_temperature, true).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
             val zhi: RDD[(String, String, String, Double, Complex, Branch)] =
-                // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
+            // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
                 if (options.low_temperature != options.high_temperature)
                 {
                     val _z = remedial (simulations, options.high_temperature, false).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
@@ -628,19 +656,19 @@ with Serializable
                     val fuses = x._1._6
                     val z1_low = x._1._5._1
                     val z0_low = z1_low * 4.0 // approximately four times
-                    val z1_hi = x._1._5._2
+                val z1_hi = x._1._5._2
                     val z0_hi = z1_hi * 4.0 // approximately four times
-                    val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
+                val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
                     x._2 match
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.prev, z, fuses, List(ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.prev, z, fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
                             (
-                                ScNode (x._1._2, v, x._1._1, null, z, null, List()),
+                                ScNode (x._1._2, v, x._1._1, null, z, null, List ()),
                                 1, x._1._3, ""
                             )
                     }
@@ -663,7 +691,7 @@ with Serializable
     def run (): RDD[ScResult] =
     {
         FData.fuse_sizing_table (options.fuse_table)
-        assert (null != get[TopologicalNode], "no topology")
+        assert (null != get [TopologicalNode], "no topology")
 
         val _transformers = new Transformers (spark, storage_level)
         val transformer_data = _transformers.getTransformers (
@@ -675,7 +703,10 @@ with Serializable
         val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos)
         {
             val trafos = Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-            val selected = transformer_data.filter (t ⇒ { trafos.contains (t.transformer.id) })
+            val selected = transformer_data.filter (t ⇒
+            {
+                trafos.contains (t.transformer.id)
+            })
             selected.groupBy (t ⇒ t.terminal1.TopologicalNode).values.map (_.toArray)
         }
         else
@@ -692,7 +723,9 @@ with Serializable
 
         // create the initial Graph with ScNode vertices
         val initial = get_inital_graph ()
+
         def both_ends (edge: Edge[ScEdge]): Iterable[(VertexId, ScEdge)] = List ((edge.srcId, edge.attr), (edge.dstId, edge.attr))
+
         def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
         {
             val trafo = attached._1
@@ -702,10 +735,11 @@ with Serializable
                 if (trafo.transformer.total_impedance._2)
                     List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
                 else
-                    null.asInstanceOf[List[ScError]]
-            val problems = edges.foldLeft (errors) ((errors, edge) => edge.hasIssues (errors, options.messagemax))
+                    null.asInstanceOf [List[ScError]]
+            val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options.messagemax))
             ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, "self", trafo.secondary_impedance, null, problems)
         }
+
         val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
         val initial_with_starting_nodes = initial.joinVertices (starting_trafos_with_edges)(add_starting_trafo).persist (storage_level)
         val sct = ShortCircuitTrace (session, options)
@@ -718,10 +752,11 @@ with Serializable
 
         log.info ("computing results")
         // join results with terminals to get equipment
-        val d = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
+        val d = result.keyBy (_.id_seq).join (get [Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
-        val e = d.keyBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2))
-        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+        val e = d.keyBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2))
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+
         // resolve to top level containers
         // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
         def station_fn (arg: (ScNode, Terminal, ConductingEquipment, Option[Any])): (ScNode, Int, String, String) =
@@ -733,11 +768,12 @@ with Serializable
             container match
             {
                 case Some (station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
-                case Some (bay: Bay)            => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
+                case Some (bay: Bay) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
                 case Some (level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
                 case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
             }
         }
+
         val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
 
         // compute results
@@ -745,12 +781,14 @@ with Serializable
 
         // find transformers where there are non-radial networks and fix them
         val problem_trafos = results.filter (result ⇒ result.errors.exists (_.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
+
         // but not the ones that have another error
         def other_error (s: String): Boolean = !s.startsWith ("FATAL: non-radial network detected") && s.startsWith ("INVALID")
+
         val verboten_trafos = results.filter (result ⇒ result.errors.exists (other_error)).map (result ⇒ (result.tx, result.errors.filter (other_error).head)).distinct.persist (storage_level)
         val problem_trafosets = problem_trafos.subtractByKey (verboten_trafos).join (transformersets.keyBy (_.transformer_name)).map (_._2._2)
         if (0 != verboten_trafos.count)
-            // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
+        // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
             results = zero (verboten_trafos, results)
         if (0 != problem_trafosets.count)
             results = fix (problem_trafosets, results)
@@ -767,16 +805,16 @@ object ShortCircuit
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.sc.Impedanzen],
-            classOf[ch.ninecode.sc.ScEdge],
-            classOf[ch.ninecode.sc.ScError],
-            classOf[ch.ninecode.sc.ScIntermediate],
-            classOf[ch.ninecode.sc.ScMessage],
-            classOf[ch.ninecode.sc.ScNode],
-            classOf[ch.ninecode.sc.ScResult],
-            classOf[ch.ninecode.sc.ShortCircuit],
-            classOf[ch.ninecode.sc.ShortCircuitOptions],
-            classOf[ch.ninecode.sc.StartingTrafos]
+            classOf [ch.ninecode.sc.Impedanzen],
+            classOf [ch.ninecode.sc.ScEdge],
+            classOf [ch.ninecode.sc.ScError],
+            classOf [ch.ninecode.sc.ScIntermediate],
+            classOf [ch.ninecode.sc.ScMessage],
+            classOf [ch.ninecode.sc.ScNode],
+            classOf [ch.ninecode.sc.ScResult],
+            classOf [ch.ninecode.sc.ShortCircuit],
+            classOf [ch.ninecode.sc.ShortCircuitOptions],
+            classOf [ch.ninecode.sc.StartingTrafos]
         )
     }
 }

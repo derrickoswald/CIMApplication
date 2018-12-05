@@ -67,14 +67,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -136,14 +136,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -201,14 +201,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -270,14 +270,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -339,14 +339,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -408,14 +408,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -471,14 +471,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -534,14 +534,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -580,7 +580,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             string.saveAsTextFile (output)
 
             // output SQLite database
-            Database.store (sc_options) (results)
+            Database.store (sc_options)(results)
 
             val csv = string.collect
             println ("results: " + csv.length)
@@ -599,7 +599,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             assert (Math.abs (data1.imax_2ph_med - 42.7) < 0.5, "expected maxanlaufstrom=43A")
             assert (Math.abs (data1.imax_1ph_med - 24.7) < 0.5, "expected maxanlaufstrom=25A")
 
-            val data2 = results.filter (_.equipment == "HAS9753")first ()
+            val data2 = results.filter (_.equipment == "HAS9753") first()
             assert (Math.abs (data2.imax_3ph_med - 288.6) < 0.5, "expected maxanlaufstrom=289A")
             assert (Math.abs (data2.imax_2ph_med - 212.8) < 0.5, "expected maxanlaufstrom=213A") // not 250A like the spreadsheet says
             assert (Math.abs (data2.imax_1ph_med - 144.3) < 0.5, "expected maxanlaufstrom=145A")
@@ -615,14 +615,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -682,14 +682,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -740,9 +740,9 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             // I'm not sure why SAK uses ik3pol (which is scaled by cmax) to calculate Sk
             assert (Math.abs (consumer.low_sk * sc_options.cmax - 1.015e6) < 5e3, "expected sk=1.015MVA")
             assert (0 == results.filter (_.errors.nonEmpty).count, "expected no errors")
-            // if the transformer impedances are removed from the sample file, this command yields the same results:
-            // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
-            // except there is a warning "transformer has no impedance value, using default 0.01375+0.05312j"
+        // if the transformer impedances are removed from the sample file, this command yields the same results:
+        // spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --logging "INFO" --netz "0.0 + 0.0j" --trafoz "0.01375 + 0.05312j" --cmax 0.95 --cmin 0.95 "hdfs://sandbox:8020/fuse_nc_sample.rdf"
+        // except there is a warning "transformer has no impedance value, using default 0.01375+0.05312j"
     }
 
     test ("message test")
@@ -754,14 +754,14 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)

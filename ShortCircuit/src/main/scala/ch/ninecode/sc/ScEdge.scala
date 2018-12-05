@@ -20,16 +20,17 @@ import ch.ninecode.model.Switch
 /**
  * Short circuit extended GraphX edge.
  *
- * @param id_cn_1 TopologicalNode 1 mRID
- * @param v1 voltage on Terminal 1 (V)
- * @param id_cn_2 TopologicalNode 2 mRID
- * @param v2 voltage on Terminal 2 (V)
+ * @param id_cn_1       TopologicalNode 1 mRID
+ * @param v1            voltage on Terminal 1 (V)
+ * @param id_cn_2       TopologicalNode 2 mRID
+ * @param v2            voltage on Terminal 2 (V)
  * @param num_terminals the number of terminals on the equipment (could be more than 2)
- * @param id_equ ConductingEquipment mRID
- * @param element conducting equipment subclass object
- * @param impedance impedance of the edge (Ω)
+ * @param id_equ        ConductingEquipment mRID
+ * @param element       conducting equipment subclass object
+ * @param impedance     impedance of the edge (Ω)
  */
-case class ScEdge (
+case class ScEdge
+(
     id_cn_1: String,
     v1: Double,
     id_cn_2: String,
@@ -39,6 +40,7 @@ case class ScEdge (
     element: Element,
     impedance: Impedanzen) extends Graphable with Serializable
 {
+
     import ScEdge._
 
     /**
@@ -53,12 +55,13 @@ case class ScEdge (
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (0 != (switch.bitfields(openMask / 32) & (1 << (openMask % 32))))
+        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
-        else if (0 != (switch.bitfields(normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-            !switch.normalOpen
         else
-            true
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
     }
 
     /**
@@ -92,10 +95,11 @@ case class ScEdge (
                     val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
                     if (id_cn == id_cn_1)
                         v1 <= v2 || v1 <= 1000.0
-                    else if (id_cn == id_cn_2)
-                        v2 <= v1 || v2 <= 1000.0
                     else
-                        throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
+                        if (id_cn == id_cn_2)
+                            v2 <= v1 || v2 <= 1000.0
+                        else
+                            throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
                 case _ ⇒
                     true
             }
@@ -104,7 +108,7 @@ case class ScEdge (
     /**
      * Warn of special cases of cables and transformers that preclude accurate short-circuit calculation.
      *
-     * @param errors current list of errors in the trace
+     * @param errors     current list of errors in the trace
      * @param messagemax the maximum number of error messages to be maintained
      * @return a new list of errors with additional information about validity.
      */
@@ -129,19 +133,21 @@ case class ScEdge (
                     ScError.combine_errors (errors, List (error), messagemax)
                 }
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
-                else if (v1 == v2)
-                {
-                    val error = ScError (false, true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
-                    ScError.combine_errors (errors, List (error), messagemax)
-                }
-                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
-                else if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
-                {
-                    val error = ScError (false, true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                    ScError.combine_errors (errors, List (error), messagemax)
-                }
                 else
-                    errors
+                    if (v1 == v2)
+                    {
+                        val error = ScError (false, true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
+                        ScError.combine_errors (errors, List (error), messagemax)
+                    }
+                    // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                    else
+                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
+                        {
+                            val error = ScError (false, true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
+                            ScError.combine_errors (errors, List (error), messagemax)
+                        }
+                        else
+                            errors
             case _ ⇒
                 errors
         }
@@ -151,7 +157,7 @@ case class ScEdge (
      * Compute reference impedance as seen at the given node.
      *
      * @param id_cn TopologicalNode to compute
-     * @param ref impedance of the other end of the edge (Ω)
+     * @param ref   impedance of the other end of the edge (Ω)
      * @return impedance of the given node
      */
     def impedanceFrom (id_cn: String, ref: Impedanzen): Impedanzen =
@@ -165,14 +171,15 @@ case class ScEdge (
                     val ratio2 = ratio * ratio
                     Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
                 }
-                else if (id_cn == id_cn_2)
-                {
-                    val ratio = v2 / v1
-                    val ratio2 = ratio * ratio
-                    Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
-                }
                 else
-                    ref
+                    if (id_cn == id_cn_2)
+                    {
+                        val ratio = v2 / v1
+                        val ratio2 = ratio * ratio
+                        Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
+                    }
+                    else
+                        ref
             case _ ⇒
                 ref
         }
@@ -197,16 +204,17 @@ case class ScEdge (
                     val tx_impedance_high = this.impedance.impedanz_high
                     Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
                 }
-                else if (id_cn == id_cn_2)
-                {
-                    val ratio = v2 / v1
-                    val ratio2 = ratio * ratio
-                    val tx_impedance_low = this.impedance.impedanz_low * ratio2
-                    val tx_impedance_high = this.impedance.impedanz_high * ratio2
-                    Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
-                }
                 else
-                    Impedanzen (Complex (0.0), Complex (0.0),Complex (0.0), Complex (0.0))
+                    if (id_cn == id_cn_2)
+                    {
+                        val ratio = v2 / v1
+                        val ratio2 = ratio * ratio
+                        val tx_impedance_low = this.impedance.impedanz_low * ratio2
+                        val tx_impedance_high = this.impedance.impedanz_high * ratio2
+                        Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
+                    }
+                    else
+                        Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
             case _ ⇒
                 Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
         }
@@ -279,8 +287,8 @@ object ScEdge
      * Temperature adjusted resistance.
      *
      * @param temperature target temperature (°C)
-     * @param base temperature for the given resistance (°C)
-     * @param r the given resistance (Ω)
+     * @param base        temperature for the given resistance (°C)
+     * @param r           the given resistance (Ω)
      * @return the temperature compensated resistance (Ω)
      */
     def resistanceAt (temperature: Double, base: Double, r: Double): Double =

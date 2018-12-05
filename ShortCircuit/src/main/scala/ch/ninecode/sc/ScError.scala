@@ -3,16 +3,18 @@ package ch.ninecode.sc
 /**
  * Errors encountered in processing.
  *
- * @param fatal if <code>true</code> processing should stop, otherwise it can proceed
+ * @param fatal   if <code>true</code> processing should stop, otherwise it can proceed
  * @param invalid if <code>true</code> the results are invalid, otherwise the results are valid
  * @param message the error message
  */
-case class ScError (
-   fatal: Boolean,
-   invalid: Boolean,
-   message: String)
+case class ScError
+(
+    fatal: Boolean,
+    invalid: Boolean,
+    message: String)
 {
-    override def toString: String = (if (fatal) "FATAL: " else if (invalid) "INVALID: " else "") + message
+    override def toString: String = (if (fatal) "FATAL: " else
+        if (invalid) "INVALID: " else "") + message
 }
 
 object ScError

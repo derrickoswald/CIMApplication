@@ -45,14 +45,14 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
             options.put ("path", filename)
             options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files:_*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) /  1e9 + " seconds")
+            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // identify topological nodes
             val ntp = CIMNetworkTopologyProcessor (session)

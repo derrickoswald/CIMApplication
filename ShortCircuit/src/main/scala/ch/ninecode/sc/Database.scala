@@ -142,7 +142,7 @@ object Database
         statement.close ()
     }
 
-    def store (options: ShortCircuitOptions) (records: RDD[ScResult]): Int = synchronized
+    def store (options: ShortCircuitOptions)(records: RDD[ScResult]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -203,62 +203,62 @@ object Database
                     {
                         datainsert1.setNull (1, Types.INTEGER)
                         datainsert1.setInt (2, id)
-                        datainsert1.setString (3, batch(i).node)
-                        datainsert1.setString (4, batch(i).equipment)
-                        datainsert1.setInt (5, batch(i).terminal)
-                        if ((null == batch(i).container) || ("" == batch(i).container))
+                        datainsert1.setString (3, batch (i).node)
+                        datainsert1.setString (4, batch (i).equipment)
+                        datainsert1.setInt (5, batch (i).terminal)
+                        if ((null == batch (i).container) || ("" == batch (i).container))
                             datainsert1.setNull (6, Types.VARCHAR)
                         else
-                            datainsert1.setString (6, batch(i).container)
-                        if (null == batch(i).errors)
+                            datainsert1.setString (6, batch (i).container)
+                        if (null == batch (i).errors)
                             datainsert1.setNull (7, Types.VARCHAR)
                         else
-                            datainsert1.setString (7, batch(i).errors.mkString (","))
-                        datainsert1.setString (8, batch(i).tx)
-                        datainsert1.setString (9, batch(i).prev)
-                        datainsert1.setDouble (10, batch(i).low_r)
-                        datainsert1.setDouble (11, batch(i).low_x)
-                        datainsert1.setDouble (12, batch(i).low_r0)
-                        datainsert1.setDouble (13, batch(i).low_x0)
-                        datainsert1.setDouble (14, batch(i).low_ik)
-                        datainsert1.setDouble (15, batch(i).low_ik3pol)
-                        datainsert1.setDouble (16, batch(i).low_ip)
-                        datainsert1.setDouble (17, batch(i).low_sk)
-                        datainsert1.setDouble (18, batch(i).costerm)
-                        datainsert1.setDouble (19, batch(i).imax_3ph_low)
-                        datainsert1.setDouble (20, batch(i).imax_1ph_low)
-                        datainsert1.setDouble (21, batch(i).imax_2ph_low)
-                        datainsert1.setDouble (22, batch(i).imax_3ph_med)
-                        datainsert1.setDouble (23, batch(i).imax_1ph_med)
-                        datainsert1.setDouble (24, batch(i).imax_2ph_med)
+                            datainsert1.setString (7, batch (i).errors.mkString (","))
+                        datainsert1.setString (8, batch (i).tx)
+                        datainsert1.setString (9, batch (i).prev)
+                        datainsert1.setDouble (10, batch (i).low_r)
+                        datainsert1.setDouble (11, batch (i).low_x)
+                        datainsert1.setDouble (12, batch (i).low_r0)
+                        datainsert1.setDouble (13, batch (i).low_x0)
+                        datainsert1.setDouble (14, batch (i).low_ik)
+                        datainsert1.setDouble (15, batch (i).low_ik3pol)
+                        datainsert1.setDouble (16, batch (i).low_ip)
+                        datainsert1.setDouble (17, batch (i).low_sk)
+                        datainsert1.setDouble (18, batch (i).costerm)
+                        datainsert1.setDouble (19, batch (i).imax_3ph_low)
+                        datainsert1.setDouble (20, batch (i).imax_1ph_low)
+                        datainsert1.setDouble (21, batch (i).imax_2ph_low)
+                        datainsert1.setDouble (22, batch (i).imax_3ph_med)
+                        datainsert1.setDouble (23, batch (i).imax_1ph_med)
+                        datainsert1.setDouble (24, batch (i).imax_2ph_med)
                         datainsert1.executeUpdate ()
                     }
                     for (i <- batch.indices)
                     {
                         datainsert2.setNull (1, Types.INTEGER)
                         datainsert2.setInt (2, id)
-                        datainsert2.setString (3, batch(i).node)
-                        datainsert2.setString (4, batch(i).equipment)
-                        datainsert2.setInt (5, batch(i).terminal)
-                        if ((null == batch(i).container) || ("" == batch(i).container))
+                        datainsert2.setString (3, batch (i).node)
+                        datainsert2.setString (4, batch (i).equipment)
+                        datainsert2.setInt (5, batch (i).terminal)
+                        if ((null == batch (i).container) || ("" == batch (i).container))
                             datainsert2.setNull (6, Types.VARCHAR)
                         else
-                            datainsert2.setString (6, batch(i).container)
-                        if (null == batch(i).errors)
+                            datainsert2.setString (6, batch (i).container)
+                        if (null == batch (i).errors)
                             datainsert2.setNull (7, Types.VARCHAR)
                         else
-                            datainsert2.setString (7, batch(i).errors.mkString (","))
-                        datainsert2.setString (8, batch(i).tx)
-                        datainsert2.setString (9, batch(i).prev)
-                        datainsert2.setDouble (10, batch(i).high_r)
-                        datainsert2.setDouble (11, batch(i).high_x)
-                        datainsert2.setDouble (12, batch(i).high_r0)
-                        datainsert2.setDouble (13, batch(i).high_x0)
-                        datainsert2.setDouble (14, batch(i).high_ik)
-                        datainsert2.setDouble (15, batch(i).high_ik3pol)
-                        datainsert2.setDouble (16, batch(i).high_ip)
-                        datainsert2.setDouble (17, batch(i).high_sk)
-                        if (null == batch(i).fuses)
+                            datainsert2.setString (7, batch (i).errors.mkString (","))
+                        datainsert2.setString (8, batch (i).tx)
+                        datainsert2.setString (9, batch (i).prev)
+                        datainsert2.setDouble (10, batch (i).high_r)
+                        datainsert2.setDouble (11, batch (i).high_x)
+                        datainsert2.setDouble (12, batch (i).high_r0)
+                        datainsert2.setDouble (13, batch (i).high_x0)
+                        datainsert2.setDouble (14, batch (i).high_ik)
+                        datainsert2.setDouble (15, batch (i).high_ik3pol)
+                        datainsert2.setDouble (16, batch (i).high_ip)
+                        datainsert2.setDouble (17, batch (i).high_sk)
+                        if (null == batch (i).fuses)
                         {
                             datainsert2.setNull (18, Types.VARCHAR)
                             datainsert2.setNull (19, Types.VARCHAR)
@@ -267,13 +267,13 @@ object Database
                         }
                         else
                         {
-                            datainsert2.setString (18, batch(i).fuseString)
-                            datainsert2.setString (19, batch(i).lastFusesString)
-                            datainsert2.setDouble (20, FData.fuse (batch(i).high_ik))
-                            if (FData.lastFuseHasMissingValues(batch(i).fuses))
+                            datainsert2.setString (18, batch (i).fuseString)
+                            datainsert2.setString (19, batch (i).lastFusesString)
+                            datainsert2.setDouble (20, FData.fuse (batch (i).high_ik))
+                            if (FData.lastFuseHasMissingValues (batch (i).fuses))
                                 datainsert2.setNull (21, Types.BOOLEAN)
                             else
-                                datainsert2.setBoolean (21, FData.fuseOK (batch(i).high_ik, batch(i).fuses))
+                                datainsert2.setBoolean (21, FData.fuseOK (batch (i).high_ik, batch (i).fuses))
                         }
                         datainsert2.executeUpdate ()
                     }
@@ -305,7 +305,7 @@ object Database
             // if the error message is "out of memory",
             // it probably means no database file is found
             case e: SQLException ⇒ log.error ("exception caught: " + e)
-            -1
+                -1
         }
         finally
         {

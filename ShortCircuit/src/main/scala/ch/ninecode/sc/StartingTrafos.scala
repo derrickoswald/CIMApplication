@@ -8,13 +8,11 @@ import ch.ninecode.gl.TransformerSet
 /**
  * Transformers for which an available power and angle is known, to be used as the starting points for calculation.
  *
- * @param osPin the VertexId of the primary node
- * @param nsPin the VertexId of the secondary node
+ * @param osPin       the VertexId of the primary node
+ * @param nsPin       the VertexId of the secondary node
  * @param transformer the transformer(s) connected to the (high or medium voltage) network
  */
-case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: TransformerSet)
-extends
-    Serializable
+case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: TransformerSet) extends Serializable
 {
     val primary_impedance: Impedanzen =
     {

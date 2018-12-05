@@ -29,25 +29,28 @@ class TraceRoute
     {
         /**
          * Split the branches into two options, those not terminating on the starting nodes, and those that do
+         *
          * @param ending the node to look for the starting nodes in
          * @param branch the branch to test
          * @return a 2tuple of, the option of branch not terminating on endings and the option that it does
          */
-        def split (ending:String) (branch: Branch): (Option[Branch], Option[Branch]) = // (unordered, ordered)
+        def split (ending: String)(branch: Branch): (Option[Branch], Option[Branch]) = // (unordered, ordered)
         {
             if (ending == branch.from)
                 (None, Some (branch.reverse)) // flip direction
-            else if (ending == branch.to)
-                (None, Some (branch)) // already directed correctly
             else
-                (Some (branch), None)
+                if (ending == branch.to)
+                    (None, Some (branch)) // already directed correctly
+                else
+                    (Some (branch), None)
         }
 
         /**
          * Apply Kirchhoff's current law to branches terminating on the starting node.
+         *
          * @param branches the list of branches to check
-         * @param ordered the branches that have already been ordered
-         * @param start the node and current at the 'to' end of the branches of interest
+         * @param ordered  the branches that have already been ordered
+         * @param start    the node and current at the 'to' end of the branches of interest
          * @return a 2tuple of, if successful, the branches terminating on the node and a list of from nodes
          *         or if not successful the original start node and current
          */
@@ -65,10 +68,10 @@ class TraceRoute
             if (ok)
                 (fan_in, fan_in.map (x ⇒ (x.from, x.current)))
             else
-                (Iterable(), Iterable(start))
+                (Iterable (), Iterable (start))
         }
 
-        var ret: Iterable[Branch] = Seq()
+        var ret: Iterable[Branch] = Seq ()
         var start: Map[String, Double] = starting.toMap
         var next = branches
         var done = false
@@ -121,17 +124,20 @@ class TraceRoute
     def toBranches (start: String, data: Iterable[(String, String, Double)]): Iterable[Branch] =
     {
         // create unordered branches
-        val undirected = mutable.Map[String, SimpleBranch]()
+        val undirected = mutable.Map [String, SimpleBranch]()
+
         def get_mrid (element: String): String =
         {
             val index = element.indexOf ("$")
             if (-1 == index) element else element.substring (0, index)
         }
+
         def get_rating (element: String): Option[Double] =
         {
             val index = element.indexOf ("$")
             if (-1 == index) None else Some (element.substring (index + 1).toDouble)
         }
+
         def make_branch (element: (String, String, Double)): Unit =
         {
             val from = element._1
@@ -141,9 +147,10 @@ class TraceRoute
             if (!undirected.contains (mrid))
                 undirected (mrid) = Branch (from, data.find (y ⇒ get_mrid (y._2) == mrid && y._1 != from).map (_._1).getOrElse ("source"), current, mrid, rating)
         }
+
         data.foreach (make_branch)
         // walk backwards from ending node
-        make_directed (Iterable(("source", undirected.find (x ⇒ x._2.to == "source").map (_._2.current).getOrElse (0.0))), undirected.values)
+        make_directed (Iterable (("source", undirected.find (x ⇒ x._2.to == "source").map (_._2.current).getOrElse (0.0))), undirected.values)
     }
 
     /**
@@ -156,14 +163,14 @@ class TraceRoute
     {
         // check for series elements
         val series = for
-        {
+            {
             branch ← network
             buddies = network.filter (x ⇒ branch.to == x.from)
             parallel = network.filter (x ⇒ branch != x && branch.to == x.to)
             if buddies.size == 1 && parallel.isEmpty
             buddy = buddies.head
         }
-        yield (branch, buddy)
+            yield (branch, buddy)
         if (series.nonEmpty)
         {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
@@ -188,23 +195,23 @@ class TraceRoute
         def kcl (input: Double, output: Double, fixed: Iterable[Branch], undecided: Iterable[Branch]): (Boolean, Iterable[Branch]) =
         {
             // we need only test either from or to since all elements have the same from and to
-            val currents = fixed.map (- _.current) ++ undecided.map (- _.current)
+            val currents = fixed.map (-_.current) ++ undecided.map (-_.current)
             if ((Math.abs (input + currents.sum) < 0.1) || (Math.abs (output + currents.sum) < 0.1))
                 (true, fixed ++ undecided)
             else
             {
                 // try adding reversed elements
                 val ok = for
-                {
+                    {
                     test ← undecided
                     solid = fixed.toList :+ test.reverse
                     rest = undecided.filter (_ != test)
                     result = kcl (input, output, solid, rest)
                     if result._1
                 }
-                yield solid ++ rest
+                    yield solid ++ rest
                 if (ok.isEmpty)
-                    (false, List())
+                    (false, List ())
                 else
                     (true, ok.head)
             }
@@ -213,12 +220,12 @@ class TraceRoute
         // check for parallel elements
         val parallel: Iterable[Iterable[Branch]] =
             for
-            {
+                {
                 branch: Branch ← network
                 buddies: Iterable[Branch] = network.filter (x ⇒ ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
                 if buddies.nonEmpty
             }
-            yield buddies ++ Seq (branch)
+                yield buddies ++ Seq (branch)
         if (parallel.nonEmpty)
         {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
@@ -226,7 +233,7 @@ class TraceRoute
             // alter set to satisfy KCL
             val input = network.filter (_.to == set.head.from).map (_.current).sum
             val output = network.filter (_.from == set.head.to).map (_.current).sum
-            val arranged = kcl (input, output, List(), set)
+            val arranged = kcl (input, output, List (), set)
             if (arranged._1)
                 (true, Seq (arranged._2.head.add_in_parallel (arranged._2.tail)) ++ network.filter (x ⇒ !set.toSeq.contains (x)))
             else
@@ -240,7 +247,7 @@ class TraceRoute
      * Convert the raw short circuit current data into fuse specificity lists.
      *
      * @param start the starting node id for which the fuse specificity is required
-     * @param data the recorder data as tuples of node id, encoded equipment mRID and current
+     * @param data  the recorder data as tuples of node id, encoded equipment mRID and current
      * @return the single equivalent branch
      */
     def traceroute (start: String, data: Iterable[(String, String, Double)]): Seq[Branch] =

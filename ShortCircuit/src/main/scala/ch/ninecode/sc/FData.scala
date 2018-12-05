@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory
 
 object FData
 {
+
     case class Amp (Ik: Double, Rating: Double)
+
     val recommended_fuse_sizing_1: Array[Amp] =
         Array (
             Amp (0, 0), // failsafe fallback for currents less than 65A
@@ -59,6 +61,7 @@ object FData
                 log.error ("unrecognized fuse sizing table number %s, ignored".format (number))
         }
     }
+
     def fuse (ik: Double): Double =
     {
         val rating = if (ik.isNaN)
@@ -70,6 +73,7 @@ object FData
         }
         rating
     }
+
     def fuseOK (ik: Double, fuses: Branch): Boolean =
     {
         if (null == fuses)
@@ -98,6 +102,7 @@ object FData
             ok
         }
     }
+
     def lastFuseHasMissingValues (fuses: Branch): Boolean =
     {
         if (null == fuses)

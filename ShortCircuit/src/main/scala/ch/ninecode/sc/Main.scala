@@ -46,26 +46,29 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s ⇒
+        {
+            var ret = Map [String, String]()
+            val ss = s.split (",")
+            for (p ← ss)
             {
-                var ret = Map[String, String] ()
-                val ss = s.split (",")
-                for (p ← ss) {
-                    val kv = p.split ("=")
-                    ret = ret + ((kv(0), kv(1)))
-                }
-                ret
+                val kv = p.split ("=")
+                ret = ret + ((kv (0), kv (1)))
             }
+            ret
+        }
     )
 
     implicit val complexRead: scopt.Read[Complex] = scopt.Read.reads (
         s ⇒ Complex.fromString (s)
     )
 
-    case class Arguments (
+    case class Arguments
+    (
         quiet: Boolean = false,
         master: String = "",
         opts: Map[String, String] = Map (
@@ -99,119 +102,119 @@ object Main
         workdir: String = "",
         files: Seq[String] = Seq ())
 
-    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments] (APPLICATION_NAME)
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
         val default = new Arguments
 
-        opt[Unit]("quiet").
+        opt [Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
             text ("suppress informational messages [false]")
 
-        opt[String]("master").valueName ("MASTER_URL").
+        opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt[String]("storage").
+        opt [String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[Long]("splitsize").
+        opt [Long]("splitsize").
             action ((x, c) ⇒ c.copy (splitsize = x)).
             text ("file input format maximum size [%s]".format (default.splitsize))
 
-        opt[Unit]("deduplicate").
+        opt [Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [false]")
 
-        opt[LogLevels.Value]("logging").
+        opt [LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
-        opt[String]("checkpoint").valueName ("<dir>").
+        opt [String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt[String]("description").valueName ("<text>").
+        opt [String]("description").valueName ("<text>").
             action ((x, c) ⇒ c.copy (description = x)).
             text ("text describing this program execution for SQLite run table")
 
-        opt[Double]("netp_max").valueName ("<Sk_max>").
+        opt [Double]("netp_max").valueName ("<Sk_max>").
             action ((x, c) ⇒ c.copy (default_network_power_max = x)).
             text ("maximum network power if not in CIM, VA [%g]".format (default.default_network_power_max))
 
-        opt[Complex]("netz_max").valueName ("<r + xj>").
+        opt [Complex]("netz_max").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_max = x)).
             text ("maximum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
 
-        opt[Double]("netp_min").valueName ("<Sk_min>").
+        opt [Double]("netp_min").valueName ("<Sk_min>").
             action ((x, c) ⇒ c.copy (default_network_power_min = x)).
             text ("minimum network power if not in CIM, VA [%g]".format (default.default_network_power_min))
 
-        opt[Complex]("netz_min").valueName ("<r + xj>").
+        opt [Complex]("netz_min").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_min = x)).
             text ("minimum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
 
-        opt[Double]("tbase").valueName ("<value>").
+        opt [Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
             text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
-        opt[Double]("tlow").valueName ("<value>").
+        opt [Double]("tlow").valueName ("<value>").
             action ((x, c) ⇒ c.copy (low_temperature = x)).
             text ("low temperature for maximum fault (°C) [%g]".format (default.low_temperature))
 
-        opt[Double]("thigh").valueName ("<value>").
+        opt [Double]("thigh").valueName ("<value>").
             action ((x, c) ⇒ c.copy (high_temperature = x)).
             text ("high temperature for minimum fault (°C) [%g]".format (default.high_temperature))
 
-        opt[String]("trafos").valueName ("<TRA file>").
+        opt [String]("trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt[Double]("trafop").valueName ("<ratedS>").
+        opt [Double]("trafop").valueName ("<ratedS>").
             action ((x, c) => c.copy (default_transformer_power = x)).
             text ("transformer power if not in CIM, VA [%g]".format (default.default_transformer_power))
 
-        opt[Complex]("trafoz").valueName ("<r + xj>").
+        opt [Complex]("trafoz").valueName ("<r + xj>").
             action ((x, c) => c.copy (default_transformer_impedance = x)).
             text ("transformer impedance if not in CIM, Ω [%s]".format (default.default_transformer_impedance))
 
-        opt[Double]("cmax").
+        opt [Double]("cmax").
             action ((x, c) => c.copy (cmax = x)).
             text ("voltage factor for maximum fault level, used for rating equipment [%g]".format (default.cmax))
 
-        opt[Double]("cmin").
+        opt [Double]("cmin").
             action ((x, c) => c.copy (cmin = x)).
             text ("voltage factor for minimum fault level, used for protections settings [%g]".format (default.cmin))
 
-        opt[Double]("cosphi").
+        opt [Double]("cosphi").
             action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
             text ("load power factor, used for maximum inrush current [worst case]")
 
-        opt[Int]("fuse_table").
+        opt [Int]("fuse_table").
             action ((x, c) => c.copy (fuse_table = x)).
             text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s]".format (default.fuse_table))
 
-        opt[Int]("messagemax").
+        opt [Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
             text ("maximum number of warning and error messages per node [%d]".format (default.messagemax))
 
-        opt[Long]("batchsize").
+        opt [Long]("batchsize").
             action ((x, c) => c.copy (batchsize = x)).
             text ("size of result collections for driver database writes [%d]".format (default.batchsize))
 
-        opt[String]("workdir").valueName ("<dir>").
+        opt [String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
-        arg[String]("<CIM>,<CIM>...").unbounded ().
+        arg [String]("<CIM>,<CIM>...").unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -221,13 +224,16 @@ object Main
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
         var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-        try {
+        try
+        {
             ret = URLDecoder.decode (ret, "UTF-8")
         }
-        catch {
+        catch
+        {
             case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
         }
-        if (!ret.toLowerCase ().endsWith (".jar")) {
+        if (!ret.toLowerCase ().endsWith (".jar"))
+        {
             // as an aid to debugging, make jar in tmp and pass that name
             val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
@@ -254,10 +260,10 @@ object Main
 
     /**
      * Build jar with dependencies (target/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.2.1-2.4.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
     def read_cim (session: SparkSession, arguments: Arguments): RDD[Element] =
@@ -265,7 +271,7 @@ object Main
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
         val storage = StorageLevel.fromString (arguments.storage)
-        val reader_options = new HashMap[String, String] ()
+        val reader_options = new HashMap[String, String]()
         reader_options.put ("StorageLevel", arguments.storage)
         reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
         reader_options.put ("path", arguments.files.mkString (","))
@@ -281,7 +287,7 @@ object Main
         log.info ("read: " + (read - start) / 1e9 + " seconds")
 
         // identify topological nodes if necessary
-        val tns = session.sparkContext.getPersistentRDDs.filter(_._2.name == "TopologicalNode")
+        val tns = session.sparkContext.getPersistentRDDs.filter (_._2.name == "TopologicalNode")
         val ele = if (tns.isEmpty || tns.head._2.isEmpty)
         {
             val ntp = CIMNetworkTopologyProcessor (session)
@@ -301,7 +307,7 @@ object Main
         }
         else
         {
-            val elements = session.sparkContext.getPersistentRDDs.filter(_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
+            val elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
             log.info (elements.count () + " elements")
             elements
         }
@@ -313,7 +319,8 @@ object Main
     def main (args: Array[String])
     {
         // parser.parse returns Option[C]
-        parser.parse (args, Arguments ()) match {
+        parser.parse (args, Arguments ()) match
+        {
             case Some (arguments) ⇒
 
                 if (!arguments.quiet)
@@ -334,7 +341,8 @@ object Main
                     arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
-                if ("" != arguments.master) {
+                if ("" != arguments.master)
+                {
                     val s1 = jarForObject (new DefaultSource ())
                     val s2 = jarForObject (ShortCircuitOptions ())
                     if (s1 != s2)
@@ -395,7 +403,7 @@ object Main
                 val results = shortcircuit.run ()
 
                 // output SQLite database
-                Database.store (options) (results)
+                Database.store (options)(results)
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")

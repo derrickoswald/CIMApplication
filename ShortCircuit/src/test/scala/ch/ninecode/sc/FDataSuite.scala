@@ -176,15 +176,15 @@ class FDataSuite extends FunSuite
         val branch =
             ParallelBranch ("a", "z", 0.0,
                 List (
-                    SimpleBranch ("a", "z", 6.0, "TEI11", Some(50.0)),
-                    SeriesBranch("a", "z", 0.0,
+                    SimpleBranch ("a", "z", 6.0, "TEI11", Some (50.0)),
+                    SeriesBranch ("a", "z", 0.0,
                         Seq (
-                            SimpleBranch ("a", "z", 4.0, "TEI21", Some(50.0)),
-                            SimpleBranch ("a", "z", 4.0, "TEI21", Some(40.0))
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
                         )
                     )
                 )
-        )
+            )
 
         assert (FData.fuseOK (280, branch), "expected OK")
     }
@@ -365,8 +365,8 @@ class FDataSuite extends FunSuite
         val branch1 = SimpleBranch ("a", "b", 4.0, "TEI141", Some (-1.0))
         val branch2 = SimpleBranch ("c", "d", 4.0, "TEI141", Some (40.0))
 
-        assert(FData.lastFuseHasMissingValues(branch1),"has missing valus (-1.0)")
-        assert(!FData.lastFuseHasMissingValues(branch2),"has no missing valus (40.0)")
+        assert (FData.lastFuseHasMissingValues (branch1), "has missing valus (-1.0)")
+        assert (!FData.lastFuseHasMissingValues (branch2), "has no missing valus (40.0)")
     }
 
     test ("lastFuseHasMissingValues: series branch")
@@ -399,27 +399,26 @@ class FDataSuite extends FunSuite
                 )
             )
 
-        assert(!FData.lastFuseHasMissingValues(branch1),"has missing values (-1.0)")
-        assert(FData.lastFuseHasMissingValues(branch2),"has no missing values")
+        assert (!FData.lastFuseHasMissingValues (branch1), "has missing values (-1.0)")
+        assert (FData.lastFuseHasMissingValues (branch2), "has no missing values")
     }
-
 
 
     test ("lastFuseHasMissingValues: parallel branch")
     {
         val branch1 =
-                ParallelBranch ("c", "d", 0.0,
-                        List (
-                            SeriesBranch ("a", "z", 0.0,
-                                Seq (
-                                    SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
-                                    SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
-                            SeriesBranch ("a", "z", 0.0,
-                                Seq (
-                                    SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
-                                    SimpleBranch ("c", "d", 0.0, "TEI123", Some (-1.0))))
-                        )
+            ParallelBranch ("c", "d", 0.0,
+                List (
+                    SeriesBranch ("a", "z", 0.0,
+                        Seq (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                    SeriesBranch ("a", "z", 0.0,
+                        Seq (
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (-1.0))))
                 )
+            )
 
         val branch2 =
             ParallelBranch ("c", "d", 0.0,
@@ -435,8 +434,8 @@ class FDataSuite extends FunSuite
                 )
             )
 
-        assert(FData.lastFuseHasMissingValues(branch1),"last fuses have at last one missing value (-1.0)")
-        assert(!FData.lastFuseHasMissingValues(branch2),"last fuses have no missing values")
+        assert (FData.lastFuseHasMissingValues (branch1), "last fuses have at last one missing value (-1.0)")
+        assert (!FData.lastFuseHasMissingValues (branch2), "last fuses have no missing values")
     }
 
 }
