@@ -37,9 +37,9 @@ case class SimulationExecutors (session: SparkSession)
      *
      * @param executors the list to fill with executors
      */
-    class ExecutorAccumulator (var executors: ConcurrentHashMap[String,String]) extends AccumulatorV2[ConcurrentHashMap[String,String],ConcurrentHashMap[String,String]]
+    class ExecutorAccumulator (var executors: ConcurrentHashMap[String, String]) extends AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]]
     {
-        def this () = this (new ConcurrentHashMap[String,String]())
+        def this () = this (new ConcurrentHashMap[String, String]())
 
         /**
          * Returns if this accumulator is zero value or not. e.g. for a counter accumulator, 0 is zero value; for a list accumulator, Nil is zero value.
@@ -111,13 +111,13 @@ case class SimulationExecutors (session: SparkSession)
                         val name = host.getHostName
                         log.info ("""localhost is %s named %s""".format (host, name))
                         val split = identifier.split ("=")
-                        val id = split(0)
-                        val worker = if (split.length > 1) split(1) else name
+                        val id = split (0)
+                        val worker = if (split.length > 1) split (1) else name
                         log.info ("""worker %s id: %s""".format (worker, id))
                         val executor = "executor_" + worker + "_" + id
                         val address = host.getHostAddress
                         log.info ("""executing on %s @ %s""".format (executor, address))
-                        val v = new ConcurrentHashMap[String,String]()
+                        val v = new ConcurrentHashMap[String, String]()
                         v.put (executor, address)
                         accumulator.add (v)
                     }

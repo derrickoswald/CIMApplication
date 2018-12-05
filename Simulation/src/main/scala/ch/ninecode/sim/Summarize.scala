@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory
  *
  * Comupte various quality factors for the network after running a simulation.
  *
- * @param spark The Spark session
+ * @param spark   The Spark session
  * @param options The simulation options. Note: Currently only the verbose option is used.
  */
 case class Summarize (spark: SparkSession, options: SimulationOptions)
@@ -109,7 +109,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "simulated_value", "keyspace" -> options.keyspace))
                 .load
-                .drop ("real_b","real_c", "imag_b","imag_c", "units")
+                .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
                 .cache
             logInfo ("""%d simulated values to process""".format (simulated_values.count))
             show (simulated_values)
@@ -155,24 +155,25 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val lines = geojson_lines
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-        def maxCurrent[Type_x: TypeTag] = udf[Double, Map[String,String]]((map: Map[String,String]) => map.getOrElse ("ratedCurrent", "1.0").toDouble)
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        def maxCurrent[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("ratedCurrent", "1.0").toDouble)
 
         val cables = simulated_current_values
-            .withColumn ("current", magnitude[Double, Double].apply (simulated_current_values ("real_a"), simulated_current_values ("imag_a")))
+            .withColumn ("current", magnitude [Double, Double].apply (simulated_current_values ("real_a"), simulated_current_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .join (
                 lines,
                 Seq ("simulation", "mrid"))
         val ratedCables = cables
-            .withColumn ("ratedCurrent", maxCurrent[Map[String,String]].apply (cables ("properties")))
+            .withColumn ("ratedCurrent", maxCurrent [Map[String, String]].apply (cables ("properties")))
             .drop ("properties")
         val utilization = ratedCables
             .withColumn ("utilization", round (ratedCables ("current") / ratedCables ("ratedCurrent") * 100.0 * 100.0) / 100.0)
         logInfo ("""Utilization: %d cable records to process""".format (utilization.count))
         show (utilization)
 
-        {   // open a scope to avoid variable name clashes
+        { // open a scope to avoid variable name clashes
             val mrid = utilization.schema.fieldIndex ("mrid")
             val typ = utilization.schema.fieldIndex ("type")
             val period = utilization.schema.fieldIndex ("period")
@@ -200,7 +201,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 "utilization" → "min",
                 "utilization" → "avg",
                 "utilization" → "max"
-                )
+            )
             .withColumnRenamed ("min(utilization)", "min_utilization")
             .withColumnRenamed ("avg(utilization)", "avg_utilization")
             .withColumnRenamed ("max(utilization)", "max_utilization")
@@ -300,39 +301,43 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 val minvalues: Array[Double]
                 val avgvalues: Array[Double]
                 val maxvalues: Array[Double]
-                var level: Int  = 0
+                var level: Int = 0
                 var simulation: String = ""
                 var `type`: String = ""
                 var transformer: String = ""
                 var mrid: String = ""
                 var date: Date = _
             }
-            case class History30 (
+            case class History30
+            (
                 size: Int = 30,
-                minvalues: Array[Double] = Array.ofDim[Double] (30),
-                avgvalues: Array[Double] = Array.ofDim[Double] (30),
-                maxvalues: Array[Double] = Array.ofDim[Double] (30))
+                minvalues: Array[Double] = Array.ofDim [Double](30),
+                avgvalues: Array[Double] = Array.ofDim [Double](30),
+                maxvalues: Array[Double] = Array.ofDim [Double](30))
                 extends History
-            case class History90 (
+            case class History90
+            (
                 size: Int = 90,
-                minvalues: Array[Double] = Array.ofDim[Double] (90),
-                avgvalues: Array[Double] = Array.ofDim[Double] (90),
-                maxvalues: Array[Double] = Array.ofDim[Double] (90))
+                minvalues: Array[Double] = Array.ofDim [Double](90),
+                avgvalues: Array[Double] = Array.ofDim [Double](90),
+                maxvalues: Array[Double] = Array.ofDim [Double](90))
                 extends History
-            case class History180(
+            case class History180
+            (
                 size: Int = 180,
-                minvalues: Array[Double] = Array.ofDim[Double] (180),
-                avgvalues: Array[Double] = Array.ofDim[Double] (180),
-                maxvalues: Array[Double] = Array.ofDim[Double] (180))
+                minvalues: Array[Double] = Array.ofDim [Double](180),
+                avgvalues: Array[Double] = Array.ofDim [Double](180),
+                maxvalues: Array[Double] = Array.ofDim [Double](180))
                 extends History
-            case class History365(
+            case class History365
+            (
                 size: Int = 365,
-                minvalues: Array[Double] = Array.ofDim[Double] (365),
-                avgvalues: Array[Double] = Array.ofDim[Double] (365),
-                maxvalues: Array[Double] = Array.ofDim[Double] (365))
+                minvalues: Array[Double] = Array.ofDim [Double](365),
+                avgvalues: Array[Double] = Array.ofDim [Double](365),
+                maxvalues: Array[Double] = Array.ofDim [Double](365))
                 extends History
 
-            def emit (history: History):  List[Record] =
+            def emit (history: History): List[Record] =
             {
                 val min = history.minvalues.slice (0, history.level).reduce ((a: Double, b: Double) ⇒ if (a < b) a else b)
                 val avg = history.avgvalues.slice (0, history.level).sum / history.size
@@ -349,9 +354,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 history.level = 0
                 for (i ← 0 until history.size)
                 {
-                    history.minvalues(i) = 0.0
-                    history.avgvalues(i) = 0.0
-                    history.maxvalues(i) = 0.0
+                    history.minvalues (i) = 0.0
+                    history.avgvalues (i) = 0.0
+                    history.maxvalues (i) = 0.0
                 }
                 history.simulation = row.getString (simulation)
                 history.transformer = row.getString (transformer)
@@ -359,16 +364,18 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                 history.mrid = row.getString (mrid)
                 ret
             }
+
             def update (row: Row, history: History)
             {
                 val index = history.level % history.size // where to store the current value
-                history.minvalues(index) = row.getDouble (min_utilization) // push the current values into the arrays
-                history.avgvalues(index) = row.getDouble (avg_utilization)
-                history.maxvalues(index) = row.getDouble (max_utilization)
+                history.minvalues (index) = row.getDouble (min_utilization) // push the current values into the arrays
+                history.avgvalues (index) = row.getDouble (avg_utilization)
+                history.maxvalues (index) = row.getDouble (max_utilization)
                 history.date = row.getDate (date) // update the date to the latest value
                 history.level = history.level + 1 // the number of values we've seen
             }
-            def historical (history: History) (row: Row): List[Record] =
+
+            def historical (history: History)(row: Row): List[Record] =
             {
                 if (history.mrid != row.getString (mrid)) // switch to another cable?
                 {
@@ -385,9 +392,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                         List ()
                 }
             }
-            def make_history (histories: Array[History]) (row: Row): List[/*Record*/(String, String, Long, Date, Double, Double, Double, String, String)] =
+
+            def make_history (histories: Array[History])(row: Row): List[ /*Record*/ (String, String, Long, Date, Double, Double, Double, String, String)] =
             {
-                histories.flatMap (h ⇒ historical (h) (row)).toList
+                histories.flatMap (h ⇒ historical (h)(row)).toList
             }
             import spark.implicits._
             val periods: Array[History] =
@@ -464,13 +472,14 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val trafos = geojson_polygons.drop ("properties").cache
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
         val simulated_value_trafos = simulated__power_values
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("period")
             .withColumn ("date", simulated__power_values ("time").cast (DateType))
             .drop ("time")
-            .withColumn ("power", magnitude[Double, Double].apply (simulated__power_values ("real_a"), simulated__power_values ("imag_a")))
+            .withColumn ("power", magnitude [Double, Double].apply (simulated__power_values ("real_a"), simulated__power_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .join (
                 trafos,
@@ -516,7 +525,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def coincidence_factor (): Unit =
     {
         log.info ("Coincidence Factor")
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
         val simulated_power_values = raw_values
             .filter ("type = 'power'")
@@ -529,7 +539,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val trafos = geojson_polygons.drop ("properties").cache
 
         val simulated_value_trafos = simulated_power_values
-            .withColumn ("power", magnitude[Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+            .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .withColumn ("date", simulated_power_values ("time").cast (DateType))
             .join (
@@ -550,9 +560,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val _measured_value = raw_meter_values
         val houses = geojson_points.drop ("properties").cache
 
-        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+
         val measured_value = _measured_value
-            .withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
+            .withColumn ("power", power [Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
             .drop ("real_a", "imag_a")
             .withColumn ("date", _measured_value ("time").cast (DateType))
             .cache
@@ -632,10 +643,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val trafos = geojson_polygons.drop ("properties").cache
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
         val simulated_value_trafos = simulated_power_values
-            .withColumn ("magnitude", magnitude[Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+            .withColumn ("magnitude", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .withColumn ("date", simulated_power_values ("time").cast (DateType))
             .join (
@@ -657,9 +668,11 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (info)
 
         val _measured_value = raw_meter_values
-        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+
+        def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
+
         val measured_value = _measured_value
-            .withColumn ("power", power[Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
+            .withColumn ("power", power [Double, Double, Int].apply (_measured_value ("real_a"), _measured_value ("imag_a"), _measured_value ("period")))
             .drop ("real_a", "imag_a", "period")
             .withColumn ("date", _measured_value ("time").cast (DateType))
             .cache
@@ -734,20 +747,20 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val houses = geojson_points
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
         val simulated_value_points = simulated_value
-            .withColumn ("voltage", magnitude[Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
+            .withColumn ("voltage", magnitude [Double, Double].apply (simulated_value ("real_a"), simulated_value ("imag_a")))
             .withColumn ("date", simulated_value ("time").cast (DateType))
             .drop ("real_a", "imag_a")
             .join (
                 houses,
                 Seq ("simulation", "mrid"))
 
-        def nominalVoltage[Type_x: TypeTag] = udf[Double, Map[String,String]]((map: Map[String,String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
+        def nominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
 
         val consumers = simulated_value_points
-            .withColumn ("nominal_voltage", nominalVoltage[Map[String,String]].apply (simulated_value_points ("properties")))
+            .withColumn ("nominal_voltage", nominalVoltage [Map[String, String]].apply (simulated_value_points ("properties")))
             .drop ("properties")
         logInfo ("""Voltage quality: %d voltage records to process""".format (consumers.count))
         show (consumers)
@@ -838,10 +851,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Losses: %d simulation values to process""".format (simulated_loss_values.count))
         show (simulated_loss_values)
 
-        def energy[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf[Double, Double, Double, Int]((x: Double, y: Double, z: Int) => Math.sqrt (x * x + y * y) * z / (60 * 60 * 1000))
+        def energy[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => Math.sqrt (x * x + y * y) * z / (60 * 60 * 1000))
 
         val losses = simulated_loss_values
-            .withColumn ("losses", energy[Double, Double, Int].apply (simulated_loss_values ("real_a"), simulated_loss_values ("imag_a"), simulated_loss_values ("period")))
+            .withColumn ("losses", energy [Double, Double, Int].apply (simulated_loss_values ("real_a"), simulated_loss_values ("imag_a"), simulated_loss_values ("period")))
             .drop ("real_a", "imag_a", "period")
             .withColumn ("date", simulated_loss_values ("time").cast (DateType))
             .drop ("time")

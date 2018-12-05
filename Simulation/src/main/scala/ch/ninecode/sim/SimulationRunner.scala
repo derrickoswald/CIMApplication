@@ -40,12 +40,11 @@ import com.datastax.driver.core.PoolingOptions
  *  - execute gridlabd (2:41)
  *  - store each Recorder .csv file in Cassandra (3:30)
  *
- *
  * @param cassandra a Cassandra seed node name
- * @param keyspace the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
+ * @param keyspace  the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
  * @param batchsize the number of insert statements per UNLOGGED batch insert
- * @param workdir the directory to create the .glm and location of /input_data and /output_data directories
- * @param keep when <code>true</code> do not delete the generated .glm, player and recorder files
+ * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
+ * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
  */
 case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int, workdir: String, keep: Boolean = false, verbose: Boolean = false) extends Serializable
 {
@@ -63,10 +62,16 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     iso_date_format.setCalendar (calendar)
 
-    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {
-        try { block (resource) }
-        finally { resource.close () }
+        try
+        {
+            block (resource)
+        }
+        finally
+        {
+            resource.close ()
+        }
     }
 
     def make_record (time: Long, real: Double, imag: Double): JsonObject =
@@ -101,7 +106,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         val statement = prepared.bind ()
         for (n <- trafo.nodes)
         {
-            val node = n.asInstanceOf[SimulationNode]
+            val node = n.asInstanceOf [SimulationNode]
             val properties = extra.collect (
                 {
                     case (query, id, value) if id == node.equipment =>
@@ -111,8 +116,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                 pair ⇒
                     """"%s": "%s"""".format (pair._1, pair._2)
             ).mkString ("{", ",", "}")
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] }, "properties": %s }"""
-                .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2, properties)
+            val json =
+                """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] }, "properties": %s }"""
+                    .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2, properties)
             statement.setString (0, json)
             session.execute (statement)
         }
@@ -126,19 +132,20 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         val statement = prepared.bind ()
         for (raw <- trafo.edges)
         {
-            val edge = raw.asInstanceOf[SimulationEdge]
+            val edge = raw.asInstanceOf [SimulationEdge]
             val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
-            val properties = extra.collect (
-                {
-                    case (query, id, value) if id == edge.id =>
-                        (query, value)
-                }
-            ).map (
-                pair ⇒
-                    """"%s": "%s"""".format (pair._1, pair._2)
-            ).mkString ("{", ",", "}")
-            val json = """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
-                .format (trafo.simulation, edge.rawedge.id, trafo.transformer.transformer_name, coordinates, properties)
+        val properties = extra.collect (
+            {
+                case (query, id, value) if id == edge.id =>
+                    (query, value)
+            }
+        ).map (
+            pair ⇒
+                """"%s": "%s"""".format (pair._1, pair._2)
+        ).mkString ("{", ",", "}")
+            val json =
+                """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
+                    .format (trafo.simulation, edge.rawedge.id, trafo.transformer.transformer_name, coordinates, properties)
             statement.setString (0, json)
             session.execute (statement)
         }
@@ -149,9 +156,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     {
         var points =
             for (raw <- trafo.nodes)
-                yield raw.asInstanceOf[SimulationNode].position
+                yield raw.asInstanceOf [SimulationNode].position
         for (raw <- trafo.edges)
-            points = points ++ raw.asInstanceOf[SimulationEdge].position.toIterable
+            points = points ++ raw.asInstanceOf [SimulationEdge].position.toIterable
         points
     }
 
@@ -171,8 +178,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             pair ⇒
                 """"%s": "%s"""".format (pair._1, pair._2)
         ).mkString ("{", ",", "}")
-        val json = """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] }, "properties": %s }"""
-            .format (trafo.simulation, trafo.transformer.transformer_name, coordinates, properties)
+        val json =
+            """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] }, "properties": %s }"""
+                .format (trafo.simulation, trafo.transformer.transformer_name, coordinates, properties)
         statement.setString (0, json)
         session.execute (statement)
         // log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
@@ -191,7 +199,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
         }
         else
-            Array()
+            Array ()
     }
 
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
@@ -205,9 +213,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             x ⇒
                 x._1 match
                 {
-                    case "time" ⇒ time = x._2.asInstanceOf[JsonNumber].longValue
-                    case "real" ⇒ real = x._2.asInstanceOf[JsonNumber].doubleValue
-                    case "imag" ⇒ imag = x._2.asInstanceOf[JsonNumber].doubleValue
+                    case "time" ⇒ time = x._2.asInstanceOf [JsonNumber].longValue
+                    case "real" ⇒ real = x._2.asInstanceOf [JsonNumber].doubleValue
+                    case "imag" ⇒ imag = x._2.asInstanceOf [JsonNumber].doubleValue
                 }
         )
         glm_date_format.format (time) + "," + real + "," + imag
@@ -255,7 +263,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         write_player_csv (file_prefix + player.file, text)
     }
 
-    def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, String)=
+    def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, String) =
     {
         log.info ("""executing GridLAB-D for %s""".format (trafo.name))
 
@@ -263,6 +271,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         var lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
+
         def check (line: String): Unit =
         {
             if (line.trim != "")
@@ -271,14 +280,16 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             if (line.contains ("ERROR")) errorLines += 1
             if (line.contains ("FATAL")) errorLines += 1
         }
+
         val countLogger = ProcessLogger (check, check)
         val process = Process (command).run (countLogger)
         // wait for the process to finish
         val exit_code = process.exitValue
         if (0 != errorLines)
             log.error ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
-        else if (0 != warningLines)
-            log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
+        else
+            if (0 != warningLines)
+                log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
 
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
     }
@@ -289,31 +300,33 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         if (!name.exists)
         {
             log.error ("""recorder file %s does not exist""".format (name.getCanonicalPath))
-            Array()
+            Array ()
         }
         else
         {
             val handle = Source.fromFile (name, "UTF-8")
             val text = handle.getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
-            val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+            val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+
             def toTimeStamp (string: String): Long =
             {
                 date_format.parse (string).getTime
             }
+
             val ret = text.map (
                 line ⇒
                 {
-                    val fields = line.split(",")
+                    val fields = line.split (",")
                     if (one_phase)
                         if (fields.length == 2)
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex(0.0), Complex(0.0), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
                         else
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
                     else
                         if (fields.length == 4)
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex.fromString (fields(1)), Complex.fromString (fields(2)), Complex.fromString (fields(3)), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex.fromString (fields (1)), Complex.fromString (fields (2)), Complex.fromString (fields (3)), units)
                         else
-                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), Complex(fields(1).toDouble, fields(2).toDouble), Complex(fields(3).toDouble, fields(4).toDouble), Complex(fields(5).toDouble, fields(6).toDouble), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex (fields (1).toDouble, fields (2).toDouble), Complex (fields (3).toDouble, fields (4).toDouble), Complex (fields (5).toDouble, fields (6).toDouble), units)
                 }
             ).toArray
             handle.close
@@ -361,10 +374,10 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                         val insert = SimulationCassandraInsert (session, keyspace, batchsize)
                         val resultsets: Array[(String, List[ResultSetFuture])] = if (ret._1)
                         {
-                            var undone = List[(String, List[ResultSetFuture])] ()
+                            var undone = List [(String, List[ResultSetFuture])]()
                             for (index ← trafo.recorders.indices)
                             {
-                                val recorder = trafo.recorders(index)
+                                val recorder = trafo.recorders (index)
                                 val next = store_recorder_csv (insert, recorder, trafo.simulation, workdir, trafo.directory)
                                 undone = undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty) ::: next
                             }
@@ -373,7 +386,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                         else
                         {
                             log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
-                            Array()
+                            Array ()
                         }
 
                         if (!keep)

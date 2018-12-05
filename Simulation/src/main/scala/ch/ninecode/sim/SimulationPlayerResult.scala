@@ -3,13 +3,13 @@ package ch.ninecode.sim
 /**
  * One row of results from a player query.
  *
- * @param title The user-friendly name of the query.
+ * @param title          The user-friendly name of the query.
  * @param cassandraquery The Cassandra query to access the measured_value table (with placeholder %s for binding).
- * @param substitutions The values of the variables to bind to the placeholders in the Cassandra query.
- * @param name The name of the target player file in the .glm file.
- * @param parent The parent node in the .glm file.
- * @param `type` The type of value in the measured_value table.
- * @param property The .glm property to play.
+ * @param substitutions  The values of the variables to bind to the placeholders in the Cassandra query.
+ * @param name           The name of the target player file in the .glm file.
+ * @param parent         The parent node in the .glm file.
+ * @param `type`         The type of value in the measured_value table.
+ * @param property       The .glm property to play.
  */
 case class SimulationPlayerResult
 (

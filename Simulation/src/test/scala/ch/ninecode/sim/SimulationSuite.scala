@@ -21,9 +21,7 @@ import org.scalatest.FunSuite
 class SimulationSuite extends FunSuite with BeforeAndAfterAll
 {
     val FILE_DEPOT = "data/"
-    val FILENAME1 = "TRA2755_terminal_2_island"
-    val FILENAME2 = "SAK_sta117_sta206"
-    val FILENAME3 = "DemoData"
+    val FILENAME = "DemoData"
 
     /**
      * Add to the process environment.
@@ -43,7 +41,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     val field = cl.getDeclaredField ("m")
                     field.setAccessible (true)
                     val obj = field.get (env)
-                    val map = obj.asInstanceOf[java.util.Map[String, String]]
+                    val map = obj.asInstanceOf [java.util.Map[String, String]]
                     map.putAll (newenv)
                 }
             }
@@ -59,6 +57,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
      * Set SPARK_LOCAL_IP to the IP address in dotted-quad format (e.g. 1.2.3.4) if it isn't set.
      *
      * Avoids "Set SPARK_LOCAL_IP if you need to bind to another address" warning message.
+     *
      * @see findLocalInetAddress: https://github.com/apache/spark/blob/master/core/src/main/scala/org/apache/spark/util/Utils.scala
      */
     def setLocalIP (): Unit =
@@ -85,7 +84,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                         // because of Inet6Address.toHostName may add interface at the end if it knows about it
                         val ip = InetAddress.getByAddress (addr.getAddress)
                         // We've found an address that looks reasonable!
-                        val newenv = new java.util.HashMap[String, String] ()
+                        val newenv = new java.util.HashMap[String, String]()
                         newenv.put ("SPARK_LOCAL_IP", ip.getHostAddress)
                         setEnv (newenv)
                     }
@@ -108,7 +107,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
          *
          * The directory will be created if does not exist.
          *
-         * @param file The Zip file.
+         * @param file      The Zip file.
          * @param directory The directory to extract it to
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -139,7 +138,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         /**
          * Extracts a zip entry (file entry).
          *
-         * @param zip The Zip input stream for the file.
+         * @param zip  The Zip input stream for the file.
          * @param path The path to extract he file to.
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -149,27 +148,32 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             val bos = new BufferedOutputStream (new FileOutputStream (path))
             val bytesIn = new Array[Byte](4096)
             var read = -1
-            while ({ read = zip.read (bytesIn); read != -1 })
+            while (
+            {
+                read = zip.read (bytesIn); read != -1
+            })
                 bos.write (bytesIn, 0, read)
             bos.close ()
         }
     }
 
-    def using[T <: Closeable, R](resource: T)(block: T => R): R =
+    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {
-        try { block (resource) }
-        finally { resource.close () }
+        try
+        {
+            block (resource)
+        }
+        finally
+        {
+            resource.close ()
+        }
     }
 
     override def beforeAll ()
     {
         setLocalIP ()
-        if (!new File (FILE_DEPOT + FILENAME1 + ".rdf").exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME1 + ".zip", FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME2 + ".rdf").exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME2 + ".zip", FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME3 + ".rdf").exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME3 + ".zip", FILE_DEPOT)
+        if (!new File (FILE_DEPOT + FILENAME + ".rdf").exists)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME + ".zip", FILE_DEPOT)
     }
 
     test ("Help")
@@ -185,83 +189,83 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             writer =>
                 writer.write (
                     """
-                    |{
-                    |    "name": "Basic",
-                    |    "description": "basic simulation file for illustrative purposes",
-                    |    "cim": "data/TRA2755_terminal_2_island.rdf",
-                    |    "cimreaderoptions": {
-                    |        "ch.ninecode.cim.do_about": false,
-                    |        "ch.ninecode.cim.do_normalize": false,
-                    |        "ch.ninecode.cim.do_deduplication": false,
-                    |        "ch.ninecode.cim.make_edges": false,
-                    |        "ch.ninecode.cim.do_join": false,
-                    |        "ch.ninecode.cim.do_topo_islands": false,
-                    |        "ch.ninecode.cim.do_topo": false,
-                    |        "ch.ninecode.cim.split_maxsize": 67108864
-                    |    },
-                    |    "interval": {
-                    |         "start": "2018-01-30T00:00:00.000+0100",
-                    |         "end": "2018-03-01T00:00:00.000+0100"
-                    |    },
-                    |    "transformers": [
-                    |        "TRA2755"
-                    |    ],
-                    |    "players": [
-                    |         {
-                    |             "title": "house services",
-                    |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-                    |             "bind": [
-                    |                 "mrid",
-                    |                 "type"
-                    |             ]
-                    |         }
-                    |    ],
-                    |    "recorders": [
-                    |        {
-                    |            "title": "cable currents",
-                    |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID  parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ],
-                    |    "extras": [
-                    |        {
-                    |            "title": "ratedCurrent",
-                    |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                    |        },
-                    |        {
-                    |            "title": "ratedS",
-                    |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
-                    |        },
-                    |        {
-                    |            "title": "nominalVoltage",
-                    |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
-                    |        }
-                    |    ]
-                    |}
+                      |{
+                      |    "name": "Basic",
+                      |    "description": "basic simulation file for illustrative purposes",
+                      |    "cim": "data/TRA2755_terminal_2_island.rdf",
+                      |    "cimreaderoptions": {
+                      |        "ch.ninecode.cim.do_about": false,
+                      |        "ch.ninecode.cim.do_normalize": false,
+                      |        "ch.ninecode.cim.do_deduplication": false,
+                      |        "ch.ninecode.cim.make_edges": false,
+                      |        "ch.ninecode.cim.do_join": false,
+                      |        "ch.ninecode.cim.do_topo_islands": false,
+                      |        "ch.ninecode.cim.do_topo": false,
+                      |        "ch.ninecode.cim.split_maxsize": 67108864
+                      |    },
+                      |    "interval": {
+                      |         "start": "2018-01-30T00:00:00.000+0100",
+                      |         "end": "2018-03-01T00:00:00.000+0100"
+                      |    },
+                      |    "transformers": [
+                      |        "TRA2755"
+                      |    ],
+                      |    "players": [
+                      |         {
+                      |             "title": "house services",
+                      |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
+                      |             "bind": [
+                      |                 "mrid",
+                      |                 "type"
+                      |             ]
+                      |         }
+                      |    ],
+                      |    "recorders": [
+                      |        {
+                      |            "title": "cable currents",
+                      |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID  parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        }
+                      |    ],
+                      |    "extras": [
+                      |        {
+                      |            "title": "ratedCurrent",
+                      |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                      |        },
+                      |        {
+                      |            "title": "ratedS",
+                      |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
+                      |        },
+                      |        {
+                      |            "title": "nominalVoltage",
+                      |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
+                      |        }
+                      |    ]
+                      |}
                     """.stripMargin
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 
     ignore ("Transformers")
@@ -272,121 +276,121 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             writer =>
                 writer.write (
                     """
-                    |{
-                    |    "name": "Transformers",
-                    |    "description": "test transformer players",
-                    |    "cim": "data/SAK_sta117_sta206.rdf",
-                    |    "cimreaderoptions": {
-                    |        "ch.ninecode.cim.do_about": false,
-                    |        "ch.ninecode.cim.do_normalize": false,
-                    |        "ch.ninecode.cim.do_deduplication": false,
-                    |        "ch.ninecode.cim.make_edges": false,
-                    |        "ch.ninecode.cim.do_join": false,
-                    |        "ch.ninecode.cim.do_topo_islands": false,
-                    |        "ch.ninecode.cim.do_topo": false,
-                    |        "ch.ninecode.cim.split_maxsize": 67108864
-                    |    },
-                    |    "interval": {
-                    |         "start": "2017-07-18T00:00:00.000+0100",
-                    |         "end": "2017-07-19T00:00:00.000+0100"
-                    |    },
-                    |    "transformers": [
-                    |         "TRA2755"
-                    |    ],
-                    |    "players": [
-                    |         {
-                    |             "title": "house services",
-                    |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-                    |             "bind": [
-                    |                 "mrid",
-                    |                 "type"
-                    |             ]
-                    |         }
-                    |    ],
-                    |    "recorders": [
-                    |        {
-                    |            "title": "All transformer power flows",
-                    |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID  parent, 'power' type, 'power_out' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": 1800
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": 3600
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": 7200
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All transformer output currents",
-                    |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_out' property, 'Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": 1800
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": 3600
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": 7200
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All transformer power losses",
-                    |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'losses' type, 'power_losses' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": 1800
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": 3600
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": 7200
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ],
-                    |    "extras": [
-                    |        {
-                    |            "title": "ratedS",
-                    |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
-                    |        }
-                    |    ]
-                    |}
+                      |{
+                      |    "name": "Transformers",
+                      |    "description": "test transformer players",
+                      |    "cim": "data/SAK_sta117_sta206.rdf",
+                      |    "cimreaderoptions": {
+                      |        "ch.ninecode.cim.do_about": false,
+                      |        "ch.ninecode.cim.do_normalize": false,
+                      |        "ch.ninecode.cim.do_deduplication": false,
+                      |        "ch.ninecode.cim.make_edges": false,
+                      |        "ch.ninecode.cim.do_join": false,
+                      |        "ch.ninecode.cim.do_topo_islands": false,
+                      |        "ch.ninecode.cim.do_topo": false,
+                      |        "ch.ninecode.cim.split_maxsize": 67108864
+                      |    },
+                      |    "interval": {
+                      |         "start": "2017-07-18T00:00:00.000+0100",
+                      |         "end": "2017-07-19T00:00:00.000+0100"
+                      |    },
+                      |    "transformers": [
+                      |         "TRA2755"
+                      |    ],
+                      |    "players": [
+                      |         {
+                      |             "title": "house services",
+                      |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
+                      |             "bind": [
+                      |                 "mrid",
+                      |                 "type"
+                      |             ]
+                      |         }
+                      |    ],
+                      |    "recorders": [
+                      |        {
+                      |            "title": "All transformer power flows",
+                      |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID  parent, 'power' type, 'power_out' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": 1800
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": 3600
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": 7200
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        },
+                      |        {
+                      |            "title": "All transformer output currents",
+                      |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_out' property, 'Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": 1800
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": 3600
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": 7200
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        },
+                      |        {
+                      |            "title": "All transformer power losses",
+                      |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'losses' type, 'power_losses' property, 'Volt-Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": 1800
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": 3600
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": 7200
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        }
+                      |    ],
+                      |    "extras": [
+                      |        {
+                      |            "title": "ratedS",
+                      |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
+                      |        }
+                      |    ]
+                      |}
                     """.stripMargin
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 
     ignore ("Typical")
@@ -397,106 +401,106 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             writer =>
                 writer.write (
                     """
-                    |{
-                    |    "name": "Typical",
-                    |    "description": "typical simulation file for illustrative purposes",
-                    |    "cim": "hdfs://sandbox:8020/SAK_sta117_sta206.rdf",
-                    |    "cimreaderoptions": {
-                    |        "ch.ninecode.cim.do_about": false,
-                    |        "ch.ninecode.cim.do_normalize": false,
-                    |        "ch.ninecode.cim.do_deduplication": false,
-                    |        "ch.ninecode.cim.make_edges": false,
-                    |        "ch.ninecode.cim.do_join": false,
-                    |        "ch.ninecode.cim.do_topo_islands": false,
-                    |        "ch.ninecode.cim.do_topo": false,
-                    |        "ch.ninecode.cim.split_maxsize": 67108864
-                    |    },
-                    |    "interval": {
-                    |        "start": "2017-04-11T20:15:00.000+0000",
-                    |        "end": "2018-04-19T20:00:00.000+0000"
-                    |    },
-                    |    "transformers": [
-                    |        "TRA2755",
-                    |        "TRA2769"
-                    |    ],
-                    |    "players": [
-                    |         {
-                    |             "title": "house services",
-                    |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-                    |             "bind": [
-                    |                 "mrid",
-                    |                 "type"
-                    |             ]
-                    |         }
-                    |    ],
-                    |    "recorders": [
-                    |        {
-                    |            "title": "cable currents",
-                    |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All node voltages",
-                    |            "query": "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, ifnull (t.ConductingEquipment, n.IdentifiedObject.mRID) mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n left outer join ( select distinct (t1.TopologicalNode) TopologicalNode, first (t1.ConductingEquipment) ConductingEquipment from Terminal t1 where t1.ConductingEquipment not in ( select t2.ConductingEquipment from Terminal t2 where ACDCTerminal.sequenceNumber > 1 ) group by t1.TopologicalNode ) t on n.IdentifiedObject.mRID = t.TopologicalNode",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ],
-                    |    "extras": [
-                    |        {
-                    |            "title": "ratedCurrent",
-                    |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                    |        },
-                    |        {
-                    |            "title": "ratedS",
-                    |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
-                    |        },
-                    |        {
-                    |            "title": "nominalVoltage",
-                    |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
-                    |        }
-                    |    ]
-                    |}
+                      |{
+                      |    "name": "Typical",
+                      |    "description": "typical simulation file for illustrative purposes",
+                      |    "cim": "hdfs://sandbox:8020/SAK_sta117_sta206.rdf",
+                      |    "cimreaderoptions": {
+                      |        "ch.ninecode.cim.do_about": false,
+                      |        "ch.ninecode.cim.do_normalize": false,
+                      |        "ch.ninecode.cim.do_deduplication": false,
+                      |        "ch.ninecode.cim.make_edges": false,
+                      |        "ch.ninecode.cim.do_join": false,
+                      |        "ch.ninecode.cim.do_topo_islands": false,
+                      |        "ch.ninecode.cim.do_topo": false,
+                      |        "ch.ninecode.cim.split_maxsize": 67108864
+                      |    },
+                      |    "interval": {
+                      |        "start": "2017-04-11T20:15:00.000+0000",
+                      |        "end": "2018-04-19T20:00:00.000+0000"
+                      |    },
+                      |    "transformers": [
+                      |        "TRA2755",
+                      |        "TRA2769"
+                      |    ],
+                      |    "players": [
+                      |         {
+                      |             "title": "house services",
+                      |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
+                      |             "bind": [
+                      |                 "mrid",
+                      |                 "type"
+                      |             ]
+                      |         }
+                      |    ],
+                      |    "recorders": [
+                      |        {
+                      |            "title": "cable currents",
+                      |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        },
+                      |        {
+                      |            "title": "All node voltages",
+                      |            "query": "select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, ifnull (t.ConductingEquipment, n.IdentifiedObject.mRID) mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n left outer join ( select distinct (t1.TopologicalNode) TopologicalNode, first (t1.ConductingEquipment) ConductingEquipment from Terminal t1 where t1.ConductingEquipment not in ( select t2.ConductingEquipment from Terminal t2 where ACDCTerminal.sequenceNumber > 1 ) group by t1.TopologicalNode ) t on n.IdentifiedObject.mRID = t.TopologicalNode",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": null
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        }
+                      |    ],
+                      |    "extras": [
+                      |        {
+                      |            "title": "ratedCurrent",
+                      |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                      |        },
+                      |        {
+                      |            "title": "ratedS",
+                      |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
+                      |        },
+                      |        {
+                      |            "title": "nominalVoltage",
+                      |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
+                      |        }
+                      |    ]
+                      |}
                     """.stripMargin
                 )
         }
-        val sep = System.getProperty ("file.separator")
+
         Main.main (Array ("--unittest", "--master", "spark://sandbox:7077", "--verbose", "--keep", "--batchsize", "32767", "--host", "beach", json))
     }
 
@@ -513,81 +517,81 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             writer =>
                 writer.write (
                     """
-                    |{
-                    |    "name": "Demo",
-                    |    "description": "demo data simulation",
-                    |    "cim": "data/DemoData.rdf",
-                    |    "cimreaderoptions": {
-                    |        "ch.ninecode.cim.do_about": false,
-                    |        "ch.ninecode.cim.do_normalize": false,
-                    |        "ch.ninecode.cim.do_deduplication": false,
-                    |        "ch.ninecode.cim.make_edges": false,
-                    |        "ch.ninecode.cim.do_join": false,
-                    |        "ch.ninecode.cim.do_topo_islands": false,
-                    |        "ch.ninecode.cim.do_topo": false,
-                    |        "ch.ninecode.cim.split_maxsize": 67108864
-                    |    },
-                    |    "interval": {
-                    |         "start": "2017-07-18T00:00:00.000+0100",
-                    |         "end": "2017-07-19T00:00:00.000+0100"
-                    |    },
-                    |    "transformers": [
-                    |    ],
-                    |    "players": [
-                    |         {
-                    |             "title": "house services",
-                    |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
-                    |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-                    |             "bind": [
-                    |                 "mrid",
-                    |                 "type"
-                    |             ]
-                    |         }
-                    |    ],
-                    |    "recorders": [
-                    |        {
-                    |            "title": "cable currents",
-                    |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": 1800
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": 3600
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": 7200
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ],
-                    |    "extras": [
-                    |        {
-                    |            "title": "ratedCurrent",
-                    |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                    |        },
-                    |        {
-                    |            "title": "ratedS",
-                    |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
-                    |        },
-                    |        {
-                    |            "title": "nominalVoltage",
-                    |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
-                    |        }
-                    |    ]
-                    |}
+                      |{
+                      |    "name": "Demo",
+                      |    "description": "demo data simulation",
+                      |    "cim": "data/DemoData.rdf",
+                      |    "cimreaderoptions": {
+                      |        "ch.ninecode.cim.do_about": false,
+                      |        "ch.ninecode.cim.do_normalize": false,
+                      |        "ch.ninecode.cim.do_deduplication": false,
+                      |        "ch.ninecode.cim.make_edges": false,
+                      |        "ch.ninecode.cim.do_join": false,
+                      |        "ch.ninecode.cim.do_topo_islands": false,
+                      |        "ch.ninecode.cim.do_topo": false,
+                      |        "ch.ninecode.cim.split_maxsize": 67108864
+                      |    },
+                      |    "interval": {
+                      |         "start": "2017-07-18T00:00:00.000+0100",
+                      |         "end": "2017-07-19T00:00:00.000+0100"
+                      |    },
+                      |    "transformers": [
+                      |    ],
+                      |    "players": [
+                      |         {
+                      |             "title": "house services",
+                      |             "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID",
+                      |             "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
+                      |             "bind": [
+                      |                 "mrid",
+                      |                 "type"
+                      |             ]
+                      |         }
+                      |    ],
+                      |    "recorders": [
+                      |        {
+                      |            "title": "cable currents",
+                      |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 1 and t1.TopologicalNode != n.IdentifiedObject.mRID) and  (t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ACDCTerminal.sequenceNumber = 2 and t2.TopologicalNode = n.IdentifiedObject.mRID)",
+                      |            "interval": 900,
+                      |            "aggregations": [
+                      |                {
+                      |                    "intervals": 1,
+                      |                    "ttl": 1800
+                      |                },
+                      |                {
+                      |                    "intervals": 4,
+                      |                    "ttl": 3600
+                      |                },
+                      |                {
+                      |                    "intervals": 12,
+                      |                    "ttl": 7200
+                      |                },
+                      |                {
+                      |                    "intervals": 96,
+                      |                    "ttl": null
+                      |                }
+                      |            ]
+                      |        }
+                      |    ],
+                      |    "extras": [
+                      |        {
+                      |            "title": "ratedCurrent",
+                      |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                      |        },
+                      |        {
+                      |            "title": "ratedS",
+                      |            "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (e.ratedS as string) value from PowerTransformer p, PowerTransformerEnd e where e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and e.TransformerEnd.endNumber = 1"
+                      |        },
+                      |        {
+                      |            "title": "nominalVoltage",
+                      |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
+                      |        }
+                      |    ]
+                      |}
                     """.stripMargin
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File(".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 }

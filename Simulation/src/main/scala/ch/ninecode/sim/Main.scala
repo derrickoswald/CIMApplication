@@ -36,6 +36,7 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     var do_exit = true
@@ -50,66 +51,69 @@ object Main
             if (do_exit)
                 exitState match
                 {
-                    case Left(_)  => sys.exit(1)
-                    case Right(_) => sys.exit(0)
+                    case Left (_) => sys.exit (1)
+                    case Right (_) => sys.exit (0)
                 }
 
-        opt[Unit]("unittest").
+        opt [Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt[Unit]("verbose").
+        opt [Unit]("verbose").
             action ((_, c) ⇒ c.copy (verbose = true)).
             text ("emit progress messages [%s]".format (default.verbose))
 
-        opt[String]("master").valueName ("MASTER_URL").
+        opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
-        opt[String]("host").valueName ("<cassandra>").
+        opt [String]("host").valueName ("<cassandra>").
             action ((x, c) ⇒ c.copy (host = x)).
             text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
-        opt[String]("keyspace").valueName ("<name>").
+        opt [String]("keyspace").valueName ("<name>").
             action ((x, c) ⇒ c.copy (keyspace = x)).
             text ("Cassandra keyspace under which to store results [%s]".format (default.keyspace))
 
-        opt[Int]("batchsize").valueName ("<value>").
+        opt [Int]("batchsize").valueName ("<value>").
             action ((x, c) ⇒ c.copy (batchsize = x)).
             text ("Cassandra maximum batch size (<= 65535) [%s]".format (default.batchsize))
 
-        opt[String]("storage").
+        opt [String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[LogLevels.Value]("logging").
+        opt [LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
-        opt[String]("checkpoint").valueName ("<dir>").
+        opt [String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://... [\"%s\"]".format (default.checkpoint))
 
-        opt[String]("workdir").valueName ("<dir>").
-            action ((x, c) ⇒ { val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep) }).
+        opt [String]("workdir").valueName ("<dir>").
+            action ((x, c) ⇒
+            {
+                val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep)
+            }).
             text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
 
-        opt[Unit]("keep").
+        opt [Unit]("keep").
             action ((_, c) ⇒ c.copy (keep = true)).
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
-        opt[Unit]("summarize").
+        opt [Unit]("summarize").
             action ((_, c) ⇒ c.copy (summarize = true)).
             text ("perform summary operations [%s]".format (default.summarize))
 
-        arg[String]("<JSON> <JSON>...").optional ().unbounded ().
+        arg [String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒
             {
                 try
                 {
                     val sep = System.getProperty ("file.separator")
-                    val file = if (x.startsWith (sep)) x else new java.io.File(".").getCanonicalPath + sep + x
+                    val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
                     val text = scala.io.Source.fromFile (file, "UTF-8").mkString
                     c.copy (simulation = c.simulation :+ text)
                 }
@@ -152,11 +156,11 @@ object Main
 
     /**
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox basic.json
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox basic.json
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox basic.json
+     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox basic.json
      * Note: At the moment the "cim" property in the json file is file-system dependent, e.g. "cim": "data/TRA2755_terminal_2_island.rdf", or "cim": "hdfs://sandbox:8020/data/TRA2755_terminal_2_island.rdf".
      */
     def main (args: Array[String])

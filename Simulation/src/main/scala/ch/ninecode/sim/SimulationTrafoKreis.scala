@@ -12,18 +12,19 @@ import ch.ninecode.gl.TransformerSet
  *
  * Includes the information necessary to perform a simulation (of a transformer service area - a trafokreis).
  *
- * @param simulation the primary key for the simulation as stored in the simulation table.
- * @param island the name of the TopologicalIsland for the low voltage side of the transformer
+ * @param simulation  the primary key for the simulation as stored in the simulation table.
+ * @param island      the name of the TopologicalIsland for the low voltage side of the transformer
  * @param transformer the transformer (or set of ganged transformers) servicing the area
- * @param raw_nodes topological nodes for the simulation
- * @param raw_edges topological edges for the simulation
- * @param start_time the simulatuon starting time
+ * @param raw_nodes   topological nodes for the simulation
+ * @param raw_edges   topological edges for the simulation
+ * @param start_time  the simulatuon starting time
  * @param finish_time the simulation ending time
- * @param players list of the GridLAB-D players - these are queried from Cassandra measured_value and written to .csv player files
- * @param recorders list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simulated_value
- * @param directory the directory to write the .glm, players and recorders
+ * @param players     list of the GridLAB-D players - these are queried from Cassandra measured_value and written to .csv player files
+ * @param recorders   list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simulated_value
+ * @param directory   the directory to write the .glm, players and recorders
  */
-case class SimulationTrafoKreis (
+case class SimulationTrafoKreis
+(
     simulation: String,
     island: String,
     transformer: TransformerSet,
@@ -43,7 +44,7 @@ case class SimulationTrafoKreis (
         raw_nodes.map (
             raw ⇒
             {
-                val node = raw.asInstanceOf[SimulationNode]
+                val node = raw.asInstanceOf [SimulationNode]
                 SimulationNode (
                     node.id,
                     node.nominal_voltage,
@@ -60,10 +61,10 @@ case class SimulationTrafoKreis (
         raw_edges.map (
             raw ⇒
             {
-                val edge: SimulationEdge = raw.asInstanceOf[SimulationEdge]
+                val edge: SimulationEdge = raw.asInstanceOf [SimulationEdge]
                 val id = edge.id
                 var these_recorders = recorders.filter (_.parent == id) // keep only recorders for primary edge
-                var these_players = players.filter (_.parent == id)
+            var these_players = players.filter (_.parent == id)
                 SimulationEdge (
                     edge.id,
                     edge.cn1,

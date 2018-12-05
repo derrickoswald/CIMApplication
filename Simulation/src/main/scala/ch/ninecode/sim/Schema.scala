@@ -69,7 +69,7 @@ case class Schema (session: SparkSession, options: SimulationOptions)
                     catch
                     {
                         case exception: Exception ⇒ log.error ("""failed to create schema in Cassandra keyspace %s""".format (options.keyspace), exception)
-                        false
+                            false
                     }
                 }
             )

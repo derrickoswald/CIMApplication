@@ -1,6 +1,7 @@
 package ch.ninecode.sim
 
-case class SimulationRecorderQuery (
+case class SimulationRecorderQuery
+(
     /**
      * The name for the recorder query.
      */

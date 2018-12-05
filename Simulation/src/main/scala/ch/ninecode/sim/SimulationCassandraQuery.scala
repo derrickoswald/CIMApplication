@@ -46,35 +46,35 @@ case class SimulationCassandraQuery (session: Session, sql: String)
         {
             //column: ColumnDefinitions.Definition
             val name: String = definitions.getName (index) // column.getName
-            val typ: DataType = definitions.getType (index) // column.getType
+        val typ: DataType = definitions.getType (index) // column.getType
             typ.getName match
             {
-                case ASCII ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case BIGINT ⇒ if (!row.isNull(index)) ret.add (name, row.getLong (index))
-                case BLOB ⇒ if (!row.isNull(index)) ret.add (name, row.getBytes (index).toString) // ToDo: handle blob
-                case BOOLEAN ⇒ if (!row.isNull(index)) ret.add (name, row.getBool (index))
-                case COUNTER ⇒ if (!row.isNull(index)) ret.add (name, row.getLong (index)) // ToDo: counter?
-                case DECIMAL ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case DOUBLE ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case FLOAT ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case INET ⇒ if (!row.isNull(index)) ret.add (name, row.getInet (index).toString) // ToDo: internet address?
-                case INT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case TEXT ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case TIMESTAMP ⇒ if (!row.isNull(index)) ret.add (name, row.getTimestamp (index).getTime)
-                case UUID ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case VARCHAR ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case VARINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
-                case TIMEUUID ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case LIST ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: list of what?
-                case SET ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: set?
-                case MAP ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: map?
-                case CUSTOM ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: custom?
-                case UDT ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: udt?
-                case TUPLE ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: tuple?
-                case SMALLINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case TINYINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case DATE ⇒ if (!row.isNull(index)) ret.add (name, row.getDate (index).toString)
-                case TIME ⇒ if (!row.isNull(index)) ret.add (name, row.getTime (index).toString)
+                case ASCII ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case BIGINT ⇒ if (!row.isNull (index)) ret.add (name, row.getLong (index))
+                case BLOB ⇒ if (!row.isNull (index)) ret.add (name, row.getBytes (index).toString) // ToDo: handle blob
+                case BOOLEAN ⇒ if (!row.isNull (index)) ret.add (name, row.getBool (index))
+                case COUNTER ⇒ if (!row.isNull (index)) ret.add (name, row.getLong (index)) // ToDo: counter?
+                case DECIMAL ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case DOUBLE ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case FLOAT ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case INET ⇒ if (!row.isNull (index)) ret.add (name, row.getInet (index).toString) // ToDo: internet address?
+                case INT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case TEXT ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case TIMESTAMP ⇒ if (!row.isNull (index)) ret.add (name, row.getTimestamp (index).getTime)
+                case UUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case VARCHAR ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case VARINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
+                case TIMEUUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case LIST ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: list of what?
+                case SET ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
+                case MAP ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: map?
+                case CUSTOM ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
+                case UDT ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
+                case TUPLE ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?
+                case SMALLINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case TINYINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case DATE ⇒ if (!row.isNull (index)) ret.add (name, row.getDate (index).toString)
+                case TIME ⇒ if (!row.isNull (index)) ret.add (name, row.getTime (index).toString)
             }
         }
         ret.build

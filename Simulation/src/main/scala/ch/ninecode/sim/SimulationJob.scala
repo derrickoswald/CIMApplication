@@ -20,15 +20,15 @@ case class SimulationJob
     name: String,
     description: String,
     cim: String,
-    cimreaderoptions: Map[String,String],
-    interval: Map[String,String],
+    cimreaderoptions: Map[String, String],
+    interval: Map[String, String],
     transformers: Seq[String],
     players: Seq[SimulationPlayerQuery],
     recorders: Seq[SimulationRecorderQuery],
     extras: Seq[SimulationExtraQuery]
 )
 {
-    def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString(",")
+    def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString (",")
 }
 
 object SimulationJob
@@ -62,28 +62,28 @@ object SimulationJob
         }
     }
 
-    def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String,String] =
+    def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String, String] =
     {
         val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala // ToDo: more robust checking
-        val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
+    val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
         map ("path") = cim // add path to support multiple files
         map ("StorageLevel") = options.storage // add storage option from command line
         map.toMap
     }
 
-    def parseInterval (json: JsonObject): Map[String,String] =
+    def parseInterval (json: JsonObject): Map[String, String] =
     {
         val interval: mutable.Map[String, JsonValue] = json.getJsonObject ("interval").asScala // ToDo: more robust checking
-        val map: mutable.Map[String, String] = interval.map (x ⇒ (x._1, x._2.asInstanceOf[JsonString].getString))
+    val map: mutable.Map[String, String] = interval.map (x ⇒ (x._1, x._2.asInstanceOf [JsonString].getString))
         map.toMap
     }
 
     def parseTransformers (json: JsonObject): Seq[String] =
     {
         val transformers: JsonArray = json.getJsonArray ("transformers") // ToDo: more robust checking
-        val ret = Array.ofDim[String](transformers.size)
+    val ret = Array.ofDim [String](transformers.size)
         for (i <- 0 until transformers.size)
-            ret(i) = transformers.getString (i)
+            ret (i) = transformers.getString (i)
         ret
     }
 
@@ -94,7 +94,7 @@ object SimulationJob
         if (null == query)
         {
             log.error (""""%s" does not specify an RDF query for player "%s""".format (name, title))
-            List()
+            List ()
         }
         else
         {
@@ -102,14 +102,14 @@ object SimulationJob
             if (null == cassandraquery)
             {
                 log.error (""""%s" does not specify a Cassandra query for player "%s"""".format (name, title))
-                List()
+                List ()
             }
             else
             {
                 val binds = player.getJsonArray ("bind")
-                val array = Array.ofDim[String](binds.size)
+                val array = Array.ofDim [String](binds.size)
                 for (i <- 0 until binds.size)
-                    array(i) = binds.getJsonString (i).getString
+                    array (i) = binds.getJsonString (i).getString
                 List (SimulationPlayerQuery (title, query, cassandraquery, array))
             }
         }
@@ -141,7 +141,7 @@ object SimulationJob
         if (null == query)
         {
             log.error (""""%s" does not specify a query for recorder "%s""".format (name, title))
-            List()
+            List ()
         }
         else
             List (SimulationRecorderQuery (title, query, interval, aggregations))
@@ -160,7 +160,7 @@ object SimulationJob
         if (null == query)
         {
             log.error (""""%s" does not specify a query for extra "%s""".format (name, title))
-            List()
+            List ()
         }
         else
             List (SimulationExtraQuery (title, query))

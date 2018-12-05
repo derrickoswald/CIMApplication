@@ -15,6 +15,4 @@ case class SimulationTask
     players: Array[SimulationPlayer],
     recorders: Array[SimulationRecorder]
 )
-{
 
-}

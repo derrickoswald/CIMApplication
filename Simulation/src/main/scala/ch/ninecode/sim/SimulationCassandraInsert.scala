@@ -28,14 +28,15 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
     val just_date: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd")
     just_date.setCalendar (calendar)
 
-    var statements: Map[String, PreparedStatement] = Map()
+    var statements: Map[String, PreparedStatement] = Map ()
 
     def pack (string: String): String =
     {
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
-    case class Accumulator (
+    case class Accumulator
+    (
         name: String,
         sql: String,
         statement: PreparedStatement,
@@ -50,8 +51,8 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
         var value_c_re: Double = 0.0,
         var value_c_im: Double = 0.0,
         var statements: Int = 0,
-        var futures: List[ResultSetFuture] = List()
-        )
+        var futures: List[ResultSetFuture] = List ()
+    )
     {
         def reset (): Unit =
         {
@@ -72,7 +73,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
             batch.clear ()
             statements = 0
             // see also: https://www.datastax.com/dev/blog/java-driver-async-queries
-            Futures.addCallback (future, new FutureCallback[ResultSet] ()
+            Futures.addCallback (future, new FutureCallback[ResultSet]()
             {
                 def onSuccess (result: ResultSet): Unit =
                 {
@@ -93,7 +94,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
 
         def add (session: Session, parameters: Seq[Object]): Unit =
         {
-            batch.add (statement.bind (parameters:_*))
+            batch.add (statement.bind (parameters: _*))
             statements = statements + 1
             if (statements == batchsize)
                 futures = futures.filter (!_.isDone) :+ execute (session)
@@ -107,7 +108,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
         }
     }
 
-    def execute (name: String, data: Array[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, List[ResultSetFuture])])=
+    def execute (name: String, data: Array[ThreePhaseComplexDataElement], typ: String, period: Int, simulation: String, aggregates: List[SimulationAggregate]): (Int, List[(String, List[ResultSetFuture])]) =
     {
         var ret = 0
         val accumulators = aggregates.map (
@@ -115,9 +116,9 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
             {
                 val sql = pack (
                     """
-                    | insert into %s.simulated_value
-                    | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
-                    | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      | insert into %s.simulated_value
+                      | (mrid, type, period, time, real_a, imag_a, real_b, imag_b, real_c, imag_c, units, simulation)
+                      | values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.stripMargin.format (keyspace)) + aggregate.time_to_live
                 val statement = if (statements.contains (sql))
                     statements (sql)
@@ -155,7 +156,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
                             timestamp.setTime (timepoint)
                             val n = accumulator.intervals
                             val args: List[Object] = if (accumulator.average)
-                                List[Object] (
+                                List [Object](
                                     entry.element,
                                     typ,
                                     new java.lang.Integer (period * accumulator.intervals * 1000),
@@ -170,7 +171,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
                                     simulation
                                 )
                             else
-                                List[Object] (
+                                List [Object](
                                     entry.element,
                                     typ,
                                     new java.lang.Integer (period * accumulator.intervals * 1000),

@@ -30,28 +30,29 @@ object Hull
      * Generates the line string coordinates for an efficient bounding area around
      * the points (shrinkwrap).
      *
-     * @param hull the hull so far
+     * @param hull  the hull so far
      * @param point the point to be added
      * @return the new hull
      */
     def add (hull: List[Point], point: Point): List[Point] =
     {
         point :: hull.foldRight (List.empty [Point])
-            {
-                case (p1, rest @ (p0 :: _)) =>
-                    if (ccw (p0, p1, point))
-                        p1 :: rest
-                    else
-                        rest
-                case (p, list) =>
-                    p :: list
-            }
+        {
+            case (p1, rest@(p0 :: _)) =>
+                if (ccw (p0, p1, point))
+                    p1 :: rest
+                else
+                    rest
+            case (p, list) =>
+                p :: list
+        }
     }
 
     /**
      * Perform a Graham Scan to find the convex hull.
      *
      * See https://en.wikipedia.org/wiki/Graham_scan.
+     *
      * @param points the points to process.
      * @return the convex hull in a clockwise direction from the lowest left point
      *         Note: the starting point is included at the end as well to form a closed area
@@ -59,16 +60,18 @@ object Hull
     def scan (points: List[Point]): List[Point] =
     {
         val pp = points.sortBy (_._1) // also secondary sort by minimum x in case two points have the same minimum y
-        val min = pp.minBy (_._2)
+    val min = pp.minBy (_._2)
+
         def angle (point: Point): Double = atan2 (point._2 - min._2, point._1 - min._1)
-        min :: pp.sortBy (angle).foldLeft (List.empty[Point])(add)
+
+        min :: pp.sortBy (angle).foldLeft (List.empty [Point])(add)
     }
 
-//    def main (args: Array[String]): Unit =
-//    {
-//        val pp = Array[Point] ((8, 9), (3, 5), (4, 4), (1, 7), (3, 4), (4, 5), (6, 6), (5, 7), (3, 8))
-//        println (pp.mkString)
-//        val hull = scan (pp.toList).toArray[Point]
-//        println (hull.mkString)
-//    }
+    //    def main (args: Array[String]): Unit =
+    //    {
+    //        val pp = Array[Point] ((8, 9), (3, 5), (4, 4), (1, 7), (3, 4), (4, 5), (6, 6), (5, 7), (3, 8))
+    //        println (pp.mkString)
+    //        val hull = scan (pp.toList).toArray[Point]
+    //        println (hull.mkString)
+    //    }
 }

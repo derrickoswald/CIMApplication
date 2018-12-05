@@ -23,7 +23,7 @@ case class SimulationCoalescer (executors: Array[String]) extends PartitionCoale
      * Coalesce the partitions of the given RDD.
      *
      * @param maxPartitions the maximum number of partitions to have after coalescing
-     * @param parent the parent RDD whose partitions to coalesce
+     * @param parent        the parent RDD whose partitions to coalesce
      * @return an array of PartitionGroups, where each element is itself an array of Partitions and represents a partition after coalescing is performed
      */
     override def coalesce (maxPartitions: Int, parent: RDD[_]): Array[PartitionGroup] =
@@ -38,7 +38,7 @@ case class SimulationCoalescer (executors: Array[String]) extends PartitionCoale
         partitions.foreach (
             partition ⇒
             {
-                ret(index % ret.length).partitions.append (partition)
+                ret (index % ret.length).partitions.append (partition)
                 index = index + 1
             })
         ret.foreach (
