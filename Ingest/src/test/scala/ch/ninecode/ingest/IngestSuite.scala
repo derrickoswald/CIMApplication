@@ -13,8 +13,6 @@ import java.util
 import java.util.zip.ZipInputStream
 
 import scala.collection.JavaConverters._
-import Array._
-
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FunSuite
 
@@ -159,7 +157,8 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             var read = -1
             while (
             {
-                read = zip.read (bytesIn); read != -1
+                read = zip.read (bytesIn);
+                read != -1
             })
                 bos.write (bytesIn, 0, read)
             bos.close ()

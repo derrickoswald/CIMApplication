@@ -21,7 +21,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -54,21 +53,21 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
-//    def dumpHeap (): Unit =
-//    {
-//        import java.lang.management.ManagementFactory
-//        import java.lang.management.MemoryType
-//        import scala.collection.JavaConversions._
-//        // System.gc()
-//        for (mpBean ← ManagementFactory.getMemoryPoolMXBeans)
-//        {
-//            if (mpBean.getType eq MemoryType.HEAP)
-//            {
-//                val usage = mpBean.getUsage
-//                log.info ("""  %s: %s%% (%s/%s)""".format (mpBean.getName, (1000.0 * usage.getUsed / usage.getMax / 10.0).asInstanceOf[Int], usage.getUsed, usage.getMax))
-//            }
-//        }
-//    }
+    //    def dumpHeap (): Unit =
+    //    {
+    //        import java.lang.management.ManagementFactory
+    //        import java.lang.management.MemoryType
+    //        import scala.collection.JavaConversions._
+    //        // System.gc()
+    //        for (mpBean ← ManagementFactory.getMemoryPoolMXBeans)
+    //        {
+    //            if (mpBean.getType eq MemoryType.HEAP)
+    //            {
+    //                val usage = mpBean.getUsage
+    //                log.info ("""  %s: %s%% (%s/%s)""".format (mpBean.getName, (1000.0 * usage.getUsed / usage.getMax / 10.0).asInstanceOf[Int], usage.getUsed, usage.getMax))
+    //            }
+    //        }
+    //    }
 
     def map_csv_options: mutable.HashMap[String, String] =
     {
