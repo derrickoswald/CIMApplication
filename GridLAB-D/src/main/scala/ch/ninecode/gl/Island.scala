@@ -107,7 +107,6 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         if (null != cond)
         {
             // get the equipment
-            val equipment = cond.asInstanceOf [ConductingEquipment]
             val conn = connected (element)
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity

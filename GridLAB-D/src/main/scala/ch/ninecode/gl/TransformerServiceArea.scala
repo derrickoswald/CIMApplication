@@ -245,7 +245,8 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
 
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
-            edges.checkpoint (); nodes.checkpoint ()
+            edges.checkpoint ()
+            nodes.checkpoint ()
         }
 
         // workaround for java.lang.ArrayIndexOutOfBoundsException: -1
