@@ -32,7 +32,17 @@ case class TransformerData
     val primary: Int = 0
 
     /** The (assumed) index of the secondary PowerTransformerEnd */
-    val secondary: Int = 1
+    lazy val secondary: Int =
+        if (ends.length < 3)
+            1 // no choice, end #2
+        else
+        {
+            val v = voltages.tail.map (_._2) // voltages excluding primary
+            if (-1 != v.indexOf (400.0))
+                v.indexOf (400.0) + 1 // use 400V end if there is one
+            else
+                v.indexOf (v.max) + 1 // use the highest voltage otherwise
+        }
 
     /** @return the (assumed) primary (high voltage) PowerTransformerEnd */
     def end0: PowerTransformerEnd = ends (primary)

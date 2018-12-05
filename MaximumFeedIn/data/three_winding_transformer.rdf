@@ -1261,7 +1261,7 @@
 		<cim:ACDCTerminal.sequenceNumber>2</cim:ACDCTerminal.sequenceNumber>
 		<cim:Terminal.phases rdf:resource="http://iec.ch/TC57/2013/CIM-schema-cim16#PhaseCode.ABC"/>
 		<cim:Terminal.ConductingEquipment rdf:resource="#CAB0004"/>
-		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_2"/>
+		<cim:Terminal.ConnectivityNode rdf:resource="#TX0002_node_3"/>
 	</cim:Terminal>
 	<cim:ACLineSegment rdf:ID="CAB0005">
 		<cim:IdentifiedObject.name>CAB0005</cim:IdentifiedObject.name>

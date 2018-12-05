@@ -152,7 +152,7 @@ class GridLABDSuite extends FunSuite
             val countset = statement.executeQuery ("select count() from results where simulation = (select max(simulation) from results)")
             while (countset.next)
             {
-                assert (countset.getInt (1) == 11, "should have 11 results")
+                assert (countset.getInt (1) == 12, "should have 12 results")
             }
             countset.close ()
 
