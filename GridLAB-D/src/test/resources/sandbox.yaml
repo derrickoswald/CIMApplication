@@ -39,7 +39,6 @@ services:
       - "50010:50010"
       - "50070:50070"
     volumes:
-      - ./../../../private_data:/opt/private_data # map private sample data file directory to /opt/private_data within the container
       - ./../../../target:/opt/code # map compilation output directory to /opt/code within the container
   worker:
     image: derrickoswald/spark-docker
@@ -52,5 +51,4 @@ services:
     links:
       - sandbox
     volumes:
-      - ./../../../private_data:/opt/private_data # map private sample data file directory to /opt/private_data within the container
       - ./../../../target:/opt/code # map compilation output directory to /opt/code within the container

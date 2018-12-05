@@ -16,4 +16,4 @@ else
     fi
 fi
 set -x
-docker run --name tomee --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish --volume /home/derrick/code/CIMReader/private_data:/opt/private_data derrickoswald/cimapplication start-tomee $master $cassandra &
+docker run --name tomee --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish --volume derrickoswald/cimapplication start-tomee $master $cassandra &
