@@ -76,7 +76,7 @@ class GridLABDSuite extends FunSuite
                 precalc_factor = 1.5,
                 cosphi = 1.0,
                 workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
+                files = List (filename)
             )
             val eins = Einspeiseleistung (session, options)
             val count = eins.run ()
@@ -135,7 +135,7 @@ class GridLABDSuite extends FunSuite
                 precalc_factor = 1.5,
                 cosphi = 1.0,
                 workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
-                files = List(filename)
+                files = List (filename)
             )
             val eins = Einspeiseleistung (session, options)
             val count = eins.run ()
@@ -152,9 +152,9 @@ class GridLABDSuite extends FunSuite
             val countset = statement.executeQuery ("select count() from results where simulation = (select max(simulation) from results)")
             while (countset.next)
             {
-                assert (countset.getInt(1) == 11, "should have 11 results")
+                assert (countset.getInt (1) == 11, "should have 11 results")
             }
-            countset.close()
+            countset.close ()
 
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results)")
             while (resultset.next)
@@ -163,13 +163,15 @@ class GridLABDSuite extends FunSuite
                 {
                     assert (resultset.getObject (3) == null, "maximum")
                     assert (resultset.getString (4) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
-                } else if (resultset.getString(1) == "TX0002")
-                {
-                    assert (resultset.getObject(3) == null, "all results on TX00002 have no value for maximum")
-                    assert (resultset.getString(4) == "3 transformer windings for edge TX0002", "three winding transformer")
-                } else {
-                    assert (resultset.getString(4) == "current limit", "normal transformer")
-                }
+                } else
+                    if (resultset.getString (1) == "TX0002")
+                    {
+                        assert (resultset.getObject (3) == null, "all results on TX00002 have no value for maximum")
+                        assert (resultset.getString (4) == "3 transformer windings for edge TX0002", "three winding transformer")
+                    } else
+                    {
+                        assert (resultset.getString (4) == "current limit", "normal transformer")
+                    }
             }
             resultset.close ()
             statement.close ()

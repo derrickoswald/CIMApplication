@@ -140,7 +140,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar) (records: Array[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -181,18 +181,18 @@ object Database
                 {
                     datainsert.setNull (1, Types.INTEGER)
                     datainsert.setInt (2, id)
-                    datainsert.setString (3, records(i).trafo)
-                    datainsert.setString (4, records(i).feeder)
-                    datainsert.setString (5, records(i).house)
-                    records(i).max match
+                    datainsert.setString (3, records (i).trafo)
+                    datainsert.setString (4, records (i).feeder)
+                    datainsert.setString (5, records (i).house)
+                    records (i).max match
                     {
                         case None =>
                             datainsert.setNull (6, Types.DOUBLE)
                         case Some (kw) =>
                             datainsert.setDouble (6, kw)
                     }
-                    datainsert.setString (7, records(i).reason)
-                    datainsert.setString (8, records(i).details)
+                    datainsert.setString (7, records (i).reason)
+                    datainsert.setString (8, records (i).details)
                     datainsert.executeUpdate ()
                 }
                 datainsert.close ()
@@ -208,7 +208,7 @@ object Database
             // if the error message is "out of memory",
             // it probably means no database file is found
             case e: SQLException ⇒ log.error ("exception caught: " + e)
-            -1
+                -1
         }
         finally
         {
@@ -226,7 +226,7 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar) (results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("simulation/dummy")
@@ -267,19 +267,19 @@ object Database
             {
                 datainsert.setNull (1, Types.INTEGER)
                 datainsert.setInt (2, id)
-                datainsert.setString (3, records(i).source_obj)
-                datainsert.setString (4, records(i).feeder)
-                datainsert.setString (5, records(i).mrid)
-                datainsert.setDouble (6, records(i).max_power_feeding)
-                datainsert.setInt (7, if (records(i).eea != null) records(i).eea.size else 0)
-                datainsert.setString (8, records(i).reason)
-                if (null == records(i).details)
+                datainsert.setString (3, records (i).source_obj)
+                datainsert.setString (4, records (i).feeder)
+                datainsert.setString (5, records (i).mrid)
+                datainsert.setDouble (6, records (i).max_power_feeding)
+                datainsert.setInt (7, if (records (i).eea != null) records (i).eea.size else 0)
+                datainsert.setString (8, records (i).reason)
+                if (null == records (i).details)
                 {
                     datainsert.setNull (9, Types.VARCHAR)
                     datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
                 }
                 else
-                    datainsert.setString (9, records(i).details)
+                    datainsert.setString (9, records (i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close ()
@@ -292,7 +292,7 @@ object Database
             // if the error message is "out of memory",
             // it probably means no database file is found
             case e: SQLException ⇒ log.error ("exception caught: " + e)
-            return -1
+                return -1
         }
         finally
         {
@@ -331,8 +331,8 @@ object Database
                 val update = connection.prepareStatement ("update results set maximum=null, reason=?, details=null where simulation = ? and trafo = ?")
                 for (i <- records.indices)
                 {
-                    val trafo_id = records(i)._1
-                    val reason = records(i)._2
+                    val trafo_id = records (i)._1
+                    val reason = records (i)._2
                     update.setString (1, reason)
                     update.setInt (2, simulation)
                     update.setString (3, trafo_id)
@@ -366,7 +366,7 @@ object Database
 
     def fetchTransformersWithEEA (simulation: Int): Array[String] =
     {
-        var ret = new ArrayBuffer[String] ()
+        var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
         val file = Paths.get ("simulation/results.db")
@@ -417,13 +417,13 @@ object Database
      * Determine the set of EnergyConsumers for which a re-calculation is necessary.
      *
      * @param simulation The current (most recent) simulation.
-     * @param reference The reference (historical) simulation.
-     * @param delta The difference in the amount of power that will trigger a recalculation.
+     * @param reference  The reference (historical) simulation.
+     * @param delta      The difference in the amount of power that will trigger a recalculation.
      * @return The list of mRID for EnergyConsumer objects needing to be recalculated.
      */
     def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double): Array[String] =
     {
-        var ret = new ArrayBuffer[String] ()
+        var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
         val file = Paths.get ("simulation/results.db")

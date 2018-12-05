@@ -39,23 +39,25 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
-    s =>
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+        s =>
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
     )
 
-    case class Arguments (
+    case class Arguments
+    (
         /**
          * If <code>true</code>, don't call sys.exit().
          */
@@ -83,7 +85,7 @@ object Main
         precalc_factor: Double = 1.5,
         cosphi: Double = 1.0,
         workdir: String = "",
-        files: Seq[String] = Seq()
+        files: Seq[String] = Seq ()
     )
 
     var do_exit = true
@@ -109,92 +111,92 @@ object Main
             if (do_exit)
                 exitState match
                 {
-                    case Left(_)  => sys.exit (1)
-                    case Right(_) => sys.exit (0)
+                    case Left (_) => sys.exit (1)
+                    case Right (_) => sys.exit (0)
                 }
 
-        opt[Unit]("unittest").
+        opt [Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt[Unit]("quiet").
+        opt [Unit]("quiet").
             action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages [false]")
 
-        opt[String]("master").valueName ("MASTER_URL").
+        opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
+        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt[String]("storage_level").
+        opt [String]("storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[Unit]("deduplicate").
+        opt [Unit]("deduplicate").
             action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [false]")
 
-        opt[Unit]("three").
+        opt [Unit]("three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [false]")
 
-        opt[Unit]("precalculation").
+        opt [Unit]("precalculation").
             action ((_, c) => c.copy (precalculation = true)).
             text ("only calculates threshold and EEA existence for all HAS, assuming no EEA [false]")
 
-        opt[String]("trafos").valueName ("<TRA file>").
+        opt [String]("trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process [%s]".format (default.trafos))
 
-        opt[Unit]("export_only").
+        opt [Unit]("export_only").
             action ((_, c) => c.copy (export_only = true)).
             text ("generates glm files only - no solve or analyse operations [false]")
 
-        opt[Unit]("all").
+        opt [Unit]("all").
             action ((_, c) => c.copy (all = true)).
             text ("process all transformers (not just those with EEA) [false]")
 
-        opt[Unit]("erase").
+        opt [Unit]("erase").
             action ((_, c) => c.copy (erase = true)).
             text ("clean up (delete) simulation files [false]")
 
-        opt[LogLevels.Value]("logging").
+        opt [LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
 
-        opt[String]("checkpoint").valueName ("<dir>").
+        opt [String]("checkpoint").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt[Int]("simulation").valueName ("N").
+        opt [Int]("simulation").valueName ("N").
             action ((x, c) => c.copy (simulation = x)).
             text ("simulation number (precalc) to use for transformer list")
 
-        opt[Int]("reference").valueName ("N").
+        opt [Int]("reference").valueName ("N").
             action ((x, c) => c.copy (reference = x)).
             text ("simulation number (precalc) to use as reference for transformer list")
 
-        opt[Int]("delta").valueName ("D").
+        opt [Int]("delta").valueName ("D").
             action ((x, c) => c.copy (delta = x)).
             text ("delta power difference threshold for reference comparison [%g]".format (default.delta))
 
-        opt[Double]("precalcfactor").valueName ("D").
+        opt [Double]("precalcfactor").valueName ("D").
             action ((x, c) => c.copy (precalc_factor = x)).
             text ("factor to multiply precalculation results for gridlabd [%g]".format (default.precalc_factor))
 
-        opt[Double]("cosphi").valueName ("D").
+        opt [Double]("cosphi").valueName ("D").
             action ((x, c) => c.copy (cosphi = x)).
             text ("power factor for new photo-voltaic installations [%g]".format (default.cosphi))
 
-        opt[String]("workdir").valueName ("<dir>").
+        opt [String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
-        arg[String]("<CIM> <CIM> ...").optional ().unbounded ().
+        arg [String]("<CIM> <CIM> ...").optional ().unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -240,11 +242,11 @@ object Main
 
     /**
      * Build jar with dependencies (target/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
+     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
      */
     def main (args: Array[String])
     {
@@ -307,7 +309,7 @@ object Main
 
                     val options = EinspeiseleistungOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                        cim_reader_options = HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         precalculation = arguments.precalculation,
                         trafos = arguments.trafos,

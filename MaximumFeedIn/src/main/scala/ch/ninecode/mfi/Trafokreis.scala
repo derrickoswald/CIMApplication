@@ -10,13 +10,13 @@ import org.slf4j.LoggerFactory
 /**
  * A work package for gridlab simulation.
  *
- * @param start Starting time to be used in the simulation.
- * @param trafo The transformer (or ganged transformers) name to be used as the name of the simulation.
+ * @param start        Starting time to be used in the simulation.
+ * @param trafo        The transformer (or ganged transformers) name to be used as the name of the simulation.
  * @param transformers The feeding transformer (or ganged transformers).
- * @param nodes The nodes in the transformer service area.
- * @param edges The edges in the transformer service area.
- * @param houses The house connections in the transformer service area.
- * @param options Options for calculations.
+ * @param nodes        The nodes in the transformer service area.
+ * @param edges        The edges in the transformer service area.
+ * @param houses       The house connections in the transformer service area.
+ * @param options      Options for calculations.
  */
 case class Trafokreis
 (
@@ -32,9 +32,13 @@ case class Trafokreis
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     val window: Int = 3 * 60 // window size in simulated seconds per experiment
+
     val margin: Double = options.precalc_factor // check up to 50% over the precalculated value
+
     val step: Double = 10000.0
+
     def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
+
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
     {
         val feeder = h._1.feeder
@@ -58,7 +62,7 @@ case class Trafokreis
 
     def finish_time: Calendar =
     {
-        val t = start_time.clone ().asInstanceOf[Calendar]
+        val t = start_time.clone ().asInstanceOf [Calendar]
         t.add (Calendar.SECOND, experiments.length * window)
         t
     }
