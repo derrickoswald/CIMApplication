@@ -12,10 +12,11 @@ import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerEdge
 
-class LowVoltageGLMGenerator (
-                                 one_phase: Boolean,
-                                 date_format: SimpleDateFormat,
-                                 trafokreis: Trafokreis)
+class LowVoltageGLMGenerator
+(
+    one_phase: Boolean,
+    date_format: SimpleDateFormat,
+    trafokreis: Trafokreis)
     extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
     /**
@@ -31,7 +32,9 @@ class LowVoltageGLMGenerator (
 
     override def finish_time: Calendar =
     {
-        val t = dup (start_time); t.add (Calendar.HOUR, 24); t
+        val t = dup (start_time)
+        t.add (Calendar.HOUR, 24)
+        t
     }
 
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
