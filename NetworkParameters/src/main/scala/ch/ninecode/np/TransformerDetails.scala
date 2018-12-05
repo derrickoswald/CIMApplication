@@ -3,15 +3,16 @@ package ch.ninecode.np
 /**
  * Gather transformer details from query results.
  *
- * @param transformer the transformer name
- * @param station the station the transformer is in
- * @param phases the phases present on the terminal
+ * @param transformer       the transformer name
+ * @param station           the station the transformer is in
+ * @param phases            the phases present on the terminal
  * @param connectivity_node the ConnectivityNode mRID
- * @param topological_node the TopologicalNode mRID
- * @param x the longitude
- * @param y the latitude
+ * @param topological_node  the TopologicalNode mRID
+ * @param x                 the longitude
+ * @param y                 the latitude
  */
-case class TransformerDetails (
+case class TransformerDetails
+(
     transformer: String,
     station: String,
     voltage: String,

@@ -43,25 +43,28 @@ object MainCustomer1
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s ⇒
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
-            for (p ← ss) {
+            for (p ← ss)
+            {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
     )
 
-    case class Arguments (
+    case class Arguments
+    (
         /**
-        * If <code>true</code>, don't call sys.exit().
-        */
+         * If <code>true</code>, don't call sys.exit().
+         */
         unittest: Boolean = false,
 
         quiet: Boolean = false,
@@ -81,7 +84,7 @@ object MainCustomer1
 
     var do_exit = true
 
-    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments] (APPLICATION_NAME)
+    val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
@@ -102,52 +105,52 @@ object MainCustomer1
             if (do_exit)
                 exitState match
                 {
-                    case Left(_)  => sys.exit (1)
-                    case Right(_) => sys.exit (0)
+                    case Left (_) => sys.exit (1)
+                    case Right (_) => sys.exit (0)
                 }
 
-        opt[Unit]("unittest").
+        opt [Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt[Unit]("quiet").
+        opt [Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
             text ("suppress informational messages [%s]".format (default.quiet))
 
-        opt[String]("master").valueName ("MASTER_URL").
+        opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
-        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt[String]("storage").
+        opt [String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[Unit]("deduplicate").
+        opt [Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
-        opt[LogLevels.Value]("logging").
+        opt [LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt[String]("checkpoint").valueName ("<dir>").
+        opt [String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://server:8020/... [%s]".format (default.checkpoint_dir))
 
-        opt[String]("csv").valueName ("<file>").
+        opt [String]("csv").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv_file = x)).
             text ("csv file of available power at station data [%s]".format (default.csv_file))
 
-        opt[String]("export").valueName ("<CIM>").
+        opt [String]("export").valueName ("<CIM>").
             action ((x, c) ⇒ c.copy (export = x)).
             text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
 
-        arg[String]("<CIM>,<CIM>...").optional ().unbounded ().
+        arg [String]("<CIM>,<CIM>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -157,13 +160,16 @@ object MainCustomer1
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
         var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-        try {
+        try
+        {
             ret = URLDecoder.decode (ret, "UTF-8")
         }
-        catch {
+        catch
+        {
             case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
         }
-        if (!ret.toLowerCase ().endsWith (".jar")) {
+        if (!ret.toLowerCase ().endsWith (".jar"))
+        {
             // as an aid to debugging, make jar in tmp and pass that name
             val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
@@ -177,10 +183,10 @@ object MainCustomer1
 
     /**
      * Build jar with dependencies (target/Customer<#>_NetworkParameters-<verson>-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Customer<#>_NetworkParameters-<verson>-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/Customer<#>_NetworkParameters-<verson>-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
     def read_cim (session: SparkSession, arguments: Arguments): RDD[Element] =
@@ -188,7 +194,7 @@ object MainCustomer1
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
         val storage = StorageLevel.fromString (arguments.storage)
-        val reader_options = new HashMap[String, String] ()
+        val reader_options = new HashMap[String, String]()
         reader_options.put ("StorageLevel", arguments.storage)
         reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
         reader_options.put ("path", arguments.files.mkString (","))
@@ -224,7 +230,8 @@ object MainCustomer1
         do_exit = !args.contains ("--unittest")
 
         // parser.parse returns Option[C]
-        parser.parse (args, Arguments ()) match {
+        parser.parse (args, Arguments ()) match
+        {
             case Some (arguments) ⇒
 
                 if (!arguments.quiet)
@@ -246,7 +253,8 @@ object MainCustomer1
                         arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
 
                     // get the necessary jar files to send to the cluster
-                    if ("" != arguments.master) {
+                    if ("" != arguments.master)
+                    {
                         val s1 = jarForObject (new DefaultSource ())
                         configuration.setJars (Array (s1))
                     }

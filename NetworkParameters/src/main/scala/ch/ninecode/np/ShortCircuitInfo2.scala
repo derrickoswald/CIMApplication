@@ -36,12 +36,14 @@ import ch.ninecode.model.Terminal
  * Generate the RDD of available short circuit power and angle at each station.
  * Reads a CSV (in a particular format) to extract the ShortCircuitData information.
  *
- * @param session the Spark session
+ * @param session       the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
  */
 case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
 {
+
     import session.sqlContext.implicits._
+
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     // get a map of voltages
@@ -140,7 +142,7 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
 
         val df = df1.join (df2, $"Name_Netzeinspeisung" === $"Typ")
 
-        def toEquivalentInjection (voltages: Map[Double, String]) (row: Row): EquivalentInjection =
+        def toEquivalentInjection (voltages: Map[Double, String])(row: Row): EquivalentInjection =
         {
             val id = row.getString (0)
             val station = row.getString (1)
@@ -155,12 +157,12 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
             val ratioX1R1_min = row.getDouble (30)
             // val wik1_max = row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
             // val wik1_min = row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
-            val wik1_max = - ((Math.PI / 2.0) - Math.atan (ratioX1R1_max))
-            val wik1_min = - ((Math.PI / 2.0) - Math.atan (ratioX1R1_min))
+            val wik1_max = -((Math.PI / 2.0) - Math.atan (ratioX1R1_max))
+            val wik1_min = -((Math.PI / 2.0) - Math.atan (ratioX1R1_min))
             val ratioX0R0_max = row.getDouble (33)
             val ratioX0R0_min = row.getDouble (34)
-            val wik0_max = - ((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
-            val wik0_min = - ((Math.PI / 2.0) - Math.atan (ratioX0R0_min)) // ToDo: not used, where to put this in the CIM model
+            val wik0_max = -((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
+            val wik0_min = -((Math.PI / 2.0) - Math.atan (ratioX0R0_min)) // ToDo: not used, where to put this in the CIM model
 
             val c = 1.0
             val zqt1_max = (c * v1 * v1) / sk_max
@@ -182,9 +184,9 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
             obj.bitfields = Array (Integer.parseInt ("1111", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
             psr.bitfields = Array (0)
-            val equipment = Equipment (psr, false, true, List(), List(), station, List(), List(), List(), List(), List(), List(), List(), List(), List())
+            val equipment = Equipment (psr, false, true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
             equipment.bitfields = Array (Integer.parseInt ("10010", 2))
-            val conducting = ConductingEquipment (equipment, voltage, null, null, List(), List(), null, List())
+            val conducting = ConductingEquipment (equipment, voltage, null, null, List (), List (), null, List ())
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
             val equivalent = EquivalentEquipment (conducting, null)
             equivalent.bitfields = Array (0)
@@ -250,9 +252,9 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
             term_element.bitfields = Array (Integer.parseInt ("1", 2))
             val term_id_obj = IdentifiedObject (term_element, null, null, mRID + "_terminal_1", null, null, null)
             term_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
-            val acdc = ACDCTerminal (term_id_obj, true, 1, null, List(), List())
+            val acdc = ACDCTerminal (term_id_obj, true, 1, null, List (), List ())
             acdc.bitfields = Array (Integer.parseInt ("11", 2))
-            val terminal = Terminal (acdc, details.phases, List(), List(), null, mRID, details.connectivity_node, List(), List(), List(), List(), List(), List(), List(), null, List(), details.topological_node, List())
+            val terminal = Terminal (acdc, details.phases, List (), List (), null, mRID, details.connectivity_node, List (), List (), List (), List (), List (), List (), List (), null, List (), details.topological_node, List ())
             terminal.bitfields = Array (Integer.parseInt ("01000000000110001", 2))
 
             List (injection, terminal, location, position)
@@ -264,7 +266,8 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
     def getShortCircuitInfo (csv1: String, csv2: String): RDD[Element] =
     {
         // get transformers with their primary connectivity node and location
-        val tsl = """
+        val tsl =
+            """
             select
                 t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID transformer,
                 s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station,
@@ -304,7 +307,8 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
                     """
                 else
                     "")
-        val tslc = """
+        val tslc =
+            """
             select
                 seq.transformer,
                 seq.station,
@@ -330,7 +334,8 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
                 t.ACDCTerminal.sequenceNumber = seq.n and t.ConductingEquipment = seq.transformer and t.ACDCTerminal.IdentifiedObject.mRID = end.TransformerEnd.Terminal
             """.format (tsl)
 
-        val query = """
+        val query =
+            """
             select
                 tslc.transformer,
                 tslc.station,
@@ -345,17 +350,17 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
                 p.Location = tslc.location
             """.format (tslc)
         val n = session.sparkContext.getExecutorMemoryStatus.size // get how many executors
-        val transformerdetails = session.sql (query).rdd.map (
-            row ⇒
-                TransformerDetails (
-                    row.getString (0),
-                    row.getString (1),
-                    row.getString (2),
-                    row.getString (3),
-                    row.getString (4),
-                    row.getString (5),
-                    row.getDouble (6),
-                    row.getDouble (7))).coalesce (n, true).cache
+    val transformerdetails = session.sql (query).rdd.map (
+        row ⇒
+            TransformerDetails (
+                row.getString (0),
+                row.getString (1),
+                row.getString (2),
+                row.getString (3),
+                row.getString (4),
+                row.getString (5),
+                row.getDouble (6),
+                row.getDouble (7))).coalesce (n, true).cache
 
         // read the csv
         val equivalents = read_csv (csv1, csv2)
@@ -373,7 +378,7 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
         val chim = new CHIM ("")
         val classes: List[ClassInfo] = chim.classes
         val subsetters: List[String] = classes.map (info ⇒ info.name)
-        val old_elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
+        val old_elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
@@ -383,22 +388,28 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
                 val cls = element.getClass
                 val classname = cls.getName
                 val name = classname.substring (classname.lastIndexOf (".") + 1)
-                subsetters.find (_ == name) match { case Some (subsetter) ⇒ List (subsetter) ::: supers (element.sup) case None ⇒ List() }
+                subsetters.find (_ == name) match
+                {
+                    case Some (subsetter) ⇒ List (subsetter) ::: supers (element.sup)
+                    case None ⇒ List ()
+                }
             }
             else
                 List ()
         }
+
         val uniq_to_be_merged: RDD[String] = elements.flatMap (supers).distinct.cache
         val array_to_be_merged: Array[String] = uniq_to_be_merged.collect
         val list = classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
+
         // merge each class
         def add (subsetter: CIMSubsetter[_]): Unit =
         {
-            val subrdd: RDD[Element] = elements.collect (subsetter.pf).asInstanceOf[RDD[Element]]
+            val subrdd: RDD[Element] = elements.collect (subsetter.pf).asInstanceOf [RDD[Element]]
             val existing = session.sparkContext.getPersistentRDDs.filter (_._2.name == subsetter.cls)
             val rdd = if (existing.nonEmpty)
             {
-                val old_rdd = existing.head._2.asInstanceOf[RDD[Element]]
+                val old_rdd = existing.head._2.asInstanceOf [RDD[Element]]
                 old_rdd.name = "pre_shortcircuit_info_" + subsetter.cls
                 subrdd.union (old_rdd)
             }
@@ -406,6 +417,7 @@ case class ShortCircuitInfo2 (session: SparkSession, storage_level: StorageLevel
                 subrdd
             subsetter.make (session.sqlContext, rdd, storage_level)
         }
+
         for (info <- list)
             add (info.subsetter)
 

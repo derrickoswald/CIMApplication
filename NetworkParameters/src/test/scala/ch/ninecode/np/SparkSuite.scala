@@ -11,16 +11,16 @@ import java.net.NetworkInterface
 import java.util
 import java.util.zip.ZipInputStream
 
-import ch.ninecode.cim.CIMClasses
+import scala.collection.JavaConverters._
+import org.scalatest.fixture.FunSuite
+
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
-import org.scalatest.fixture.FunSuite
 
-import scala.collection.JavaConverters._
+import ch.ninecode.cim.CIMClasses
 
-class SparkSuite
-extends FunSuite
+class SparkSuite extends FunSuite
 {
     type FixtureParam = SparkSession
 
@@ -38,7 +38,7 @@ extends FunSuite
          *
          * The directory will be created if does not exist.
          *
-         * @param file The Zip file.
+         * @param file      The Zip file.
          * @param directory The directory to extract it to
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -69,7 +69,7 @@ extends FunSuite
         /**
          * Extracts a zip entry (file entry).
          *
-         * @param zip The Zip input stream for the file.
+         * @param zip  The Zip input stream for the file.
          * @param path The path to extract he file to.
          * @throws IOException If there is a problem with the zip extraction
          */
@@ -79,7 +79,10 @@ extends FunSuite
             val bos = new BufferedOutputStream (new FileOutputStream (path))
             val bytesIn = new Array[Byte](4096)
             var read = -1
-            while ({ read = zip.read (bytesIn); read != -1 })
+            while (
+            {
+                read = zip.read (bytesIn); read != -1
+            })
                 bos.write (bytesIn, 0, read)
             bos.close ()
         }
@@ -104,7 +107,7 @@ extends FunSuite
                     val field = cl.getDeclaredField ("m")
                     field.setAccessible (true)
                     val obj = field.get (env)
-                    val map = obj.asInstanceOf[java.util.Map[String, String]]
+                    val map = obj.asInstanceOf [java.util.Map[String, String]]
                     map.putAll (newenv)
                 }
             }
@@ -120,6 +123,7 @@ extends FunSuite
      * Set SPARK_LOCAL_IP to the IP address in dotted-quad format (e.g. 1.2.3.4) if it isn't set.
      *
      * Avoids "Set SPARK_LOCAL_IP if you need to bind to another address" warning message.
+     *
      * @see findLocalInetAddress: https://github.com/apache/spark/blob/master/core/src/main/scala/org/apache/spark/util/Utils.scala
      */
     def setLocalIP (): Unit =
@@ -146,7 +150,7 @@ extends FunSuite
                         // because of Inet6Address.toHostName may add interface at the end if it knows about it
                         val ip = InetAddress.getByAddress (addr.getAddress)
                         // We've found an address that looks reasonable!
-                        val newenv = new java.util.HashMap[String, String] ()
+                        val newenv = new java.util.HashMap[String, String]()
                         newenv.put ("SPARK_LOCAL_IP", ip.getHostAddress)
                         newenv.put ("SPARK_HOME", "/home/derrick/spark/spark-2.3.1-bin-hadoop2.7")
                         setEnv (newenv)
