@@ -28,6 +28,7 @@ release.properties
 data/
 private_data/
 simulation/
+iresults/
 
 # Misc #
 glslogs/

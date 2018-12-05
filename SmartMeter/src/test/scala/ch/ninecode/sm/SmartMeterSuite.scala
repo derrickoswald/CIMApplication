@@ -1,15 +1,11 @@
 package ch.ninecode.sm
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.HashMap
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 
 import org.scalatest.fixture.FunSuite
 
@@ -17,8 +13,6 @@ import ch.ninecode.cim.CIMClasses
 
 class SmartMeterSuite extends FunSuite
 {
-    val FILE_DEPOT = "private_data/"
-
     type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -52,46 +46,20 @@ class SmartMeterSuite extends FunSuite
     def readFile (context: SQLContext, filename: String, use_topolocial_nodes: Boolean): DataFrame =
     {
         val files = filename.split (",")
-        val options = new HashMap[String, String] ()
+        val options = new HashMap[String, String]()
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.make_edges", "false")
         options.put ("ch.ninecode.cim.do_join", "false")
         options.put ("ch.ninecode.cim.do_topo", use_topolocial_nodes.toString)
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        context.read.format ("ch.ninecode.cim").options (options).load (files: _*)
     }
 
     test ("Basic")
     {
         session: SparkSession ⇒
-
-        val start = System.nanoTime ()
-
-        val filename = FILE_DEPOT + "NIS_CIM_Export_sias_current_20160703_Hirzel_Kirche_V9_dummyDaten.rdf"
-        val use_topological_nodes = true
-        val starting_node = "SAM10106"
-            
-        val elements = readFile (session.sqlContext, filename, use_topological_nodes)
-        println (elements.count () + " elements")
-        val read = System.nanoTime ()
-        val smart = new SmartMeter (session, StorageLevel.fromString ("MEMORY_AND_DISK_SER"), use_topological_nodes)
-        val text = smart.run (starting_node)
-        
-        val process = System.nanoTime ()
-        
-        println ("traced nodes: " )
-        println (text)
-        
-        val out_content = "smartmeter_tree = " + text
-        Files.write (Paths.get ("target/", "smartmeter_tree.js"), out_content.getBytes(StandardCharsets.UTF_8))
-
-        val write = System.nanoTime ()
-
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("process: " + (process - read) / 1e9 + " seconds")
-        println ("write: " + (write - process) / 1e9 + " seconds")
-        println ()
+            println ("placeholder")
     }
 
 }
