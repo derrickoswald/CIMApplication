@@ -40,7 +40,7 @@ import ch.ninecode.model.VoltageLevel
  * basically everything downstream of a feeder (Connector).
  *
  * @param session the Spark session object
- * @param debug flag to turn on debug output
+ * @param debug   flag to turn on debug output
  */
 case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, debug: Boolean = false) extends CIMRDD
 {
@@ -61,6 +61,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
 
     /**
      * Compute the vertex id.
+     *
      * @param string The CIM mRID.
      * @return the node id (similar to the hash code of the mRID)
      */
@@ -84,12 +85,13 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (0 != (switch.bitfields(openMask / 32) & (1 << (openMask % 32))))
+        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
-        else if (0 != (switch.bitfields(normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-            !switch.normalOpen
         else
-            true
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
     }
 
     /**
@@ -103,7 +105,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         val eq = equipment.Equipment
         val in_station =
             eq.PowerSystemResource.PSRType == "PSRType_Substation" ||
-            (eq.PowerSystemResource.PSRType == "PSRType_Unknown" && eq.EquipmentContainer != null)
+                (eq.PowerSystemResource.PSRType == "PSRType_Unknown" && eq.EquipmentContainer != null)
         !in_station
     }
 
@@ -117,18 +119,18 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         element match
         {
-            case s: Switch ⇒             isExternal (s.ConductingEquipment)
-            case c: Cut ⇒                isExternal (c.Switch.ConductingEquipment)
-            case d: Disconnector ⇒       isExternal (d.Switch.ConductingEquipment)
-            case f: Fuse ⇒               isExternal (f.Switch.ConductingEquipment)
+            case s: Switch ⇒ isExternal (s.ConductingEquipment)
+            case c: Cut ⇒ isExternal (c.Switch.ConductingEquipment)
+            case d: Disconnector ⇒ isExternal (d.Switch.ConductingEquipment)
+            case f: Fuse ⇒ isExternal (f.Switch.ConductingEquipment)
             case g: GroundDisconnector ⇒ isExternal (g.Switch.ConductingEquipment)
-            case j: Jumper ⇒             isExternal (j.Switch.ConductingEquipment)
-            case p: ProtectedSwitch ⇒    isExternal (p.Switch.ConductingEquipment)
-            case s: Sectionaliser ⇒      isExternal (s.Switch.ConductingEquipment)
-            case b: Breaker ⇒            isExternal (b.ProtectedSwitch.Switch.ConductingEquipment)
-            case l: LoadBreakSwitch ⇒    isExternal (l.ProtectedSwitch.Switch.ConductingEquipment)
-            case r: Recloser ⇒           isExternal (r.ProtectedSwitch.Switch.ConductingEquipment)
-            case _ ⇒                     false
+            case j: Jumper ⇒ isExternal (j.Switch.ConductingEquipment)
+            case p: ProtectedSwitch ⇒ isExternal (p.Switch.ConductingEquipment)
+            case s: Sectionaliser ⇒ isExternal (s.Switch.ConductingEquipment)
+            case b: Breaker ⇒ isExternal (b.ProtectedSwitch.Switch.ConductingEquipment)
+            case l: LoadBreakSwitch ⇒ isExternal (l.ProtectedSwitch.Switch.ConductingEquipment)
+            case r: Recloser ⇒ isExternal (r.ProtectedSwitch.Switch.ConductingEquipment)
+            case _ ⇒ false
         }
     }
 
@@ -136,17 +138,17 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      * Checks that the object is a Connector at a medium voltage with the right PSRType.
      *
      * @param medium_voltages the list of acceptable medium voltage mRID values
-     * @param psr_types the list of acceptable PSRType values
-     * @param element the element to check
+     * @param psr_types       the list of acceptable PSRType values
+     * @param element         the element to check
      * @return
      */
-    def isFeeder (medium_voltages: Array[String], psr_types: Array[String]) (element: Element): Boolean =
+    def isFeeder (medium_voltages: Array[String], psr_types: Array[String])(element: Element): Boolean =
     {
         element match
         {
             case c: Connector ⇒
                 medium_voltages.contains (c.ConductingEquipment.BaseVoltage) &&
-                psr_types.contains (c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
+                    psr_types.contains (c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
             case _ ⇒
                 false
         }
@@ -161,11 +163,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         // get the list of N5 voltages
         // ToDo: fix this 1000V multiplier
-        val medium_voltages = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
+        val medium_voltages = getOrElse [BaseVoltage].filter (x ⇒ x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
 
         // get the list of M5 level feeders in substations
         // ToDo: is it faster to use RDD[Connector] and join with RDD[Element] ?
-        val ret = getOrElse[Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
+        val ret = getOrElse [Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
 
         ret.persist (storage)
         ret.name = "Feeders"
@@ -176,11 +178,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      * The RDD of node mRID to feeder objects mapping.
      *
      * @return The correspondence between node mRID and feeder.
-     * Note that only nodes that correspond to feeders are included in this RDD.
+     *         Note that only nodes that correspond to feeders are included in this RDD.
      */
     def feederNodes: RDD[(String, Element)] =
     {
-        val ret = getOrElse[Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
+        val ret = getOrElse [Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
 
         ret.persist (storage)
         ret.name = "FeederNodes"
@@ -191,12 +193,12 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      * The RDD of island mRID to feeder objects mapping.
      *
      * @return The correspondence between island mRID and feeder.
-     * Note that only islands that correspond to feeders are included in this RDD.
+     *         Note that only islands that correspond to feeders are included in this RDD.
      */
     def feederIslands: RDD[(String, Element)] =
     {
-        val t = getOrElse[TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
-        val ret = t.join (feederNodes).values // (islandid, Feeder)
+        val t = getOrElse [TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
+    val ret = t.join (feederNodes).values // (islandid, Feeder)
 
         ret.persist (storage)
         ret.name = "FeederIslands"
@@ -228,7 +230,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
                     if (0 == array.length)
                         "0"
                     else
-                        array(0)
+                        array (0)
                 }
             }
         }
@@ -239,7 +241,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
             val number = parseNumber (description)
             val header = "%s [%s]".format (description, alias)
-            val feeder = x._1.asInstanceOf[Element]
+            val feeder = x._1.asInstanceOf [Element]
 
             // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
             x._2 match
@@ -251,8 +253,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             }
         }
 
-        val connectors = feeders.map (_.asInstanceOf[Connector])
-        val ret = connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse[Element]("Elements").keyBy (_.id)).values.map (station_fn)
+        val connectors = feeders.map (_.asInstanceOf [Connector])
+        val ret = connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse [Element]("Elements").keyBy (_.id)).values.map (station_fn)
 
         ret.persist (storage)
         ret.name = "feederStations"
@@ -266,22 +268,22 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def edges: RDD[Edge[EdgeData]] =
     {
-        val equipment_islands = getOrElse[Terminal].keyBy (_.TopologicalNode).join (getOrElse[TopologicalNode].keyBy (_.id)).values
+        val equipment_islands = getOrElse [Terminal].keyBy (_.TopologicalNode).join (getOrElse [TopologicalNode].keyBy (_.id)).values
             .map (x ⇒ (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-        val equipment = getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
-            .join (equipment_islands).values // (Element, [islandid])
+    val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+        .join (equipment_islands).values // (Element, [islandid])
         equipment.flatMap (
             x ⇒
             {
                 val island1 = x._2.head
                 if (isExternalSwitch (x._1))
                     for
-                    {
+                        {
                         island2 ← x._2.tail
                         if island2 != island1 // switches only on the boundary
                         edge = EdgeData (x._1.id, island1, island2)
                     }
-                    yield Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge)
+                        yield Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge)
                 else
                     List ()
             }
@@ -298,12 +300,12 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         val sources = feederIslands.groupByKey
         edges.flatMap (x ⇒ List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
             .map (
-                x ⇒
-                {
-                    val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set[String] ())
-                    (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
-                }
-            ).persist (storage) // (vertexid, VertexData)
+            x ⇒
+            {
+                val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set [String]())
+                (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
+            }
+        ).persist (storage) // (vertexid, VertexData)
     }
 
     /**
@@ -332,7 +334,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
         {
-            var ret = List[(VertexId, VertexData)] ()
+            var ret = List [(VertexId, VertexData)]()
             // the island on the source side can hop to the destination by closing the switch
             if (!triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
             {
@@ -360,11 +362,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
         val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
-        val g = graph.pregel[VertexData] (null, 10000, EdgeDirection.Either) (vertex_program, send_message, merge_message).cache
+        val g = graph.pregel [VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
 
         // label every node (not just the ones on the boundary switches
         val island_feeders = g.vertices.map (x ⇒ (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
-        getOrElse[TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
+        getOrElse [TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
             .flatMap (x ⇒ x._2.map (y ⇒ (x._1.id, y))) // (nodeid, feederid)
     }
 }

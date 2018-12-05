@@ -6,12 +6,13 @@ import ch.ninecode.gl.TransformerSet
 /**
  * Vertex data.
  *
- * @param id ConnectivityNode or TopologicalNode MRID.
+ * @param id              ConnectivityNode or TopologicalNode MRID.
  * @param nominal_voltage Node voltage.
- * @param load Low voltage transformer attached to this node - if any.
+ * @param load            Low voltage transformer attached to this node - if any.
  */
-case class USTNode (
+case class USTNode
+(
     id: String,
     nominal_voltage: Double,
     load: TransformerSet)
-extends GLMNode
+    extends GLMNode

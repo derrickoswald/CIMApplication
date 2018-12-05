@@ -37,44 +37,46 @@ object Main
         type LogLevels = Value
         val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
     }
+
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
     )
 
-    case class Arguments (
-         /**
-          * If <code>true</code>, don't call sys.exit().
-          */
-         unittest: Boolean = false,
+    case class Arguments
+    (
+        /**
+         * If <code>true</code>, don't call sys.exit().
+         */
+        unittest: Boolean = false,
 
-         quiet: Boolean = false,
-         master: String = "",
-         opts: Map[String, String] = Map (
-             "spark.graphx.pregel.checkpointInterval" → "8",
-             "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
-             "spark.ui.showConsoleProgress" → "false"
-         ),
-         storage: String = "MEMORY_AND_DISK_SER",
-         dedup: Boolean = false,
-         three: Boolean = false,
-         base_temperature: Double = 20.0,
-         temperature: Double = 20.0,
-         log_level: LogLevels.Value = LogLevels.OFF,
-         checkpoint_dir: String = "",
-         workdir: String = "",
-         files: Seq[String] = Seq()
+        quiet: Boolean = false,
+        master: String = "",
+        opts: Map[String, String] = Map (
+            "spark.graphx.pregel.checkpointInterval" → "8",
+            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" → "false"
+        ),
+        storage: String = "MEMORY_AND_DISK_SER",
+        dedup: Boolean = false,
+        three: Boolean = false,
+        base_temperature: Double = 20.0,
+        temperature: Double = 20.0,
+        log_level: LogLevels.Value = LogLevels.OFF,
+        checkpoint_dir: String = "",
+        workdir: String = "",
+        files: Seq[String] = Seq ()
     )
 
     var do_exit = true
@@ -100,60 +102,60 @@ object Main
             if (do_exit)
                 exitState match
                 {
-                    case Left(_)  => sys.exit (1)
-                    case Right(_) => sys.exit (0)
+                    case Left (_) => sys.exit (1)
+                    case Right (_) => sys.exit (0)
                 }
 
-        opt[Unit]("unittest").
+        opt [Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt[Unit]("quiet").
+        opt [Unit]("quiet").
             action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages [%s]".format (default.quiet))
 
-        opt[String]("master").valueName ("MASTER_URL").
+        opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
-        opt[Map[String,String]]("opts").valueName ("k1=v1,k2=v2").
+        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt[String]("storage_level").
+        opt [String]("storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt[Unit]("deduplicate").
+        opt [Unit]("deduplicate").
             action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
-        opt[Unit]("three").
+        opt [Unit]("three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [%s]".format (default.three))
 
-        opt[Double]("tbase").valueName ("<value>").
+        opt [Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
             text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
-        opt[Double]("temp").valueName ("<value>").
+        opt [Double]("temp").valueName ("<value>").
             action ((x, c) ⇒ c.copy (temperature = x)).
             text ("low temperature for maximum fault (°C) [%g]".format (default.temperature))
 
-        opt[LogLevels.Value]("logging").
+        opt [LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt[String]("checkpoint").valueName ("<dir>").
+        opt [String]("checkpoint").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
 
-        opt[String]("workdir").valueName ("<dir>").
+        opt [String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [%s]".format (default.workdir))
 
-        arg[String]("<CIM> <CIM> ...").optional ().unbounded ().
+        arg [String]("<CIM> <CIM> ...").optional ().unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -199,11 +201,11 @@ object Main
 
     /**
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
-     *     mvn package
+     * mvn package
      * Invoke (on the cluster) with:
-     *     spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/rdffilename.rdf"
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/program_name_and_version-jar-with-dependencies.jar "hdfs://sandbox:8020/data/rdffilename.rdf"
      * or on AWS:
-     *     /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
+     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar hdfs://hmaster:9000/data/NIS_CIM_Export_sias_current_20161220_Sample4.rdf
      */
     def main (args: Array[String])
     {
@@ -266,7 +268,7 @@ object Main
 
                     val options = OneOfNOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = HashMap[String,String] ("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                        cim_reader_options = HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         base_temperature = arguments.base_temperature,
                         temperature = arguments.temperature,

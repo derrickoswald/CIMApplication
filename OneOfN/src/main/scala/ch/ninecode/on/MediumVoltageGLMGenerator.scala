@@ -9,13 +9,13 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerSet
 
-case class MediumVoltageGLMGenerator (
+case class MediumVoltageGLMGenerator
+(
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     ust: USTKreis)
-extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
+    extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
 
     override def name: String = ust.trafokreis_key
@@ -31,6 +31,7 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
     override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
 
     val lv: Array[String] = ust.hv_transformers.map (_.node1)
+
     override def nodes: Iterable[USTNode] = ust.nodes.filter (x ⇒ !lv.contains (x.id))
 
     override def extra: Iterable[String] = List ("")
@@ -43,130 +44,132 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
 
     def three_or_one_player (property: String, name: String): String =
         if (one_phase)
-        """            object player
-        |            {
-        |                property "%s_A";
-        |                file "input_data/%s.csv";
-        |            };""".stripMargin.format (property, name)
+            """            object player
+              |            {
+              |                property "%s_A";
+              |                file "input_data/%s.csv";
+              |            };""".stripMargin.format (property, name)
         else
-        """            object player
-        |            {
-        |                property "%s_A";
-        |                file "input_data/%s_R.csv";
-        |            };
-        |            object player
-        |            {
-        |                property "%s_B";
-        |                file "input_data/%s_S.csv";
-        |            };
-        |            object player
-        |            {
-        |                property "%s_C";
-        |                file "input_data/%s_T.csv";
-        |            };""".stripMargin.format (property, name, property, name, property, name)
+            """            object player
+              |            {
+              |                property "%s_A";
+              |                file "input_data/%s_R.csv";
+              |            };
+              |            object player
+              |            {
+              |                property "%s_B";
+              |                file "input_data/%s_S.csv";
+              |            };
+              |            object player
+              |            {
+              |                property "%s_C";
+              |                file "input_data/%s_T.csv";
+              |            };""".stripMargin.format (property, name, property, name, property, name)
 
     override def emit_edge (edge: GLMEdge): String =
     {
         def recorders: String =
         {
             """
-            |        object recorder
-            |        {
-            |            name "%s_current_recorder";
-            |            parent "%s";
-            |            property %s;
-            |            interval 300;
-            |            file "output_data/%s_current.csv";
-            |        };
-            |
-            |        object recorder
-            |        {
-            |            name "%s_power_recorder";
-            |            parent "%s";
-            |            property %s;
-            |            interval 300;
-            |            file "output_data/%s_power.csv";
-            |        };
-            |
-            |        object recorder
-            |        {
-            |            name "%s_losses_recorder";
-            |            parent "%s";
-            |            property %s;
-            |            interval 300;
-            |            file "output_data/%s_losses.csv";
-            |        };
-            |""".stripMargin.format (
+              |        object recorder
+              |        {
+              |            name "%s_current_recorder";
+              |            parent "%s";
+              |            property %s;
+              |            interval 300;
+              |            file "output_data/%s_current.csv";
+              |        };
+              |
+              |        object recorder
+              |        {
+              |            name "%s_power_recorder";
+              |            parent "%s";
+              |            property %s;
+              |            interval 300;
+              |            file "output_data/%s_power.csv";
+              |        };
+              |
+              |        object recorder
+              |        {
+              |            name "%s_losses_recorder";
+              |            parent "%s";
+              |            property %s;
+              |            interval 300;
+              |            file "output_data/%s_losses.csv";
+              |        };
+              |""".stripMargin.format (
                 edge.id, edge.id, three_or_one ("current_in"), edge.id,
                 edge.id, edge.id, three_or_one ("power_in"), edge.id,
                 edge.id, edge.id, three_or_one ("power_losses"), edge.id)
         }
-        if (edge.isInstanceOf[TransformerEdge])
+
+        if (edge.isInstanceOf [TransformerEdge])
             ""
         else
-            super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
+            super.emit_edge (edge) + (if (edge.isInstanceOf [LineEdge]) recorders else "")
     }
 
     override def emit_node (node: GLMNode): String =
     {
-        val n = node.asInstanceOf[USTNode]
+        val n = node.asInstanceOf [USTNode]
+
         def recorder (node: USTNode): String =
         {
             if (null != node.load)
             {
                 val trafo = node.load.transformer_name
                 """
-                |        object recorder
-                |        {
-                |            name "%s_voltage_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_voltage.csv";
-                |        };
-                |
-                |        object recorder
-                |        {
-                |            name "%s_power_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_power.csv";
-                |        };
-                |""".stripMargin.format (
+                  |        object recorder
+                  |        {
+                  |            name "%s_voltage_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_voltage.csv";
+                  |        };
+                  |
+                  |        object recorder
+                  |        {
+                  |            name "%s_power_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_power.csv";
+                  |        };
+                  |""".stripMargin.format (
                     trafo, node.id, three_or_one ("voltage"), trafo,
                     trafo, node.id, three_or_one ("measured_power"), trafo)
             }
             else
             {
                 """
-                |        object recorder
-                |        {
-                |            name "%s_current_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_current.csv";
-                |        };
-                |
-                |        object recorder
-                |        {
-                |            name "%s_voltage_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_voltage.csv";
-                |        };
-                |
-                |        object recorder
-                |        {
-                |            name "%s_power_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_power.csv";
-                |        };
-                |""".stripMargin.format (
+                  |        object recorder
+                  |        {
+                  |            name "%s_current_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_current.csv";
+                  |        };
+                  |
+                  |        object recorder
+                  |        {
+                  |            name "%s_voltage_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_voltage.csv";
+                  |        };
+                  |
+                  |        object recorder
+                  |        {
+                  |            name "%s_power_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_power.csv";
+                  |        };
+                  |""".stripMargin.format (
                     node.id, node.id, three_or_one ("measured_current"), node.id,
                     node.id, node.id, three_or_one ("voltage"), node.id,
                     node.id, node.id, three_or_one ("measured_power"), node.id)
@@ -178,37 +181,37 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
 
     override def emit_slack (node: GLMNode): String =
     {
-        val swing = node.asInstanceOf[SwingNode]
+        val swing = node.asInstanceOf [SwingNode]
         // generate low voltage pin (NSPIN) swing node
         val trafo = swing.name
         """
-        |        object meter
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            bustype SWING;
-        |            nominal_voltage %sV;
-        |%s
-        |        };
-        |
-        |        object recorder
-        |        {
-        |            name "%s_current_recorder";
-        |            parent "%s";
-        |            property %s;
-        |            interval 300;
-        |            file "output_data/%s_current.csv";
-        |        };
-        |
-        |        object recorder
-        |        {
-        |            name "%s_power_recorder";
-        |            parent "%s";
-        |            property %s;
-        |            interval 300;
-        |            file "output_data/%s_power.csv";
-        |        };
-        |""".stripMargin.format (
+          |        object meter
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            bustype SWING;
+          |            nominal_voltage %sV;
+          |%s
+          |        };
+          |
+          |        object recorder
+          |        {
+          |            name "%s_current_recorder";
+          |            parent "%s";
+          |            property %s;
+          |            interval 300;
+          |            file "output_data/%s_current.csv";
+          |        };
+          |
+          |        object recorder
+          |        {
+          |            name "%s_power_recorder";
+          |            parent "%s";
+          |            property %s;
+          |            interval 300;
+          |            file "output_data/%s_power.csv";
+          |        };
+          |""".stripMargin.format (
             swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one_player ("voltage", trafo),
             trafo, node.id, three_or_one ("measured_current"), trafo,
             trafo, node.id, three_or_one ("measured_power"), trafo)
@@ -222,24 +225,24 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         super.emit_transformer (transformer) +
             (if (!swings.contains (transformer.cn1) && !swings.contains (transformer.cn2))
                 """
-                |        object recorder
-                |        {
-                |            name "%s_current_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_current.csv";
-                |        };
-                |
-                |        object recorder
-                |        {
-                |            name "%s_losses_recorder";
-                |            parent "%s";
-                |            property %s;
-                |            interval 300;
-                |            file "output_data/%s_losses.csv";
-                |        };
-                |""".stripMargin.format (
+                  |        object recorder
+                  |        {
+                  |            name "%s_current_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_current.csv";
+                  |        };
+                  |
+                  |        object recorder
+                  |        {
+                  |            name "%s_losses_recorder";
+                  |            parent "%s";
+                  |            property %s;
+                  |            interval 300;
+                  |            file "output_data/%s_losses.csv";
+                  |        };
+                  |""".stripMargin.format (
                     name, name, three_or_one ("current_out"), name,
                     name, name, three_or_one ("power_losses"), name)
             else
@@ -253,15 +256,15 @@ extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base te
         {
             val trafo = node.load.transformer_name
             """
-            |        object load
-            |        {
-            |            name "%s_load";
-            |            parent "%s";
-            |            phases %s;
-            |            nominal_voltage %sV;
-            |%s
-            |        };
-            |""".stripMargin.format (node.id, node.id, if (one_phase) "AN" else "ABCN", node.nominal_voltage, three_or_one_player ("constant_current", trafo))
+              |        object load
+              |        {
+              |            name "%s_load";
+              |            parent "%s";
+              |            phases %s;
+              |            nominal_voltage %sV;
+              |%s
+              |        };
+              |""".stripMargin.format (node.id, node.id, if (one_phase) "AN" else "ABCN", node.nominal_voltage, three_or_one_player ("constant_current", trafo))
         }
         else
             ""

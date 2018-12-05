@@ -11,7 +11,7 @@ case class PlayerSwitchEdge
     switch: Switch,
     fuse: Boolean
 )
-extends GLMEdge
+    extends GLMEdge
 {
     override def id: String = switch.id
 
@@ -27,9 +27,9 @@ extends GLMEdge
         var current = switch.ratedCurrent
         if (current <= 0)
             current = 9999.0 // ensure it doesn't trip immediately
-        // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
-        val details = if (fuse)
-            """
+    // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
+    val details = if (fuse)
+        """
             mean_replacement_time 3600.0;
             current_limit %sA;
             object player
@@ -37,8 +37,8 @@ extends GLMEdge
                 property "status";
                 file "input_data/%s.csv";
             };""".format (current, id)
-        else
-            """
+    else
+        """
             object player
             {
                 property "status";
@@ -46,14 +46,14 @@ extends GLMEdge
             };""".format (id)
 
         """
-        |        object %s
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            from "%s";
-        |            to "%s";%s
-        |        };
-        |""".stripMargin.format (obj, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
+          |        object %s
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            from "%s";
+          |            to "%s";%s
+          |        };
+          |""".stripMargin.format (obj, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
     }
 }
 

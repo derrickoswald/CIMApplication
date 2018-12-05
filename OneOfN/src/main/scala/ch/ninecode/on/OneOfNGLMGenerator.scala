@@ -12,34 +12,35 @@ import ch.ninecode.gl.TransformerEdge
 /**
  * Medium voltage GridLAB-D model file exporter.
  *
- * @param one_phase If <code>true</code> generate a single phase .glm file.
+ * @param one_phase   If <code>true</code> generate a single phase .glm file.
  * @param temperature The temperature of the elements in the .glm file (°C).
  * @param date_format The date format to use within the .glm file.
- * @param feeder The elements to be generated.
- * @param voltages The voltage levels present in the CIM file.
+ * @param feeder      The elements to be generated.
+ * @param voltages    The voltage levels present in the CIM file.
  */
-case class OneOfNGLMGenerator (
+case class OneOfNGLMGenerator
+(
     one_phase: Boolean,
     temperature: Double,
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false) // ToDo: get library base temperature and target temperature as command line input
+    extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = "%s_%s".format (feeder.metadata.station, feeder.metadata.connector)
 
     override def header: String = feeder.metadata.description
 
-    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[TransformerEdge])
+    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf [TransformerEdge])
 
     override def nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder == null)
 
-    override def transformers: Iterable[TransformerEdge] = feeder.edges.filter (_.isInstanceOf[TransformerEdge]).map (_.asInstanceOf[TransformerEdge])
+    override def transformers: Iterable[TransformerEdge] = feeder.edges.filter (_.isInstanceOf [TransformerEdge]).map (_.asInstanceOf [TransformerEdge])
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
 
-    def nodelist: Map[String,GLMNode] = feeder.nodes.map (x ⇒ (x._id, x)).toMap
+    def nodelist: Map[String, GLMNode] = feeder.nodes.map (x ⇒ (x._id, x)).toMap
 
     /**
      * Add meter elements for nodes on the edge of the network.
@@ -68,6 +69,7 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
                     List ((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
             }
         }
+
         val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
             .filter (x ⇒ !nodelist.isDefinedAt (x._1)) // eliminate those that are emitted normally
             .groupBy (_._1).values.map (_.head) // eliminate duplicates from multiple edges
@@ -91,38 +93,38 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
      */
     override def emit_slack (node: GLMNode): String =
     {
-        val swing = node.asInstanceOf[FeederNode]
+        val swing = node.asInstanceOf [FeederNode]
         """
-        |        object meter
-        |        {
-        |            name "%s_swing";
-        |            phases %s;
-        |            bustype SWING;
-        |            nominal_voltage %sV;
-        |            %s %s;
-        |        };
-        |
-        |        object switch
-        |        {
-        |            name "%s_switch";
-        |            phases %s;
-        |            from "%s_swing";
-        |            to "%s";
-        |            object player
-        |            {
-        |                property "status";
-        |                file "input_data/%s.csv";
-        |            };
-        |        };
-        |
-        |        object meter
-        |        {
-        |            name "%s";
-        |            phases %s;
-        |            bustype PQ;
-        |            nominal_voltage %sV;
-        |        };
-        |""".stripMargin.format (
+          |        object meter
+          |        {
+          |            name "%s_swing";
+          |            phases %s;
+          |            bustype SWING;
+          |            nominal_voltage %sV;
+          |            %s %s;
+          |        };
+          |
+          |        object switch
+          |        {
+          |            name "%s_switch";
+          |            phases %s;
+          |            from "%s_swing";
+          |            to "%s";
+          |            object player
+          |            {
+          |                property "status";
+          |                file "input_data/%s.csv";
+          |            };
+          |        };
+          |
+          |        object meter
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            bustype PQ;
+          |            nominal_voltage %sV;
+          |        };
+          |""".stripMargin.format (
             swing.id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage, three_or_one ("voltage"), three_or_one (Complex (swing.nominal_voltage, 0.0)),
             swing.id, if (one_phase) "AN" else "ABCN", swing.id, swing._id, swing.id,
             swing._id, if (one_phase) "AN" else "ABCN", swing.nominal_voltage)
@@ -138,16 +140,16 @@ extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = t
     {
         val name = transformer.transformer.transformer_name
         super.emit_transformer (transformer) +
-        """
-        |        object load
-        |        {
-        |            name "%s_load";
-        |            parent "%s";
-        |            phases %s;
-        |            %s %s;
-        |            nominal_voltage %sV;
-        |            load_class R;
-        |        };
-        """.stripMargin.format (name, transformer.cn2, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.transformer.v1)
+            """
+              |        object load
+              |        {
+              |            name "%s_load";
+              |            parent "%s";
+              |            phases %s;
+              |            %s %s;
+              |            nominal_voltage %sV;
+              |            load_class R;
+              |        };
+            """.stripMargin.format (name, transformer.cn2, if (one_phase) "AN" else "ABCN", three_or_one ("constant_power"), three_or_one (Complex (10000, 0)), transformer.transformer.v1)
     }
 }
