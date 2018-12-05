@@ -1,6 +1,7 @@
 package ch.ninecode.sp
 
-case class SpatialOperationParameters (
+case class SpatialOperationParameters
+(
     /**
      * The name of the class of interest.
      */

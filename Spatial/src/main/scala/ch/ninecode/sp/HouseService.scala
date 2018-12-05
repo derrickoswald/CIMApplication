@@ -1,6 +1,7 @@
 package ch.ninecode.sp
 
-case class HouseService (
+case class HouseService
+(
     mRID: String,
     name: String,
     aliasName: String,

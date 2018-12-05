@@ -46,10 +46,10 @@ class SpatialSuite extends FunSuite
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
-        val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
+        val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
+        context.read.format ("ch.ninecode.cim").options (options).load (files: _*)
     }
 
     test ("Basic")
