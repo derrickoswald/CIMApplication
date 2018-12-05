@@ -61,5 +61,4 @@ class SmartMeterSuite extends FunSuite
         session: SparkSession ⇒
             println ("placeholder")
     }
-
 }
