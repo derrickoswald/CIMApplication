@@ -13,8 +13,6 @@ import ch.ninecode.cim.CIMClasses
 
 class SpatialSuite extends FunSuite
 {
-    val FILE_DEPOT = "private_data/"
-
     type FixtureParam = SparkSession
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -51,54 +49,13 @@ class SpatialSuite extends FunSuite
         val options = new HashMap[String, String] ().asInstanceOf[Map[String,String]]
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        //options.put ("ch.ninecode.cim.do_join", "true")
         context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
     }
 
     test ("Basic")
     {
         session: SparkSession ⇒
-
-        val start = System.nanoTime ()
-
-        val filename =
-        FILE_DEPOT + "NIS_CIM_Export_sias_current_20161220_Brügg bei Biel_V11" + ".rdf"
-        //  "," +
-        // FILE_DEPOT + "ISU_CIM_Export_20160505" + ".rdf"
-        val elements = readFile (session.sqlContext, filename)
-        println (elements.count () + " elements")
-        val read = System.nanoTime ()
-
-        val spatial = new ch.ninecode.sp.SpatialOperations ()
-        val results = spatial.nearest (session, SpatialOperationParameters (lon=7.281558,lat=47.124142))
-        val array = results.collect ()
-
-        val process1 = System.nanoTime ()
-
-        val results2 = spatial.nearest (session, SpatialOperationParameters (lon=7.301368,lat=47.104892))
-        val array2 = results2.collect ()
-
-        val process2 = System.nanoTime ()
-
-        var text = array (0).toString ()
-        println (text)
-        // [[[[[[null,HAS164036],269859107:nis_el_house_service,null,HAS164036,HAS164036],null,_location_654219_565962113_269859109,PSRType_Unknown],false,false,_line_ABG23661|HAS164036|KLE457618],BaseVoltage_400,null,null,null],0,false,0.0,0.0,0.0,null,0.0,0.0,0.0,null,null,null]
-        assert (text.contains ("HAS164036"))
-
-        text = array2 (0).toString ()
-        println (text)
-        // [[[[[[null,HAS42693],209444066:nis_el_house_service,null,HAS42693,HAS42693],null,_location_655173_976061239_209444068,PSRType_Unknown],false,false,_line_ABG159742|HAS42693|KLE97274],BaseVoltage_400,null,null,null],0,false,0.0,0.0,0.0,null,0.0,0.0,0.0,null,null,null]
-        assert (text.contains ("HAS42693"))
-
-        println ("read : " + (read - start) / 1e9 + " seconds")
-        println ("process first location: " + (process1 - read) / 1e9 + " seconds")
-        println ("process second location: " + (process2 - process1) / 1e9 + " seconds")
-        println ()
-
-        // setup : 5.444885289 seconds
-        // read : 3.575346462 seconds
-        // process first location: 22.219852666 seconds
-        // process second location: 2.911512529 seconds
+            println ("placeholder")
     }
 
 }
