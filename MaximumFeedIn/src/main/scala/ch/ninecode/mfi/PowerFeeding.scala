@@ -119,7 +119,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
-    def calc_max_feeding_power (cosphi: Double)(args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
+    def calc_max_feeding_power (options: EinspeiseleistungOptions) (args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
     {
         val node: PowerFeedingNode = args._1
         val mrid = args._2.map (_._1).orNull
@@ -132,8 +132,9 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val trafo_ratedS = node.source_obj.ratedS
         val trafo_z = node.source_obj.z.re
         val z_summe = math.sqrt (3) * z + trafo_z
+        val threshold = options.voltage_threshold / 100.0
 
-        val p_max_u = math.sqrt (3) * 1.03 * 0.03 * v * v / z_summe.modulus * cosphi
+        val p_max_u = math.sqrt (3) * (1 + threshold) * threshold * v * v / z_summe.modulus * options.cosphi
         val p_max_i = math.sqrt (3) * min_ir * (v + z_summe.modulus * min_ir)
         val (p_max, reason, details) =
             if (null != node.problem)
@@ -155,12 +156,12 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         string.substring (0, string.indexOf ("_"))
     }
 
-    def get_threshold_per_has (nodes: RDD[PowerFeedingNode], cosphi: Double): RDD[MaxPowerFeedingNodeEEA] =
+    def get_threshold_per_has (nodes: RDD[PowerFeedingNode], options: EinspeiseleistungOptions): RDD[MaxPowerFeedingNodeEEA] =
     {
         val houses = nodes.filter (_.sum_z.re > 0.0)
         val psrtype = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
             .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, (x._2._2.id, x._2._2.Equipment.PowerSystemResource.PSRType)))
-        houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (cosphi))
+        houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (options))
     }
 
     def trafo_mapping (transformers: TransformerSet): StartingTrafo =
@@ -204,11 +205,11 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         ret
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], cosphi: Double): PreCalculationResults =
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], options: EinspeiseleistungOptions): PreCalculationResults =
     {
 
         val graph = trace (initial, transformers.map (trafo_mapping), feeders)
-        val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null), cosphi)
+        val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null), options)
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
         val has = traced_house_nodes_EEA.map (node =>

@@ -85,7 +85,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val details = arg._3
             val steps = Math.round ((data.millis - experiment.t1.getTimeInMillis) / (experiment.interval * 1000))
             val ok_steps = if (0 < steps) steps - 1 else 0 // subtract off the mandatory first zero step required by GridLAB-D
-        val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
+            val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match
             {
                 case None ⇒
@@ -121,26 +121,31 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     val overvoltage: (ThreePhaseComplexDataElement, Double) ⇒ Boolean = if (options.three) overvoltage_three_phase else overvoltage_one_phase
 
-    def voltcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], max: Double, neighbormax: Double, feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+    def voltcheck (experiments: Iterable[Experiment], options: EinspeiseleistungOptions, elements: Iterable[ThreePhaseComplexDataElement], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
         val limit = "voltage limit"
 
         // look up node to get feeder (discard duplicates, all nodes have a single feeder)
         val lookup = feeders.toMap
+
+        val nominal = 400.0 // ToDo: get voltage from CIM
+        val max = nominal * (1.0 + (options.voltage_threshold / 100.0))
+        val neighbormax = nominal * (1.0 + (options.voltage_threshold2 / 100.0))
+        // could also check for under the minimum; r.value_a.abs < min
+
         // assign an experiment to each measurement - if it's over-voltage
         elements.filter (x ⇒ (x.units == "Volts") && overvoltage (x, Math.min (max, neighbormax))).flatMap (
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
-                    threshold = if (null == feeder) max else
-                        if (feeder == e.feeder) max else neighbormax
+                    threshold = if (null == feeder) max else if (feeder == e.feeder) max else neighbormax
                     if overvoltage (x, threshold)
                 }
-                    yield (e, x, limit, x.element + " > " + threshold + " Volts")
+                yield (e, x, limit, x.element + " > " + threshold + " Volts")
             }
         )
     }
@@ -151,17 +156,23 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     val overcurrent: (ThreePhaseComplexDataElement, Double) ⇒ Boolean = if (options.three) overcurrent_three_phase else overcurrent_one_phase
 
-    def ampcheck (experiments: Iterable[Experiment], elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
+    def ampcheck (experiments: Iterable[Experiment], options: EinspeiseleistungOptions, elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
         val limit = "current limit"
 
         // look up node to get feeders
-        val lookup = new HashMap[String, List[String]]()
-        for (pair ← feeders)
+        val lookup = if (options.ignore_other)
+            null
+        else
         {
-            val l = lookup.getOrElse (pair._1, List ())
-            if (!l.contains (pair._2))
-                lookup.put (pair._1, l :+ pair._2)
+            val map = new HashMap[String, List[String]]()
+            for (pair ← feeders)
+            {
+                val l = map.getOrElse (pair._1, List ())
+                if (!l.contains (pair._2))
+                    map.put (pair._1, l :+ pair._2)
+            }
+            map
         }
 
         // look up cable to get current rating
@@ -172,15 +183,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
-                    feeders = lookup.getOrElse (x.element, List ())
-                    if feeders.contains (e.feeder)
+                    if options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
                     threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
                     if overcurrent (x, threshold)
                 }
-                    yield (e, x, limit, x.element + " > " + threshold + " Amps")
+                yield (e, x, limit, x.element + " > " + threshold + " Amps")
             }
         )
     }
@@ -223,23 +233,16 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
         val i = if (options.three) power / (400.0 * math.sqrt (3)) else power / 400.0 // ToDo: remove hard-coded voltage
-    val overI = elements.filter (if (options.three) interesting3ph (i) else interesting1ph (i))
+        val overI = elements.filter (if (options.three) interesting3ph (i) else interesting1ph (i))
         overI.flatMap (assign (experiments))
     }
 
-    def analyse (trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+    def analyse (options: EinspeiseleistungOptions) (trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
     {
         // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
         val trafo_power = trafo._2._1._1
         val cdata = trafo._2._1._2
         val feeders = trafo._2._1._3
-
-        val nominal = 400.0 // ToDo: get voltage from CIM
-    val tolerance = 3.0 // same feeder tolerance
-    val max = nominal + (nominal * tolerance / 100.0)
-        val neighbortolerance = 5.0 // neighboring feeder tolerance
-    val neighbormax = nominal + (nominal * neighbortolerance / 100.0)
-        // could also check for under the minimum; r.value_a.abs < min
 
         // get the name of the transformer recorder (matches Trans.emit)
         val trafo_name = trafo._1
@@ -249,8 +252,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             val experiments = trafo._2._2._2
 
-            val v = voltcheck (experiments, complexDataElements, max, neighbormax, feeders)
-            val i = ampcheck (experiments, complexDataElements, cdata, feeders)
+            val v = voltcheck (experiments, options, complexDataElements, feeders)
+            val i = ampcheck (experiments, options, complexDataElements, cdata, feeders)
             val p = powercheck (experiments, complexDataElements, trafo_power, trafo_name)
 
             // establish a "no limit found" default
@@ -290,7 +293,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
         val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
-        val ret = prepared_results.flatMap (analyse)
+        val ret = prepared_results.flatMap (analyse (options))
         val anal = System.nanoTime ()
         log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
         ret
@@ -306,22 +309,23 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val phi = acos (math.abs (options.cosphi)) + angle
         val cosphi = math.cos (phi)
         val sinphi = math.signum (options.cosphi) * sin (phi) // ToDo: check this for three phase
-    def addrow (time: Calendar, power: Double, angle: Double): Unit =
-    {
-        val maxP = -new Complex (power * cosphi, power * sinphi)
-        ret.append (_DateFormat.format (time.getTime))
-        ret.append (",")
-        if (!options.three)
-            ret.append (maxP.asString (6))
-        else
-            ret.append ((maxP / 3).asString (6)) // negative load injects power, 1/3 per phase
-        ret.append ("\n")
-        time.add (Calendar.SECOND, exp.interval)
-    }
+
+        def addrow (time: Calendar, power: Double, angle: Double): Unit =
+        {
+            val maxP = -new Complex (power * cosphi, power * sinphi)
+            ret.append (_DateFormat.format (time.getTime))
+            ret.append (",")
+            if (!options.three)
+                ret.append (maxP.asString (6))
+            else
+                ret.append ((maxP / 3).asString (6)) // negative load injects power, 1/3 per phase
+            ret.append ("\n")
+            time.add (Calendar.SECOND, exp.interval)
+        }
 
         val time = exp.t1
         addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-    var power = exp.from
+        var power = exp.from
         while (power <= exp.to)
         {
             addrow (time, power, angle)
@@ -546,7 +550,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level)
-            pf.threshold_calculation (initial, sdata, transformers, options.cosphi)
+            pf.threshold_calculation (initial, sdata, transformers, options)
         }
 
         val houses = if (options.all)

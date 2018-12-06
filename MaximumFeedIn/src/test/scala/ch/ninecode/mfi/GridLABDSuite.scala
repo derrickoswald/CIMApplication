@@ -75,6 +75,9 @@ class GridLABDSuite extends FunSuite
                 delta = 1e-6,
                 precalc_factor = 1.5,
                 cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
                 workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
                 files = List (filename)
             )
@@ -134,6 +137,9 @@ class GridLABDSuite extends FunSuite
                 delta = 1e-6,
                 precalc_factor = 1.5,
                 cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
                 workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
                 files = List (filename)
             )

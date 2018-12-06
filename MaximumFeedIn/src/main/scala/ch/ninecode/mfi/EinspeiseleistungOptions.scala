@@ -17,6 +17,9 @@ import scala.collection.mutable.HashMap
  * @param reference          The prior simulation number to determine if the photo-voltaic installation status is changed. Default -1 - use the current precalculation simulation.
  * @param delta              The difference threshold to determine if the maximum feed-in power has changed between precalculations. Default 1.0e-6.
  * @param cosphi             The maximum feed-in power factor, i.e. the power factor for new photo-voltaic installations, +lagging, -leading. Default 1.0.
+ * @param voltage_threshold  the voltage threshold for the feeder of the house under test. Default 3.0 (3%).
+ * @param voltage_threshold2 the voltage threshold to be used for neighboring feeders of the house under test. Default 3.0 (3%).
+ * @param ignore_other       whether to check cable currents on neighboring feeders of the house under test. Default false.
  * @param workdir            The shared directory (among Spark executors) to use for staging GridLAB-D simulations. Each simulation is created in a subdirectory of this directory.
  * @param files              The list of input CIM files (RDF).
  * @param precalc_factor     The scale factor to apply to precalculation maximum values - which is used as an upper bound for the stepped simulation calculation. Default 1.5.
@@ -35,6 +38,9 @@ case class EinspeiseleistungOptions
     reference: Int = -1,
     delta: Double = 1e-6,
     cosphi: Double = 1.0,
+    voltage_threshold: Double = 3.0,
+    voltage_threshold2: Double = 3.0,
+    ignore_other: Boolean = false,
     workdir: String = "",
     files: Seq[String] = Seq (),
     precalc_factor: Double = 1.5

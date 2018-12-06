@@ -84,6 +84,9 @@ object Main
         delta: Double = 1e-6,
         precalc_factor: Double = 1.5,
         cosphi: Double = 1.0,
+        voltage_threshold: Double = 3.0,
+        voltage_threshold2: Double = 3.0,
+        ignore_other: Boolean = false,
         workdir: String = "",
         files: Seq[String] = Seq ()
     )
@@ -191,6 +194,18 @@ object Main
         opt [Double]("cosphi").valueName ("D").
             action ((x, c) => c.copy (cosphi = x)).
             text ("power factor for new photo-voltaic installations [%g]".format (default.cosphi))
+
+        opt [Double]("voltage_threshold").valueName ("D").
+            action ((x, c) => c.copy (voltage_threshold = x)).
+            text ("the voltage threshold for the feeder of the house under test [%g%%]".format (default.voltage_threshold))
+
+        opt [Double]("voltage_threshold2").valueName ("D").
+            action ((x, c) => c.copy (voltage_threshold2 = x)).
+            text ("the voltage threshold for neighboring feeders of the house under test [%g%%]".format (default.voltage_threshold2))
+
+        opt [Unit]("ignore_other").
+            action ((_, c) => c.copy (ignore_other = true)).
+            text ("ignore cable currents on neighboring feeders [false]")
 
         opt [String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -320,6 +335,9 @@ object Main
                         reference = arguments.reference,
                         delta = arguments.delta,
                         cosphi = arguments.cosphi,
+                        voltage_threshold = arguments.voltage_threshold,
+                        voltage_threshold2 = arguments.voltage_threshold2,
+                        ignore_other = arguments.ignore_other,
                         workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
                         files = arguments.files,
                         precalc_factor = arguments.precalc_factor
