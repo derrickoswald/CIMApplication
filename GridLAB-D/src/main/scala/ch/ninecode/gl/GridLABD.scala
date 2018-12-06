@@ -401,7 +401,7 @@ class GridLABD
         xnodes.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
-            xedges.checkpoint ();
+            xedges.checkpoint ()
             xnodes.checkpoint ()
         }
 
@@ -421,18 +421,18 @@ class GridLABD
         writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
     }
 
-    def check (input: String): Boolean =
+    def check (input: String): (Boolean, List[String]) =
     {
         if (input.contains ("FATAL") || input.contains ("ERROR") || input.contains ("FAIL") || input.contains ("command not found"))
         {
             log.error ("gridlabd failed, message is: " + input)
-            false
+            (false, input.split ("\n").toList)
         }
         else
-            true
+            (true, null)
     }
 
-    def solve (files: RDD[String]): Boolean =
+    def solve (files: RDD[String]): (Boolean, List[String])=
     {
         // assumes gridlabd is installed on every node:
         // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
@@ -462,7 +462,7 @@ class GridLABD
                             "export FILE=$line; " +
                             "ulimit -Sn `ulimit -Hn`; " +
                             "pushd " + workdir_path + "$FILE; " +
-                            "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                            "gridlabd --quiet $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                             "cat output_data/* > output.txt; " +
                             "cat $FILE.out; " +
                             "popd; " +
@@ -481,7 +481,7 @@ class GridLABD
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
-                        "gridlabd $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                        "gridlabd --quiet $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                         "cat output_data/* > output.txt; " +
                         "popd; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt " + workdir_path + "$FILE; " +
@@ -493,7 +493,8 @@ class GridLABD
 
 
         val out = files.pipe (gridlabd)
-        out.map (check).fold (true)(_ && _)
+        // take only the first error message
+        out.map (check).fold ((true, List[String]())) ((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
     }
 
     def default_filenameparser (filename: String): (String, String) =

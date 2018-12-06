@@ -237,7 +237,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         overI.flatMap (assign (experiments))
     }
 
-    def analyse (options: EinspeiseleistungOptions) (trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+    def analyse (options: EinspeiseleistungOptions, errors: List[String]) (trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
     {
         // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
         val trafo_power = trafo._2._1._1
@@ -277,7 +277,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
-            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, "gridlab failed", "no results")).toList
+        {
+            val error = errors.find (_.startsWith (trafo_name)).getOrElse ("")
+            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, "gridlab failed %s".format (error), "no results")).toList
+        }
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)], Iterable[(String, String)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
@@ -285,15 +288,18 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val b4_solve = System.nanoTime ()
         val success = gridlabd.solve (reduced_trafos.map (_._1))
         val solved = System.nanoTime ()
-        if (success)
-            log.info ("solve: " + (solved - b4_solve) / 1e9 + " seconds successful")
+        if (success._1)
+            log.info ("solve: %s seconds successful".format ((solved - b4_solve) / 1e9))
         else
-            log.error ("solve: " + (solved - b4_solve) / 1e9 + " seconds failed")
+        {
+            log.error ("solve: %s seconds failed".format ((solved - b4_solve) / 1e9))
+            success._2.foreach (log.error)
+        }
         val output = gridlabd.read_output_files (!options.three)
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
         val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
-        val ret = prepared_results.flatMap (analyse (options))
+        val ret = prepared_results.flatMap (analyse (options, success._2))
         val anal = System.nanoTime ()
         log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
         ret
