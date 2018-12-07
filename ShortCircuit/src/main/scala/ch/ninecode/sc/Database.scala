@@ -112,9 +112,10 @@ object Database
                   |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
                   |    sk double,                            -- short-circuit power at the point of common coupling (VA)
                   |    fuses text,                           -- fuse values from the source (primary of feeding transformer) to this node (A)
-                  |    last_fuses text,                      -- comma separated list of fuses connected directly to the node (A)
-                  |    fusemax double,                       -- maximum recommended fuse value for the calculated fault current (A)
-                  |    fuseok boolean                        -- evaluation of whether the first fuse is an appropriate value (true) or not (false)
+                  |    last_fuses text,                      -- fuse(s) connected directly to the node (A)
+                  |    iksplit text,                         -- short circuit current(s) (A)
+                  |    fusemax text,                         -- maximum recommended fuse value(s) for the calculated fault current(s) (A)
+                  |    fuseok boolean                        -- evaluation of whether the fuse(s) has(have) appropriate value(s) (true) or not (false)
                   |)""".stripMargin)
             statement.executeUpdate ("create index if not exists nu_equipment_index on nullungsbedingung (equipment)")
             statement.executeUpdate ("create index if not exists nu_run_index on nullungsbedingung (run)")
@@ -192,7 +193,7 @@ object Database
 
                 // insert the results
                 val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 val zipped = records.zipWithIndex
                 var index = 0L
                 var done = false
@@ -262,18 +263,20 @@ object Database
                         {
                             datainsert2.setNull (18, Types.VARCHAR)
                             datainsert2.setNull (19, Types.VARCHAR)
-                            datainsert2.setNull (20, Types.DOUBLE)
-                            datainsert2.setNull (21, Types.BOOLEAN)
+                            datainsert2.setNull (20, Types.VARCHAR)
+                            datainsert2.setNull (21, Types.VARCHAR)
+                            datainsert2.setNull (22, Types.BOOLEAN)
                         }
                         else
                         {
                             datainsert2.setString (18, batch (i).fuseString)
                             datainsert2.setString (19, batch (i).lastFusesString)
-                            datainsert2.setDouble (20, FData.fuse (batch (i).high_ik))
+                            datainsert2.setString (20, batch (i).iksplitString)
+                            datainsert2.setString (21, FData.fuses (batch (i).high_ik, batch (i).fuses))
                             if (FData.lastFuseHasMissingValues (batch (i).fuses))
-                                datainsert2.setNull (21, Types.BOOLEAN)
+                                datainsert2.setNull (22, Types.BOOLEAN)
                             else
-                                datainsert2.setBoolean (21, FData.fuseOK (batch (i).high_ik, batch (i).fuses))
+                                datainsert2.setBoolean (22, FData.fuseOK (batch (i).high_ik, batch (i).fuses))
                         }
                         datainsert2.executeUpdate ()
                     }

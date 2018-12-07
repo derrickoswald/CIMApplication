@@ -174,10 +174,10 @@ class FDataSuite extends FunSuite
     test ("Series Branch within parallel Branch OK")
     {
         val branch =
-            ParallelBranch ("a", "z", 0.0,
+            ParallelBranch ("a", "z", 10.0,
                 List (
                     SimpleBranch ("a", "z", 6.0, "TEI11", Some (50.0)),
-                    SeriesBranch ("a", "z", 0.0,
+                    SeriesBranch ("a", "z", 4.0,
                         Seq (
                             SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
                             SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
@@ -438,4 +438,21 @@ class FDataSuite extends FunSuite
         assert (!FData.lastFuseHasMissingValues (branch2), "last fuses have no missing values")
     }
 
+    test ("Parallel rating")
+    {
+        val branch =
+            ParallelBranch ("a", "z", 10.0,
+                List (
+                    SimpleBranch ("a", "z", 6.0, "TEI11", Some (50.0)),
+                    SeriesBranch ("a", "z", 4.0,
+                        Seq (
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
+                            SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
+                        )
+                    )
+                )
+            )
+
+        assert (FData.fuses (280, branch) == "50.0,40.0", "expected 60:40 split")
+    }
 }

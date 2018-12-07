@@ -74,7 +74,7 @@ case class ScResult
             low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" + costerm + ";" +
             imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
             high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
-            fuseString + ";" + lastFusesString + ";" + FData.fuse (high_ik) + ";" + FData.fuseOK (high_ik, fuses)
+            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + FData.fuses (high_ik, fuses) + ";" + FData.fuseOK (high_ik, fuses)
 
     def fuseString: String =
     {
@@ -93,9 +93,18 @@ case class ScResult
             fuses.lastFuses.map (_.asFuse).mkString (",")
         s
     }
+
+    def iksplitString: String =
+    {
+        val s = if (null == fuses)
+            ""
+        else
+            fuses.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
+        s
+    }
 }
 
 object ScResult
 {
-    val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;fusemax;fuseOK"
+    val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;iksplit;fusemax;fuseOK"
 }

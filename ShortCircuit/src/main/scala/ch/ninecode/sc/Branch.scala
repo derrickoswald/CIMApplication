@@ -82,6 +82,9 @@ abstract class Branch (val from: String, val to: String, val current: Double)
         else
             throw new IllegalArgumentException ("branches are not in parallel (%s, %s)".format (this, those.map (_.toString).mkString (", ")))
     }
+
+    // ratios of currents with the branch that the portion applies to
+    def ratios: Iterable[(Double, Branch)]
 }
 
 /**
@@ -112,6 +115,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
 
     def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
+
+    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 }
 
 /**
@@ -152,6 +157,8 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     }
 
     def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
+
+    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 }
 
 /**
@@ -192,6 +199,16 @@ case class ParallelBranch (override val from: String, override val to: String, o
     }
 
     def reverse: Branch = ParallelBranch (to, from, current, parallel.map (_.reverse))
+
+    def ratios: Iterable[(Double, Branch)] =
+    {
+        val currents = parallel.map (_.current)
+        val sum = currents.sum
+        if (0.0 == sum)
+            parallel.map (x ⇒ (1.0 / parallel.size, x)) // split equally
+        else
+            parallel.map (x ⇒ (x.current / sum, x))
+    }
 }
 
 object Branch

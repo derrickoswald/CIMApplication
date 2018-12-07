@@ -74,42 +74,54 @@ object FData
         rating
     }
 
-    def fuseOK (ik: Double, fuses: Branch): Boolean =
+    def fuses (ik: Double, branches: Branch): String =
     {
-        if (null == fuses)
+        val rating = if (ik.isNaN || (null == branches))
+            recommended.last.Rating.toString
+        else
+            branches.ratios.map (_._1 * Math.abs (ik)).map (x ⇒ recommended.filter (_.Ik <= x).last.Rating).mkString (",")
+        rating
+    }
+
+    def fuseOK (ik: Double, branches: Branch): Boolean =
+    {
+        if (null == branches)
             false
         else
         {
-            val ok = fuses match
+            val status: Iterable[Boolean] = for
             {
-                case sim: SimpleBranch ⇒
-                    val rating = sim.rating.getOrElse (Double.MaxValue)
-                    if (0.0 == rating)
-                        false
-                    else
-                        fuse (ik) >= sim.rating.getOrElse (Double.MaxValue)
-                case ser: SeriesBranch ⇒
-                    fuseOK (ik, ser.seq.last)
-                case par: ParallelBranch ⇒
-                    // split the current according to the ratio of currents,
-                    // or fall back to just divided equally among fuses
-                    val last = par.lastFuses
-                    val count = last.size
-                    val split = if (0 == count) 1.0 else 1.0 / count
-                    val total = last.map (_.current).sum
-                    last.forall (x ⇒ fuseOK (ik * (if (0.0 == total) split else x.current / total), x))
+                pair ← branches.ratios
+                current = pair._1 * Math.abs (ik)
+                ok = if (current.isNaN)
+                    false
+                else
+                    pair._2 match
+                    {
+                        case sim: SimpleBranch ⇒
+                            val rating = sim.rating.getOrElse (Double.MaxValue)
+                            if (0.0 == rating)
+                                false
+                            else
+                                fuse (current) >= rating
+                        case ser: SeriesBranch ⇒
+                            fuseOK (current, ser.seq.last)
+                        case par: ParallelBranch ⇒
+                            fuseOK (current, par)
+                    }
             }
-            ok
+            yield ok
+            status.forall (x ⇒ x)
         }
     }
 
-    def lastFuseHasMissingValues (fuses: Branch): Boolean =
+    def lastFuseHasMissingValues (branches: Branch): Boolean =
     {
-        if (null == fuses)
+        if (null == branches)
             false
         else
         {
-            val missing = fuses match
+            val missing = branches match
             {
                 case sim: SimpleBranch ⇒ sim.rating.getOrElse (Double.MinValue) <= 0.0
                 case ser: SeriesBranch ⇒ ser.lastFuses.exists (lastFuseHasMissingValues)
