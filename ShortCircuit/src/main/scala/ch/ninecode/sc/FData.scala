@@ -77,9 +77,9 @@ object FData
     def fuses (ik: Double, branches: Branch): String =
     {
         val rating = if (ik.isNaN || (null == branches))
-            recommended.last.Rating.toString
+            recommended.last.Rating.toInt.toString
         else
-            branches.ratios.map (_._1 * Math.abs (ik)).map (x ⇒ recommended.filter (_.Ik <= x).last.Rating).mkString (",")
+            branches.ratios.map (_._1 * Math.abs (ik)).map (x ⇒ recommended.filter (_.Ik <= x).last.Rating.toInt).mkString (",")
         rating
     }
 

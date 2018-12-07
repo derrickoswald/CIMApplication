@@ -102,7 +102,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def asString: String = "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
-    def asFuse: String = rating.getOrElse (0.0).toString
+    def asFuse: String = rating.getOrElse (0.0).toInt.toString
 
     def seq: Seq[SimpleBranch] = Seq (this)
 

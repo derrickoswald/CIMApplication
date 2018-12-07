@@ -453,6 +453,6 @@ class FDataSuite extends FunSuite
                 )
             )
 
-        assert (FData.fuses (280, branch) == "50.0,40.0", "expected 60:40 split")
+        assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
     }
 }
