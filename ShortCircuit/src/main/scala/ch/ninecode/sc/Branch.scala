@@ -158,7 +158,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
 
-    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+    def ratios: Iterable[(Double, Branch)] = series.last.ratios
 }
 
 /**

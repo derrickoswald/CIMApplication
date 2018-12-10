@@ -118,7 +118,7 @@ object FData
     def lastFuseHasMissingValues (branches: Branch): Boolean =
     {
         if (null == branches)
-            false
+            true
         else
         {
             val missing = branches match

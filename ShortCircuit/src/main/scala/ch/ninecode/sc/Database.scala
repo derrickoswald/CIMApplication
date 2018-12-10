@@ -272,11 +272,11 @@ object Database
                             datainsert2.setString (18, batch (i).fuseString)
                             datainsert2.setString (19, batch (i).lastFusesString)
                             datainsert2.setString (20, batch (i).iksplitString)
-                            datainsert2.setString (21, FData.fuses (batch (i).high_ik, batch (i).fuses))
-                            if (FData.lastFuseHasMissingValues (batch (i).fuses))
+                            datainsert2.setString (21, batch (i).fuseMax)
+                            if (batch (i).lastFuseHasMissingValues)
                                 datainsert2.setNull (22, Types.BOOLEAN)
                             else
-                                datainsert2.setBoolean (22, FData.fuseOK (batch (i).high_ik, batch (i).fuses))
+                                datainsert2.setBoolean (22, batch (i).fuseOK)
                         }
                         datainsert2.executeUpdate ()
                     }

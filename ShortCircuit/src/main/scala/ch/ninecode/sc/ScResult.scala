@@ -74,7 +74,7 @@ case class ScResult
             low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" + costerm + ";" +
             imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
             high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
-            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + FData.fuses (high_ik, fuses) + ";" + FData.fuseOK (high_ik, fuses)
+            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + fuseMax + ";" + fuseOK
 
     def fuseString: String =
     {
@@ -101,6 +101,29 @@ case class ScResult
         else
             fuses.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
         s
+    }
+
+    def fuseMax: String =
+    {
+        val s = if (null == fuses)
+            ""
+        else
+            FData.fuses (high_ik, fuses)
+        s
+    }
+
+    def lastFuseHasMissingValues: Boolean =
+    {
+        FData.lastFuseHasMissingValues (fuses)
+    }
+
+    def fuseOK: Boolean =
+    {
+        val b = if (null == fuses)
+            false
+        else
+            FData.fuseOK (high_ik, fuses)
+        b
     }
 }
 

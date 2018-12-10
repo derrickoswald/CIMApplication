@@ -452,7 +452,129 @@ class FDataSuite extends FunSuite
                     )
                 )
             )
-
+        assert (branch.asFuse == "[50,(50,40)]", "asFuse")
         assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
+
+        val scr = ScResult (
+            node = "test",
+            equipment = "house",
+            terminal = 1,
+            container = null,
+            errors = List(),
+            tx = "TRAXXX",
+            prev = "previous",
+            costerm = 1.0,
+            low_r = 0.0,
+            low_x = 0.0,
+            low_r0 = 0.0,
+            low_x0 = 0.0,
+            high_ik = 280.0,
+            high_r = 0.0,
+            high_x = 0.0,
+            high_r0 = 0.0,
+            high_x0 = 0.0,
+            fuses = branch
+        )
+        assert (scr.iksplitString == "168.0,112.0", "ik split")
+        assert (scr.fuseString == "[50,(50,40)]", "fuseString")
+        assert (scr.lastFusesString == "50,40", "fuseString")
+        assert (scr.fuseMax == "50,40", "expected 60:40 split")
+        assert (scr.fuseOK, "expected OK")
+    }
+
+    test ("Series wrapped parallel rating")
+    {
+        val branch =
+            SeriesBranch ("wrap", "up", 10.0,
+                Seq (
+                    ParallelBranch ("a", "z", 10.0,
+                        List (
+                            SimpleBranch ("a", "z", 6.0, "TEI11", Some (50.0)),
+                            SeriesBranch ("a", "z", 4.0,
+                                Seq (
+                                    SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
+                                    SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        assert (branch.asFuse == "([50,(50,40)])", "asFuse")
+        assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
+
+        val scr = ScResult (
+            node = "test",
+            equipment = "house",
+            terminal = 1,
+            container = null,
+            errors = List(),
+            tx = "TRAXXX",
+            prev = "previous",
+            costerm = 1.0,
+            low_r = 0.0,
+            low_x = 0.0,
+            low_r0 = 0.0,
+            low_x0 = 0.0,
+            high_ik = 280.0,
+            high_r = 0.0,
+            high_x = 0.0,
+            high_r0 = 0.0,
+            high_x0 = 0.0,
+            fuses = branch
+        )
+        assert (scr.fuseString == "([50,(50,40)])", "fuseString")
+        assert (scr.iksplitString == "168.0,112.0", "ik split")
+        assert (scr.lastFusesString == "50,40", "fuseString")
+        assert (scr.fuseMax == "50,40", "expected 60:40 split")
+        assert (scr.fuseOK, "expected OK")
+    }
+
+    test ("Series wrapped parallel rating not OK")
+    {
+        val branch =
+            SeriesBranch ("wrap", "up", 10.0,
+                Seq (
+                    ParallelBranch ("a", "z", 10.0,
+                        List (
+                            SimpleBranch ("a", "z", 5.0, "TEI11", Some (50.0)),
+                            SeriesBranch ("a", "z", 5.0,
+                                Seq (
+                                    SimpleBranch ("a", "z", 5.0, "TEI21", Some (50.0)),
+                                    SimpleBranch ("a", "z", 5.0, "TEI21", Some (80.0))
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        assert (branch.asFuse == "([50,(50,80)])", "asFuse")
+        assert (FData.fuses (280, branch) == "50,50", "expected 50:50 split")
+
+        val scr = ScResult (
+            node = "test",
+            equipment = "house",
+            terminal = 1,
+            container = null,
+            errors = List(),
+            tx = "TRAXXX",
+            prev = "previous",
+            costerm = 1.0,
+            low_r = 0.0,
+            low_x = 0.0,
+            low_r0 = 0.0,
+            low_x0 = 0.0,
+            high_ik = 280.0,
+            high_r = 0.0,
+            high_x = 0.0,
+            high_r0 = 0.0,
+            high_x0 = 0.0,
+            fuses = branch
+        )
+        assert (scr.fuseString == "([50,(50,80)])", "fuseString")
+        assert (scr.iksplitString == "140.0,140.0", "ik split")
+        assert (scr.lastFusesString == "50,80", "fuseString")
+        assert (scr.fuseMax == "50,50", "expected 50:50 split")
+        assert (!scr.fuseOK, "expected not OK")
     }
 }
