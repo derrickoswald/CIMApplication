@@ -130,7 +130,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
 
     test ("Error")
     {
-        class broken extends GLMGenerator
+        class broken1 extends GLMGenerator
         {
             val date_format: SimpleDateFormat =
             {
@@ -139,6 +139,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
                 format
             }
 
+            override def name: String = "broken1"
             override def prefix: String =
             {
                 val t0 = date_format.format (start_time.getTime)
@@ -152,11 +153,56 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
                       |
                       |        module powerflow
                       |        {
-                      |            solver_method bogus;
+                      |            solver_method foo;
                       |            default_maximum_voltage_error 10e-6;
                       |            NR_iteration_limit 500;
                       |            NR_superLU_procs 16;
                       |            nominal_frequency 50;
+                      |        };
+                      |
+                      |        clock
+                      |        {
+                      |            timezone "%s";
+                      |            starttime "%s";
+                      |            stoptime "%s";
+                      |        };
+                      |
+                      |        class player
+                      |        {
+                      |            complex value;
+                      |        };
+                      |""".stripMargin.format (name, header, tzString, t0, t1)
+                preamble
+            }
+        }
+        class broken2 extends GLMGenerator
+        {
+            val date_format: SimpleDateFormat =
+            {
+                val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+                format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+                format
+            }
+
+            override def name: String = "broken2"
+            override def prefix: String =
+            {
+                val t0 = date_format.format (start_time.getTime)
+                val t1 = date_format.format (finish_time.getTime)
+                val preamble =
+                    """// %s.glm
+                      |// %s
+                      |//*********************************************
+                      |
+                      |        module tape;
+                      |
+                      |        module powerflow
+                      |        {
+                      |            solver_method bar;
+                      |            default_maximum_voltage_error 10e-6;
+                      |            NR_iteration_limit 500;
+                      |            NR_superLU_procs 16;
+                      |            nominal_frequency "50";
                       |        };
                       |
                       |        clock
@@ -195,21 +241,24 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
-            val gen = new broken ()
+            val gen1 = new broken1 ()
+            val gen2 = new broken2 ()
             val gridlabd = new GridLABD (session, workdir = "target/")
-            gridlabd.export (gen)
+            gridlabd.export (gen1)
+            gridlabd.export (gen2)
 
             val generate = System.nanoTime ()
             println ("generate: " + (generate - read) / 1e9 + " seconds")
 
-            val glm = session.sparkContext.parallelize (List (gen.name))
+            val glm = session.sparkContext.parallelize (List (gen1.name, gen2.name))
             val results = gridlabd.solve (glm)
 
             val solve = System.nanoTime ()
             println ("generate: " + (solve - generate) / 1e9 + " seconds")
 
             assert (!results._1, "should fail")
-            assert (results._2.head == "gridlabd ERROR    [INIT] : keyword 'bogus' is not valid for property powerflow::solver_method", "bogus")
+            assert (results._2.head == "broken2 ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method", "bar")
+            assert (results._2.tail.head == "broken1 ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method", "foo")
 
             println ("total: " + (solve - start) / 1e9 + " seconds")
     }
