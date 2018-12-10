@@ -80,5 +80,5 @@ case class TransformerData
     def nodes: Array[String] = terminals.map (_.TopologicalNode)
 
     /** @return a summary string for the transformer */
-    def asString: String = "%s %s %gkVA %s %s".format (transformer.id, if (null != station) station.id else "", end0.ratedS / 1000.0, voltages.map (_._2 * 1000.0).mkString (":"), nodes.mkString (":"))
+    def asString: String = "%s %s %skVA %s %s".format (transformer.id, if (null != station) station.id else "", (end0.ratedS / 1000.0).toInt.toString, voltages.map (_._2.toInt).mkString (":"), nodes.mkString (":"))
 }
