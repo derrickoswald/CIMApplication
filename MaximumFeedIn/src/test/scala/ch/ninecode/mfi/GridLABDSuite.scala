@@ -221,7 +221,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
     }
 
     /**
-     * Test for the correct current limit on a parallel set of cables.
+     * Test for equality of precalculation and load-flow feed in values.
      */
     test ("Basic")
     {

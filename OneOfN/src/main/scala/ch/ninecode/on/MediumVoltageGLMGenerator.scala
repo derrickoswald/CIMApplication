@@ -24,7 +24,7 @@ case class MediumVoltageGLMGenerator
 
     override def finish_time: Calendar = ust.finish_time
 
-    override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ ust.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
+    override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, ust.toTransformerEdge))
 
     override def transformers: Iterable[TransformerEdge] = ust.transformers.map (x ⇒ TransformerEdge (x.node0, x.node1, x))
 

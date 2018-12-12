@@ -1,20 +1,9 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.Breaker
-import ch.ninecode.model.Conductor
-import ch.ninecode.model.Cut
-import ch.ninecode.model.Disconnector
-import ch.ninecode.model.Element
-import ch.ninecode.model.Fuse
-import ch.ninecode.model.GroundDisconnector
-import ch.ninecode.model.Jumper
-import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.MktSwitch
-import ch.ninecode.model.ProtectedSwitch
-import ch.ninecode.model.Recloser
-import ch.ninecode.model.Sectionaliser
-import ch.ninecode.model.Switch
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import ch.ninecode.model._
 
 /**
  * Basic properties of an edge.
@@ -92,6 +81,25 @@ trait GLMEdge extends Graphable with Serializable
 
 object GLMEdge
 {
+    val log: Logger = LoggerFactory.getLogger (getClass)
+    val rootClass:String = ConductingEquipment.getClass.getName.replace ("$", "")
+
+    def classname (element: Element): String =
+    {
+        val clazz = element.getClass.getName
+        clazz.substring (clazz.lastIndexOf (".") + 1)
+    }
+
+    def baseClass (element: Element): String =
+    {
+        var ret = element
+
+        while ((null != ret.sup) && (ret.sup.getClass.getName != rootClass))
+            ret = ret.sup
+
+        classname (ret)
+    }
+
     def multiconductor (element: Element): ACLineSegment =
     {
         element match
@@ -111,62 +119,40 @@ object GLMEdge
      *   - Island trace results
      *   - multi-island trace results
      *
-     * @param elements
-     * @param cn1
-     * @param cn2
+     * @param elements the CIM elements comprising the edge
+     * @param cn1 the TopologicalNode id of one end of the edge
+     * @param cn2 the TopologicalNode id of the other end of the edge
      * @return a type of edge
      */
-    def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
+    def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
+       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = (elements: Iterable[Element], cn1: String, cn2: String) ⇒ TransformerEdge (cn1, cn2, null)): GLMEdge =
     {
-        // ToDo: check that all elements are the same class, e.g. ACLineSegment
-        val element = elements.head
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        // for now, we handle Conductor, Switch and eventually PowerTransformer
+        var tagged = elements.map (x ⇒ (baseClass (x), x))
+
+        // check that all elements are the same base class
+        if (!tagged.tail.forall (x ⇒ x._1 == tagged.head._1))
+        {
+            log.error ("edge from %s to %s has conflicting element types: %s".format (cn1, cn2, tagged.map (x ⇒ "%s(%s:%s)".format (x._1, classname (x._2), x._2.id))).mkString (","))
+            tagged = tagged.take (1)
+        }
+
+        tagged.head._1 match
         {
             case "Switch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Switch], false)
-            case "Cut" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Cut].Switch, false)
-            case "Disconnector" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Disconnector].Switch, false)
-            case "Fuse" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Fuse].Switch, true)
-            case "GroundDisconnector" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [GroundDisconnector].Switch, false)
-            case "Jumper" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Jumper].Switch, false)
-            case "MktSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [MktSwitch].Switch, false)
-            case "ProtectedSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [ProtectedSwitch].Switch, false)
-            case "Breaker" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Breaker].ProtectedSwitch.Switch, false)
-            case "LoadBreakSwitch" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch, false)
-            case "Recloser" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Recloser].ProtectedSwitch.Switch, false)
-            case "Sectionaliser" ⇒
-                SwitchEdge (cn1, cn2, element.asInstanceOf [Sectionaliser].Switch, false)
+                SwitchEdge (cn1, cn2, elements)
             case "Conductor" ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor))
-            //                base_temperature: Double = 20.0,
-            //                target_temperature: Double = 20.0,
-            //                DEFAULT_R: Double = 0.225,
-            //                DEFAULT_X: Double = 0.068
-            case "ACLineSegment" ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor))
-            //                base_temperature: Double = 20.0,
-            //                target_temperature: Double = 20.0,
-            //                DEFAULT_R: Double = 0.225,
-            //                DEFAULT_X: Double = 0.068
+                // base_temperature: Double = 20.0,
+                // DEFAULT_R: Double = 0.225,
+                // DEFAULT_X: Double = 0.068
             case "PowerTransformer" ⇒
-                println ("""edge %s has PowerTransformer class""".format (element.id)) // ToDo: log somehow
-                TransformerEdge (cn1, cn2, null) // ToDo: for ganged transformers and parallel lines we need to match the entire Iterable[Element] to some object like a TranformerSet
+                log.error ("edge from %s to %s has PowerTransformer class: %s".format (cn1, cn2, tagged.map (x ⇒ "%s:%s".format (classname (x._2), x._2.id)).mkString (",")))
+                makeTransformerEdge (elements, cn1, cn2)
             case _ ⇒
-                println ("""edge %s has unhandled class '%s'""".format (element.id, cls)) // ToDo: log somehow
-            case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
-                fakeEdge (element.id, cn1, cn2)
+                log.error ("edge from %s to %s has unhandled class type '%s'".format (cn1, cn2, tagged.head._1))
+                case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
+                fakeEdge (tagged.head._2.id, cn1, cn2)
         }
     }
 }

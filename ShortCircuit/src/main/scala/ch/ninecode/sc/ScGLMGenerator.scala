@@ -177,7 +177,7 @@ case class ScGLMGenerator
         val link = super.emit_edge (edge)
         val size = edge match
         {
-            case sw: SwitchEdge ⇒ if (sw.fuse) """$%s""".format (sw.switch.ratedCurrent) else ""
+            case sw: SwitchEdge ⇒ if (sw.fuse) """$%s""".format (sw.ratedCurrent) else ""
             case _ ⇒ ""
         }
         val recorders =

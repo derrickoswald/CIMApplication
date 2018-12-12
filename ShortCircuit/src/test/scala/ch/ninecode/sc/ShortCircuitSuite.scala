@@ -36,27 +36,42 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
     {
         // unpack the zip files
         if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME1.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME2).exists)
-            new Unzip ().unzip (FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME2.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME3).exists)
-            new Unzip ().unzip (FILE_DEPOT + "sak_sample.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME3.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME4).exists)
-            new Unzip ().unzip (FILE_DEPOT + "sak_sample_ganged.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME4.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME5).exists)
-            new Unzip ().unzip (FILE_DEPOT + "sak_sample_parallel.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME5.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME6).exists)
-            new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex_parallel.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME6.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME7).exists)
-            new Unzip ().unzip (FILE_DEPOT + "sak_sample_complex2_parallel.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME7.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME8).exists)
-            new Unzip ().unzip (FILE_DEPOT + "ibw_cim_export.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME8.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME9).exists)
-            new Unzip ().unzip (FILE_DEPOT + "fuse_no_sample.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME9.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME10).exists)
-            new Unzip ().unzip (FILE_DEPOT + "fuse_nc_sample.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME10.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME11).exists)
-            new Unzip ().unzip (FILE_DEPOT + "messagetest.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME11.replace (".rdf", ".zip"), FILE_DEPOT)
+    }
+
+    after
+    {
+        new File (FILE_DEPOT + FILENAME1).delete
+        new File (FILE_DEPOT + FILENAME2).delete
+        new File (FILE_DEPOT + FILENAME3).delete
+        new File (FILE_DEPOT + FILENAME4).delete
+        new File (FILE_DEPOT + FILENAME5).delete
+        new File (FILE_DEPOT + FILENAME6).delete
+        new File (FILE_DEPOT + FILENAME7).delete
+        new File (FILE_DEPOT + FILENAME8).delete
+        new File (FILE_DEPOT + FILENAME9).delete
+        new File (FILE_DEPOT + FILENAME10).delete
+        new File (FILE_DEPOT + FILENAME11).delete
     }
 
     test ("DACHCZ")
