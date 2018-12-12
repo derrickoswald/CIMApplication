@@ -227,7 +227,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         log.info ("the simulation number is " + simulation)
 
         // update each element in the transformer service area with bad value (just choose the first)
-        val problem_trafos = has.filter (_.problem).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1, x._2.head.reason))
+        val problem_trafos: RDD[(String, String)] = has.filter (_.problem).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1, x._2.head.reason))
         if (!problem_trafos.isEmpty)
             Database.invalidate_precalculation (simulation, problem_trafos)
 

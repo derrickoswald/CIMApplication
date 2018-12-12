@@ -27,11 +27,18 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
     {
         // unpack the zip files
         if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + "voltage_regulator.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME1.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME2).exists)
-            new Unzip ().unzip (FILE_DEPOT + "three_winding_transformer.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME2.replace (".rdf", ".zip"), FILE_DEPOT)
         if (!new File (FILE_DEPOT + FILENAME3).exists)
-            new Unzip ().unzip (FILE_DEPOT + "subtransmission.zip", FILE_DEPOT)
+            new Unzip ().unzip (FILE_DEPOT + FILENAME3.replace (".rdf", ".zip"), FILE_DEPOT)
+    }
+
+    after
+    {
+        new File (FILE_DEPOT + FILENAME1).delete
+        new File (FILE_DEPOT + FILENAME2).delete
+        new File (FILE_DEPOT + FILENAME3).delete
     }
 
     test ("Voltage Regulator")

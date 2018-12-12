@@ -8,7 +8,6 @@ import scala.math._
 import ch.ninecode.gl._
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
-import ch.ninecode.model.Switch
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
     extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
@@ -60,11 +59,11 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         val status = if (edge.switch.normalOpen) "OPEN" else "CLOSED"
         val current = 9999.0 // override so it never trips
         val fuse_details = if (edge.fuse)
-        """
-                mean_replacement_time 3600.0;
-                current_limit %sA;""".format (current)
-    else
-        ""
+            """
+                    mean_replacement_time 3600.0;
+                    current_limit %sA;""".format (current)
+        else
+            ""
 
         """
           |        object %s
