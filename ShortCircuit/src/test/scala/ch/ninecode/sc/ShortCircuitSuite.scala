@@ -120,7 +120,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -185,7 +185,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -252,7 +252,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -321,7 +321,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -390,7 +390,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -457,7 +457,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -520,7 +520,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -587,7 +587,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -665,7 +665,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -733,7 +733,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)
@@ -801,7 +801,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // write output to file and console
-            val output = FILE_DEPOT + "result"
+            val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv)
 
             val path = new File (output)

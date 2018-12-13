@@ -619,10 +619,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (tsa.hasIslands)
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-        val island_helper = new Island (session, storage_level)
+            val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+            val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
-        val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
+            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
@@ -662,9 +662,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     val fuses = x._1._6
                     val z1_low = x._1._5._1
                     val z0_low = z1_low * 4.0 // approximately four times
-                val z1_hi = x._1._5._2
+                    val z1_hi = x._1._5._2
                     val z0_hi = z1_hi * 4.0 // approximately four times
-                val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
+                    val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
                     x._2 match
                     {
                         case Some (original) ⇒
