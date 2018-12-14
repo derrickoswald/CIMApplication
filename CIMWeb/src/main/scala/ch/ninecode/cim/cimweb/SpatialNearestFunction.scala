@@ -22,8 +22,8 @@ case class SpatialNearestFunction (var parameters: SpatialOperationParameters) e
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
-        val ops = new SpatialOperations
-        ops.nearest (spark, parameters)
+        val ops = new SpatialOperations (spark)
+        ops.nearest (parameters)
     }
 
     override def toString: String =

@@ -20,6 +20,6 @@ case class SpatialOperationParameters
     /**
      * Number of elements to get.
      */
-    n: Int = 5
+    n: Int = 1
 )
 
