@@ -129,11 +129,9 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
             injection
         }
 
-        val injections = getOrElse [EquivalentInjection].keyBy (_.id)
-        val term = getOrElse [Terminal].keyBy (_.ConductingEquipment)
-        val injections_by_node = injections.join (term).values.map (x ⇒ (x._2.TopologicalNode, x._1)).reduceByKey ((a, b) ⇒ a)
-        val tra = transformers_stations.keyBy (_.node0).leftOuterJoin (injections_by_node).values
-        tra.map (x ⇒ x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
+        val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id).join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values.map (x ⇒ (x._2.TopologicalNode, x._1))
+        transformers_stations.keyBy (_.node0).leftOuterJoin (injections_by_node).values
+            .map (x ⇒ x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
             .persist (storage_level)
     }
 }
