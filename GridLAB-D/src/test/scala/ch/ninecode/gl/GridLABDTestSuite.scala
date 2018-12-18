@@ -110,7 +110,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             val gen = new GLMGenerator ()
-            val gridlabd = new GridLABD (session, workdir = "target/")
+            val gridlabd = new GridLABD (session, workdir = "simulation/")
             gridlabd.export (gen)
 
             val generate = System.nanoTime ()
@@ -140,6 +140,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             }
 
             override def name: String = "broken1"
+
             override def prefix: String =
             {
                 val t0 = date_format.format (start_time.getTime)
@@ -185,6 +186,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             }
 
             override def name: String = "broken2"
+
             override def prefix: String =
             {
                 val t0 = date_format.format (start_time.getTime)
@@ -243,7 +245,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
 
             val gen1 = new broken1 ()
             val gen2 = new broken2 ()
-            val gridlabd = new GridLABD (session, workdir = "target/")
+            val gridlabd = new GridLABD (session, workdir = "simulation/")
             gridlabd.export (gen1)
             gridlabd.export (gen2)
 
@@ -257,8 +259,9 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             println ("generate: " + (solve - generate) / 1e9 + " seconds")
 
             assert (!results._1, "should fail")
-            assert (results._2.head == "broken2 ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method", "bar")
-            assert (results._2.tail.head == "broken1 ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method", "foo")
+            assert (results._2.length == 2, "2 results")
+            assert (results._2.contains ("broken2 ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
+            assert (results._2.contains ("broken1 ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
 
             println ("total: " + (solve - start) / 1e9 + " seconds")
     }
