@@ -22,6 +22,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.Unforced
 import ch.ninecode.model.Element
 
 object MainCustomer2
@@ -219,7 +220,7 @@ object MainCustomer2
         val ele = ntp.process (
             CIMTopologyOptions (
                 identify_islands = true,
-                force_retain_switches = ForceTrue,
+                force_retain_switches = Unforced,
                 force_retain_fuses = ForceTrue,
                 debug = true,
                 storage = storage))

@@ -58,21 +58,27 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
-            // identify topological nodes
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = true,
-                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
-            println (ele.count () + " elements")
+            val tns = session.sparkContext.getPersistentRDDs.filter (_._2.name == "TopologicalNode")
+            val ele = if (tns.isEmpty || tns.head._2.isEmpty)
+            {
+                // identify topological nodes
+                val ntp = CIMNetworkTopologyProcessor (session)
+                val e = ntp.process (
+                    CIMTopologyOptions (
+                        identify_islands = true,
+                        force_retain_switches = Unforced,
+                        force_retain_fuses = ForceTrue,
+                        default_switch_open_state = false,
+                        debug = true,
+                        storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                ).persist (StorageLevel.MEMORY_AND_DISK_SER)
+                println (e.count () + " elements")
 
-            val topo = System.nanoTime ()
-            println ("topology: " + (topo - read) / 1e9 + " seconds")
+                val topo = System.nanoTime ()
+                println ("topology: " + (topo - read) / 1e9 + " seconds")
+            }
+            else
+                elements
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -86,13 +92,15 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
+            // output SQLite database
+            Database.store (sc_options)(results)
+
             val string = results.sortBy (_.tx).map (_.csv)
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)
             for (i <- csv.indices)
                 println (csv (i))
-
     }
 
     test ("Three Winding Transformer with non-radial network")
@@ -139,6 +147,9 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
+
+            // output SQLite database
+            Database.store (sc_options)(results)
 
             val string = results.sortBy (_.tx).map (_.csv)
             val csv = string.collect

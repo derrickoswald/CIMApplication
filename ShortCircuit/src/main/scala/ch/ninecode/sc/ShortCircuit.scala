@@ -152,7 +152,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def trafo_mapping (transformer_set: TransformerSet): Iterator[StartingTrafos] =
     {
         val pn = default_node
-        val nsnodes = transformer_set.transformers.flatMap (x ⇒ x.terminals.tail.map (_.TopologicalNode))
+        val nsnodes = transformer_set.transformers.flatMap (x ⇒ x.terminals.tail.map (_.TopologicalNode)).distinct
         val v0 = pn.vertex_id (transformer_set.node0)
         nsnodes.map (x ⇒ StartingTrafos (v0, pn.vertex_id (x), transformer_set)).toIterator
     }
