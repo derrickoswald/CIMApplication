@@ -88,7 +88,8 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
             var read = -1
             while (
             {
-                read = zip.read (bytesIn); read != -1
+                read = zip.read (bytesIn);
+                read != -1
             })
                 bos.write (bytesIn, 0, read)
             bos.close ()
@@ -248,7 +249,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                workdir = "simulation/",
                 files = List (filename)
             )
             val eins = Einspeiseleistung (session, options)
@@ -307,7 +308,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                workdir = "simulation/",
                 files = List (filename)
             )
             val eins = Einspeiseleistung (session, options)
@@ -367,7 +368,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "file://" + System.getProperty ("user.dir") + "/simulation/",
+                workdir = "simulation/",
                 files = List (filename)
             )
             val eins = Einspeiseleistung (session, options)
