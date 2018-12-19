@@ -257,8 +257,8 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
             println ("generate: " + (solve - generate) / 1e9 + " seconds")
 
             assert (!results._1, "should fail")
-            assert (results._2.head == "broken2 ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method", "bar")
-            assert (results._2.tail.head == "broken1 ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method", "foo")
+            assert (results._2.contains ("broken2 ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
+            assert (results._2.contains ("broken1 ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
 
             println ("total: " + (solve - start) / 1e9 + " seconds")
     }
