@@ -162,7 +162,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val limit = "current limit"
 
         // look up node to get feeders
-        val lookup = if (options.ignore_other)
+        val lookup = if (!options.ignore_other)
             null
         else
         {
@@ -187,7 +187,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
-                    if options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
+                    if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
                     threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
                     if overcurrent (x, threshold)
                 }
