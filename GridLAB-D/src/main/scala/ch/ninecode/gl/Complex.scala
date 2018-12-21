@@ -147,7 +147,7 @@ object Complex
         new Complex (magnitude * cos (a), magnitude * sin (a))
     }
 
-    def toPolar (c: Complex, degrees: Boolean): (Double, Double) =
+    def toPolar (c: Complex, degrees: Boolean = false): (Double, Double) =
     {
         val a = c.angle
         (c.modulus, if (degrees) a * 180.0 / Pi else a)
