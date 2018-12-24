@@ -112,7 +112,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             val power = S (theta)
             val angle = power.angle
             val diff = angle - phi
-            diff * diff
+            Math.sqrt (diff * diff)
         }
         def derivative (theta: Double): Double =
         {
@@ -129,7 +129,10 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             val dim = z.re * k * ( 2.0 * k * c2 - c) - z.im * k * (-2.0 * k * s2 + s)
             val ratio = im / re
 
-            2.0 * diff  * (1.0 / (1.0 + ratio * ratio)) * (1.0 / (re * re)) * (re * dim - im * dre)
+            if (diff == 0.0)
+                0.0
+            else
+                1.0 / Math.sqrt (diff * diff) * diff  * (1.0 / (1.0 + ratio * ratio)) * (1.0 / (re * re)) * (re * dim - im * dre)
         }
 
         var theta = 0.0
@@ -141,14 +144,13 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             val d = derivative (theta)
 
             // check derivative
-            def difference (theta: Double): Double =
-            {
-                (fn (theta + 0.000001) - fn (theta - 0.000001)) / 0.000002
-            }
-            val d1 = difference (theta)
+            //def difference (theta: Double): Double =
+            //{
+            //    (fn (theta + 0.000001) - fn (theta - 0.000001)) / 0.000002
+            //}
+            //val d1 = difference (theta)
 
-            // throw in a bit of randomness to avoid oscillations
-            val dx = - GAMMA * d * (1.0 - 0.1 * Math.random ())
+            val dx = - GAMMA * d * Math.abs (fn (theta))
             // clip the step size to less than a ~3°
             val step = Math.min (Math.abs (dx), 0.05) * Math.signum (dx)
             if (Math.abs (step) > EPSILON)
@@ -160,7 +162,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         if (iterations >= MAXITERATIONS)
             theta = 0.0
 
-        //println (iterations + " " + theta * 180.0 / Math.PI)
+        // println (iterations + " " + theta * 180.0 / Math.PI)
         ROOT3 * S (theta)
     }
 }

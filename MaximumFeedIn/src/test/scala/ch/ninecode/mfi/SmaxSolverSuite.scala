@@ -114,6 +114,27 @@ class SmaxSolverSuite extends FunSuite
         assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.95 power factor @ Π° for 1% at 230v")
     }
 
+    test ("small angle")
+    {
+        val cosphi = 0.8625088147918922
+        val angle = -0.037239727380251886
+        val v = 400.0
+        val threshold = 0.03
+        val smax = 25667.786854659604
+
+        val sinphi = Math.sin (Math.acos (cosphi))
+        val smax1ph = smax / root3
+        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
+        val rad = toRadians (angle)
+        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
+        val i = s / vc
+        val z = (vc - v) / i
+
+        val solver = SmaxSolver (threshold, cosphi)
+        val p = solver.solve (v, z)
+        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.8625 power factor @ -0.037° for 3% at 400v")
+    }
+
     test ("random")
     {
         for (i ← 1 to 1000)
