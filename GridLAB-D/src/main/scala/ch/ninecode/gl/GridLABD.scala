@@ -432,7 +432,7 @@ class GridLABD
             (true, null)
     }
 
-    def solve (files: RDD[String]): (Boolean, List[String])=
+    def solve (files: RDD[String]): (Boolean, List[String]) =
     {
         // assumes gridlabd is installed on every node:
         // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
@@ -494,7 +494,7 @@ class GridLABD
 
         val out = files.pipe (gridlabd)
         // take only the first error message
-        out.map (check).fold ((true, List[String]())) ((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
+        out.map (check).fold ((true, List [String]()))((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
     }
 
     def default_filenameparser (filename: String): (String, String) =
