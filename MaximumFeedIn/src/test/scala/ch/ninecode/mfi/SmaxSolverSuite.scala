@@ -72,10 +72,10 @@ class SmaxSolverSuite extends FunSuite
         assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.9 power factor @ 8.5°")
     }
 
-    test ("0.9 pf @ -8.5°")
+    test ("0.9 pf @ -0.85°")
     {
         val cosphi = 0.9
-        val angle = -8.5
+        val angle = -0.85
         val v = 400.0
         val threshold = 0.03
         val smax = 6000.0
@@ -90,7 +90,7 @@ class SmaxSolverSuite extends FunSuite
 
         val solver = SmaxSolver (threshold, cosphi)
         val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.9 power factor @ -8.5°")
+        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.9 power factor @ -0.85°")
     }
 
     test ("0.95 pf @ Π° for 1% at 230v")
@@ -137,7 +137,7 @@ class SmaxSolverSuite extends FunSuite
 
     test ("random")
     {
-        for (i ← 1 to 1000)
+        for (i ← 1 to 10000)
         {
             val cosphi = 1.0 - Math.random () * 0.25
             val angle = 45.0 * (Math.random () - 0.5)
@@ -153,9 +153,12 @@ class SmaxSolverSuite extends FunSuite
             val i = s / vc
             val z = (vc - v) / i
 
-            val solver = SmaxSolver (threshold, cosphi)
-            val p = solver.solve (v, z)
-            assert (Math.abs (p.abs - smax) < 0.01 * smax, "%s power factor @ %s° for %s%% at %sv %sW".format (cosphi, angle, threshold * 100, v, smax))
+            if (z.re > 0.0)
+            {
+                val solver = SmaxSolver (threshold, cosphi)
+                val p = solver.solve (v, z)
+                assert (Math.abs (p.abs - smax) < 0.01 * smax, "%s power factor @ %s° for %s%% at %sv %sW".format (cosphi, angle, threshold * 100, v, smax))
+            }
         }
     }
 }
