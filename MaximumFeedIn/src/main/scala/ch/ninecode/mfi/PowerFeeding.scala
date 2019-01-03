@@ -134,7 +134,8 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val z_summe = math.sqrt (3) * z + trafo_z
         val threshold = options.voltage_threshold / 100.0
 
-        val p_max_u = math.sqrt (3) * (1 + threshold) * threshold * v * v / z_summe.modulus * options.cosphi
+        val solver = SmaxSolver (threshold, options.cosphi)
+        val p_max_u = solver.solve (v, z_summe).modulus
         val p_max_i = math.sqrt (3) * min_ir * (v + z_summe.modulus * min_ir)
         val (p_max, reason, details) =
             if (null != node.problem)

@@ -5,5 +5,6 @@ import org.scalatest.Suites
 class EinspeiseleistungTestSuite extends Suites (
     new MaximumFeedInMainSuite,
     new GridLABDSuite,
-    new EinspeiseleistungGLMGeneratorSuite
+    new EinspeiseleistungGLMGeneratorSuite,
+    new SmaxSolverSuite
 )
