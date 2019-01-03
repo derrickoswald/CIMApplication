@@ -484,8 +484,8 @@ class GridLABD
                         "gridlabd --quiet $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
                         "cat output_data/* > output.txt; " +
                         "popd; " +
-                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/output.txt " + workdir_path + "$FILE; " +
-                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                         "cat $FILE/$FILE.out; " +
                         "rm -rf $FILE; " +
                         "done < /dev/stdin")
@@ -678,7 +678,7 @@ class GridLABD
         }
     }
 
-    def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean)
+    def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean, includes_output: Boolean)
     {
         if (includes_glm)
             eraseInputFile (equipment)
@@ -686,10 +686,13 @@ class GridLABD
         {
             if (includes_input)
                 eraseInputFile (equipment + "/input_data/")
-            eraseInputFile (equipment + "/output_data/")
-            eraseInputFile (equipment + "/output.txt")
-            eraseInputFile (equipment + "/" + equipment + ".out")
-            writeInputFile (equipment, "/output_data/dummy", null) // mkdir
+            if (includes_output)
+            {
+                eraseInputFile (equipment + "/output_data/")
+                eraseInputFile (equipment + "/output.txt")
+                eraseInputFile (equipment + "/" + equipment + ".out")
+                writeInputFile (equipment, "/output_data/dummy", null) // mkdir
+            }
         }
     }
 }
