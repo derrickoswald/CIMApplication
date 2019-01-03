@@ -28,6 +28,7 @@ import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
+import ch.ninecode.gl.TransformerData
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
 
@@ -519,8 +520,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
         val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir)
 
+        // filter trafos with ratedS <= 1000
+        def filter_trafos (t: TransformerData): Boolean =
+        {
+            t.end0.ratedS > 1000 && t.end1.ratedS > 1000
+        }
+
         // get the distribution transformers
-        val transformer_data = new Transformers (session, storage_level).getTransformers ()
+        val transformer_data = new Transformers (session, storage_level).getTransformers ().filter(filter_trafos)
         if (log.isDebugEnabled)
             transformer_data.map (_.asString).collect.foreach (log.debug)
 
