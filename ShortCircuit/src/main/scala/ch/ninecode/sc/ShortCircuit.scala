@@ -207,7 +207,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         xnodes.persist (storage_level)
         if (spark.sparkContext.getCheckpointDir.isDefined)
         {
-            xedges.checkpoint (); xnodes.checkpoint ()
+            xedges.checkpoint ();
+            xnodes.checkpoint ()
         }
 
         Graph [ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
@@ -430,14 +431,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             success._2.foreach (log.error)
         }
         val output = gridlabd.read_output_files (one_phase, special_filenameparser) // (trafoid, value_3ph)
-        val read = System.nanoTime ()
+    val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
         // key by trafo_time to join
         val values = output.keyBy (x ⇒ x._1 + "_" + x._2.millis.toString).groupByKey
         val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.t1.getTimeInMillis.toString)
         val dd = exp.leftOuterJoin (values)
         val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
-        val anal = System.nanoTime ()
+    val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
     }
@@ -608,6 +609,68 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
+    def calculateTraceResults (starting_nodes: RDD[StartingTrafos]): RDD[ScResult] =
+    {
+        // create the initial Graph with ScNode vertices
+        val initial = get_inital_graph ()
+
+        def both_ends (edge: Edge[ScEdge]): Iterable[(VertexId, ScEdge)] = List ((edge.srcId, edge.attr), (edge.dstId, edge.attr))
+
+        def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
+        {
+            val trafo = attached._1
+            val edges = attached._2
+
+            val errors =
+                if (trafo.transformer.total_impedance._2)
+                    List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
+                else
+                    null.asInstanceOf [List[ScError]]
+            val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options.messagemax))
+            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, "self", trafo.secondary_impedance, null, problems)
+        }
+
+        val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
+        val initial_with_starting_nodes = initial.joinVertices (starting_trafos_with_edges)(add_starting_trafo).persist (storage_level)
+
+        val sct = ShortCircuitTrace (session, options)
+        val graph = sct.trace (initial_with_starting_nodes)
+
+        // get the visited nodes with their data
+        val result = graph.vertices.filter (null != _._2.impedance).values
+        result.setName ("scresult")
+        result.persist (storage_level)
+
+        log.info ("computing results")
+        // join results with terminals to get equipment
+        val d = result.keyBy (_.id_seq).join (get [Terminal].keyBy (_.TopologicalNode)).values
+        // join with equipment to get containers
+        val e = d.keyBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2))
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+
+        // resolve to top level containers
+        // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
+        def station_fn (arg: (ScNode, Terminal, ConductingEquipment, Option[Any])): (ScNode, Int, String, String) =
+        {
+            val node = arg._1
+            val terminal = arg._2
+            val equipment = arg._3
+            val container = arg._4
+            container match
+            {
+                case Some (station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
+                case Some (bay: Bay) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
+                case Some (level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
+                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+            }
+        }
+
+        val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
+
+        // compute results
+        g.map (calculate_short_circuit).persist (storage_level)
+    }
+
     // execute GridLAB-D to approximate the impedances and replace the error records
     def fix (problem_transformers: RDD[TransformerSet], original_results: RDD[ScResult]): RDD[ScResult] =
     {
@@ -619,10 +682,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (tsa.hasIslands)
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-            val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-            val island_helper = new Island (session, storage_level)
+        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+        val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
-            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
+        val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
@@ -662,9 +725,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     val fuses = x._1._6
                     val z1_low = x._1._5._1
                     val z0_low = z1_low * 4.0 // approximately four times
-                    val z1_hi = x._1._5._2
+                val z1_hi = x._1._5._2
                     val z0_hi = z1_hi * 4.0 // approximately four times
-                    val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
+                val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
                     x._2 match
                     {
                         case Some (original) ⇒
@@ -727,63 +790,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val starting_nodes: RDD[StartingTrafos] = transformersets.flatMap (trafo_mapping)
         log.info ("%s starting transformers".format (starting_nodes.count))
 
-        // create the initial Graph with ScNode vertices
-        val initial = get_inital_graph ()
-
-        def both_ends (edge: Edge[ScEdge]): Iterable[(VertexId, ScEdge)] = List ((edge.srcId, edge.attr), (edge.dstId, edge.attr))
-
-        def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
-        {
-            val trafo = attached._1
-            val edges = attached._2
-
-            val errors =
-                if (trafo.transformer.total_impedance._2)
-                    List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
-                else
-                    null.asInstanceOf [List[ScError]]
-            val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options.messagemax))
-            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, "self", trafo.secondary_impedance, null, problems)
-        }
-
-        val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
-        val initial_with_starting_nodes = initial.joinVertices (starting_trafos_with_edges)(add_starting_trafo).persist (storage_level)
-        val sct = ShortCircuitTrace (session, options)
-        val graph = sct.trace (initial_with_starting_nodes)
-
-        // get the visited nodes with their data
-        val result = graph.vertices.filter (null != _._2.impedance).values
-        result.setName ("scresult")
-        result.persist (storage_level)
-
-        log.info ("computing results")
-        // join results with terminals to get equipment
-        val d = result.keyBy (_.id_seq).join (get [Terminal].keyBy (_.TopologicalNode)).values
-        // join with equipment to get containers
-        val e = d.keyBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._2))
-        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
-
-        // resolve to top level containers
-        // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
-        def station_fn (arg: (ScNode, Terminal, ConductingEquipment, Option[Any])): (ScNode, Int, String, String) =
-        {
-            val node = arg._1
-            val terminal = arg._2
-            val equipment = arg._3
-            val container = arg._4
-            container match
-            {
-                case Some (station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
-                case Some (bay: Bay) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
-                case Some (level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
-                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
-            }
-        }
-
-        val g: RDD[(ScNode, Int, String, String)] = f.map (station_fn)
-
-        // compute results
-        var results: RDD[ScResult] = g.map (calculate_short_circuit).persist (storage_level)
+        var results: RDD[ScResult] = calculateTraceResults (starting_nodes)
 
         // find transformers where there are non-radial networks and fix them
         val problem_trafos = results.filter (result ⇒ result.errors.exists (_.startsWith ("FATAL: non-radial network detected"))).map (result ⇒ (result.tx, result.tx)).distinct.persist (storage_level)
