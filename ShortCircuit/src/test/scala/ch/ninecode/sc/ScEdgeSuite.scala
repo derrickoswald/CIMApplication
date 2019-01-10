@@ -29,7 +29,7 @@ class ScEdgeSuite extends FunSuite
         val transformerMock = result._1 ("ID123")
 
         val scEdgeMock = ScEdge ("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, null)
-        val scNodeMock = ScNode ("ID123", 230.0, "", "", null, null, null)
+        val scNodeMock = ScNode ("ID123", 230.0, "", null, "", null, null, null)
         assert (!scEdgeMock.shouldContinueTo (scNodeMock), "should not continue on transformer with 230V")
     }
 }

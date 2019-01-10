@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
+
 /**
  * Short circuit results.
  *
@@ -42,6 +44,7 @@ case class ScResult
     container: String,
     errors: List[String],
     tx: String,
+    tx_impedance: Complex,
     prev: String,
     low_r: Double,
     low_x: Double,
