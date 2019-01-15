@@ -121,6 +121,17 @@ define
                 this._map.removeControl (this);
             }
 
+            visible ()
+            {
+                return ("undefined" != typeof (this._container));
+            }
+
+            initialize ()
+            {
+                if (this._cimmap.get_selected_feature ())
+                    this.selection_change (this._cimmap.get_selected_feature (), this._cimmap.get_selected_features ());
+            }
+
             start_maker (maker, proto)
             {
                 document.getElementById ("class_chooser").style.display = "none";
@@ -149,11 +160,6 @@ define
                         document.getElementById ("create").disabled = "" != document.getElementById ("class_name").value;
                     }
                 }
-            }
-
-            visible ()
-            {
-                return ("undefined" != typeof (this._container));
             }
 
             render ()
@@ -384,6 +390,30 @@ define
                 return (ret);
             }
 
+            orderBySequenceNumber (objects)
+            {
+                var ret = [];
+
+                var sequenced = {};
+                for (var i = 0; i < objects.length; i++)
+                {
+                    var obj = objects[i];
+                    if (obj.sequenceNumber)
+                    {
+                        var bucket = sequenced[obj.cls];
+                        if (null == bucket)
+                           sequenced[obj.cls] = bucket = [];
+                        bucket.push (obj);
+                    }
+                    else
+                        ret.push (obj);
+                }
+                for (var cls in sequenced)
+                    ret = ret.concat (sequenced[cls].sort ((a, b) => (Number (a.sequenceNumber) < Number (b.sequenceNumber)) ? -1 : (Number (a.sequenceNumber) > Number (b.sequenceNumber)) ? 1 : 0));
+
+                return (ret);
+            }
+
             get_related (element)
             {
                 var ret = [];
@@ -429,6 +459,8 @@ define
                             if (relations[i][2] == "0..1" || relations[i][2] == "1")
                                 this._cimmap.forAll (relations[i][3], obj => { if (obj[relations[i][4]] == ret[j].id) add (obj); });
                 }
+
+                ret = this.orderBySequenceNumber (ret);
 
                 return (ret);
             }

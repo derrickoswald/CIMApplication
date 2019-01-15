@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
+    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
+    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
     {
         /**
          * The map object.
@@ -50,6 +50,11 @@ define
          * The connectivity control object.
          */
         var TheConnectivity = new CIMConnectivity (getInterface (), TheEditor);
+
+        /**
+         * The diagram control object.
+         */
+        var TheDiagram = new CIMDiagram (getInterface ());
 
         /**
          * The scale bar control.
@@ -164,11 +169,7 @@ define
         function add_feature_listener (obj)
         {
             if (!FeatureListeners.includes (obj))
-            {
                 FeatureListeners.push (obj);
-                if (get_selected_feature ())
-                    obj.selection_change (get_selected_feature (), get_selected_features ());
-            }
         }
 
         /**
@@ -249,6 +250,17 @@ define
         function get_connectivity ()
         {
             return (TheConnectivity);
+        }
+
+        /**
+         * Get the diagram editor.
+         * @return {Object} The object handling diagrams.
+         * @function get_diagram
+         * @memberOf module:cimmap
+         */
+        function get_diagram ()
+        {
+            return (TheDiagram);
         }
 
         /**
@@ -409,48 +421,21 @@ define
                     { linear: true, padding: 50 });
         }
 
-        function toggle_info ()
+        function toggle (control_function)
         {
-            if (TheDetails.visible ())
-                TheMap.removeControl (TheDetails);
-            else
-                TheMap.addControl (TheDetails);
-        }
-
-        function toggle_themer ()
-        {
-            if (TheThemer.visible ())
-                TheMap.removeControl (TheThemer);
-            else
-                TheMap.addControl (TheThemer);
-        }
-
-        function toggle_legend ()
-        {
-            var legend = TheThemer.getTheme ().getLegend ();
-            if (legend.visible ())
-                TheMap.removeControl (legend);
-            else
-            {
-                TheMap.addControl (legend);
-                legend.initialize ();
-            }
-        }
-
-        function toggle_edit ()
-        {
-            if (get_editor ().visible ())
-                TheMap.removeControl (get_editor ());
-            else
-                TheMap.addControl (get_editor ());
-        }
-
-        function connectivity ()
-        {
-            if (get_connectivity ().visible ())
-                TheMap.removeControl (get_connectivity ());
-            else
-                TheMap.addControl (get_connectivity ());
+            return (
+                function ()
+                {
+                    var control = control_function ();
+                    if (control.visible ())
+                        TheMap.removeControl (control);
+                    else
+                    {
+                        TheMap.addControl (control);
+                        control.initialize ();
+                    }
+                }
+            );
         }
 
         function get (classname, id)
@@ -1090,15 +1075,27 @@ define
                         if (null != current)
                         {
                             mrid = current;
-                            var x = (bb[1][0] - bb[0][0]) / 2.0 + bb[0][0];
-                            var y = (bb[1][1] - bb[0][1]) / 2.0 + bb[0][1];
-                            TheMap.easeTo
-                            (
-                                {
-                                    center: [x, y],
-                                    zoom: 17
-                                }
-                            );
+                            var bounds = TheMap.getBounds ();
+                            var zoom = TheMap.getZoom ();
+                            // if we're not zoomed in already (showing symbols icons from 17 and deeper)
+                            // or the object bounds are not within the map bounds,
+                            // refocus the map
+                            if ((zoom < 17) ||
+                                ((bb[0][0] < bounds.getWest ()) ||
+                                 (bb[1][0] > bounds.getEast ()) ||
+                                 (bb[0][1] < bounds.getSouth ()) ||
+                                 (bb[1][1] > bounds.getNorth ())))
+                            {
+                                var x = (bb[1][0] - bb[0][0]) / 2.0 + bb[0][0];
+                                var y = (bb[1][1] - bb[0][1]) / 2.0 + bb[0][1];
+                                TheMap.easeTo
+                                (
+                                    {
+                                        center: [x, y],
+                                        zoom: 17
+                                    }
+                                );
+                            }
                         }
                         select (mrid, list);
                     }
@@ -1268,7 +1265,15 @@ define
                 }
             );
             // add zoom and rotation controls to the map
-            TheMap.addControl (new cimnav.NavigationControl (zoom_extents, toggle_info, toggle_themer, toggle_legend, toggle_edit, connectivity));
+            TheMap.addControl (
+                new cimnav.NavigationControl (
+                    zoom_extents,
+                    toggle (get_details),
+                    toggle (get_themer),
+                    toggle (function () { return (get_themer ().getTheme ().getLegend ()); }),
+                    toggle (get_editor),
+                    toggle (get_connectivity),
+                    toggle (get_diagram)));
             add_listeners ();
         }
 
@@ -1305,6 +1310,7 @@ define
                      get_themer: get_themer,
                      get_editor: get_editor,
                      get_connectivity: get_connectivity,
+                     get_diagram: get_diagram,
                      show_internal_features: show_internal_features,
                      show_3d_buildings: show_3d_buildings,
                      show_scale_bar: show_scale_bar,

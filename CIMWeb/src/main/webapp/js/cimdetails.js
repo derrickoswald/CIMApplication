@@ -31,7 +31,7 @@ define
                           </button>
                         </h5>
                         <h6 class="card-subtitle mb-2"></h6>
-                        <div class="card-text">
+                        <div id='view_contents' class="card-text">
                         </div>
                       </div>
                     </div>
@@ -94,6 +94,12 @@ define
                 return ("undefined" != typeof (this._container));
             }
 
+            initialize ()
+            {
+                if (this._cimmap.get_selected_feature ())
+                    this.selection_change (this._cimmap.get_selected_feature (), this._cimmap.get_selected_features ());
+            }
+
             detail_text ()
             {
                 var cimmap = this._cimmap;
@@ -115,15 +121,16 @@ define
                             {
                                 var node = terminal.ConnectivityNode;
                                 var equipment = [];
-                                cimmap.forAll ("Terminal",
-                                    terminal =>
-                                    {
-                                        if (node == terminal.ConnectivityNode) // same node
-                                            if (mrid != terminal.ConductingEquipment) // not the same equipment
-                                                if (cimmap.get ("ConductingEquipment", terminal.ConductingEquipment)) // and not deleted
-                                                    equipment.push (terminal.ConductingEquipment);
-                                    }
-                                );
+                                if (null != node)
+                                    cimmap.forAll ("Terminal",
+                                        terminal =>
+                                        {
+                                            if (node == terminal.ConnectivityNode) // same node
+                                                if (mrid != terminal.ConductingEquipment) // not the same equipment
+                                                    if (cimmap.get ("ConductingEquipment", terminal.ConductingEquipment)) // and not deleted
+                                                        equipment.push (terminal.ConductingEquipment);
+                                        }
+                                    );
                                 return ({ terminal: terminal, equipment: equipment });
                             }
                         );
