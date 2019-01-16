@@ -90,7 +90,7 @@ public class CIMInteractionImpl implements Interaction
                             {
                                 CIMMappedRecord record = (CIMMappedRecord)input;
                                 Object obj = record.get (CIMFunction.FUNCTION);
-                                if ((null == obj) || (!(obj instanceof CIMFunction)))
+                                if (!(obj instanceof CIMFunction))
                                     throw new ResourceException (FUNCTION_MISSING_ERROR);
                                 CIMFunction function = (CIMFunction)obj;
                                 // set up function call
