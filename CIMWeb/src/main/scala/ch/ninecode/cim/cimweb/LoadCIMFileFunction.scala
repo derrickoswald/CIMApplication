@@ -13,9 +13,43 @@ import ch.ninecode.cim.CIMEdges
 import ch.ninecode.cim.CIMJoin
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceFalse
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.cim.State
+import ch.ninecode.cim.Unforced
 
 case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
+    def asBoolean (string: String): Boolean = try { string.toBoolean } catch { case _: Throwable => false }
+
+    def parseState (text: String): State =
+        text match
+        {
+            case "ForceTrue" ⇒ ForceTrue
+            case "ForceFalse" ⇒ ForceFalse
+            case _ ⇒ Unforced
+        }
+
+    def storage_level_tostring (level: StorageLevel): String =
+    {
+        level match
+        {
+            case StorageLevel.NONE ⇒ "NONE"
+            case StorageLevel.DISK_ONLY ⇒ "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 ⇒ "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY ⇒ "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 ⇒ "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER ⇒ "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 ⇒ "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK ⇒ "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 ⇒ "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER ⇒ "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 ⇒ "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP ⇒ "OFF_HEAP"
+            case _ ⇒ ""
+        }
+    }
+
     // load the file
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
@@ -43,17 +77,18 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
                     ("ch.ninecode.cim.do_join", "false"),
                     ("ch.ninecode.cim.do_topo_islands", "false"),
                     ("ch.ninecode.cim.do_topo", "false"),
-                    ("ch.ninecode.cim.split_maxsize", "67108864")
+                    ("ch.ninecode.cim.force_retain_switches", "Unforced"),
+                    ("ch.ninecode.cim.force_retain_fuses", "Unforced"),
+                    ("ch.ninecode.cim.force_switch_separate_islands", "Unforced"),
+                    ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced"),
+                    ("ch.ninecode.cim.default_switch_open_state", "false"),
+                    ("ch.ninecode.cim.debug", "false"),
+                    ("ch.ninecode.cim.split_maxsize", "67108864"),
+                    ("ch.ninecode.cim.cache", "")
                 )
             }
             else
                 options
-
-            // echo settings to the response
-            val opts = Json.createObjectBuilder
-            for (pair <- op)
-                opts.add (pair._1, pair._2)
-            response.add ("options", opts)
 
             // there is a problem (infinite loop) if post processing is done in the CIMReader
             // so we extract out topo, edge, and join processing
@@ -66,14 +101,14 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
                 option._1 match
                 {
                     case "ch.ninecode.cim.do_topo" ⇒
-                        topo = isld || (try { option._2.toBoolean } catch { case _: Throwable => false })
+                        topo = isld || asBoolean (option._2)
                     case "ch.ninecode.cim.do_topo_islands" ⇒
-                        isld = try { option._2.toBoolean } catch { case _: Throwable => false }
+                        isld = asBoolean (option._2)
                         topo = topo || isld
                     case "ch.ninecode.cim.do_join" ⇒
-                        join = try { option._2.toBoolean } catch { case _: Throwable => false }
+                        join = asBoolean (option._2)
                     case "ch.ninecode.cim.make_edges" ⇒
-                        edge = try { option._2.toBoolean } catch { case _: Throwable => false }
+                        edge = asBoolean (option._2)
                     case _ ⇒
                         reader_options.put (option._1, option._2)
                 }
@@ -81,28 +116,56 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
 
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
             var count = elements.count
+            val storage = StorageLevel.fromString (reader_options.getOrElse ("StorageLevel", "MEMORY_AND_DISK_SER"))
             if (topo)
             {
                 val ntp = CIMNetworkTopologyProcessor (spark)
                 val elements2 = ntp.process (
                     CIMTopologyOptions (
                         identify_islands = isld,
-                        storage = org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER))
+                        force_retain_switches = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced")),
+                        force_retain_fuses = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced")),
+                        force_switch_separate_islands = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")),
+                        force_fuse_separate_islands = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")),
+                        default_switch_open_state = asBoolean (reader_options.getOrElse ("ch.ninecode.cim.default_switch_open_state", "false")),
+                        debug = asBoolean (reader_options.getOrElse ("ch.ninecode.cim.debug", "false")),
+                        storage = storage)
+                    )
                 count = elements2.count
             }
             if (join)
             {
-                val join = new CIMJoin (spark, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                val join = new CIMJoin (spark, storage)
                 val elements3 = join.do_join ()
                 count = elements3.count
             }
             if (edge)
             {
-                val edges = new CIMEdges (spark, StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+                val edges = new CIMEdges (spark, storage)
                 val elements4 = edges.make_edges (topo)
                 count = elements4.count
             }
             response.add ("elements", count)
+
+            // echo options to the response
+            val opts = Json.createObjectBuilder
+            opts.add ("StorageLevel", storage_level_tostring (storage))
+            opts.add ("ch.ninecode.cim.do_about", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_about", "false")))
+            opts.add ("ch.ninecode.cim.do_normalize", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_normalize", "false")))
+            opts.add ("ch.ninecode.cim.do_deduplication", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_deduplication", "false")))
+            opts.add ("ch.ninecode.cim.make_edges", edge)
+            opts.add ("ch.ninecode.cim.do_join", join)
+            opts.add ("ch.ninecode.cim.do_topo_islands", isld)
+            opts.add ("ch.ninecode.cim.do_topo", topo)
+            opts.add ("ch.ninecode.cim.force_retain_switches", reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced"))
+            opts.add ("ch.ninecode.cim.force_retain_fuses", reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced"))
+            opts.add ("ch.ninecode.cim.force_switch_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced"))
+            opts.add ("ch.ninecode.cim.force_fuse_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced"))
+            opts.add ("ch.ninecode.cim.default_switch_open_state", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.default_switch_open_state", "false")))
+            opts.add ("ch.ninecode.cim.debug", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.debug", "false")))
+            opts.add ("ch.ninecode.cim.split_maxsize", reader_options.getOrElse ("ch.ninecode.cim.split_maxsize", "67108864").toInt)
+            opts.add ("ch.ninecode.cim.cache", reader_options.getOrElse ("ch.ninecode.cim.cache", ""))
+            response.add ("options", opts)
         }
         catch
         {

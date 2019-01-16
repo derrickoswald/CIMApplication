@@ -125,9 +125,82 @@ case class ScResult
             FData.fuseOK (high_ik, fuses)
         b
     }
+
+    def toPseudo: PseudoScResult =
+    {
+        PseudoScResult (
+            node,
+            equipment,
+            terminal: Int,
+            container,
+            errors,
+            tx,
+            prev,
+            low_r,
+            low_x,
+            low_r0,
+            low_x0,
+            low_ik,
+            low_ik3pol,
+            low_ip,
+            low_sk,
+            costerm,
+            imax_3ph_low,
+            imax_1ph_low,
+            imax_2ph_low,
+            imax_3ph_med,
+            imax_1ph_med,
+            imax_2ph_med,
+            high_r,
+            high_x,
+            high_r0,
+            high_x0,
+            high_ik,
+            high_ik3pol,
+            high_ip,
+            high_sk,
+            if (null != fuses) fuses.asString else ""
+        )
+    }
 }
 
 object ScResult
 {
     val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;iksplit;fusemax;fuseOK"
 }
+
+// change fuses: Branch to a String for creating a DataSet
+case class PseudoScResult
+(
+    node: String,
+    equipment: String,
+    terminal: Int,
+    container: String,
+    errors: List[String],
+    tx: String,
+    prev: String,
+    low_r: Double,
+    low_x: Double,
+    low_r0: Double,
+    low_x0: Double,
+    low_ik: Double = 0.0,
+    low_ik3pol: Double = 0.0,
+    low_ip: Double = 0.0,
+    low_sk: Double = 0.0,
+    costerm: Double,
+    imax_3ph_low: Double = 0.0,
+    imax_1ph_low: Double = 0.0,
+    imax_2ph_low: Double = 0.0,
+    imax_3ph_med: Double = 0.0,
+    imax_1ph_med: Double = 0.0,
+    imax_2ph_med: Double = 0.0,
+    high_r: Double,
+    high_x: Double,
+    high_r0: Double,
+    high_x0: Double,
+    high_ik: Double = 0.0,
+    high_ik3pol: Double = 0.0,
+    high_ip: Double = 0.0,
+    high_sk: Double = 0.0,
+    fuses: String
+)

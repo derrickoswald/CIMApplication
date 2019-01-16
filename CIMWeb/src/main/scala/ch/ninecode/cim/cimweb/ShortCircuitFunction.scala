@@ -18,7 +18,9 @@ case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFun
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
         val sc = ShortCircuit (spark, StorageLevel.MEMORY_AND_DISK_SER, options)
-        spark.sqlContext.createDataFrame (sc.run ())
+        val results = sc.run ()
+        val pseudoresults = results.map (_.toPseudo)
+        spark.sqlContext.createDataFrame (pseudoresults)
     }
 
     override def toString: String =

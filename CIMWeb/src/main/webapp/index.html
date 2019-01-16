@@ -113,6 +113,50 @@
                             <input id="split_maxsize" type="text" class="form-control" placeholder="split size (bytes)" style="display: inline-block;width: 10em;" value="67108864">
                             <label class="form-check-label" for="split_maxsize">Split size</label>
                         </div>
+                        <div class="select dropdown-item">
+                            <select id='force_retain_switches' class='form-control custom-select' name='force_retain_switches' style="display: inline-block;width: 10em;">
+                                <option value="ForceTrue">Force True</option>
+                                <option value="ForceFalse">Force False</option>
+                                <option value="Unforced" selected>Unforced</option>
+                            </select>
+                            <label for="force_retain_switches">Keep switches</label>
+                        </div>
+                        <div class="select dropdown-item">
+                            <select id='force_retain_fuses' class='form-control custom-select' name='force_retain_fuses' style="display: inline-block;width: 10em;">
+                                <option value="ForceTrue">Force True</option>
+                                <option value="ForceFalse">Force False</option>
+                                <option value="Unforced" selected>Unforced</option>
+                            </select>
+                            <label for="force_retain_fuses">Keep fuses</label>
+                        </div>
+                        <div class="select dropdown-item">
+                            <select id='force_switch_separate_islands' class='form-control custom-select' name='force_switch_separate_islands' style="display: inline-block;width: 10em;">
+                                <option value="ForceTrue">Force True</option>
+                                <option value="ForceFalse">Force False</option>
+                                <option value="Unforced" selected>Unforced</option>
+                            </select>
+                            <label for="force_switch_separate_islands">Switch separates islands</label>
+                        </div>
+                        <div class="select dropdown-item">
+                            <select id='force_fuse_separate_islands' class='form-control custom-select' name='force_fuse_separate_islands' style="display: inline-block;width: 10em;">
+                                <option value="ForceTrue">Force True</option>
+                                <option value="ForceFalse">Force False</option>
+                                <option value="Unforced" selected>Unforced</option>
+                            </select>
+                            <label for="force_fuse_separate_islands">Fuse separates islands</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="default_switch_open_state" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="default_switch_open_state">Switch default closed</label>
+                        </div>
+                        <div class="form-check dropdown-item">
+                            <input id="debug" class="form-check-input" type="checkbox"/>
+                            <label class="form-check-label" for="debug">Topology debug mode</label>
+                        </div>
+                        <div class="dropdown-item">
+                            <input id="cache" type="text" class="form-control" placeholder="file name" style="display: inline-block;width: 10em;" value="">
+                            <label class="form-check-label" for="cache">Cache file</label>
+                        </div>
                         <div role="separator" class="divider"></div>
                         <div class="dropdown-header">CSV</div>
                         <div class="form-check dropdown-item">

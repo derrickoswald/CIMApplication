@@ -593,6 +593,41 @@ define
             return (document.getElementById ("do_topo").checked);
         }
 
+        function force_retain_switches ()
+        {
+            return (document.getElementById ("force_retain_switches").value);
+        }
+
+        function force_retain_fuses ()
+        {
+            return (document.getElementById ("force_retain_fuses").value);
+        }
+
+        function force_switch_separate_islands ()
+        {
+            return (document.getElementById ("force_switch_separate_islands").value);
+        }
+
+        function force_fuse_separate_islands ()
+        {
+            return (document.getElementById ("force_fuse_separate_islands").value);
+        }
+
+        function default_switch_open_state ()
+        {
+            return (document.getElementById ("default_switch_open_state").checked);
+        }
+
+        function debug ()
+        {
+            return (document.getElementById ("debug").checked);
+        }
+
+        function cache ()
+        {
+            return (document.getElementById ("cache").value);
+        }
+
         function split_maxsize ()
         {
             var splits = document.getElementById ("split_maxsize").value;
@@ -702,7 +737,7 @@ define
             var xmlhttp;
 
             csv = path.toLowerCase ().endsWith (".csv");
-            path = path.startsWith ("/") ? path : "/" + path;
+            path = path.startsWith ("/") ? path : "/" + path + ";StorageLevel=" + storage_level ();
             if (do_about ())
                 path += ";do_about=true";
             if (do_normalize ())
@@ -717,8 +752,22 @@ define
                 path += ";do_topo_islands=true";
             if (do_topo ())
                 path += ";do_topo=true";
+            if ("Unforced" != force_retain_switches ())
+                path += (";force_retain_switches=" + force_retain_switches ());
+            if ("Unforced" != force_retain_fuses ())
+                path += (";force_retain_fuses=" + force_retain_fuses ());
+            if ("Unforced" != force_switch_separate_islands ())
+                path += (";force_switch_separate_islands=" + force_switch_separate_islands ());
+            if ("Unforced" != force_fuse_separate_islands ())
+                path += (";force_fuse_separate_islands=" + force_fuse_separate_islands ());
+            if (default_switch_open_state ())
+                path += ";default_switch_open_state=true";
+            if (debug ())
+                path += ";debug=true";
             if ("67108864" != split_maxsize ())
-                path += ";split_maxsize=" + split_maxsize ()
+                path += ";split_maxsize=" + split_maxsize ();
+            if ("" != cache ())
+                path += (";cache=" + cache ());
             if (header ())
                 path += ";header=true";
             if (ignoreLeadingWhiteSpace ())
@@ -765,6 +814,7 @@ define
                         if (resp.status == "OK")
                         {
                             console.log (JSON.stringify (resp, null, 4));
+                            cimmap.set_loaded (resp.result);
                             if (!csv)
                                 do_show ();
                         }

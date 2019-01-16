@@ -34,6 +34,7 @@ class LoadFile extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def getFile (
         @PathParam ("path") path: String,
+        @DefaultValue ("MEMORY_AND_DISK_SER") @MatrixParam ("StorageLevel") storage: String,
         @DefaultValue ("false") @MatrixParam ("do_about") do_about: String,
         @DefaultValue ("false") @MatrixParam ("do_normalize") do_normalize: String,
         @DefaultValue ("false") @MatrixParam ("do_deduplication") do_deduplication: String,
@@ -41,6 +42,13 @@ class LoadFile extends RESTful
         @DefaultValue ("false") @MatrixParam ("do_join") do_join: String,
         @DefaultValue ("false") @MatrixParam ("do_topo_islands") do_topo_islands: String,
         @DefaultValue ("false") @MatrixParam ("do_topo") do_topo: String,
+        @DefaultValue ("Unforced") @MatrixParam ("force_retain_switches") force_retain_switches: String,
+        @DefaultValue ("Unforced") @MatrixParam ("force_retain_fuses") force_retain_fuses: String,
+        @DefaultValue ("Unforced") @MatrixParam ("force_switch_separate_islands") force_switch_separate_islands: String,
+        @DefaultValue ("Unforced") @MatrixParam ("force_fuse_separate_islands") force_fuse_separate_islands: String,
+        @DefaultValue ("false") @MatrixParam ("default_switch_open_state") default_switch_open_state: String,
+        @DefaultValue ("false") @MatrixParam ("debug") debug: String,
+        @DefaultValue ("") @MatrixParam ("cache") cache: String,
         @DefaultValue ("67108864") @MatrixParam ("split_maxsize") split_maxsize: String,
         @DefaultValue ("false") @MatrixParam ("header") header: String,
         @DefaultValue ("false") @MatrixParam ("ignoreLeadingWhiteSpace") ignoreLeadingWhiteSpace: String,
@@ -76,6 +84,7 @@ class LoadFile extends RESTful
         val function = filetype match
         {
             case "CIM" ⇒ // see https://github.com/derrickoswald/CIMReader#reader-api
+                options.put ("StorageLevel", storage)
                 options.put ("ch.ninecode.cim.do_about", do_about)
                 options.put ("ch.ninecode.cim.do_normalize", do_normalize)
                 options.put ("ch.ninecode.cim.do_deduplication", do_deduplication)
@@ -83,7 +92,14 @@ class LoadFile extends RESTful
                 options.put ("ch.ninecode.cim.do_join", do_join)
                 options.put ("ch.ninecode.cim.do_topo_islands", do_topo_islands)
                 options.put ("ch.ninecode.cim.do_topo", do_topo)
+                options.put ("ch.ninecode.cim.force_retain_switches", force_retain_switches)
+                options.put ("ch.ninecode.cim.force_retain_fuses", force_retain_fuses)
+                options.put ("ch.ninecode.cim.force_switch_separate_islands", force_switch_separate_islands)
+                options.put ("ch.ninecode.cim.force_fuse_separate_islands", force_fuse_separate_islands)
+                options.put ("ch.ninecode.cim.default_switch_open_state", default_switch_open_state)
+                options.put ("ch.ninecode.cim.debug", debug)
                 options.put ("ch.ninecode.cim.split_maxsize", split_maxsize)
+                options.put ("ch.ninecode.cim.cache", cache)
                 LoadCIMFileFunction (files, options)
             case "CSV" ⇒ // see https://spark.apache.org/docs/2.3.0/api/scala/index.html#org.apache.spark.sql.DataFrameReader
                 options.put ("header", header)
