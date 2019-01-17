@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
+
 /**
  * Message sent between nodes in the short circuit GraphX Pregel algorithm.
  *
@@ -12,7 +14,8 @@ package ch.ninecode.sc
  */
 case class ScMessage
 (
-    source: String,
+    source_id: String,
+    source_impedance: Complex,
     ref: Impedanzen,
     edge: Impedanzen,
     fuses: Branch,

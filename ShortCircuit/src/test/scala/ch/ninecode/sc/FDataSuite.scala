@@ -1,5 +1,6 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
 import org.scalatest.FunSuite
 
 class FDataSuite extends FunSuite
@@ -462,6 +463,7 @@ class FDataSuite extends FunSuite
             container = null,
             errors = List(),
             tx = "TRAXXX",
+            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = 0.0,
@@ -510,6 +512,7 @@ class FDataSuite extends FunSuite
             container = null,
             errors = List(),
             tx = "TRAXXX",
+            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = 0.0,
@@ -558,6 +561,7 @@ class FDataSuite extends FunSuite
             container = null,
             errors = List(),
             tx = "TRAXXX",
+            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = 0.0,

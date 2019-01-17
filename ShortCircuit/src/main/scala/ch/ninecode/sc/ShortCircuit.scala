@@ -49,7 +49,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity),
         Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, null, null, null)
+    val default_node = ScNode ("", 0.0, null, null, null, null, null, null)
 
     def topological_node_operator (arg: ((TopologicalNode, Terminal), ScEdge)): ScNode =
     {
@@ -57,7 +57,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val term = arg._1._2
         val edge = arg._2
         val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, null, null, null)
+        ScNode (node.id, voltage, null, null, null, null, null, null)
     }
 
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
@@ -274,7 +274,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         ScResult (node.id_seq, equipment, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
-            node.source, node.id_prev,
+            node.source_id, node.source_impedance, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
             low.ik, low.ik3pol, low.ip, low.sk, costerm,
             low.imax_3ph_low, low.imax_1ph_low, low.imax_2ph_low, low.imax_3ph_med, low.imax_1ph_med, low.imax_2ph_med,
@@ -627,7 +627,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 else
                     null.asInstanceOf [List[ScError]]
             val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options.messagemax))
-            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, "self", trafo.secondary_impedance, null, problems)
+            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, trafo.transformer.total_impedance._1, "self", trafo.secondary_impedance, null, problems)
         }
 
         val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
@@ -721,23 +721,30 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
                 {
+                    def getImpedances (gridlabImpedances: (Complex, Complex), trafoImpedance: Complex): Impedanzen =
+                    {
+                        val z1_low = gridlabImpedances._1
+                        // approximately four times
+                        val z0_low = (z1_low - trafoImpedance) * 4 + trafoImpedance
+                        val z1_hi = gridlabImpedances._2
+                        // approximately four times
+                        val z0_hi = (z1_hi - trafoImpedance) * 4 + trafoImpedance
+                        Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
+                    }
+
                     val v = x._1._4
                     val fuses = x._1._6
-                    val z1_low = x._1._5._1
-                    val z0_low = z1_low * 4.0 // approximately four times
-                val z1_hi = x._1._5._2
-                    val z0_hi = z1_hi * 4.0 // approximately four times
-                val z = Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
                     x._2 match
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.prev, z, fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, getImpedances(x._1._5, original.tx_impedance), fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
+                            val c = Complex(0)
                             (
-                                ScNode (x._1._2, v, x._1._1, null, z, null, List ()),
+                                ScNode (x._1._2, v, x._1._1, c, null, getImpedances(x._1._5, c), null, List ()),
                                 1, x._1._3, ""
                             )
                     }

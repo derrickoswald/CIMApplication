@@ -1,5 +1,6 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
 import ch.ninecode.gl.Graphable
 
 /**
@@ -16,7 +17,8 @@ import ch.ninecode.gl.Graphable
 case class ScNode (
                       id_seq: String,
                       voltage: Double,
-                      source: String,
+                      source_id: String,
+                      source_impedance: Complex,
                       id_prev: String,
                       impedance: Impedanzen,
                       fuses: Branch,
