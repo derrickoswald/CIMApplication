@@ -265,7 +265,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val container = arg._4
         val v2 = node.voltage
         val (low, high) =
-            if (false)
+            if (node.invalidErrors)
                 (ScIntermediate (), ScIntermediate ())
             else
                 (calculate_one (v2, node.impedance.impedanz_low, node.impedance.null_impedanz_low),
