@@ -53,7 +53,10 @@ case class ScGLMGenerator
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
-        val z = area.transformer.network_short_circuit_impedance_max
+        val z = if (isMax)
+            area.transformer.network_short_circuit_impedance_max
+        else
+            area.transformer.network_short_circuit_impedance_min
         val nodename = node.id
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable

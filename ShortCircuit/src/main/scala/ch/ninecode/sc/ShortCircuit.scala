@@ -682,10 +682,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (tsa.hasIslands)
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-        val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-        val island_helper = new Island (session, storage_level)
+            val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
+            val island_helper = new Island (session, storage_level)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
-        val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
+            val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
             val simulations = areas.join (problem_transformers.keyBy (_.transformer_name)).map (x ⇒ (x._1, x._2._2, x._2._1._1, x._2._1._2)) // (areaid, trafoset, [nodes], [edges])
@@ -703,9 +703,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             // perform remedial simulations
             val zlo: RDD[(String, String, String, Double, Complex, Branch)] = remedial (simulations, options.low_temperature, true).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
+            val skdiff: Boolean = !simulations.filter (x ⇒ x.transformer.network_short_circuit_impedance_min != x.transformer.network_short_circuit_impedance_max).isEmpty
             val zhi: RDD[(String, String, String, Double, Complex, Branch)] =
-            // currently there is no difference in gridlabd processing between high and low temperature analysis, so we can skip the high temperature analysis if the temperatures are the same
-                if (options.low_temperature != options.high_temperature)
+                // currently there is no difference in gridlabd processing between high and low temperature analysis,
+                // so we can skip the high temperature analysis if the temperatures are the same
+                // but only if there is no difference between Skmax and Skmin (equiv.maxP and equiv.minP)
+                if (options.low_temperature != options.high_temperature || skdiff)
                 {
                     val _z = remedial (simulations, options.high_temperature, false).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
                     log.info ("""ran %s experiments at high temperature""".format (_z.count ()))
