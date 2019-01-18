@@ -183,7 +183,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
             // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
             // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-            val maxP = -new Complex (ratedNetMaxP * math.abs (cosPhi), ratedNetMaxP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
+            val maxP = new Complex (-ratedNetMaxP * math.abs (cosPhi), ratedNetMaxP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
             if (ratedNetMaxP > 0)
             {
                 load +=

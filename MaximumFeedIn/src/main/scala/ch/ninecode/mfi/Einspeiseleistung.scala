@@ -86,7 +86,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val details = arg._3
             val steps = Math.round ((data.millis - experiment.t1.getTimeInMillis) / (experiment.interval * 1000))
             val ok_steps = if (0 < steps) steps - 1 else 0 // subtract off the mandatory first zero step required by GridLAB-D
-        val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
+            val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
             current.max match
             {
                 case None ⇒
@@ -130,7 +130,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val lookup = feeders.toMap
 
         val nominal = 400.0 // ToDo: get voltage from CIM
-    val max = nominal * (1.0 + (options.voltage_threshold / 100.0))
+        val max = nominal * (1.0 + (options.voltage_threshold / 100.0))
         val neighbormax = nominal * (1.0 + (options.voltage_threshold2 / 100.0))
         // could also check for under the minimum; r.value_a.abs < min
 
@@ -139,7 +139,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
@@ -147,7 +147,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                         if (feeder == e.feeder) max else neighbormax
                     if overvoltage (x, threshold)
                 }
-                    yield (e, x, limit, x.element + " > " + threshold + " Volts")
+                yield (e, x, limit, x.element + " > " + threshold + " Volts")
             }
         )
     }
@@ -185,14 +185,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
                     threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
                     if overcurrent (x, threshold)
                 }
-                    yield (e, x, limit, x.element + " > " + threshold + " Amps")
+                yield (e, x, limit, x.element + " > " + threshold + " Amps")
             }
         )
     }
@@ -226,11 +226,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         def assign (experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             for
-                {
+            {
                 e ← experiments
                 if (e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis)
             }
-                yield (e, r, limit, r.element + " > " + power + " Watts")
+            yield (e, r, limit, r.element + " > " + power + " Watts")
         }
 
         // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase] 
@@ -320,7 +320,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         def addrow (time: Calendar, power: Double, angle: Double): Unit =
         {
-            val maxP = -new Complex (power * cosphi, power * sinphi)
+            val maxP = new Complex (-power * cosphi, power * sinphi)
             ret.append (_DateFormat.format (time.getTime))
             ret.append (",")
             if (!options.three)
@@ -333,7 +333,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         val time = exp.t1
         addrow (time, 0.0, angle) // gridlab extends the first and last rows till infinity -> make them zero
-    var power = exp.from
+        var power = exp.from
         while (power <= exp.to)
         {
             addrow (time, power, angle)

@@ -85,7 +85,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (power_list.length == 1, "1 phase")
         power_list.foreach (p =>
         {
-            assert (p == "-4000.0-3000.0j", "active power only")
+            assert (p == "-4000.0+3000.0j", "active power only")
         })
     }
 
@@ -107,7 +107,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (power_list.length == 1, "1 phase")
         power_list.foreach (p =>
         {
-            assert (p == "-4000.0+3000.0j", "active power only")
+            assert (p == "-4000.0-3000.0j", "active power only")
         })
     }
 
@@ -129,7 +129,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (power_list.length == 3, "3 phase")
         power_list.foreach (p =>
         {
-            assert (p == "-4000.0-3000.0j", "active power only")
+            assert (p == "-4000.0+3000.0j", "active power only")
         })
     }
 
@@ -151,7 +151,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (power_list.length == 3, "3 phase")
         power_list.foreach (p =>
         {
-            assert (p == "-4000.0+3000.0j", "active power only")
+            assert (p == "-4000.0-3000.0j", "active power only")
         })
     }
 }
