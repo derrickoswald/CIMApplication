@@ -14,8 +14,8 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
 {
     def this (complex: Complex) = this (complex.re, complex.im)
 
-    val modulus: Double = sqrt (pow (re, 2) + pow (im, 2))
-    val angle: Double = atan2 (im, re)
+    lazy val modulus: Double = sqrt (pow (re, 2) + pow (im, 2))
+    lazy val angle: Double = atan2 (im, re)
 
     // unary operators
     def unary_+ : Complex = this
@@ -131,9 +131,9 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
 object Complex
 {
     // constants
-    val j = Complex (0, 1)
+    lazy val j = Complex (0, 1)
 
-    val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
+    lazy val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
 
     // factory methods
     def apply (re: Double): Complex = new Complex (re)
