@@ -123,12 +123,24 @@ define
 
         /**
          * Set the loaded file information.
+         *
+         * info is of the form { files: ["filename"], options: {}, elements: int }
+         *
          * @function set_loaded
          * @memberOf module:cimmap
          */
         function set_loaded (info)
         {
             CIM_File = info;
+            if (CIM_File && CIM_File.files)
+            {
+                var title = document.title;
+                var index = title.indexOf (" - ");
+                if (-1 != index)
+                    title = title.substring (0, index);
+                title = title + " - " + CIM_File.files[0].replace (/\.(rdf|xml|RDF|XML)$/, "");
+                document.title = title;
+            }
         }
 
         /**
