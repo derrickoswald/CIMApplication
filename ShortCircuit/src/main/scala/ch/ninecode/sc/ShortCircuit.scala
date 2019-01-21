@@ -51,15 +51,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         Complex (Double.PositiveInfinity, Double.PositiveInfinity))
     val default_node = ScNode ("", 0.0, null, null, null, null, null, null)
 
-    def topological_node_operator (arg: ((TopologicalNode, Terminal), ScEdge)): ScNode =
-    {
-        val node = arg._1._1
-        val term = arg._1._2
-        val edge = arg._2
-        val voltage = if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2
-        ScNode (node.id, voltage, null, null, null, null, null, null)
-    }
-
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
         var ret = List [ScEdge]()
@@ -192,11 +183,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // map the terminal 'pairs' to edges
         val edges = get [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
-        // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
-        val tv = edges.keyBy (_.id_cn_1).union (edges.keyBy (_.id_cn_2)).distinct
-
-        // map the topological nodes to short circuit nodes with voltages
-        val nodes = get [TopologicalNode].keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).join (tv).values.map (topological_node_operator).distinct
+        // get the nodes and voltages from the edges
+        val nodes = edges.flatMap (
+            x ⇒ List (
+                ScNode (x.id_cn_1, x.v1, null, null, null, null, null, null),
+                ScNode (x.id_cn_2, x.v2, null, null, null, null, null, null))).distinct
 
         // persist edges and nodes to avoid recompute
         val xedges = edges.map (e ⇒ Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e))
@@ -207,7 +198,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         xnodes.persist (storage_level)
         if (spark.sparkContext.getCheckpointDir.isDefined)
         {
-            xedges.checkpoint ();
+            xedges.checkpoint ()
             xnodes.checkpoint ()
         }
 
