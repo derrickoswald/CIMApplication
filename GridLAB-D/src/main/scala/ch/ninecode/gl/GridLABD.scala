@@ -423,7 +423,7 @@ class GridLABD
 
     def check (input: String): (Boolean, List[String]) =
     {
-        if (input.contains ("FATAL") || input.contains ("ERROR") || input.contains ("FAIL") || input.contains ("command not found"))
+        if (input.contains ("FATAL") || input.contains ("ERROR") || input.contains ("FAIL") || input.contains ("command not found") || input.contains ("Cannot fork") || input.contains ("pthread_create"))
         {
             log.error ("gridlabd failed, message is: " + input)
             (false, input.split ("\n").toList)
