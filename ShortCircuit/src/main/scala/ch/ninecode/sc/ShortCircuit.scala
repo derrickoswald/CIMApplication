@@ -572,8 +572,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             case (result: ScResult, None) ⇒ result
             case (result: ScResult, Some (error)) ⇒
                 result.copy (
-                    errors = if (result.errors == null || result.errors.isEmpty) List (error)
-                    else result.errors,
+                    errors = List (error),
                     low_r = 0.0,
                     low_x = 0.0,
                     low_r0 = 0.0,
