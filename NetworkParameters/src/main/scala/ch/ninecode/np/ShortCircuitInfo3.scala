@@ -285,18 +285,18 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             where
                 p.Location = tslc.location
             """.format (tslc)
-        val n = session.sparkContext.getExecutorMemoryStatus.size // get how many executors
-    val transformerdetails = session.sql (query).rdd.map (
-        row ⇒
-            TransformerDetails (
-                row.getString (0),
-                row.getString (1),
-                row.getString (2),
-                row.getString (3),
-                row.getString (4),
-                row.getString (5),
-                row.getDouble (6),
-                row.getDouble (7))).coalesce (n, true).cache
+        val nexec = session.sparkContext.getExecutorMemoryStatus.size
+        val transformerdetails = session.sql (query).rdd.map (
+            row ⇒
+                TransformerDetails (
+                    row.getString (0),
+                    row.getString (1),
+                    row.getString (2),
+                    row.getString (3),
+                    row.getString (4),
+                    row.getString (5),
+                    row.getDouble (6),
+                    row.getDouble (7))).coalesce (nexec, true).cache
 
         // read the csv
         val equivalents = read_csv (csv)
