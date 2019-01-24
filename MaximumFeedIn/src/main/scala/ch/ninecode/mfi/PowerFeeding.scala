@@ -44,7 +44,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
     def vertexProgram (id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
     {
-        if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir) message else v
+        if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir || message.hasIssues) message else v
     }
 
     def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
@@ -57,7 +57,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val sum_z = triplet.srcAttr.sum_z + z * dist_km
                     val min_ir = math.min (triplet.srcAttr.min_ir, ir)
                     val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
-                    val problem = if (null != triplet.srcAttr.problem) triplet.srcAttr.problem else triplet.attr.problem
+                    val problem = if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.srcAttr.problem
                     val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString, message.asString))
@@ -70,14 +70,24 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                         val sum_z = triplet.dstAttr.sum_z + z * dist_km
                         val min_ir = math.min (triplet.dstAttr.min_ir, ir)
                         val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
-                        val problem = if (null != triplet.dstAttr.problem) triplet.dstAttr.problem else triplet.attr.problem
+                        val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
                         val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
                         if (log.isDebugEnabled)
                             log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                         Iterator ((triplet.srcId, message))
                     }
                     else
-                        Iterator.empty
+                        if (triplet.srcAttr.source_obj != triplet.dstAttr.source_obj)
+                        {
+                            if (triplet.srcAttr.hasIssues && !triplet.dstAttr.hasIssues)
+                                Iterator ((triplet.dstId, triplet.dstAttr.copy (problem = triplet.srcAttr.problem)))
+                            else if (!triplet.srcAttr.hasIssues && triplet.dstAttr.hasIssues)
+                                Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
+                            else
+                                Iterator.empty
+                        }
+                        else
+                            Iterator.empty
             else
                 Iterator.empty
         else
@@ -86,7 +96,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
     def mergeMessage (a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
     {
-        val node = a.copy (problem = "non-radial network")
+        val node = a.copy (problem = if (a.hasIssues) a.problem else if (b.hasIssues) b.problem else "non-radial network")
         if (log.isDebugEnabled)
             log.debug ("merge %s & %s".format (a.asString, b.asString))
         node
@@ -213,24 +223,34 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null), options)
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
-        val has = traced_house_nodes_EEA.map (node =>
-        {
-            node._2 match
+        // update each element in the transform er service area with bad value (just choose the first)
+        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && x.hasIssues).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, x._2.head.problem))
+        val has = traced_house_nodes_EEA.map (
+            node =>
             {
-                case Some (eea) =>
-                    node._1.copy (eea = eea)
-                case None =>
-                    node._1
+                node._2 match
+                {
+                    case Some (eea) ⇒
+                        node._1.copy (eea = eea)
+                    case None ⇒
+                        node._1
+                }
             }
-        }).persist (storage_level)
+        )
+        .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
+            arg ⇒
+            {
+                arg._2 match
+                {
+                    case Some (problem) ⇒ arg._1.copy (max_power_feeding = 0.0, reason = problem, details = null)
+                    case None ⇒ arg._1
+                }
+            }
+        )
+        .persist (storage_level)
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ())(has)
         log.info ("the simulation number is " + simulation)
-
-        // update each element in the transformer service area with bad value (just choose the first)
-        val problem_trafos: RDD[(String, String)] = has.filter (_.problem).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1, x._2.head.reason))
-        if (!problem_trafos.isEmpty)
-            Database.invalidate_precalculation (simulation, problem_trafos)
 
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {

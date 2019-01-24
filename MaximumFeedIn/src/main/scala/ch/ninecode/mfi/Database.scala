@@ -309,61 +309,6 @@ object Database
         }
     }
 
-    def invalidate_precalculation (simulation: Int, problems: RDD[(String, String)]): Unit =
-    {
-        val file = Paths.get ("simulation/results.db")
-        if (!Files.exists (file))
-            log.error ("database file " + file + " does not exist")
-        else
-        {
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-
-            var connection: Connection = null
-            try
-            {
-                // create a database connection
-                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
-                connection.setAutoCommit (false)
-
-                val records = problems.collect ()
-
-                val update = connection.prepareStatement ("update results set maximum=null, reason=?, details=null where simulation = ? and trafo = ?")
-                for (i <- records.indices)
-                {
-                    val trafo_id = records (i)._1
-                    val reason = records (i)._2
-                    update.setString (1, reason)
-                    update.setInt (2, simulation)
-                    update.setString (3, trafo_id)
-                    update.executeUpdate ()
-                }
-                update.close ()
-                connection.commit ()
-            }
-            catch
-            {
-                // if the error message is "out of memory",
-                // it probably means no database file is found
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
-            }
-            finally
-            {
-                try
-                {
-                    if (connection != null)
-                        connection.close ()
-                }
-                catch
-                {
-                    // connection close failed
-                    case e: SQLException ⇒ log.error ("exception caught: " + e);
-                }
-            }
-        }
-
-    }
-
     def fetchTransformersWithEEA (simulation: Int): Array[String] =
     {
         var ret = new ArrayBuffer[String]()
