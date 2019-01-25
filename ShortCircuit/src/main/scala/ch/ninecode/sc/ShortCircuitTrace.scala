@@ -113,7 +113,10 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
                         val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
                         val errors = triplet.attr.hasIssues (triplet.srcAttr.errors, options.messagemax)
-                        Iterator ((triplet.dstId, ScMessage (triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, fuses, triplet.srcAttr.id_seq, errors)))
+                        val message = ScMessage (triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, fuses, triplet.srcAttr.id_seq, errors)
+                        if (log.isDebugEnabled)
+                            log.debug ("%s <-- %s".format (triplet.dstAttr.id_seq, message.asString))
+                        Iterator ((triplet.dstId, message))
                     }
                     else
                         Iterator.empty
@@ -125,7 +128,10 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
                             val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
                             val errors = triplet.attr.hasIssues (triplet.dstAttr.errors, options.messagemax)
-                            Iterator ((triplet.srcId, ScMessage (triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, fuses, triplet.dstAttr.id_seq, errors)))
+                            val message = ScMessage (triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, fuses, triplet.dstAttr.id_seq, errors)
+                            if (log.isDebugEnabled)
+                                log.debug ("%s <-- %s".format (triplet.srcAttr.id_seq, message.asString))
+                            Iterator ((triplet.srcId, message))
                         }
                         else
                             Iterator.empty
