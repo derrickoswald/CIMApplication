@@ -36,13 +36,20 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
+    def transformer_filter (t: TransformerData): Boolean =
+    {
+        val messen_steuern = t.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
+        val ratedS = t.end0.ratedS > 1000 && t.end1.ratedS > 1000
+        messen_steuern && ratedS
+    }
+
     def getTransformers
     (
         default_supply_network_short_circuit_power_max: Double = 200.0e6,
         default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
         default_supply_network_short_circuit_power_min: Double = 100.0e6,
         default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
-        transformer_filter: PowerTransformer ⇒ Boolean = _.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern",
+        transformer_filter: TransformerData ⇒ Boolean = transformer_filter,
         substation_filter: Substation ⇒ Boolean = _.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
     ): RDD[TransformerData] =
     {
@@ -71,9 +78,10 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
         val ends = ends_terminals_voltages.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
-        val transformers = getOrElse [PowerTransformer].filter (transformer_filter)
+        val transformers = getOrElse [PowerTransformer]
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
+            .filter (transformer_filter)
 
         // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
         def station_fn (container: Option[Element]): String =
