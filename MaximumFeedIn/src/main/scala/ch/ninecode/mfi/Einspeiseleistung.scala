@@ -600,11 +600,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             if (0 != count)
             {
                 val trafos_nodes_feeders = vertices.map (x ⇒ (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null))) // (trafoid (nodeid, feeder))
-            val nodes_equipment = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
-                .flatMap (x ⇒ x._2._1.map (y ⇒ y.TopologicalNode).toSet.map ((z: String) ⇒ (z, x._2._2.id))) // (nodeid, equipmentid)
-            val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
-                .map (x ⇒ (x._2._1, (x._1, x._2._2._2))) // (trafoid, (equipment, feeder)) -- with duplicates, possibly with different feeders, for two terminal equipment
-            val feeder_map = trafo_equipment_feeder.groupByKey
+                val nodes_equipment = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
+                    .flatMap (x ⇒ x._2._1.map (y ⇒ y.TopologicalNode).toSet.map ((z: String) ⇒ (z, x._2._2.id))) // (nodeid, equipmentid)
+                val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
+                    .map (x ⇒ (x._2._1, (x._1, x._2._2._2))) // (trafoid, (equipment, feeder)) -- with duplicates, possibly with different feeders, for two terminal equipment
+                val feeder_map = trafo_equipment_feeder.groupByKey
                 einspeiseleistung (gridlabd, filtered_trafos, feeder_map, storage_level)
                 log.info ("finished " + count + " trafokreis")
             }

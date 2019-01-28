@@ -184,15 +184,21 @@ object Database
                     datainsert.setString (3, records (i).trafo)
                     datainsert.setString (4, records (i).feeder)
                     datainsert.setString (5, records (i).house)
-                    records (i).max match
+                    records (i).reason match
                     {
-                        case None =>
+                        case "voltage limit" | "current limit" | "transformer limit" ⇒
+                            records (i).max match
+                            {
+                                case Some (kw) ⇒ datainsert.setDouble (6, kw)
+                                case None ⇒ datainsert.setNull (6, Types.DOUBLE)
+                            }
+                            datainsert.setString (7, records (i).reason)
+                            datainsert.setString (8, records (i).details)
+                        case _ ⇒
                             datainsert.setNull (6, Types.DOUBLE)
-                        case Some (kw) =>
-                            datainsert.setDouble (6, kw)
+                            datainsert.setString (7, "no results")
+                            datainsert.setString (8, records (i).reason)
                     }
-                    datainsert.setString (7, records (i).reason)
-                    datainsert.setString (8, records (i).details)
                     datainsert.executeUpdate ()
                 }
                 datainsert.close ()
@@ -270,16 +276,18 @@ object Database
                 datainsert.setString (3, records (i).source_obj)
                 datainsert.setString (4, records (i).feeder)
                 datainsert.setString (5, records (i).mrid)
-                datainsert.setDouble (6, records (i).max_power_feeding)
                 datainsert.setInt (7, if (records (i).eea != null) records (i).eea.size else 0)
-                datainsert.setString (8, records (i).reason)
-                if (null == records (i).details)
+                records (i).reason match
                 {
-                    datainsert.setNull (9, Types.VARCHAR)
-                    datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
+                    case "voltage limit" | "current limit" | "transformer limit" ⇒
+                        datainsert.setDouble (6, records (i).max_power_feeding)
+                        datainsert.setString (8, records (i).reason)
+                        datainsert.setString (9, records (i).details)
+                    case _ ⇒
+                        datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
+                        datainsert.setString (8, "no results")
+                        datainsert.setString (9, records (i).reason)
                 }
-                else
-                    datainsert.setString (9, records (i).details)
                 datainsert.executeUpdate ()
             }
             datainsert.close ()

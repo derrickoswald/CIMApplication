@@ -396,13 +396,17 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 if (resultset.getString (1) == "TX0003")
                 {
                     assert (resultset.getObject (3) == null, "maximum")
-                    assert (resultset.getString (4) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
-                } else
+                    assert (resultset.getString (4) == "no results", "special transformer")
+                    assert (resultset.getString (5) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
+                }
+                else
                     if (resultset.getString (1) == "TX0002")
                     {
                         assert (resultset.getObject (3) == null, "all results on TX00002 have no value for maximum")
-                        assert (resultset.getString (4) == "3 transformer windings for edge TX0002", "three winding transformer")
-                    } else
+                        assert (resultset.getString (4) == "no results", "special transformer")
+                        assert (resultset.getString (5) == "3 transformer windings for edge TX0002", "three winding transformer")
+                    }
+                    else
                     {
                         assert (resultset.getString (4) == "current limit", "normal transformer")
                     }
