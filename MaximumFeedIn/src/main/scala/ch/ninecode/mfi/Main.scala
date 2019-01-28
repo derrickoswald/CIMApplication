@@ -82,7 +82,7 @@ object Main
         simulation: Int = -1,
         reference: Int = -1,
         delta: Double = 1e-6,
-        precalc_factor: Double = 1.5,
+        precalc_factor: Double = 2.5,
         cosphi: Double = 1.0,
         voltage_threshold: Double = 3.0,
         voltage_threshold2: Double = 3.0,

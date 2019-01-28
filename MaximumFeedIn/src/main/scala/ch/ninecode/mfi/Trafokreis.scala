@@ -33,9 +33,16 @@ case class Trafokreis
 
     val window: Int = 3 * 60 // window size in simulated seconds per experiment
 
-    val margin: Double = options.precalc_factor // check up to 50% over the precalculated value
-
     val step: Double = 10000.0
+
+    def limit (node: MaxPowerFeedingNodeEEA): Double =
+    {
+        val margin = if ((node.reason == "non-radial network") || (node.reason == "transformer limit"))
+            1.0
+        else
+            options.precalc_factor // check up to this factor (1.5 == 50%) over the precalculated value
+        math.ceil (node.max_power_feeding * margin / step) * step // limit as ceiling(d*margin%) in thousands
+    }
 
     def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
 
@@ -45,8 +52,7 @@ case class Trafokreis
         val node = h._1.id_seq // the node under test
         val house = h._1.mrid // the house under test (could be multiple houses per node)
         val index = h._2 // experiment #
-        def limit (d: Double) = math.ceil (d * margin / step) * step // limit as ceiling(d*margin%) in thousands
-        val max = limit (h._1.max_power_feeding) // upper kilowatt limit to test
+        val max = limit (h._1) // upper kilowatt limit to test
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands

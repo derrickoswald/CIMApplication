@@ -43,5 +43,5 @@ case class EinspeiseleistungOptions
     ignore_other: Boolean = false,
     workdir: String = "",
     files: Seq[String] = Seq (),
-    precalc_factor: Double = 1.5
+    precalc_factor: Double = 2.5
 )
