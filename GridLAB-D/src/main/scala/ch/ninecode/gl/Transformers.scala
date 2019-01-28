@@ -38,9 +38,14 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
 
     def transformer_filter (t: TransformerData): Boolean =
     {
-        val messen_steuern = t.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
-        val ratedS = t.end0.ratedS > 1000 && t.end1.ratedS > 1000
-        messen_steuern && ratedS
+        val power_transformer = t.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
+        val power_significant = t.ends.forall (_.ratedS > 1000.0)
+        power_transformer && power_significant
+    }
+
+    def substation_filter (s: Substation): Boolean =
+    {
+        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
     }
 
     def getTransformers
@@ -50,7 +55,7 @@ class Transformers (session: SparkSession, storage_level: StorageLevel = Storage
         default_supply_network_short_circuit_power_min: Double = 100.0e6,
         default_supply_network_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
         transformer_filter: TransformerData ⇒ Boolean = transformer_filter,
-        substation_filter: Substation ⇒ Boolean = _.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType != "PSRType_DistributionBox"
+        substation_filter: Substation ⇒ Boolean = substation_filter
     ): RDD[TransformerData] =
     {
         // get ends and terminals
