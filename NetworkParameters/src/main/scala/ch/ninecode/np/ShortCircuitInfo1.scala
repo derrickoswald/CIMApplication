@@ -79,7 +79,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             val id = row.getString (0)
             val ort = row.getString (1)
             val v1 = row.getDouble (2) * 1e3
-            val wik = row.getDouble (3) * Math.PI / 180.0
+            val wik = - row.getDouble (3) * Math.PI / 180.0
             val sk = row.getDouble (4) * 1e6
             val sap = row.getString (5)
             val feeder = row.getString (6)
@@ -94,7 +94,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             val netz_r1 = zqt * Math.cos (wik)
             val netz_x1 = zqt * Math.sin (wik)
             val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
-        val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
+            val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
 
             val voltage = voltages.getOrElse (v1, "BaseVoltage_Unknown_%s".format (v1))
             val mRID = "EquivalentInjection_" + id
