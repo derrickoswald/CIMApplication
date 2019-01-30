@@ -24,6 +24,9 @@ pom.xml.releaseBackup
 pom.xml.next
 release.properties
 
+# SBT #
+project/
+
 # Test Data #
 data/
 private_data/
