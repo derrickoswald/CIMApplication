@@ -38,7 +38,7 @@ case class Trafokreis
     def limit (node: MaxPowerFeedingNodeEEA): Double =
     {
         val margin = if ((node.reason == "non-radial network") || (node.reason == "transformer limit"))
-            1.0
+            1.5
         else
             options.precalc_factor // check up to this factor (1.5 == 50%) over the precalculated value
         math.ceil (node.max_power_feeding * margin / step) * step // limit as ceiling(d*margin%) in thousands
