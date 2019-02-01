@@ -422,14 +422,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             success._2.foreach (log.error)
         }
         val output = gridlabd.read_output_files (one_phase, special_filenameparser) // (trafoid, value_3ph)
-    val read = System.nanoTime ()
+        val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
         // key by trafo_time to join
         val values = output.keyBy (x ⇒ x._1 + "_" + x._2.millis.toString).groupByKey
         val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.t1.getTimeInMillis.toString)
         val dd = exp.leftOuterJoin (values)
         val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
-    val anal = System.nanoTime ()
+        val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
     }

@@ -562,7 +562,7 @@ class GridLABD
                 if (c.startsWith ("# file"))
                 {
                     val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
-                val filename = c.replaceAll (filename_pattern, "$1").replaceAll ("\\r", "")
+                    val filename = c.replaceAll (filename_pattern, "$1").replaceAll ("\\r", "")
                     val (e, u) = filenameparser (filename)
                     element = e
                     units = u
