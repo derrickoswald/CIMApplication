@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import ch.ninecode.gl.Complex
+
 /**
  * A circuit branch.
  *
@@ -85,6 +87,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     // ratios of currents with the branch that the portion applies to
     def ratios: Iterable[(Double, Branch)]
+
+    def z: Impedanzen
 }
 
 /**
@@ -96,7 +100,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param mRID    the mRID of the CIM element
  * @param rating  the current rating if it is a fuse
  */
-case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double]) extends Branch (from, to, current)
+case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double] = None,
+     impedances: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
     override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
@@ -117,6 +122,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def z: Impedanzen = impedances
 }
 
 /**
@@ -159,6 +166,8 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
+
+    def z: Impedanzen = seq.foldRight (Impedanzen(0.0, 0.0, 0.0, 0.0)) ((a, b) ⇒ b + a.z)
 }
 
 /**
@@ -209,6 +218,8 @@ case class ParallelBranch (override val from: String, override val to: String, o
         else
             parallel.map (x ⇒ (x.current / sum, x))
     }
+
+    def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((a, b) ⇒ b.parallel (a.z))
 }
 
 object Branch

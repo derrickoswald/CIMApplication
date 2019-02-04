@@ -163,7 +163,7 @@ class TraceRoute
     {
         // check for series elements
         val series = for
-            {
+        {
             branch ← network
             buddies = network.filter (x ⇒ branch.to == x.from)
             parallel = network.filter (x ⇒ branch != x && branch.to == x.to)

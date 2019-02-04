@@ -226,12 +226,11 @@ case class LineEdge
     }
 
     /**
-     * Emit the configuration for the edge.
+     * Compute the equivalent impedance.
      *
-     * @param generator the driver program
-     * @return The configuration .glm element.
+     * @return (z1, z0)
      */
-    def configuration (generator: GLMGenerator): String =
+    def impedance: (Complex, Complex) =
     {
         val line = lines.head
         var rt = if (0 == line.r) DEFAULT_R else line.r
@@ -251,6 +250,18 @@ case class LineEdge
             r0t = r0
             x0t = x0
         }
-        make_line_configuration (configurationName, rt, xt, r0t, x0t, generator)
+        (Complex (rt, xt), Complex (r0t, x0t))
+    }
+
+    /**
+     * Emit the configuration for the edge.
+     *
+     * @param generator the driver program
+     * @return The configuration .glm element.
+     */
+    def configuration (generator: GLMGenerator): String =
+    {
+        val (z1, z0) = impedance
+        make_line_configuration (configurationName, z1.re, z1.im, z0.re, z0.im, generator)
     }
 }

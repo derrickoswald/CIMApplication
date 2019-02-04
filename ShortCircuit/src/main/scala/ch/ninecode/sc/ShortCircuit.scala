@@ -419,6 +419,82 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     /**
+     * Reduce series connected elements.
+     *
+     * @param network the current network to be reduced
+     * @return the reduced network with one pair of series elements converted to a series branch
+     */
+    def reduce_series (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    {
+        // check for series elements
+        val series = for
+            {
+                branch ← network
+                buddies = network.filter (x ⇒ branch.from == x.to)
+                if buddies.size == 1
+                buddy = buddies.head
+            }
+            yield (branch, buddy)
+        if (series.nonEmpty)
+        {
+            // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
+            val pair = series.head
+            val rest = network.filter (x ⇒ pair._1 != x && pair._2 != x)
+            (true, Seq (pair._2.add_in_series (pair._1)) ++ rest)
+        }
+        else
+            (false, network)
+    }
+
+    /**
+     * Reduce parallel connected elements.
+     *
+     * @param network the current network to be reduced
+     * @return the reduced network with one pair of parallel elements converted to a parallel branch
+     */
+    def reduce_parallel (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    {
+        // check for parallel elements
+        val parallel = for
+            {
+                branch ← network
+                buddies = network.filter (x ⇒ ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
+                if buddies.nonEmpty
+            }
+            yield buddies ++ Seq (branch)
+        if (parallel.nonEmpty)
+        {
+            // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
+            val set = parallel.head
+            (true, Seq (set.head.add_in_parallel (set.tail)) ++ network.filter (x ⇒ !set.toSeq.contains (x)))
+        }
+        else
+            (false, network)
+    }
+
+    def reduce (branches: Iterable[SimpleBranch]): Iterable[Branch] =
+    {
+        // step by step reduce the network to a single branch through series and parallel reductions
+        var done = false
+        var network: Iterable[Branch] = branches
+        do
+        {
+            val (modified, net) = reduce_series (network)
+            network = net
+            done = !modified
+            if (done)
+            {
+                val (modified, net) = reduce_parallel (network)
+                network = net
+                done = !modified
+            }
+        }
+        while (!done)
+
+        network
+    }
+
+    /**
      * Evaluate the results of an experiment.
      *
      * An experiment is a GridLAB-D load-flow evaluation of a transformer service area where the house under test is
@@ -434,10 +510,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      */
     def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Branch) =
     {
-        import scalax.collection.Graph // or scalax.collection.mutable.Graph
-        import scalax.collection.GraphPredef._, scalax.collection.GraphEdge._
-        import scalax.collection.edge.LDiEdge
-
         // TBD: the line impedance at high and low temperatures (Impedanzen) and fuse ratings
 
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
@@ -447,7 +519,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val data: Iterable[ThreePhaseComplexDataElement] = exp._2
 
         // get directed edges hi→lo voltage = Branch from→to
-        val graph_edges: Iterable[LDiEdge[String] with EdgeCopy[LDiEdge] { type L1 = GLMEdge }] = edges.flatMap (
+        val graph_edges = edges.flatMap (
             x ⇒
             {
                 data.find (y ⇒ y.element == x.cn1) match
@@ -465,25 +537,27 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                             List ()
                                         else
                                             if (v1 > v2)
-                                                List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id))
                                             else
-                                                List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id))
                                     case line: LineEdge ⇒
                                         if (Math.abs (v1 - v2) < 1e-3)
                                             List ()
                                         else
                                         {
+                                            val (z1, z0 ) = line.impedance
+                                            val z = Impedanzen (z1, z0, z1, z0) // ToDo: at temperature
                                             if (v1 > v2)
-                                                List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None, z))
                                             else
-                                                List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None, z))
                                         }
                                     case transformer: TransformerEdge ⇒
-                                        // this never happens since the transformer is not included in the edges
+                                        // this never happens since the transformer is not included in the edges list
                                         if (v1 > v2)
-                                            List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id))
                                         else
-                                            List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id))
                                 }
                             case None ⇒
                                 List ()
@@ -494,17 +568,32 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
         )
 
-        val graph_nodes = graph_edges.flatMap (x ⇒ x.nodeSeq)
-        val mygraph = Graph.from (graph_nodes, graph_edges)
-        val start = mygraph.get (experiment.mrid)
-        val end = mygraph.get (trafokreis.transformer.node1)
-        // could use the traversable
-        val dd = start.findConnected (_ == end)
-        // or get the topological ordering
-        val ordered = end.topologicalSort ()
-        val array = ordered.right.get.toParArray
+        // eliminate branches in the tree than only have one end connected - except for the starting and ending node
+        def no_stubs (edges: Iterable[SimpleBranch], start: String, end: String) (branch: SimpleBranch): Boolean =
+        {
+            (start == branch.from) || (end == branch.to) || (edges.exists (edge ⇒ edge.from == branch.to) && edges.exists (edge ⇒ edge.to == branch.from))
+        }
+        var e = graph_edges
+        var count = 0
+        do
+        {
+            count = e.size
+            e = e.filter (no_stubs (e, trafokreis.transformer.node1, experiment.mrid))
+        }
+        while (count != e.size)
 
-        val (z, path): (Complex, Branch) = (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+        // reduce the tree to (hopefully) one branch spanning from start to end
+        val branches = reduce (e)
+        val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
+
+        // compute the impedance from start to end
+        val (z, path) = if (null == branch)
+        {
+            log.error ("""invalid branch network %s""".format (branches.map (_.asString).mkString ("\n")))
+            (Complex (0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+        }
+        else
+            (branch.z.impedanz_low, branch)
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)
     }
 
