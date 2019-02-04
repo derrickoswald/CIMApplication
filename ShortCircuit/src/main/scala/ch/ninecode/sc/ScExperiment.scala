@@ -58,8 +58,11 @@ case class ScExperiment
 
     override def toString: String = "Experiment(" +
         trafo + "," +
+        mrid + "," +
         equipment + "," +
         new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
         slot + "," +
-        window + ")"
+        window + "," +
+        voltage + "V," +
+        impedance.toString + "Ω)"
 }

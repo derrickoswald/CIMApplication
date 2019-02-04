@@ -1,6 +1,7 @@
 package ch.ninecode.sc
 
 import java.nio.charset.StandardCharsets
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
@@ -24,7 +25,10 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerServiceArea
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
@@ -336,68 +340,172 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             null
     }
 
-    /**
-     * Convert current and voltage at a node into impedance.
-     *
-     * Computes the sum of currents into a node, to get the current flowing from the node to neutral,
-     * and from this, and the voltage at the node, computes the impedance at the node.
-     *
-     * @param arg a tuple of the experimental conditions and the results (both voltage and current in the same Iterable)
-     * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-     */
-    def toImpedance (arg: (ScExperiment, Option[Iterable[(String, ThreePhaseComplexDataElement)]])): (String, String, String, Double, Complex, Branch) =
+    def read_output_files (one_phase: Boolean, workdir_slash: String): RDD[(String, ThreePhaseComplexDataElement)] =
     {
-        val (z, path): (Complex, Branch) = arg._2 match
+        val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+
+        def toTimeStamp (string: String): Long =
         {
-            case Some (data) ⇒
-                val values = data.map (_._2)
-                val voltage = values.find (x ⇒ x.units == "Volts" && arg._1.mrid == x.element) // extract_node() is unnecessary here, voltage recorder file names are not suffixed
-            val currents = values.filter (x ⇒ x.units == "Amps" && arg._1.mrid == extract_node (x.element)).map (_.value_a)
-                voltage match
-                {
-                    case Some (volts) ⇒
-                        val live = data.flatMap (alive)
-                        val route = traceroute (arg._1.mrid, live)
-                        val v = volts.value_a
-                        implicit val zero: Complex = Complex (0)
-                        // val i = currents.sum // ToDo: Complex implements Numeric[Complex] but we need the above implicit for some reason, could use current.foldLeft (zero)(_ + _)
-                        val i = currents.foldLeft (zero)((a, b) ⇒ if (b.re > 0.0) a + b else a) // take only the sum of positive currents into the node ToDo: what's really positive in complex numbers
-                    val z = if (i == zero)
-                    {
-                        log.error ("""zero current at %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
-                        Complex (Double.PositiveInfinity, 0.0)
-                    }
-                    else
-                        (arg._1.voltage - v) / i
-                        (z, route)
-                    case _ ⇒
-                        log.error ("""no voltage records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
-                        (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
-                }
-            case _ ⇒
-                log.error ("""no data records for %s in time_slot %d:%d""".format (arg._1.mrid, arg._1.slot * arg._1.window / 60, arg._1.slot * arg._1.window % 60))
-                (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+            try
+            {
+                date_format.parse (string).getTime
+            }
+            catch
+            {
+                case pe: ParseException ⇒
+                    log.warn (pe.getMessage)
+                    0L
+            }
         }
-        (arg._1.trafo, arg._1.mrid, arg._1.equipment, arg._1.voltage, z, path)
+
+        val pattern = java.util.regex.Pattern.compile ("# output_data/([^.]*).csv run at (.*) on (\\d*) nodes")
+        val path = workdir_slash + "*/output.txt"
+        val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+        val files = session.sparkContext.wholeTextFiles (path, executors)
+
+        // extract TRAxxx from the path name
+        def extract_trafo (k: (String, String)): (String, String) =
+        {
+            val path = k._1
+            val trafo_pattern = ".*/(.*)/output.txt"
+            val trafo = path.replaceAll (trafo_pattern, "$1")
+            (trafo, k._2)
+        }
+
+        def read (f: String): TraversableOnce[ThreePhaseComplexDataElement] =
+        {
+            var experiment: String = ""
+            var timestamp: Long = 0L
+            var records: Int = 0
+            val units = "Volts"
+            val content = f.split ("\n")
+
+            def makeResult (c: String): ThreePhaseComplexDataElement =
+            {
+                if (c.startsWith ("#"))
+                {
+                    val matcher = pattern.matcher (c)
+                    if (matcher.find)
+                    {
+                        val dump = c.substring (matcher.start (1), matcher.end (1))
+                        experiment = if (dump.endsWith ("_voltdump")) dump.substring (0, dump.length - 9) else dump
+                        timestamp = toTimeStamp (c.substring (matcher.start (2), matcher.end (2)))
+                        records = c.substring (matcher.start (3), matcher.end (3)).toInt
+                    }
+                    null
+                }
+                else if (c.startsWith ("node_name"))
+                    null
+                else
+                {
+                    val c_arr = c.split (",")
+                    if (c_arr.length == 7)
+                        if (one_phase)
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units)
+                        else
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (c_arr (3).toDouble, c_arr (4).toDouble), Complex (c_arr (5).toDouble, c_arr (6).toDouble), units)
+                    else
+                    {
+                        log.error ("""%s voltage dump text "%s" cannot be interpreted as three phase complex %s""".format (experiment, c, units))
+                        null
+                    }
+                }
+            }
+
+            content.map (makeResult).filter (_ != null)
+        }
+
+        files.map (extract_trafo).flatMapValues (read)
     }
 
     /**
-     * Get the name element (possible multiplexed, e.g. node%edge) and type of measurement.
+     * Evaluate the results of an experiment.
      *
-     * @param filename the recorder file name
-     * @return tuple of the element and type of recorder
+     * An experiment is a GridLAB-D load-flow evaluation of a transformer service area where the house under test is
+     * set as a load of a constant impedance (100 ohms) and we have captured the voltage dump (the voltage at each node)
+     * under these conditions.
+     * The transformer service area has the nodes and edges that were used in generating the .glm file for GridLAB-D.
+     * So the task is to determine the current direction in each edge by examining the difference in voltage between
+     * the two terminal nodes of each edge and from that determine an equivalent Branch circuit (series and
+     * parallel components) with the edge impedances.
+     *
+     * @param exp all the data, the simulation and specific experiment plus all the voltage readings
+     * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and an equivalent circuit
      */
-    def special_filenameparser (filename: String): (String, String) =
+    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Branch) =
     {
-        val element = filename.substring (0, filename.lastIndexOf ("_"))
-        val units = if (filename.endsWith ("_voltage.csv"))
-            "Volts"
-        else
-            if (filename.endsWith ("_current.csv"))
-                "Amps"
-            else
-                ""
-        (element, units)
+        import scalax.collection.Graph // or scalax.collection.mutable.Graph
+        import scalax.collection.GraphPredef._, scalax.collection.GraphEdge._
+        import scalax.collection.edge.LDiEdge
+
+        // TBD: the line impedance at high and low temperatures (Impedanzen) and fuse ratings
+
+        val trafokreis: SimulationTransformerServiceArea = exp._1._1
+        val experiment: ScExperiment = exp._1._2
+        val nodes: Iterable[GLMNode] = exp._1._1.nodes
+        val edges: Iterable[GLMEdge] = exp._1._1.edges
+        val data: Iterable[ThreePhaseComplexDataElement] = exp._2
+
+        // get directed edges hi→lo voltage = Branch from→to
+        val graph_edges: Iterable[LDiEdge[String] with EdgeCopy[LDiEdge] { type L1 = GLMEdge }] = edges.flatMap (
+            x ⇒
+            {
+                data.find (y ⇒ y.element == x.cn1) match
+                {
+                    case Some (voltage1) ⇒
+                        data.find (y ⇒ y.element == x.cn2) match
+                        {
+                            case Some (voltage2) ⇒
+                                val v1 = voltage1.value_a.modulus
+                                val v2 = voltage2.value_a.modulus
+                                x match
+                                {
+                                    case switch: SwitchEdge ⇒
+                                        if (switch.normalOpen)
+                                            List ()
+                                        else
+                                            if (v1 > v2)
+                                                List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                            else
+                                                List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                    case line: LineEdge ⇒
+                                        if (Math.abs (v1 - v2) < 1e-3)
+                                            List ()
+                                        else
+                                        {
+                                            if (v1 > v2)
+                                                List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                            else
+                                                List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                        }
+                                    case transformer: TransformerEdge ⇒
+                                        // this never happens since the transformer is not included in the edges
+                                        if (v1 > v2)
+                                            List (LDiEdge (x.cn1, x.cn2)(x)) // SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None))
+                                        else
+                                            List (LDiEdge (x.cn2, x.cn1)(x)) // SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None))
+                                }
+                            case None ⇒
+                                List ()
+                        }
+                    case None ⇒
+                        List ()
+                }
+            }
+        )
+
+        val graph_nodes = graph_edges.flatMap (x ⇒ x.nodeSeq)
+        val mygraph = Graph.from (graph_nodes, graph_edges)
+        val start = mygraph.get (experiment.mrid)
+        val end = mygraph.get (trafokreis.transformer.node1)
+        // could use the traversable
+        val dd = start.findConnected (_ == end)
+        // or get the topological ordering
+        val ordered = end.topologicalSort ()
+        val array = ordered.right.get.toParArray
+
+        val (z, path): (Complex, Branch) = (Complex (Double.PositiveInfinity, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)
     }
 
     /**
@@ -405,13 +513,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      *
      * @param gridlabd    the object to solve the .glm files and read the recorders
      * @param one_phase   if <code>true</code>, create single phase results, otherwise three phase results
-     * @param experiments the experiments contained in the players, that can be extracted from the recorders
+     * @param simulations the simulations with experiments
      * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, experiments: RDD[ScExperiment]): RDD[(String, String, String, Double, Complex, Branch)] =
+    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex, Branch)] =
     {
         val b4_solve = System.nanoTime ()
-        val trafos: RDD[String] = experiments.map (_.trafo).distinct
+        val trafos = simulations.map (_.simulation)
         val success = gridlabd.solve (trafos)
         val solved = System.nanoTime ()
         if (success._1)
@@ -421,14 +529,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             log.error ("solve: %s seconds failed".format ((solved - b4_solve) / 1e9))
             success._2.foreach (log.error)
         }
-        val output = gridlabd.read_output_files (one_phase, special_filenameparser) // (trafoid, value_3ph)
+        val output = read_output_files (one_phase, gridlabd.workdir_slash)
         val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
-        // key by trafo_time to join
-        val values = output.keyBy (x ⇒ x._1 + "_" + x._2.millis.toString).groupByKey
-        val exp = experiments.keyBy (x ⇒ x.trafo + "_" + x.t1.getTimeInMillis.toString)
-        val dd = exp.leftOuterJoin (values)
-        val z = dd.values.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
+
+        val values = output.map (x ⇒ (x._1 + "_" + x._2.millis.toString, x._2)).groupByKey
+        val groups = simulations.flatMap (simulation ⇒ simulation.experiments.map (experiment ⇒ (simulation, experiment))).keyBy (pair ⇒ pair._2.trafo + "_" + pair._2.t1.getTimeInMillis.toString)
+        val exp = groups.join (values).values
+
+        val z = exp.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
         val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
@@ -515,7 +624,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val n = experiments.map (generate_player_file (gridlabd)).count
         log.info ("""running %s experiments at %s°C""".format (n, temperature))
 
-        solve_and_analyse (gridlabd = gridlabd, one_phase = true, experiments)
+        solve_and_analyse (gridlabd = gridlabd, one_phase = true, simulations)
     }
 
     def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =

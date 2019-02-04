@@ -38,8 +38,6 @@ case class ScGLMGenerator
 
     override def nodes: Iterable[GLMNode] = area.nodes
 
-    override def extra: Iterable[String] = List ("")
-
     val experiments: Array[ScExperiment] = area.experiments
 
     /**
@@ -121,7 +119,7 @@ case class ScGLMGenerator
     /**
      * Emit one GridLAB-D node.
      *
-     * Override to emit a meter object for the node and if it's a house then players and recorders too.
+     * Override to emit a meter object for the node and if it is a house then a player too.
      *
      * @param node The node element.
      * @return The .glm file text for the node.
@@ -130,7 +128,7 @@ case class ScGLMGenerator
     {
         val meter = super.emit_node (node)
         val id = node.id
-        val players_and_recorders = experiments.find (_.mrid == id) match
+        val player = experiments.find (_.mrid == id) match
         {
             case Some (_) ⇒
                 val phase = if (one_phase) "AN" else "ABCN"
@@ -149,84 +147,24 @@ case class ScGLMGenerator
                       |            };
                       |        };
                       |""".stripMargin.format (id, id, phase, node.nominal_voltage, id)
-                val recorder1 =
-                    """
-                      |        object recorder
-                      |        {
-                      |            name "%s_voltage_recorder";
-                      |            parent "%s";
-                      |            property voltage_A.real,voltage_A.imag;
-                      |            interval 5;
-                      |            file "output_data/%s_voltage.csv";
-                      |        };
-                      |""".stripMargin.format (id, id, id)
-                load + recorder1
+                load
 
             case None ⇒ ""
         }
-        meter + players_and_recorders
+        meter + player
     }
 
-    /**
-     * Emit one GridLAB-D edge.
-     *
-     * Generate the text for an edge.
-     *
-     * @param edge The edge to emit.
-     * @return The .glm file text for the edge.
-     */
-    override def emit_edge (edge: GLMEdge): String =
+    override def extra: Iterable[String] =
     {
-        val link = super.emit_edge (edge)
-        val size = edge match
-        {
-            case sw: SwitchEdge ⇒ if (sw.fuse) """$%s""".format (sw.ratedCurrent) else ""
-            case _ ⇒ ""
-        }
-        val recorders =
-            """
-              |        object recorder
-              |        {
-              |            name "%s_%s_current_recorder";
-              |            parent "%s";
-              |            property current_in_A.real,current_in_A.imag,flow_direction;
-              |            interval 5;
-              |            file "output_data/%s%%%s%s_current.csv";
-              |        };
-              |
-              |        object recorder
-              |        {
-              |            name "%s_%s_current_recorder";
-              |            parent "%s";
-              |            property current_out_A.real,current_out_A.imag,flow_direction;
-              |            interval 5;
-              |            file "output_data/%s%%%s%s_current.csv";
-              |        };
-            """.stripMargin.format (edge.cn1, edge.id, edge.id, edge.cn1, edge.id, size, edge.cn2, edge.id, edge.id, edge.cn2, edge.id, size)
-        link + recorders
-    }
-
-    /**
-     * Emit one transformer edge.
-     *
-     * @param transformer The transformer specifics.
-     * @return The .glm file text for the transformer.
-     */
-    override def emit_transformer (transformer: TransformerEdge): String =
-    {
-        val t = super.emit_transformer (transformer)
-        val name = transformer.transformer.transformer_name
-        val recorder =
-            """
-              |        object recorder
-              |        {
-              |            name "%s_%s_current_recorder";
-              |            parent "%s";
-              |            property current_out_A.real,current_out_A.imag,flow_direction;
-              |            interval 5;
-              |            file "output_data/%s%%%s_current.csv";
-              |        };
-            """.stripMargin.format (transformer.cn2, name, name, transformer.cn2, name)
-        t + recorder
+        experiments.map (
+            experiment ⇒
+                """
+                  |        object voltdump
+                  |        {
+                  |            filename "output_data/%s_voltdump.csv";
+                  |            runtime "%s";
+                  |        };
+                  |""".stripMargin.format (experiment.mrid, date_format.format (experiment.t1.getTime))
+        )
     }
 }
