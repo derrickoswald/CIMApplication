@@ -9,7 +9,7 @@ import ch.ninecode.gl.Graphable
  * @param id_seq    the node mRID
  * @param voltage   the node voltage
  * @param source_id the feeding transformer
- * @param source_impedance the feeding transformer impedance
+ * @param source_impedance the feeding transformer impedance at the secondary (Ω)
  * @param id_prev   the previous node
  * @param impedance the impedance from the transformer to this node
  * @param fuses     the network of fuses encountered on the path from the source to this node

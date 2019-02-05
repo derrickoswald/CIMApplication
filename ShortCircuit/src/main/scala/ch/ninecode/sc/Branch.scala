@@ -88,7 +88,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     // ratios of currents with the branch that the portion applies to
     def ratios: Iterable[(Double, Branch)]
 
-    def z: Impedanzen
+    def z1: Complex
+    def z0: Complex
 }
 
 /**
@@ -101,7 +102,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param rating  the current rating if it is a fuse
  */
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double] = None,
-     impedances: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
+     z1: Complex = 0.0, z0: Complex = 0.0) extends Branch (from, to, current)
 {
     override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
@@ -122,8 +123,6 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
-
-    def z: Impedanzen = impedances
 }
 
 /**
@@ -167,7 +166,9 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
-    def z: Impedanzen = seq.foldRight (Impedanzen(0.0, 0.0, 0.0, 0.0)) ((a, b) ⇒ b + a.z)
+    def z1: Complex = seq.foldRight (Complex (0.0)) ((a, b) ⇒ b + a.z1)
+
+    def z0: Complex = seq.foldRight (Complex (0.0)) ((a, b) ⇒ b + a.z0)
 }
 
 /**
@@ -219,7 +220,9 @@ case class ParallelBranch (override val from: String, override val to: String, o
             parallel.map (x ⇒ (x.current / sum, x))
     }
 
-    def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((a, b) ⇒ b.parallel (a.z))
+    def z1: Complex = parallel.tail.foldRight (parallel.head.z1) ((a, b) ⇒ b.parallel_impedanz (a.z1))
+
+    def z0: Complex = parallel.tail.foldRight (parallel.head.z0) ((a, b) ⇒ b.parallel_impedanz (a.z0))
 }
 
 object Branch

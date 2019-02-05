@@ -508,11 +508,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and an equivalent circuit
      */
-    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Branch) =
+    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Complex, Branch) =
     {
-        // TBD: the line impedance at high and low temperatures (Impedanzen) and fuse ratings
-
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
+        val tx_impedance = trafokreis.transformer.total_impedance._1
         val experiment: ScExperiment = exp._1._2
         val nodes: Iterable[GLMNode] = exp._1._1.nodes
         val edges: Iterable[GLMEdge] = exp._1._1.edges
@@ -546,11 +545,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         else
                                         {
                                             val (z1, z0 ) = line.impedance
-                                            val z = Impedanzen (z1, z0, z1, z0) // ToDo: at temperature
                                             if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None, z))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None, z1, z0))
                                             else
-                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None, z))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None, z1, z0))
                                         }
                                     case transformer: TransformerEdge ⇒
                                         // this never happens since the transformer is not included in the edges list
@@ -573,28 +571,21 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             (start == branch.from) || (end == branch.to) || (edges.exists (edge ⇒ edge.from == branch.to) && edges.exists (edge ⇒ edge.to == branch.from))
         }
-        var e = graph_edges
-        var count = 0
-        do
-        {
-            count = e.size
-            e = e.filter (no_stubs (e, trafokreis.transformer.node1, experiment.mrid))
-        }
-        while (count != e.size)
 
         // reduce the tree to (hopefully) one branch spanning from start to end
-        val branches = reduce (e)
+        val branches = reduce (graph_edges.filter (no_stubs (graph_edges, trafokreis.transformer.node1, experiment.mrid)))
         val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
 
         // compute the impedance from start to end
-        val (z, path) = if (null == branch)
+        val (z1, z0, path) = if (null == branch)
         {
             log.error ("""invalid branch network %s""".format (branches.map (_.asString).mkString ("\n")))
-            (Complex (0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+            (Complex (0.0), Complex (0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
         }
         else
-            (branch.z.impedanz_low, branch)
-        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)
+            // use r0=r1 & x0=x1 for trafos
+            (branch.z1 + tx_impedance, branch.z0 + tx_impedance, branch)
+        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z1, z0, path)
     }
 
     /**
@@ -605,7 +596,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param simulations the simulations with experiments
      * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex, Branch)] =
+    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex, Complex, Branch)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos = simulations.map (_.simulation)
@@ -644,7 +635,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and fuse network
      */
-    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex, Branch)] =
+    def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Complex, Complex, Branch)] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -889,10 +880,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         directory = x._2.transformer_name)
             )
             // perform remedial simulations
-            val zlo: RDD[(String, String, String, Double, Complex, Branch)] = remedial (simulations, options.low_temperature, true).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
+            val zlo: RDD[(String, String, String, Double, Complex, Complex, Branch)] = remedial (simulations, options.low_temperature, true).persist (storage_level) // (trafoid, nodeid, equipment, voltage, Z)
             log.info ("""ran %s experiments at low temperature""".format (zlo.count ()))
             val skdiff: Boolean = !simulations.filter (x ⇒ x.transformer.network_short_circuit_impedance_min != x.transformer.network_short_circuit_impedance_max).isEmpty
-            val zhi: RDD[(String, String, String, Double, Complex, Branch)] =
+            val zhi: RDD[(String, String, String, Double, Complex, Complex, Branch)] =
                 // currently there is no difference in gridlabd processing between high and low temperature analysis,
                 // so we can skip the high temperature analysis if the temperatures are the same
                 // but only if there is no difference between Skmax and Skmin (equiv.maxP and equiv.minP)
@@ -904,38 +895,28 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 }
                 else
                     zlo
-            val z: RDD[(String, String, String, Double, (Complex, Complex), Branch)] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
-                .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, (x._1._5, x._2._5), x._1._6))
+            val z: RDD[(String, String, String, Double, Impedanzen, Branch, Branch)] = zlo.keyBy (x ⇒ x._1 + x._2 + x._3).join (zhi.keyBy (x ⇒ x._1 + x._2 + x._3)).values
+                .map (x ⇒ (x._1._1, x._1._2, x._1._3, x._1._4, Impedanzen (x._1._5, x._1._6, x._2._5, x._2._6), x._1._7, x._2._7))
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed: RDD[(identifier, ScResult)] = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
             val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
                 {
-                    def getImpedances (gridlabImpedances: (Complex, Complex), trafoImpedance: Complex): Impedanzen =
-                    {
-                        val z1_low = gridlabImpedances._1
-                        // approximately four times
-                        val z0_low = (z1_low - trafoImpedance) * 4 + trafoImpedance
-                        val z1_hi = gridlabImpedances._2
-                        // approximately four times
-                        val z0_hi = (z1_hi - trafoImpedance) * 4 + trafoImpedance
-                        Impedanzen (z1_low, z0_low, z1_hi, z0_hi)
-                    }
-
                     val v = x._1._4
                     val fuses = x._1._6
+                    val z = x._1._5
                     x._2 match
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, getImpedances(x._1._5, original.tx_impedance), fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
                             val c = Complex(0)
                             (
-                                ScNode (x._1._2, v, x._1._1, c, null, getImpedances(x._1._5, c), null, List ()),
+                                ScNode (x._1._2, v, x._1._1, c, null, z, null, List ()),
                                 1, x._1._3, ""
                             )
                     }
