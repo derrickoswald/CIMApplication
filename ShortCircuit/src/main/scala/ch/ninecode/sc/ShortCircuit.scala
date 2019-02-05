@@ -540,7 +540,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                             else
                                                 List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id))
                                     case line: LineEdge ⇒
-                                        if (Math.abs (v1 - v2) < 1e-3)
+                                        if (Math.abs (v1 - v2) < 1e-6)
                                             List ()
                                         else
                                         {
