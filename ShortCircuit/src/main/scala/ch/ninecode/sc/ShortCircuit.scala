@@ -505,12 +505,24 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * the two terminal nodes of each edge and from that determine an equivalent Branch circuit (series and
      * parallel components) with the edge impedances.
      *
+     * @param isMax if <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and an equivalent circuit
      */
-    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Complex, Branch) =
+    def toImpedance (isMax: Boolean) (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Complex, Complex, Branch) =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
+        val transformer = trafokreis.transformer
+        val v1 = transformer.v0
+        val v2 = transformer.v1
+        val ratio = v2 / v1
+        val ratio2 = ratio * ratio
+        val primary_impedance: Complex =
+            if (isMax)
+                transformer.network_short_circuit_impedance_max
+            else
+                transformer.network_short_circuit_impedance_min
+        val netz_impedance = ratio2 * primary_impedance
         val tx_impedance = trafokreis.transformer.total_impedance._1
         val experiment: ScExperiment = exp._1._2
         val nodes: Iterable[GLMNode] = exp._1._1.nodes
@@ -584,7 +596,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
         else
             // use r0=r1 & x0=x1 for trafos
-            (branch.z1 + tx_impedance, branch.z0 + tx_impedance, branch)
+            (branch.z1 + netz_impedance + tx_impedance, branch.z0 + tx_impedance, branch)
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z1, z0, path)
     }
 
@@ -593,10 +605,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      *
      * @param gridlabd    the object to solve the .glm files and read the recorders
      * @param one_phase   if <code>true</code>, create single phase results, otherwise three phase results
+     * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @param simulations the simulations with experiments
      * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
      */
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex, Complex, Branch)] =
+    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, isMax: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Complex, Complex, Branch)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos = simulations.map (_.simulation)
@@ -617,7 +630,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val groups = simulations.flatMap (simulation ⇒ simulation.experiments.map (experiment ⇒ (simulation, experiment))).keyBy (pair ⇒ pair._2.trafo + "_" + pair._2.t1.getTimeInMillis.toString)
         val exp = groups.join (values).values
 
-        val z = exp.map (toImpedance) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
+        val z = exp.map (toImpedance (isMax)) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
         val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
@@ -704,7 +717,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val n = experiments.map (generate_player_file (gridlabd)).count
         log.info ("""running %s experiments at %s°C""".format (n, temperature))
 
-        solve_and_analyse (gridlabd = gridlabd, one_phase = true, simulations)
+        solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
     }
 
     def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
