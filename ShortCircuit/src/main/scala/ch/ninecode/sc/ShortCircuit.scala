@@ -511,8 +511,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      */
     def toImpedance (isMax: Boolean) (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Impedanzen, Branch) =
     {
-        if (exp._1._2.mrid == "HAK82430_topo")
-            println ("gotcha")
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val transformer = trafokreis.transformer
         val experiment: ScExperiment = exp._1._2
