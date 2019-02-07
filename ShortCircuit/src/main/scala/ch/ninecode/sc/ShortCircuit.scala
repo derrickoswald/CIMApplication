@@ -505,11 +505,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * the two terminal nodes of each edge and from that determine an equivalent Branch circuit (series and
      * parallel components) with the edge impedances.
      *
-     * @param isMax if <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and an equivalent circuit
      */
-    def toImpedance (isMax: Boolean) (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Impedanzen, Branch) =
+    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Impedanzen, Branch) =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val transformer = trafokreis.transformer
@@ -536,10 +535,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         if (switch.normalOpen)
                                             List ()
                                         else
+                                        {
+                                            val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
                                             if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, rating))
                                             else
-                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, rating))
+                                        }
                                     case cable: LineEdge ⇒
                                         if (Math.abs (v1 - v2) < 1e-6)
                                             List ()
@@ -557,8 +559,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                             else
                                                 List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None, z))
                                         }
-                                    case transformer: TransformerEdge ⇒
-                                        // this never happens since the transformer is not included in the edges list
+                                    case _ ⇒
+                                        // e.g. transformer: TransformerEdge which never happens since the transformer is not included in the edges list
+                                        log.error ("unexpected edge type %s".format (x.toString))
                                         if (v1 > v2)
                                             List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id))
                                         else
@@ -587,15 +590,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val (z, path) = if (null == branch)
         {
             log.error ("""invalid branch network %s""".format (branches.map (_.asString).mkString ("\n")))
-            (Impedanzen (0.0, 0.0, 0.0, 0.0), SimpleBranch ("from", "to", 0.0, "FakeFuse", Some (-1.0)))
+            val zero = Impedanzen (0.0, 0.0, 0.0, 0.0)
+            (zero, null)
         }
         else
         {
-            // use r0=r1 & x0=x1 for trafos
-            // no temperature effect on transformer impedance
+            // use r0=r1 & x0=x1 for trafos, with no temperature effect on transformer impedance
             val tx = StartingTrafos (0L, 0L, transformer)
             val z = branch.z + tx.secondary_impedance
-            (z, branch)
+            (z, branch.justFuses.orNull)
         }
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)
     }
@@ -630,7 +633,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val groups = simulations.flatMap (simulation ⇒ simulation.experiments.map (experiment ⇒ (simulation, experiment))).keyBy (pair ⇒ pair._2.trafo + "_" + pair._2.t1.getTimeInMillis.toString)
         val exp = groups.join (values).values
 
-        val z = exp.map (toImpedance (isMax)) // (trafoid, (nodeid, equipment, voltage, impedance, fuses))
+        val z = exp.map (toImpedance)
         val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
@@ -714,7 +717,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val n = experiments.map (generate_player_file (gridlabd)).count
-        log.info ("""running %s experiments at %s°C""".format (n, temperature))
+        log.info ("""running %s experiments""".format (n))
 
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
     }
