@@ -88,8 +88,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     // ratios of currents with the branch that the portion applies to
     def ratios: Iterable[(Double, Branch)]
 
-    def z1: Complex
-    def z0: Complex
+    def z: Impedanzen
 }
 
 /**
@@ -100,9 +99,10 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param current the current through this branch in the GridLAB-D experiment
  * @param mRID    the mRID of the CIM element
  * @param rating  the current rating if it is a fuse
+ * @param z       the positive and zero sequence impedances at the operational temperatures
  */
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double] = None,
-     z1: Complex = 0.0, z0: Complex = 0.0) extends Branch (from, to, current)
+     z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
     override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
@@ -166,9 +166,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
-    def z1: Complex = seq.foldRight (Complex (0.0)) ((a, b) ⇒ b + a.z1)
-
-    def z0: Complex = seq.foldRight (Complex (0.0)) ((a, b) ⇒ b + a.z0)
+    def z: Impedanzen = seq.foldRight (Impedanzen (0.0, 0.0, 0.0, 0.0)) ((branch, z) ⇒ branch.z + z)
 }
 
 /**
@@ -220,9 +218,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
             parallel.map (x ⇒ (x.current / sum, x))
     }
 
-    def z1: Complex = parallel.tail.foldRight (parallel.head.z1) ((a, b) ⇒ b.parallel_impedanz (a.z1))
-
-    def z0: Complex = parallel.tail.foldRight (parallel.head.z0) ((a, b) ⇒ b.parallel_impedanz (a.z0))
+    def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((branch, z) ⇒ branch.z.parallel (z))
 }
 
 object Branch

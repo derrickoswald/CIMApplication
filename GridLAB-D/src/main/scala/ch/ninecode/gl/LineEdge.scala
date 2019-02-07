@@ -228,7 +228,7 @@ case class LineEdge
     /**
      * Compute the equivalent impedance.
      *
-     * @return (z1, z0)
+     * @return (z1, z0) (Ω/km)
      */
     def impedance: (Complex, Complex) =
     {

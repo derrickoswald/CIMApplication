@@ -192,7 +192,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     }
 
     /**
-     * Return the maximum network short circuit impedance Z (Ω).
+     * Return the network impedance at maximum short circuit power (Ω).
      *
      * @return the network impedance (Ω)
      */
@@ -228,7 +228,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     }
 
     /**
-     * Return the minimum network short circuit impedance Z (Ω).
+     * Return the network impedance at minimum short circuit power (Ω).
      *
      * @return the network impedance (Ω)
      */
