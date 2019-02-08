@@ -582,7 +582,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         // reduce the tree to (hopefully) one branch spanning from start to end
-        val branches = reduce (graph_edges.filter (no_stubs (graph_edges, trafokreis.transformer.node1, experiment.mrid)))
+        var family = graph_edges
+        var count = family.size
+        do
+        {
+            count = family.size
+            family = family.filter (no_stubs (family, trafokreis.transformer.node1, experiment.mrid))
+        }
+        while (count != family.size)
+        val branches = reduce (family)
         val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
 
         // compute the impedance from start to end
