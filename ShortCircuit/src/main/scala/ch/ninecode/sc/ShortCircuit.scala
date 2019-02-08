@@ -610,6 +610,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             // use r0=r1 & x0=x1 for trafos, with no temperature effect on transformer impedance
             val z = branch.z + tx.secondary_impedance
+            // assign current values to each branch
             (z, branch.justFuses.orNull)
         }
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)

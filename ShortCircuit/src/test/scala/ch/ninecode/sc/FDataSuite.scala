@@ -32,13 +32,15 @@ class FDataSuite extends FunSuite
                 Seq (
                     ParallelBranch ("c", "d", 0.0,
                         List (
-                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
-                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (400.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (400.0)))),
                     ParallelBranch ("d", "e", 0.0,
                         List (
-                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (125.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", Some (40.0))))
+        assert (branch.asFuse == "([400,400],[125,100],40)", "fuse string")
+        assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
         assert (FData.fuseOK (123.456, branch), "expected OK")
     }
 
@@ -49,13 +51,15 @@ class FDataSuite extends FunSuite
                 Seq (
                     ParallelBranch ("c", "d", 0.0,
                         List (
-                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
-                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (400.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (400.0)))),
                     ParallelBranch ("d", "e", 0.0,
                         List (
-                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (125.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", Some (40.0))))
+        assert (branch.asFuse == "([400,400],[125,100],40)", "fuse string")
+        assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
         assert (FData.fuseOK (123.456, branch), "expected OK")
     }
 
@@ -66,16 +70,18 @@ class FDataSuite extends FunSuite
                 Seq (
                     ParallelBranch ("c", "d", 0.0,
                         List (
-                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (288282.0)),
-                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (73737.3)))),
+                            SimpleBranch ("c", "d", 0.0, "TEI124", Some (400.0)),
+                            SimpleBranch ("c", "d", 0.0, "TEI123", Some (400.0)))),
                     ParallelBranch ("d", "e", 0.0,
                         List (
-                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (1323.8)),
+                            SimpleBranch ("d", "e", 0.0, "TEI134", Some (125.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", Some (100.0)))),
                     ParallelBranch ("e", "f", 0.0,
                         List (
-                            SimpleBranch ("d", "e", 2.0, "TEI134", Some (40.0)),
-                            SimpleBranch ("d", "e", 2.0, "TEI135", Some (40.0))))))
+                            SimpleBranch ("d", "e", 2.0, "TEI141", Some (40.0)),
+                            SimpleBranch ("d", "e", 2.0, "TEI142", Some (40.0))))))
+        assert (branch.asFuse == "([400,400],[125,100],[40,40])", "fuse string")
+        assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],[TEI141,TEI142])", "id string")
         assert (FData.fuseOK (246.912, branch), "expected OK")
     }
 
@@ -448,7 +454,7 @@ class FDataSuite extends FunSuite
                     SeriesBranch ("a", "z", 4.0,
                         Seq (
                             SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
-                            SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
+                            SimpleBranch ("a", "z", 4.0, "TEI22", Some (40.0))
                         )
                     )
                 )
@@ -479,7 +485,8 @@ class FDataSuite extends FunSuite
         )
         assert (scr.iksplitString == "168.0,112.0", "ik split")
         assert (scr.fuseString == "[50,(50,40)]", "fuseString")
-        assert (scr.lastFusesString == "50,40", "fuseString")
+        assert (scr.lastFusesString == "50,40", "lastFusesString")
+        assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,40", "expected 60:40 split")
         assert (scr.fuseOK, "expected OK")
     }
@@ -495,7 +502,7 @@ class FDataSuite extends FunSuite
                             SeriesBranch ("a", "z", 4.0,
                                 Seq (
                                     SimpleBranch ("a", "z", 4.0, "TEI21", Some (50.0)),
-                                    SimpleBranch ("a", "z", 4.0, "TEI21", Some (40.0))
+                                    SimpleBranch ("a", "z", 4.0, "TEI22", Some (40.0))
                                 )
                             )
                         )
@@ -528,7 +535,8 @@ class FDataSuite extends FunSuite
         )
         assert (scr.fuseString == "([50,(50,40)])", "fuseString")
         assert (scr.iksplitString == "168.0,112.0", "ik split")
-        assert (scr.lastFusesString == "50,40", "fuseString")
+        assert (scr.lastFusesString == "50,40", "lastFusesString")
+        assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,40", "expected 60:40 split")
         assert (scr.fuseOK, "expected OK")
     }
@@ -544,7 +552,7 @@ class FDataSuite extends FunSuite
                             SeriesBranch ("a", "z", 5.0,
                                 Seq (
                                     SimpleBranch ("a", "z", 5.0, "TEI21", Some (50.0)),
-                                    SimpleBranch ("a", "z", 5.0, "TEI21", Some (80.0))
+                                    SimpleBranch ("a", "z", 5.0, "TEI22", Some (80.0))
                                 )
                             )
                         )
@@ -577,7 +585,8 @@ class FDataSuite extends FunSuite
         )
         assert (scr.fuseString == "([50,(50,80)])", "fuseString")
         assert (scr.iksplitString == "140.0,140.0", "ik split")
-        assert (scr.lastFusesString == "50,80", "fuseString")
+        assert (scr.lastFusesString == "50,80", "lastFusesString")
+        assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,50", "expected 50:50 split")
         assert (!scr.fuseOK, "expected not OK")
     }

@@ -56,6 +56,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def asFuse: String
 
+    def asId: String
+
     def lastFuses: Iterable[Branch]
 
     def reverse: Branch
@@ -110,6 +112,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def asFuse: String = rating.getOrElse (0.0).toInt.toString
 
+    def asId: String = if (rating.isDefined) mRID else ""
+
     def seq: Seq[SimpleBranch] = Seq (this)
 
     def iter: Iterable[SimpleBranch] = Iterable (this)
@@ -140,6 +144,8 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def asString: String = series.map (_.asString).mkString ("(", ",", ")")
 
     def asFuse: String = series.map (_.asFuse).mkString ("(", ",", ")")
+
+    def asId: String = series.map (_.asId).mkString ("(", ",", ")")
 
     def seq: Seq[Branch] = series
 
@@ -185,6 +191,8 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def asFuse: String = parallel.map (_.asFuse).mkString ("[", ",", "]")
 
+    def asId: String = parallel.map (_.asId).mkString ("[", ",", "]")
+
     def seq: Seq[ParallelBranch] = Seq (this)
 
     def iter: Iterable[Branch] = parallel
@@ -213,7 +221,14 @@ case class ParallelBranch (override val from: String, override val to: String, o
         val currents = parallel.map (_.current)
         val sum = currents.sum
         if (0.0 == sum)
-            parallel.map (x ⇒ (1.0 / parallel.size, x)) // split equally
+        {
+            // use impedances
+            val impedance = z.impedanz_low.modulus
+            if (0.0 != impedance)
+                parallel.map (branch ⇒ (impedance / branch.z.impedanz_low.modulus, branch)) // ToDo: use vector math
+            else
+                parallel.map (x ⇒ (1.0 / parallel.size, x)) // split equally
+        }
         else
             parallel.map (x ⇒ (x.current / sum, x))
     }

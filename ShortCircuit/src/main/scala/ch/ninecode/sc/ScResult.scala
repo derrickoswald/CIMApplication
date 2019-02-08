@@ -98,6 +98,15 @@ case class ScResult
         s
     }
 
+    def lastFusesId: String =
+    {
+        val s = if (null == fuses)
+            ""
+        else
+            fuses.lastFuses.map (_.asId).mkString (",")
+        s
+    }
+
     def iksplitString: String =
     {
         val s = if (null == fuses)
