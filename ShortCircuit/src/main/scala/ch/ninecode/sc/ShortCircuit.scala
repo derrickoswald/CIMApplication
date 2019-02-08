@@ -432,6 +432,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x))
                 if buddies.size == 1
                 buddy = buddies.head
+                if branch.from == buddy.to
             }
             yield (branch, buddy)
         if (series.nonEmpty)
@@ -585,16 +586,21 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
 
         // compute the impedance from start to end
+        val tx = StartingTrafos (0L, 0L, transformer)
         val (z, path) = if (null == branch)
         {
-            log.error ("""invalid branch network %s""".format (branches.map (_.asString).mkString ("\n")))
-            val zero = Impedanzen (0.0, 0.0, 0.0, 0.0)
-            (zero, null)
+            if (experiment.mrid == trafokreis.transformer.node1)
+                (tx.secondary_impedance, null)
+            else
+            {
+                log.error ("""invalid branch network from %s to %s\n%s""".format (branch.from, experiment.mrid, branches.map (_.asString).mkString ("\n")))
+                val zero = Impedanzen (0.0, 0.0, 0.0, 0.0)
+                (zero, null)
+            }
         }
         else
         {
             // use r0=r1 & x0=x1 for trafos, with no temperature effect on transformer impedance
-            val tx = StartingTrafos (0L, 0L, transformer)
             val z = branch.z + tx.secondary_impedance
             (z, branch.justFuses.orNull)
         }
