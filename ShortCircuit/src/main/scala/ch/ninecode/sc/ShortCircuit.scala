@@ -101,7 +101,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                             Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
                             Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
                             Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
-                    case transformer: PowerTransformer ⇒
+                    case _: PowerTransformer ⇒
                         terminal_end._2 match
                         {
                             case Some (end) ⇒
@@ -118,7 +118,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             })
             // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
             val eq = terminals (0)._1.ConductingEquipment
-            val id1 = terminals (0)._1.ACDCTerminal.id
             val node1 = terminals (0)._1.TopologicalNode
             val voltage1 = terminals (0)._2
             val z = terminals (0)._3
@@ -430,7 +429,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val series = for
             {
                 branch ← network
-                buddies = network.filter (x ⇒ branch.from == x.to)
+                buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x))
                 if buddies.size == 1
                 buddy = buddies.head
             }
@@ -513,7 +512,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val transformer = trafokreis.transformer
         val experiment: ScExperiment = exp._1._2
-        val nodes: Iterable[GLMNode] = exp._1._1.nodes
         val edges: Iterable[GLMEdge] = exp._1._1.edges
         val data: Iterable[ThreePhaseComplexDataElement] = exp._2
 
