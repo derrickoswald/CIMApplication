@@ -103,6 +103,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     {
         val sql = """insert into %s.geojson_points json ?""".format (keyspace)
         val prepared = session.prepare (sql)
+        prepared.setIdempotent (true)
         val statement = prepared.bind ()
         for (n <- trafo.nodes)
         {
@@ -129,6 +130,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     {
         val sql = """insert into %s.geojson_lines json ?""".format (keyspace)
         val prepared = session.prepare (sql)
+        prepared.setIdempotent (true)
         val statement = prepared.bind ()
         for (raw <- trafo.edges)
         {
@@ -166,6 +168,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     {
         val sql = """insert into %s.geojson_polygons json ?""".format (keyspace)
         val prepared = session.prepare (sql)
+        prepared.setIdempotent (true)
         val statement = prepared.bind ()
         val hull = Hull.scan (get_points (trafo).toList)
         val coordinates = hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")

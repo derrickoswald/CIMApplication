@@ -125,6 +125,7 @@ case class SimulationCassandraInsert (session: Session, keyspace: String = "cima
                 else
                 {
                     val statement = session.prepare (sql)
+                    statement.setIdempotent (true)
                     statements = statements + (sql → statement)
                     statement
                 }

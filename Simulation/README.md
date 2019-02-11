@@ -1,7 +1,7 @@
 Simulation
 ======
 
-Uses measured meter data and GrdLAB-D load-flow calculations to determine quality metrics for transformer service areas.
+Uses measured meter data and GridLAB-D load-flow calculations to determine quality metrics for transformer service areas.
 
 # Overview
 

@@ -83,7 +83,7 @@ case class SimulationCassandraQuery (session: Session, sql: String)
     def execute (): Seq[JsonObject] =
     {
         var statement = new SimpleStatement (sql)
-        statement.setIdempotent (true)
+        statement
         val future = session.executeAsync (statement)
         val resultset = future.getUninterruptibly ()
         resultset.iterator.map (packRow).toSeq

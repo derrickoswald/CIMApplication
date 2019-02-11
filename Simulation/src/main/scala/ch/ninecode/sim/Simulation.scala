@@ -590,6 +590,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val cluster = Cluster.builder.addContactPoint (options.host).build
                 val c = cluster.connect
                 val prepared = c.prepare ("""insert into %s.simulation json ?""".format (options.keyspace))
+                prepared.setIdempotent (true)
                 val bound = prepared.bind ()
                 bound.setString (0, string.toString)
                 c.execute (bound)
