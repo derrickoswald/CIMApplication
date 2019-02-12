@@ -19,8 +19,9 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 import com.datastax.driver.core.Cluster
-import com.datastax.spark.connector.SomeColumns
+
 import com.datastax.spark.connector._
+
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -501,6 +502,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
                 //                    }
                 //                )
+
+                log.info ("""storing GeoJSON data""")
+                val geo = new SimulationGeometry (session, options.keyspace)
+                geo.storeGeometry (gridlabd)
 
                 log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
                 val results = gridlabd.map (

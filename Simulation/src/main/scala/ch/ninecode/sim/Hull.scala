@@ -6,7 +6,7 @@ import math.atan2
  * Convex hull generator.
  * see https://github.com/caente/convex-hull/blob/master/src/main/scala/com/miguel/GrahamScanScala.scala
  */
-object Hull
+object Hull extends Serializable
 {
     /**
      * Useful alias for a pair of coordinates.
@@ -27,8 +27,7 @@ object Hull
     /**
      * Generate the convex hull for the given points.
      *
-     * Generates the line string coordinates for an efficient bounding area around
-     * the points (shrinkwrap).
+     * Generates the line string coordinates for an efficient bounding area around the points (shrinkwrap).
      *
      * @param hull  the hull so far
      * @param point the point to be added
@@ -59,8 +58,9 @@ object Hull
      */
     def scan (points: List[Point]): List[Point] =
     {
-        val pp = points.sortBy (_._1) // also secondary sort by minimum x in case two points have the same minimum y
-    val min = pp.minBy (_._2)
+        // perform a secondary sort by minimum x in case two points have the same minimum y
+        val pp = points.sortBy (_._1)
+        val min = pp.minBy (_._2)
 
         def angle (point: Point): Double = atan2 (point._2 - min._2, point._1 - min._1)
 

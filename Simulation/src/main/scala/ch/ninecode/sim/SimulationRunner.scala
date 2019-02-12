@@ -99,112 +99,6 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         }
     }
 
-    def store_geojson_points (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val sql = """insert into %s.geojson_points json ?""".format (keyspace)
-        val prepared = session.prepare (sql)
-        prepared.setIdempotent (true)
-        val statement = prepared.bind ()
-        for (n <- trafo.nodes)
-        {
-            val node = n.asInstanceOf [SimulationNode]
-            val properties = extra.collect (
-                {
-                    case (query, id, value) if id == node.equipment =>
-                        (query, value)
-                }
-            ).map (
-                pair ⇒
-                    """"%s": "%s"""".format (pair._1, pair._2)
-            ).mkString ("{", ",", "}")
-            val json =
-                """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "Point", "coordinates": [ %s, %s ] }, "properties": %s }"""
-                    .format (trafo.simulation, node.equipment, trafo.transformer.transformer_name, node.position._1, node.position._2, properties)
-            statement.setString (0, json)
-            session.execute (statement)
-        }
-        // log.info ("""%d geojson point features stored for "%s"""".format (trafo.nodes.size, trafo.name))
-    }
-
-    def store_geojson_lines (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val sql = """insert into %s.geojson_lines json ?""".format (keyspace)
-        val prepared = session.prepare (sql)
-        prepared.setIdempotent (true)
-        val statement = prepared.bind ()
-        for (raw <- trafo.edges)
-        {
-            val edge = raw.asInstanceOf [SimulationEdge]
-            val coordinates = edge.position.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",") // [75.68, 42.72], [75.35, 42.75]
-        val properties = extra.collect (
-            {
-                case (query, id, value) if id == edge.id =>
-                    (query, value)
-            }
-        ).map (
-            pair ⇒
-                """"%s": "%s"""".format (pair._1, pair._2)
-        ).mkString ("{", ",", "}")
-            val json =
-                """{ "simulation": "%s", "mrid": "%s", "transformer": "%s", "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ %s ] }, "properties": %s }"""
-                    .format (trafo.simulation, edge.rawedge.id, trafo.transformer.transformer_name, coordinates, properties)
-            statement.setString (0, json)
-            session.execute (statement)
-        }
-        // log.info ("""%d geojson line features stored for "%s"""".format (trafo.edges.size, trafo.name))
-    }
-
-    def get_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
-    {
-        var points =
-            for (raw <- trafo.nodes)
-                yield raw.asInstanceOf [SimulationNode].position
-        for (raw <- trafo.edges)
-            points = points ++ raw.asInstanceOf [SimulationEdge].position.toIterable
-        points
-    }
-
-    def store_geojson_polygons (session: Session, keyspace: String, trafo: SimulationTrafoKreis, extra: Array[(String, String, String)]): Unit =
-    {
-        val sql = """insert into %s.geojson_polygons json ?""".format (keyspace)
-        val prepared = session.prepare (sql)
-        prepared.setIdempotent (true)
-        val statement = prepared.bind ()
-        val hull = Hull.scan (get_points (trafo).toList)
-        val coordinates = hull.map (p ⇒ """[%s,%s]""".format (p._1, p._2)).mkString (",")
-        val properties = extra.collect (
-            {
-                case (query, id, value) if id == trafo.transformer.transformer_name =>
-                    (query, value)
-            }
-        ).map (
-            pair ⇒
-                """"%s": "%s"""".format (pair._1, pair._2)
-        ).mkString ("{", ",", "}")
-        val json =
-            """{ "simulation": "%s", "mrid": "%s", "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ %s ] ] }, "properties": %s }"""
-                .format (trafo.simulation, trafo.transformer.transformer_name, coordinates, properties)
-        statement.setString (0, json)
-        session.execute (statement)
-        // log.info ("""geojson polygon feature stored for "%s"""".format (trafo.name))
-    }
-
-    def query_extra (session: Session, keyspace: String, trafo: SimulationTrafoKreis): Array[(String, String, String)] =
-    {
-        val sql = """select * from %s.key_value where simulation='%s'""".format (keyspace, trafo.simulation)
-        val resultset = session.execute (sql)
-        if (resultset.nonEmpty)
-        {
-            val definitions = resultset.getColumnDefinitions
-            val index_q = definitions.getIndexOf ("query")
-            val index_k = definitions.getIndexOf ("key")
-            val index_v = definitions.getIndexOf ("value")
-            resultset.iterator.map (row ⇒ (row.getString (index_q), row.getString (index_k), row.getString (index_v))).toArray
-        }
-        else
-            Array ()
-    }
-
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
     def glm_format (obj: JsonObject): String =
     {
@@ -394,11 +288,6 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
 
                         if (!keep)
                             FileUtils.deleteQuietly (new File (workdir + trafo.directory))
-
-                        val extra = query_extra (session, keyspace, trafo)
-                        store_geojson_points (session, keyspace, trafo, extra)
-                        store_geojson_lines (session, keyspace, trafo, extra)
-                        store_geojson_polygons (session, keyspace, trafo, extra)
 
                         // note: you cannot ask for the resultset, otherwise it will time out
                         // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
