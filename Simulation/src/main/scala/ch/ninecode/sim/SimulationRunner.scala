@@ -239,12 +239,12 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         resultsets.filter (_._2.exists (!_.isDone))
     }
 
-    def execute (trafo: SimulationTrafoKreis): (Boolean, String) =
+    def execute (trafo: SimulationTrafoKreis): Iterable[SimulationResult] =
     {
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
 
-        var ret = (false, "default 'failed' return value")
         write_glm (trafo, workdir)
+
         // Note: According to "4 simple rules when using the DataStax drivers for Cassandra"
         // https://www.datastax.com/dev/blog/4-simple-rules-when-using-the-datastax-drivers-for-cassandra
         //  1) Use one Cluster instance per (physical) cluster (per application lifetime)
@@ -265,37 +265,46 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                     //   2) Use at most one Session per keyspace, or use a single Session and explicitly specify the keyspace in your queries
                     // so we make one here and pass it as a method parameter
                     session ⇒
+                        // create the player files
                         trafo.players.foreach (x ⇒ create_player_csv (session, x, workdir + trafo.directory))
+                        // execute gridlabd
                         new File (workdir + trafo.directory + "output_data/").mkdirs
-                        ret = gridlabd (trafo, workdir)
-                        val insert = SimulationCassandraInsert (session, keyspace, batchsize)
-                        val resultsets: Array[(String, List[ResultSetFuture])] = if (ret._1)
-                        {
-                            var undone = List [(String, List[ResultSetFuture])]()
-                            for (index ← trafo.recorders.indices)
-                            {
-                                val recorder = trafo.recorders (index)
-                                val next = store_recorder_csv (insert, recorder, trafo.simulation, workdir, trafo.directory)
-                                undone = undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty) ::: next
-                            }
-                            undone.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty).toArray
-                        }
+                        val ret = gridlabd (trafo, workdir)
+                        // read the recorder files
+                        if (ret._1)
+                            trafo.recorders.flatMap (
+                                recorder ⇒
+                                {
+                                    read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit).map (
+                                        entry ⇒
+                                            SimulationResult
+                                            (
+                                                entry.element,
+                                                recorder.typ,
+                                                recorder.interval * recorder.aggregations.head.intervals * 1000, // ToDo: aggregations
+                                                entry.millis,
+                                                entry.value_a.im,
+                                                entry.value_b.im,
+                                                entry.value_c.im,
+                                                entry.value_a.re,
+                                                entry.value_b.re,
+                                                entry.value_c.re,
+                                                trafo.simulation,
+                                                entry.units
+                                            )
+                                    )
+                                }
+                            )
                         else
                         {
-                            log.warn ("""skipping recorder input for "%s"""".format (trafo.name))
-                            Array ()
+                            log.error ("""GridLAB-D failed for %s: %s""".format (trafo.name, ret._2))
+                            List()
                         }
+// ToDo: delete gridlab intermediate files
+//                        if (!keep)
+//                            FileUtils.deleteQuietly (new File (workdir + trafo.directory))
 
-                        if (!keep)
-                            FileUtils.deleteQuietly (new File (workdir + trafo.directory))
-
-                        // note: you cannot ask for the resultset, otherwise it will time out
-                        // resultsets.foreach (resultset ⇒ if (!resultset.isDone) resultset.getUninterruptibly)
-                        val remainder = resultsets.map (r ⇒ (r._1, r._2.filter (!_.isDone))).filter (_._2.nonEmpty)
-                        remainder.foreach (resultset ⇒ log.warn ("""result set %s is not done yet""".format (resultset._1)))
                 }
         }
-
-        ret
     }
 }

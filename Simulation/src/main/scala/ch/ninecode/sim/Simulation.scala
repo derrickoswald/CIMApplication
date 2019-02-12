@@ -17,9 +17,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-
 import com.datastax.spark.connector._
-
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -28,7 +26,6 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -36,6 +33,7 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
+import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerServiceArea
@@ -510,24 +508,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 geo.storeGeometry (gridlabd)
 
                 log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
-                val results: RDD[(Boolean, String)] = gridlabd.map (
-                    trafokreis ⇒
-                    {
-                        val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
-                        runner.execute (trafokreis)
-                    }
-                ).cache
-                val results_count = results.count
-                log.info ("""gridlabd results has %d elements""".format (results_count))
-                val failures = results.filter (!_._1)
-                if (!failures.isEmpty)
-                {
-                    val failed = failures.count
-                    log.error ("%s %s not successful:\n\n".format (failed, if (failed > 1L) "tasks were" else "task was"))
-                    log.error (failures.map (_._2).collect.mkString ("\n"))
-                }
-                else
-                    log.info ("all tasks were successful")
+                val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
+                val results = gridlabd.flatMap (runner.execute).cache
+
+                // save the results
+                results.saveToCassandra (options.keyspace, "simulated_value")
+                log.info ("""saved GridLAB-D simulation results on the cluster""")
 
                 // clean up
                 session.sparkContext.getPersistentRDDs.foreach (
