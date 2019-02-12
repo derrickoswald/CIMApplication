@@ -12,6 +12,8 @@ import javax.json.JsonValue
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import org.apache.spark.sql.SparkSession
+import com.datastax.spark.connector._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -29,6 +31,66 @@ case class SimulationJob
 )
 {
     def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString (",")
+
+    /**
+     * Insert the simulation json into simulation table.
+     *
+     * @param session the Spark session to use
+     * @param id the id to store this job under
+     */
+    def save (session: SparkSession, keyspace: String, id: String, task: SimulationTask): Unit =
+    {
+        val player_map =
+            if (null != task)
+                task.players.map (
+                    player ⇒
+                        Map (
+                        "name" → player.name,
+                        "mrid" → player.parent,
+                        "typ" → player.typ,
+                        "property" → player.property)
+                        // "file" → player.file
+                        // "sql" → player.sql
+                        // "start" → iso_date_format.format (new Date (player.start))
+                        // "end" → iso_date_format.format (new Date (player.end))
+                ).toList
+            else
+                List()
+
+        val recorder_map =
+            if (null != task)
+                task.recorders.map (
+                    recorder ⇒
+                        Map (
+                            "name" → recorder.name,
+                            "mrid" → recorder.mrid,
+                            // "parent" → recorder.parent,
+                            "typ" → recorder.typ,
+                            "property" → recorder.property,
+                            "unit" → recorder.unit,
+                            // "file" → recorder.file,
+                            "interval" → recorder.interval.toString)
+                            // "aggregations" → recorder.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (",")
+                ).toList
+            else
+                List()
+
+        val json = session.sparkContext.parallelize (Seq (
+            (
+                id,
+                cim,
+                cimreaderoptions,
+                description,
+                interval,
+                name,
+                player_map,
+                recorder_map,
+                transformers
+            )
+        ))
+
+        json.saveToCassandra (keyspace, "simulation")
+    }
 }
 
 object SimulationJob

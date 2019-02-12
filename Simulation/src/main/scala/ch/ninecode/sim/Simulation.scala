@@ -18,8 +18,6 @@ import javax.json.stream.JsonGenerator
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
-import com.datastax.driver.core.Cluster
-
 import com.datastax.spark.connector._
 
 import org.apache.log4j.LogManager
@@ -302,7 +300,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
-    val numtrafos = islands_trafos.count
+        val numtrafos = islands_trafos.count
         log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
         // transformer area calculations
@@ -337,14 +335,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
 
             val island_helper = new Island (session, StorageLevel.fromString (options.storage)) // ToDo: fix this storage
-        val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
+            val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
             val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
 
             // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
             val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (_.swap)
 
             val rdd2 = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache // (island, ([nodes], [edges], [players]))
-        val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache // (island, [nodes], [edges], [players], [recorders])
+            val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache // (island, [nodes], [edges], [players], [recorders])
             rdd3.map (l ⇒
             {
                 val players = l._4.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
@@ -375,6 +373,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""starting simulation %s""".format (id))
 
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
+
         // clean up in case there was a file already loaded
         session.sparkContext.getPersistentRDDs.foreach (
             named ⇒
@@ -419,15 +418,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val tx = transformer_data.keyBy (_.node1) // (low_voltage_node_name, TransformerData)
             .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
-            .groupByKey.values // Iterable[(TransformerData, island)]
-    def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
-    {
-        val island = transformers.head._2
-        if (!transformers.forall (_._2 == island))
-        // log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, tx.map (_.transformer_name).mkString (",")))
-            log.error ("""not all transformers are members of the same island (%s)""".format (island))
-        (island, TransformerSet (transformers.map (_._1).toArray))
-    }
+            .groupByKey.values
+        def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
+        {
+            val island = transformers.head._2
+            if (!transformers.forall (_._2 == island))
+            // log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, tx.map (_.transformer_name).mkString (",")))
+                log.error ("""not all transformers are members of the same island (%s)""".format (island))
+            (island, TransformerSet (transformers.map (_._1).toArray))
+        }
 
         val transformers = tx.map (toTransformerSet).collect.toMap
 
@@ -438,6 +437,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val tasks = make_tasks (job)
                 val numtasks: Long = tasks.count
                 log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
+                if (1 == batchno)
+                    ajob.save (session, options.keyspace, id, if (0 < numtasks) tasks.first else null)
+
                 val simulations =
                     tasks.flatMap (
                         task ⇒
@@ -504,11 +506,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 //                )
 
                 log.info ("""storing GeoJSON data""")
-                val geo = new SimulationGeometry (session, options.keyspace)
+                val geo = SimulationGeometry (session, options.keyspace)
                 geo.storeGeometry (gridlabd)
 
                 log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
-                val results = gridlabd.map (
+                val results: RDD[(Boolean, String)] = gridlabd.map (
                     trafokreis ⇒
                     {
                         val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
@@ -535,70 +537,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         named._2.name = null
                     }
                 )
-
-                // insert the simulation json into simulation table
-                val record = Json.createObjectBuilder
-                record.add ("id", id)
-                record.add ("name", ajob.name)
-                record.add ("description", ajob.description)
-                record.add ("cim", ajob.cim)
-                val cimreaderoptions = Json.createObjectBuilder
-                for (x ← ajob.cimreaderoptions) cimreaderoptions.add (x._1, x._2)
-                record.add ("cimreaderoptions", cimreaderoptions)
-                val interval = Json.createObjectBuilder
-                for (x ← ajob.interval) interval.add (x._1, x._2)
-                record.add ("interval", interval)
-                val players = Json.createArrayBuilder
-                if (0 != tasks.count)
-                    for (x ← tasks.first.players)
-                    {
-                        val player = Json.createObjectBuilder
-                        player.add ("name", x.name)
-                        player.add ("mrid", x.parent)
-                        player.add ("typ", x.typ)
-                        player.add ("property", x.property)
-                        // player.add ("file", x.file)
-                        // player.add ("sql", x.sql)
-                        // player.add ("start", iso_date_format.format (new Date (x.start)))
-                        // player.add ("end", iso_date_format.format (new Date (x.end)))
-                        players.add (player)
-                    }
-                record.add ("players", players)
-                val recorders = Json.createArrayBuilder
-                if (0 != tasks.count)
-                    for (x ← tasks.first.recorders)
-                    {
-                        val recorder = Json.createObjectBuilder
-                        recorder.add ("name", x.name)
-                        recorder.add ("mrid", x.mrid)
-                        // recorder.add ("parent", x.parent)
-                        recorder.add ("typ", x.typ)
-                        recorder.add ("property", x.property)
-                        recorder.add ("unit", x.unit)
-                        // recorder.add ("file", x.file)
-                        recorder.add ("interval", x.interval.toString)
-                        // recorder.add ("aggregations", x.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (","))
-                        recorders.add (recorder)
-                    }
-                record.add ("recorders", recorders)
-                val trans = Json.createArrayBuilder
-                for (x ← ajob.transformers) trans.add (x)
-                record.add ("transformers", trans)
-
-                val string = new StringWriter
-                val properties = new util.HashMap[String, AnyRef](1)
-                properties.put (JsonGenerator.PRETTY_PRINTING, "true")
-                val writer = Json.createWriterFactory (properties).createWriter (string)
-                writer.write (record.build)
-                writer.close ()
-
-                val cluster = Cluster.builder.addContactPoint (options.host).build
-                val c = cluster.connect
-                val prepared = c.prepare ("""insert into %s.simulation json ?""".format (options.keyspace))
-                prepared.setIdempotent (true)
-                val bound = prepared.bind ()
-                bound.setString (0, string.toString)
-                c.execute (bound)
 
                 batchno = batchno + 1
             }
