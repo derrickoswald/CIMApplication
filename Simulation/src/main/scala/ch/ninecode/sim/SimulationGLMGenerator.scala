@@ -66,7 +66,7 @@ case class SimulationGLMGenerator
     {
         // ToDo: do all players need "_A" for one phase ?
         val property = if (one_phase) player.property + "_A" else player.property
-        if (player.typ == "energy")
+        if (player.`type` == "energy")
         {
             val load = player.name + "_object"
             val phases = if (one_phase) "AN" else "ABCN"

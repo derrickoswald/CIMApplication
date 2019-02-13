@@ -47,7 +47,7 @@ case class SimulationJob
                         Map (
                         "name" → player.name,
                         "mrid" → player.parent,
-                        "typ" → player.typ,
+                        "type" → player.`type`,
                         "property" → player.property)
                         // "file" → player.file
                         // "sql" → player.sql
@@ -65,7 +65,7 @@ case class SimulationJob
                             "name" → recorder.name,
                             "mrid" → recorder.mrid,
                             // "parent" → recorder.parent,
-                            "typ" → recorder.typ,
+                            "type" → recorder.`type`,
                             "property" → recorder.property,
                             "unit" → recorder.unit,
                             // "file" → recorder.file,

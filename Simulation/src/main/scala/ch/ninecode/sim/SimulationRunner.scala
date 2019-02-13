@@ -33,7 +33,7 @@ import com.datastax.driver.core.PoolingOptions
 /**
  * Perform a GridLAB-D simulation.
  *
- * There are four stages (rough idea of time taken in parentheis):
+ * There are four stages (rough idea of time taken in parenthesis):
  *
  *  - create the GridLAB-D .glm file from the nodes and edges in the SimulationTrafoKreis (0:06)
  *  - query Cassandra for each Player and write the player .csv file (7:05)
@@ -234,7 +234,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
     def store_recorder_csv (insert: SimulationCassandraInsert, recorder: SimulationRecorder, simulation: String, workdir: String, file_prefix: String): List[(String, List[ResultSetFuture])] =
     {
         val data = read_recorder_csv (workdir, file_prefix + recorder.file, recorder.mrid, one_phase = true, recorder.unit)
-        val (count, resultsets) = insert.execute (recorder.name, data, recorder.typ, recorder.interval, simulation, recorder.aggregations)
+        val (count, resultsets) = insert.execute (recorder.name, data, recorder.`type`, recorder.interval, simulation, recorder.aggregations)
         log.info ("""%d records stored for "%s"""".format (count, recorder.name))
         resultsets.filter (_._2.exists (!_.isDone))
     }
@@ -280,7 +280,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                                             SimulationResult
                                             (
                                                 entry.element,
-                                                recorder.typ,
+                                                recorder.`type`,
                                                 recorder.interval * recorder.aggregations.head.intervals * 1000, // ToDo: aggregations
                                                 entry.millis,
                                                 entry.value_a.im,

@@ -16,7 +16,7 @@ case class SimulationPlayer
     /**
      * The player type - 'energy' adds a load object to the glm.
      */
-    typ: String,
+    `type`: String,
 
     /**
      * The property of the parent object to play.

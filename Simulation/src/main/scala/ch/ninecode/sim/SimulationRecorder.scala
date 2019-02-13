@@ -22,7 +22,7 @@ case class SimulationRecorder
     /**
      * The recorder type - 'energy' performs sum() for aggregate values, all others perform average().
      */
-    typ: String,
+    `type`: String,
 
     /**
      * The property of the parent object to record.
