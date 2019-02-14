@@ -29,9 +29,9 @@ case class SimulationPlayer
     file: String = null,
 
     /**
-     * The Cassandra query to fetch the player data.
+     * The mrid to fetch the player data.
      */
-    sql: String = null,
+    mrid: String = null,
 
     /**
      * Starting time as unix epoch for client side filtering.

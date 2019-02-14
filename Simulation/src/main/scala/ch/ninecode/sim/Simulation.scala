@@ -3,6 +3,7 @@ package ch.ninecode.sim
 import java.io.Closeable
 import java.io.StringReader
 import java.io.StringWriter
+import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Calendar
@@ -17,15 +18,21 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+import scala.reflect.runtime.universe.TypeTag
+
 import com.datastax.spark.connector._
+
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -33,7 +40,6 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
-import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerServiceArea
@@ -79,6 +85,9 @@ import ch.ninecode.model.TopologicalNode
  **/
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
+    type Trafo = String
+    type House = String
+
     if (options.verbose)
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -190,7 +199,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 player.`type`,
                 player.property,
                 file,
-                sql,
+                player.substitutions(0), // ToDo; fixme, was sql
                 begin,
                 end)
         )
@@ -363,6 +372,55 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
+    def subtract_offset[Type_x: TypeTag, Type_y: TypeTag]: UserDefinedFunction = udf[Long, Timestamp, Int]((x: Timestamp, y: Int) =>
+        x.getTime - y)
+
+    def meter_values: DataFrame =
+    {
+        val raw_meter_values = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
+            .load
+            .drop ("real_b", "real_c", "imag_b", "imag_c") // ToDo: 3 phase
+        // cimapplication.subtract_offset (time, period) as time
+        raw_meter_values
+            .withColumn ("start_time", subtract_offset[Timestamp, Int].apply (raw_meter_values ("time"), raw_meter_values ("period")))
+            .drop ("time")
+            .withColumnRenamed ("start_time", "time")
+            .cache
+    }
+
+    def fetch (start_time: Calendar, finish_time: Calendar) : RDD[(House, Iterable[SimulationPlayerData])] =
+    {
+        meter_values
+            .filter ("time >= %s and time < %s".format (start_time.getTimeInMillis, finish_time.getTimeInMillis))
+            .select ("mrid", "time", "real_a", "imag_a", "period", "type")
+            .rdd
+            .map (
+                row ⇒
+                {
+                    val mrid = row.getString (0)
+                    val time = row.getLong (1)
+                    val period = row.getInt (4)
+                    val `type` = row.getString (5)
+                    // ToDo: should also check units
+                    val factor = `type` match
+                    {
+                        case "energy" ⇒
+                            (60.0 * 60.0 * 1000.0) / period
+                        case _ ⇒
+                            1.0
+                    }
+                    val real = row.getDouble (2) * factor
+                    val imag = row.getDouble (3) * factor
+                    // ToDo: should we keep the period so we can tell if a measurement is missing?
+                    SimulationPlayerData (mrid, `type`, time, real, imag)
+                }
+            )
+            .groupBy (_.mrid)
+    }
+
     def process (batch: Seq[SimulationJob]): String =
     {
         val storage = StorageLevel.fromString (options.storage)
@@ -507,9 +565,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val geo = SimulationGeometry (session, options.keyspace)
                 geo.storeGeometry (gridlabd)
 
+                // read the data
+                val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
+                // get the trafokreis for each house
+                val house_trafo: RDD[(House, Trafo)] = gridlabd.flatMap (x ⇒ x.players.map (y ⇒ (y.mrid, x.transformer.transformer_name)))
+                // join the transformer name to the data
+                val trafo_houses: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = house_trafo.join (data)
+                    .map (x ⇒ (x._2._1, (x._1, x._2._2)))
+                    .groupByKey
+                val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
+
                 log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
                 val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
-                val results = gridlabd.flatMap (runner.execute).cache
+                val results = packages.flatMap (runner.execute).cache
 
                 // save the results
                 results.saveToCassandra (options.keyspace, "simulated_value")
@@ -555,8 +623,6 @@ object Simulation
         Array (
             classOf [ch.ninecode.sim.Simulation],
             classOf [ch.ninecode.sim.SimulationAggregate],
-            classOf [ch.ninecode.sim.SimulationCassandraInsert],
-            classOf [ch.ninecode.sim.SimulationCassandraQuery],
             classOf [ch.ninecode.sim.SimulationEdge],
             classOf [ch.ninecode.sim.SimulationGLMGenerator],
             classOf [ch.ninecode.sim.SimulationJob],

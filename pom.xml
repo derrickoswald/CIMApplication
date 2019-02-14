@@ -31,7 +31,6 @@
 
         <!-- Component versions -->
         <version.dependency.json>1.1.2</version.dependency.json>
-        <version.dependency.cassandra_java>3.6.0</version.dependency.cassandra_java>
         <version.dependency.sqlite>3.21.0.1</version.dependency.sqlite>
         <version.dependency.scopt>3.7.0</version.dependency.scopt>
 
