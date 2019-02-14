@@ -116,34 +116,36 @@ The program is submitted to the cluster with the [spark-submit command](https://
 Of the many arguments to spark-submit, the crucial one to execute the MaximumFeedIn program is the correct full path to the `.jar` file.
 A bit of help text is available if you use the `--help` switch:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar --help
-MaximumFeedIn 2.11-2.3.1-2.4.0
-Usage: MaximumFeedIn [options] <CIM> <CIM> ...
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.2-2.4.0-jar-with-dependencies.jar --help
+MaximumFeedIn 2.11-2.3.2-2.4.0
+Usage: MaximumFeedIn [otions] [<CIM> <CIM> ...]
 
 Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
 
   --help                   prints this usage text
-  --version                Scala: 2.11, Spark: 2.3.1, MaximumFeedIn: 2.4.0
-  -q, --quiet              suppress informational messages [false]
-  -m, --master MASTER_URL  spark://host:port, mesos://host:port, yarn, or local[*]
-  -o, --opts k1=v1,k2=v2   Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
-  -g, --storage_level <value>
-                           storage level for RDD serialization [MEMORY_AND_DISK_SER]
-  -u, --deduplicate        de-duplicate input (striped) files [false]
-  -3, --three              use three phase computations [false]
-  -p, --precalculation     only calculates threshold and EEA existence for all HAS, assuming no EEA [false]
-  -t, --trafos <TRA file>  file of transformer names (one per line) to process []
-  -x, --export_only        generates glm files only - no solve or analyse operations [false]
-  -a, --all                process all transformers (not just those with EEA) [false]
-  -e, --erase              clean up (delete) simulation files [false]
-  -l, --logging <value>    log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN
-  -k, --checkpointdir <dir>
-                           checkpoint directory on HDFS, e.g. hdfs://...
-  -s, --simulation N       simulation number (precalc) to use for transformer list
-  -r, --reference N        simulation number (precalc) to use as reference for transformer list
-  -d, --delta D            delta power difference threshold for reference comparison [1.00000e-06]
-  -f, --precalcfactor D    factor to multiply precalculation results for gridlabd [1.50000]
-  -w, --workdir <dir>      shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files
+  --version                Scala: 2.11, Spark: 2.3.2, MaximumFeedIn: 2.4.0
+  --quiet                  suppress informational messages [false]
+  --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
+  --opts k1=v1,k2=v2       Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
+  --storage_level <value>  storage level for RDD serialization [MEMORY_AND_DISK_SER]
+  --deduplicate            de-duplicate input (striped) files [false]
+  --three                  use three phase computations [false]
+  --precalculation         only calculates threshold and EEA existence for all HAS, assuming no EEA [false]
+  --trafos <TRA file>      file of transformer names (one per line) to process []
+  --export_only            generates glm files only - no solve or analyse operations [false]
+  --all                    process all transformers (not just those with EEA) [false]
+  --erase                  clean up (delete) simulation files [false]
+  --logging <value>        log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN
+  --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://...
+  --simulation N           simulation number (precalc) to use for transformer list
+  --reference N            simulation number (precalc) to use as reference for transformer list
+  --delta D                delta power difference threshold for reference comparison [1.00000e-06]
+  --precalcfactor D        factor to multiply precalculation results for gridlabd [2.50000]
+  --cosphi D               power factor for new photo-voltaic installations [1.00000]
+  --voltage_threshold D    the voltage threshold for the feeder of the house under test [3.00000%]
+  --voltage_threshold2 D   the voltage threshold for neighboring feeders of the house under test [3.00000%]
+  --ignore_other           ignore cable currents on neighboring feeders [false]
+  --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files
   <CIM> <CIM> ...          CIM rdf files to process
 ```
 
