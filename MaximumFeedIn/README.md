@@ -262,6 +262,21 @@ when in `--reference` mode.
 The scaling to be performed on [Pre-Calculation](#pre-calculation) feed-in value
 to set the upper limit for [Load Flow](#load-flow) ramp up.
 
+### cosphi
+power factor which will be used for new photo-voltaic installations
+
+### voltage_threshold 
+this threshold for voltage will be used for each node on the same feeder (of the trafo station) as the house, on which
+the photo-voltaic is currently tested 
+
+### voltage_threshold2 
+this threshold for voltage will be used for each node NOT on the same feeder (of the trafo station) as the house, on which
+the photo-voltaic is currently tested
+
+### ignore_other
+the current check for ac line segments can be ignored for lines which are NOT on the same feeder as the house, which is 
+under test 
+
 # Processing
 
 The CIM file is read into Spark using a custom reader, [CIMReader](https://github.com/derrickoswald/CIMReader).
