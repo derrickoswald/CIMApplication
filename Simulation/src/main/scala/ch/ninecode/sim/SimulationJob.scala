@@ -168,13 +168,13 @@ object SimulationJob
         players.flatMap (parsePlayer (name, _))
     }
 
-    def parseAggregation (ttl: JsonObject): List[SimulationAggregate] =
+    def parseAggregation (aggregations: JsonObject): List[SimulationAggregate] =
     {
-        val intervals = ttl.getInt ("intervals")
-        val time = if (ttl.isNull ("ttl"))
-            ""
+        val intervals = aggregations.getInt ("intervals")
+        val time = if (aggregations.isNull ("ttl"))
+            0
         else
-            " using ttl " + ttl.getJsonNumber ("ttl").intValue
+            aggregations.getJsonNumber ("ttl").intValue
         List (SimulationAggregate (intervals, time))
     }
 

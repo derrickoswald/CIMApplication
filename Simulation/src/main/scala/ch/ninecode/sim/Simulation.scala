@@ -20,8 +20,6 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.reflect.runtime.universe.TypeTag
 
-import com.datastax.spark.connector._
-
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -32,6 +30,10 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.writer.TTLOption
+import com.datastax.spark.connector.writer.WriteConf
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
@@ -51,6 +53,7 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+
 
 /**
  * Execute simulations using GridLAB-D.
@@ -560,9 +563,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 //                    }
                 //                )
 
-                log.info ("""storing GeoJSON data""")
                 val geo = SimulationGeometry (session, options.keyspace)
                 geo.storeGeometry (gridlabd)
+                log.info ("""storing GeoJSON data""")
 
                 // read the data
                 val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
@@ -574,12 +577,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .groupByKey
                 val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
 
-                log.info ("""performing %d GridLAB-D simulations on the cluster""".format (gridlabd_count))
+                log.info ("""performing %d GridLAB-D simulation%s on the cluster""".format (gridlabd_count, if (gridlabd_count == 1) "" else "s"))
                 val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
                 val results = packages.flatMap (runner.execute).cache
 
                 // save the results
-                results.saveToCassandra (options.keyspace, "simulated_value")
+                results.saveToCassandra (options.keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
                 log.info ("""saved GridLAB-D simulation results on the cluster""")
 
                 // clean up

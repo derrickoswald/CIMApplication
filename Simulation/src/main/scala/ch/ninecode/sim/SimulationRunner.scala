@@ -186,6 +186,32 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
         }
     }
 
+    case class Accumulator
+    (
+        intervals: Int,
+        average: Boolean,
+        ttl: Int,
+        var count: Int = 0,
+        var value_a_re: Double = 0.0,
+        var value_a_im: Double = 0.0,
+        var value_b_re: Double = 0.0,
+        var value_b_im: Double = 0.0,
+        var value_c_re: Double = 0.0,
+        var value_c_im: Double = 0.0
+    )
+    {
+        def reset (): Unit =
+        {
+            count = 0
+            value_a_re = 0.0
+            value_a_im = 0.0
+            value_b_re = 0.0
+            value_b_im = 0.0
+            value_c_re = 0.0
+            value_c_im = 0.0
+        }
+    }
+
     def execute (args: (SimulationTrafoKreis, Iterable[(String, Iterable[SimulationPlayerData])])): Iterable[SimulationResult] =
     {
         val trafo = args._1
@@ -219,24 +245,98 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             trafo.recorders.flatMap (
                 recorder ⇒
                 {
-                    read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit).map (
-                        entry ⇒
-                            SimulationResult
-                            (
-                                entry.element,
-                                recorder.`type`,
-                                recorder.interval * recorder.aggregations.head.intervals * 1000, // ToDo: aggregations
-                                entry.millis,
-                                entry.value_a.im,
-                                entry.value_b.im,
-                                entry.value_c.im,
-                                entry.value_a.re,
-                                entry.value_b.re,
-                                entry.value_c.re,
-                                trafo.simulation,
-                                entry.units
-                            )
-                    )
+                    val measures = recorder.aggregations.find (_.intervals == 1) match
+                        {
+                            case Some (baseline: SimulationAggregate) ⇒
+                                val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit).map (
+                                    entry ⇒
+                                        SimulationResult
+                                        (
+                                            entry.element,
+                                            recorder.`type`,
+                                            recorder.interval * 1000,
+                                            entry.millis,
+                                            entry.value_a.im,
+                                            entry.value_b.im,
+                                            entry.value_c.im,
+                                            entry.value_a.re,
+                                            entry.value_b.re,
+                                            entry.value_c.re,
+                                            trafo.simulation,
+                                            entry.units,
+                                            baseline.time_to_live
+                                        )
+                                )
+
+                                // these should already be in order, but sort them anyway
+                                val sorted = records.sortBy (_.time)
+
+                                // get an accumulator for every interval to be aggregated
+                                val accumulators = recorder.aggregations.map (x ⇒ Accumulator (x.intervals, recorder.`type` != "energy", x.time_to_live))
+
+                                // aggregate over the accumulators
+                                val accumulated = sorted.flatMap (
+                                    entry ⇒
+                                    {
+                                        accumulators.flatMap (
+                                            accumulator ⇒
+                                            {
+                                                if (accumulator.intervals == 1)
+                                                    Some (entry)
+                                                else
+                                                {
+                                                    accumulator.count = accumulator.count + 1
+                                                    accumulator.value_a_re = accumulator.value_a_re + entry.real_a
+                                                    accumulator.value_a_im = accumulator.value_a_im + entry.imag_a
+                                                    accumulator.value_b_re = accumulator.value_b_re + entry.real_b
+                                                    accumulator.value_b_im = accumulator.value_b_im + entry.imag_b
+                                                    accumulator.value_c_re = accumulator.value_c_re + entry.real_c
+                                                    accumulator.value_c_im = accumulator.value_c_im + entry.imag_c
+                                                    if (accumulator.count >= accumulator.intervals)
+                                                    {
+                                                        if (accumulator.average)
+                                                        {
+                                                            accumulator.value_a_re = accumulator.value_a_re / accumulator.count
+                                                            accumulator.value_a_im = accumulator.value_a_im / accumulator.count
+                                                            accumulator.value_b_re = accumulator.value_b_re / accumulator.count
+                                                            accumulator.value_b_im = accumulator.value_b_im / accumulator.count
+                                                            accumulator.value_c_re = accumulator.value_c_re / accumulator.count
+                                                            accumulator.value_c_im = accumulator.value_c_im / accumulator.count
+                                                        }
+
+                                                        val timepoint = entry.time - (entry.period * (accumulator.intervals - 1))
+                                                        val period = entry.period * accumulator.intervals
+                                                        val new_entry = SimulationResult (
+                                                                entry.mrid,
+                                                                entry.`type`,
+                                                                period,
+                                                                timepoint,
+                                                                accumulator.value_a_re,
+                                                                accumulator.value_a_im,
+                                                                accumulator.value_b_re,
+                                                                accumulator.value_b_im,
+                                                                accumulator.value_c_re,
+                                                                accumulator.value_c_im,
+                                                                entry.simulation,
+                                                                entry.units,
+                                                                accumulator.ttl
+                                                            )
+                                                        accumulator.reset ()
+                                                        Some (new_entry)
+                                                    }
+                                                    else
+                                                        None
+                                                }
+                                            }
+                                        )
+                                    }
+                                )
+                                accumulated
+                            case None ⇒
+                                log.error ("""no baseline interval ("intervals" = 1) in recorder (%s)""".format (recorder.toString))
+                                Array[SimulationResult] ()
+                        }
+                    measures
                 }
             )
         else

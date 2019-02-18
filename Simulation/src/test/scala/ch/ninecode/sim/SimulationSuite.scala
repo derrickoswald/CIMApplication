@@ -224,15 +224,15 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |            "aggregations": [
                       |                {
                       |                    "intervals": 1,
-                      |                    "ttl": null
+                      |                    "ttl": 180
                       |                },
                       |                {
                       |                    "intervals": 4,
-                      |                    "ttl": null
+                      |                    "ttl": 360
                       |                },
                       |                {
                       |                    "intervals": 12,
-                      |                    "ttl": null
+                      |                    "ttl": 720
                       |                },
                       |                {
                       |                    "intervals": 96,

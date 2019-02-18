@@ -14,7 +14,8 @@ package ch.ninecode.sim
  * @param real_b Phase B real component.
  * @param real_c Phase C real component.
  * @param simulation The simulation run this value was derived from.
- * @param units Th units for the value, e.g. <code>Volts</code> for a node, <code>Amperes</code> for an edge.
+ * @param units The units for the value, e.g. <code>Volts</code> for a node, <code>Amperes</code> for an edge.
+ * @param ttl The time-to-live in seconds (after which the row is deleted), use 0 (zero) for never delete.
  */
 case class SimulationResult
 (
@@ -29,5 +30,6 @@ case class SimulationResult
     real_b: Double,
     real_c: Double,
     simulation: String,
-    units: String
+    units: String,
+    ttl: Int
 )
