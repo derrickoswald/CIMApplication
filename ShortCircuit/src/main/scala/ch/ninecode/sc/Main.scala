@@ -99,6 +99,7 @@ object Main
         fuse_table: Int = 1,
         messagemax: Int = 5,
         batchsize: Long = 10000L,
+        cable_impedance_limit: Double = 5.0,
         workdir: String = "",
         files: Seq[String] = Seq ())
 
@@ -207,6 +208,10 @@ object Main
         opt [Long]("batchsize").
             action ((x, c) => c.copy (batchsize = x)).
             text ("size of result collections for driver database writes [%d]".format (default.batchsize))
+
+        opt [Double]("cable_impedance_limit").valueName ("<value>").
+            action ((x, c) ⇒ c.copy (cable_impedance_limit = x)).
+            text ("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format (default.cable_impedance_limit))
 
         opt [String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
@@ -397,6 +402,7 @@ object Main
                     messagemax = arguments.messagemax,
                     batchsize = arguments.batchsize,
                     trafos = arguments.trafos,
+                    cable_impedance_limit = arguments.cable_impedance_limit,
                     workdir = workdir
                 )
                 val shortcircuit = ShortCircuit (session, storage, options)

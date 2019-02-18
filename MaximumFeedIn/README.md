@@ -145,6 +145,7 @@ Calculate maximum feed-in power without reinforcement or exceeding voltage, curr
   --voltage_threshold D    the voltage threshold for the feeder of the house under test [3.00000%]
   --voltage_threshold2 D   the voltage threshold for neighboring feeders of the house under test [3.00000%]
   --ignore_other           ignore cable currents on neighboring feeders [false]
+  --cable_impedance_limit  cables with higher impedances for R1 will not be processed with gridlabd [5.00000]
   --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files
   <CIM> <CIM> ...          CIM rdf files to process
 ```
@@ -276,6 +277,9 @@ the photo-voltaic is currently tested
 ### ignore_other
 the current check for ac line segments can be ignored for lines which are NOT on the same feeder as the house, which is 
 under test 
+
+### cable_impedance_limit
+cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high impedance values
 
 # Processing
 

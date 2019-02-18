@@ -32,18 +32,21 @@ import ch.ninecode.model._
 /**
  * Compute the maximum feed-in power at house connections in a network.
  *
- * @param session           The Spark session.
- * @param topological_nodes If <code>true</code>, use the TopologyNode attribute of Terminal objects, otherwise use the ConnectivityNode attribute.
- *                          If true, it assumes that the CIMReader has been instructed to run the NetworkTopologicalProcessor to update the terminals,
- *                          or the terminals already have a valid TopologicalNode when they are read in.
- * @param one_phase         If <code>true</code>, generate and analyze load flow with a single phase model.
- * @param storage_level     Specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects.
- * @param workdir           The working directory for .glm and input_file generation. If the scheme is file:// or none,
- *                          the gridlabd processes will assume that this is local and will try to execute in that directory.
- *                          If the scheme is hdfs:// or wasb:// (or something else) the gridlab processes will copy the files locally
- *                          (either to \$SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
- *                          or to \$HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
- *                          to execute and then copy the output files back to this location (workdir) when complete.
+ * @param session               The Spark session.
+ * @param topological_nodes     If <code>true</code>, use the TopologyNode attribute of Terminal objects, otherwise use the ConnectivityNode attribute.
+ *                              If true, it assumes that the CIMReader has been instructed to run the NetworkTopologicalProcessor to update the terminals,
+ *                              or the terminals already have a valid TopologicalNode when they are read in.
+ * @param one_phase             If <code>true</code>, generate and analyze load flow with a single phase model.
+ * @param storage_level         Specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level
+ *                              </a> used to persist and serialize the objects.
+ * @param workdir               The working directory for .glm and input_file generation. If the scheme is file:// or none,
+ *                              the gridlabd processes will assume that this is local and will try to execute in that directory.
+ *                              If the scheme is hdfs:// or wasb:// (or something else) the gridlab processes will copy the files locally
+ *                              (either to \$SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
+ *                              or to \$HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
+ *                              to execute and then copy the output files back to this location (workdir) when complete.
+ * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high
+ *                              impedance values
  */
 class GridLABD
 (
@@ -51,7 +54,8 @@ class GridLABD
     topological_nodes: Boolean = true,
     one_phase: Boolean = false,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
-    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost.getHostName + "/simulation/") extends Serializable
+    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost.getHostName + "/simulation/",
+    cable_impedance_limit: Double = 5.0) extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -170,7 +174,7 @@ class GridLABD
         element match
         {
             case cable: ACLineSegment ⇒
-                if (cable.r >= 5.0) // ToDo: use PSRType_Bogus
+                if (cable.r >= cable_impedance_limit) // ToDo: use PSRType_Bogus
                     "invalid element (%s r=%s)".format (cable.id, cable.r)
                 else
                     null
