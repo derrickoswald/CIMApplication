@@ -685,7 +685,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             gridlabd.export (generator)
         }
 
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = storage_level, workdir = options.workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = storage_level, workdir = options.workdir, cable_impedance_limit = options.cable_impedance_limit)
         val experiments = simulations.flatMap (
             x ⇒
             {
@@ -890,7 +890,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
-            val island_helper = new Island (session, storage_level)
+            val island_helper = new Island (session, storage_level, options.cable_impedance_limit)
             val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations

@@ -16,10 +16,12 @@ import ch.ninecode.model._
 /**
  * A topological island utility class to get edges and nodes.
  *
- * @param spark         The current spark session.
- * @param storage_level The storage level to use in persisting the edges and nodes.
+ * @param spark                 The current spark session.
+ * @param storage_level         The storage level to use in persisting the edges and nodes.
+ * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high
+ *                              impedance values
  */
-class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends CIMRDD with Serializable
+class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), cable_impedance_limit: Double = 5.0) extends CIMRDD with Serializable
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -70,7 +72,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         element match
         {
             case cable: ACLineSegment ⇒
-                if (cable.r < 5.0) // ToDo: use PSRType_Bogus
+                if (cable.r < cable_impedance_limit) // ToDo: use PSRType_Bogus
                     "invalid element (%s r=%s)".format (cable.id, cable.r)
                 else
                     null

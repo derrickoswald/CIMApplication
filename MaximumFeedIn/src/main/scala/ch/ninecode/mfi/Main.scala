@@ -87,6 +87,7 @@ object Main
         voltage_threshold: Double = 3.0,
         voltage_threshold2: Double = 3.0,
         ignore_other: Boolean = false,
+        cable_impedance_limit: Double = 5.0,
         workdir: String = "",
         files: Seq[String] = Seq ()
     )
@@ -206,6 +207,10 @@ object Main
         opt [Unit]("ignore_other").
             action ((_, c) => c.copy (ignore_other = true)).
             text ("ignore cable currents on neighboring feeders [false]")
+
+        opt [Double]("cable_impedance_limit").valueName ("D").
+            action ((x, c) => c.copy (cable_impedance_limit = x)).
+            text ("cables with higher impedances for R1 will not be processed with gridlabd [%g%%]".format (default.cable_impedance_limit))
 
         opt [String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
@@ -340,7 +345,8 @@ object Main
                         ignore_other = arguments.ignore_other,
                         workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,
                         files = arguments.files,
-                        precalc_factor = arguments.precalc_factor
+                        precalc_factor = arguments.precalc_factor,
+                        cable_impedance_limit = arguments.cable_impedance_limit
                     )
                     val eins = Einspeiseleistung (session, options)
                     count = eins.run ()

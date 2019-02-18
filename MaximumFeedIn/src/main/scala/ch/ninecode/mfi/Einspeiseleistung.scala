@@ -518,7 +518,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         // prepare for precalculation
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
-        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir)
+        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir, options.cable_impedance_limit)
 
         // get the distribution transformers
         val transformer_data = new Transformers (session, storage_level).getTransformers ()
