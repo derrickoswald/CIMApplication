@@ -191,7 +191,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val span =
             """time >= %s and time <= %s""".format (begin, end)
         val file = "input_data/" + player.name + ".csv"
-        val sql = player.cassandraquery.format (player.substitutions: _*) + " and " + span + " allow filtering"
         List (
             SimulationPlayer (
                 player.name,
@@ -199,7 +198,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 player.`type`,
                 player.property,
                 file,
-                player.substitutions(0), // ToDo; fixme, was sql
+                player.mrid,
                 begin,
                 end)
         )

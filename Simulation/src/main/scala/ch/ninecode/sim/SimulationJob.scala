@@ -159,22 +159,7 @@ object SimulationJob
             List ()
         }
         else
-        {
-            val cassandraquery = player.getString ("cassandraquery", null)
-            if (null == cassandraquery)
-            {
-                log.error (""""%s" does not specify a Cassandra query for player "%s"""".format (name, title))
-                List ()
-            }
-            else
-            {
-                val binds = player.getJsonArray ("bind")
-                val array = Array.ofDim [String](binds.size)
-                for (i <- 0 until binds.size)
-                    array (i) = binds.getJsonString (i).getString
-                List (SimulationPlayerQuery (title, query, cassandraquery, array))
-            }
-        }
+            List (SimulationPlayerQuery (title, query))
     }
 
     def parsePlayers (name: String, json: JsonObject): Seq[SimulationPlayerQuery] =

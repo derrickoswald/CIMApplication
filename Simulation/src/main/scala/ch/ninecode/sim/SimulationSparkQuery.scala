@@ -31,18 +31,17 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
         val island = resultset.schema.fieldIndex (keyfield)
         val name = resultset.schema.fieldIndex (namefield)
         val parent = resultset.schema.fieldIndex (parentfield)
+        val mrid = resultset.schema.fieldIndex (mridfield)
         val `type` = resultset.schema.fieldIndex (typefield)
         val property = resultset.schema.fieldIndex (propertyfield)
         resultset.rdd.keyBy (row ⇒ row.getString (island)).mapValues (
             row ⇒
             {
-                val substitutions = query.bind.map (y ⇒ row.getString (row.schema.fieldIndex (y)))
                 SimulationPlayerResult (
                     query.title,
-                    query.cassandraquery,
-                    substitutions,
                     row.getString (name),
                     row.getString (parent),
+                    row.getString (mrid),
                     row.getString (`type`),
                     row.getString (property))
             }

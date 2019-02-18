@@ -29,7 +29,7 @@ case class SimulationPlayer
     file: String = null,
 
     /**
-     * The mrid to fetch the player data.
+     * The mrid used to fetch the player data from the measured data.
      */
     mrid: String = null,
 
