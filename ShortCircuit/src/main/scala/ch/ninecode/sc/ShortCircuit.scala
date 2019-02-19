@@ -737,9 +737,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
     {
-        val ss = rdd.keyBy (_._2.head._2._2.id).join (get [ConductingEquipment].keyBy (_.id)).values
-            .map (x ⇒ (x._1._1, x._1._2.head._2._2, x._1._2.map (y ⇒ (y._1, (y._2._1, x._2, y._2._3)))))
-
         // ToDo: fix this 1kV multiplier on the voltages
         def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
 
@@ -755,18 +752,23 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             case _ ⇒ false
         }
 
-        ss.map (
-            args ⇒
-                (
-                    args._3.head._1,
-                    SimulationNode (
-                        args._1,
-                        voltage (args._3.head._2._3),
-                        args._2.id,
-                        house (args._2),
-                        busbar (args._2))
-                )
-        )
+        val s: RDD[((node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))]), ConductingEquipment)] = rdd.keyBy (_._2.head._2._2.id).join (get [ConductingEquipment].keyBy (_.id)).values
+        s.map (args ⇒
+        {
+            val iter = args._1._2
+            val has = iter.find (h ⇒ house (h._2._2))
+            val bus = iter.find (b ⇒ busbar (b._2._2))
+            val ele: Element = has.getOrElse (bus.getOrElse (iter.head))._2._2
+            (
+                iter.head._1,
+                SimulationNode (
+                    args._1._1,
+                    voltage (iter.head._2._3),
+                    ele.id,
+                    house (ele),
+                    busbar (ele))
+            )
+        })
     }
 
     def edge_maker (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
