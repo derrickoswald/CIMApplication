@@ -280,6 +280,63 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
             assert (records == 38, "number of records")
     }
 
+    test ("test cable_impedance_limit paramter")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val filename = FILE_DEPOT + FILENAME1
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/parallel_cable_sample_cache"),
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                precalc_factor = 2.5,
+                cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
+                workdir = "simulation/",
+                files = List (filename),
+                cable_impedance_limit = 0.14
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where (simulation = (select max(simulation) from results) or simulation = (select max(simulation) from results) - 1) and house like 'USR%' and trafo like 'TX0002'")
+            var records: Int = 0
+            while (resultset.next)
+            {
+                assert (resultset.getObject ("maximum") == null, "has no max because of cable impedance (invalid element)")
+                assert (resultset.getString ("reason") == "no results", "has no result because of cable impedance (invalid element)")
+                assert (resultset.getString ("details") == "invalid element (CAB0014 r=0.14600148356433446)", "has no details because of cable impedance (invalid element)")
+                records = records + 1
+
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+            assert (records == 28, "number of records")
+    }
+
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
