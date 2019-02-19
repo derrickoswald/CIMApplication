@@ -319,26 +319,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
-    /**
-     * Trace the path of the "short circuit" current.
-     *
-     * Identify the sequence of elements from the starting node until the end.
-     * Where parallel paths exist make a List.
-     *
-     * @param start starting node (e.g. EnergyConsumer)
-     * @param data  list of live branches
-     * @return the traced fuses
-     */
-    def traceroute (start: String, data: Iterable[(String, String, Double)]): Branch =
-    {
-        val tr = new TraceRoute ()
-        val branches = tr.traceroute (start, data)
-        if (branches.nonEmpty)
-            branches.head.reverse
-        else
-            null
-    }
-
     def read_output_files (one_phase: Boolean, workdir_slash: String): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
@@ -536,10 +516,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         else
                                         {
                                             val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
+                                            val name = switch.toSwitch (switch.switches.head).ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                                             if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, rating))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, rating))
                                             else
-                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, rating))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
                                         }
                                     case cable: LineEdge ⇒
                                         if (Math.abs (v1 - v2) < 1e-6)
@@ -553,18 +534,19 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                                 Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
                                                 Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
                                                 Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+                                            val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                                             if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, None, z))
+                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, None, z))
                                             else
-                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, None, z))
+                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, None, z))
                                         }
                                     case _ ⇒
                                         // e.g. transformer: TransformerEdge which never happens since the transformer is not included in the edges list
                                         log.error ("unexpected edge type %s".format (x.toString))
                                         if (v1 > v2)
-                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id))
+                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, "", x.id))
                                         else
-                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id))
+                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, "", x.id))
                                 }
                             case None ⇒
                                 List ()

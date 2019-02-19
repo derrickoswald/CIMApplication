@@ -103,10 +103,16 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param rating  the current rating if it is a fuse
  * @param z       the positive and zero sequence impedances at the operational temperatures
  */
-case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, rating: Option[Double] = None,
+case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String, rating: Option[Double] = None,
      z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
-    override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s)""".format (from, to, current, mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
+    override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s%s)""".format (
+        from,
+        to,
+        current,
+        mRID,
+        if (rating.isDefined) "@%s".format (rating.get) else "",
+        if (null != name) name.substring (0, 3) else "")
 
     def asString: String = "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
@@ -124,7 +130,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
 
-    def reverse: Branch = SimpleBranch (to, from, current, mRID, rating)
+    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 }
@@ -159,7 +165,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
         if ((fuses.size == 1) && fuses.head.isInstanceOf [SimpleBranch])
         {
             val branch = fuses.head.asInstanceOf [SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.rating))
+            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating))
         }
         else
             if (fuses.nonEmpty)
@@ -205,7 +211,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
         if ((fuses.size == 1) && fuses.head.isInstanceOf [SimpleBranch])
         {
             val branch = fuses.head.asInstanceOf [SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
+            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
         }
         else
             if (fuses.nonEmpty)
@@ -238,7 +244,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
 object Branch
 {
-    def apply (from: String, to: String, current: Double, mRID: String, rating: Option[Double]) = SimpleBranch (from, to, current, mRID, rating)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, rating: Option[Double]) = SimpleBranch (from, to, current, mRID, name, rating)
 
     def apply (from: String, to: String, current: Double, series: Seq[Branch]) = SeriesBranch (from, to, current, series)
 

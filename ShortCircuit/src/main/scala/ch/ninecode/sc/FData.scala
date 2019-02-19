@@ -48,39 +48,80 @@ object FData
             Amp (1900, 500),
             Amp (2500, 630)
         )
-    var recommended: Array[Amp] = recommended_fuse_sizing_1
+    val recommended_fuse_sizing_3: Array[Amp] =
+        Array (
+            Amp (0, 0), // failsafe fallback for currents less than 200A
+            Amp (200, 60),
+            Amp (250, 75),
+            Amp (300, 100),
+            Amp (340, 125),
+            Amp (500, 150),
+            Amp (600, 200),
+            Amp (720, 250),
+            Amp (850, 300),
+            Amp (1150, 400)
+        )
+
+    var fuse: (Double, Branch) ⇒ Double = fuse1
 
     def fuse_sizing_table (number: Int): Unit =
     {
         number match
         {
-            case 1 ⇒ recommended = recommended_fuse_sizing_1
-            case 2 ⇒ recommended = recommended_fuse_sizing_2
+            case 1 ⇒
+                fuse = fuse1
+
+            case 2 ⇒
+                fuse = fuse2
+
+            case 3 ⇒
+                fuse = fuse3
+
             case _ ⇒
                 val log: Logger = LoggerFactory.getLogger (getClass)
                 log.error ("unrecognized fuse sizing table number %s, ignored".format (number))
         }
     }
 
-    def fuse (ik: Double): Double =
+    def fuse1 (ik: Double, branch: Branch = null): Double =
     {
-        val rating = if (ik.isNaN)
-            recommended.last.Rating
+        if (ik.isNaN)
+            recommended_fuse_sizing_1.last.Rating
         else
-        {
-            val i = Math.abs (ik)
-            recommended.filter (_.Ik <= i).last.Rating
-        }
-        rating
+            recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
+    }
+
+    def fuse2 (ik: Double, branch: Branch = null): Double =
+    {
+        if (ik.isNaN)
+            recommended_fuse_sizing_2.last.Rating
+        else
+            recommended_fuse_sizing_2.filter (_.Ik <= Math.abs (ik)).last.Rating
+    }
+
+    def fuse3 (ik: Double, branch: Branch): Double =
+    {
+        if (ik.isNaN)
+            recommended_fuse_sizing_3.last.Rating
+        else
+            branch match
+            {
+                case simple: SimpleBranch ⇒
+                    if (simple.name.startsWith ("SEV"))
+                        recommended_fuse_sizing_3.filter (_.Ik <= Math.abs (ik)).last.Rating
+                    else
+                        recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
+                case _ ⇒
+                    recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
+            }
     }
 
     def fuses (ik: Double, branches: Branch): String =
     {
-        val rating = if (ik.isNaN || (null == branches))
-            recommended.last.Rating.toInt.toString
+        if (ik.isNaN || (null == branches))
+            fuse (Double.NaN, branches).toInt.toString
         else
-            branches.ratios.map (_._1 * Math.abs (ik)).map (x ⇒ recommended.filter (_.Ik <= x).last.Rating.toInt).mkString (",")
-        rating
+            branches.ratios.map (x ⇒ (x._1 * Math.abs (ik), x._2)).map (x ⇒ fuse (x._1, x._2).toInt).mkString (",")
     }
 
     def fuseOK (ik: Double, branches: Branch): Boolean =
@@ -103,7 +144,7 @@ object FData
                             if (0.0 == rating)
                                 false
                             else
-                                fuse (current) >= rating
+                                fuse (current, sim) >= rating
                         case ser: SeriesBranch ⇒
                             fuseOK (current, ser.seq.last)
                         case par: ParallelBranch ⇒

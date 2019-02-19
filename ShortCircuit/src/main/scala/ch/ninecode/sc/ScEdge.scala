@@ -231,7 +231,7 @@ case class ScEdge
         element match
         {
             case fuse: Fuse ⇒
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, Some (fuse.Switch.ratedCurrent))
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (fuse.Switch.ratedCurrent))
                 if (null == ref)
                     next
                 else
@@ -242,7 +242,7 @@ case class ScEdge
                         case _ ⇒ throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
                     }
             case breaker: Breaker ⇒
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
                 if (null == ref)
                     next
                 else
