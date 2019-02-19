@@ -24,7 +24,7 @@ import ch.ninecode.gl.Complex
  * @param messagemax                          mximum number of warning and error messages to keep for each node
  * @param batchsize                           size of result collections for driver database writes
  * @param trafos                              file name of transformer names to process
- * @param cable_impedance_limit               cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high impedance values
+ * @param cable_impedance_limit               cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
  * @param workdir                             shared directory (HDFS or NFS share) for intermediate results
  */
 case class ShortCircuitOptions

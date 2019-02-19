@@ -279,7 +279,7 @@ the current check for ac line segments can be ignored for lines which are NOT on
 under test 
 
 ### cable_impedance_limit
-cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high impedance values
+cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
 
 # Processing
 

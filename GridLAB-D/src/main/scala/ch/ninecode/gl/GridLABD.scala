@@ -45,7 +45,7 @@ import ch.ninecode.model._
  *                              (either to \$SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
  *                              or to \$HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
  *                              to execute and then copy the output files back to this location (workdir) when complete.
- * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high
+ * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high
  *                              impedance values
  */
 class GridLABD

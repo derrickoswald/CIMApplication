@@ -380,7 +380,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 
     test ("Typical")
@@ -491,7 +491,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 
     test ("Summarize")
     {
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "sandbox", "--summarize"))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "localhost", "--summarize"))
     }
 
     test ("DemoData")
@@ -572,6 +572,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 }
