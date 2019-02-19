@@ -182,6 +182,9 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
                 }
             ).toArray
             handle.close
+            if (!keep)
+                name.delete
+
             ret
         }
     }
@@ -344,8 +347,5 @@ case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int
             log.error ("""GridLAB-D failed for %s: %s""".format (trafo.name, ret._2))
             List()
         }
-// ToDo: delete gridlab intermediate files
-//                        if (!keep)
-//                            FileUtils.deleteQuietly (new File (workdir + trafo.directory))
     }
 }

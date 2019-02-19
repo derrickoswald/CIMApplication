@@ -89,12 +89,7 @@ truncate table cimapplication.losses_summary_by_day;
         //        "players": [
         //            {
         //                "title": "house services",
-        //                "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'",
-        //                "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-        //                "bind": [
-        //                    "mrid",
-        //                    "type"
-        //                ]
+        //                "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'"
         //            }
         //        ],
         //        "recorders": [
@@ -150,13 +145,7 @@ truncate table cimapplication.losses_summary_by_day;
                         c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
                         c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
-                    `,
-                "cassandraquery": "select cimapplication.subtract_offset (time, period) as time, cimapplication.multiply (real_a, 4.0) as real, cimapplication.multiply (imag_a, 4.0) as imag from cimapplication.measured_value where mrid='%s' and type='%s'",
-                "bind": [
-                    "mrid",
-                    "type"
-                ]
-
+                    `
             }
         ];
 
@@ -658,7 +647,6 @@ truncate table cimapplication.losses_summary_by_day;
                     }
                 }
             );
-            ret = ret.map (item => { item.cassandraquery = item.cassandraquery.replace (/cimapplication/g, read_keyspace); return (item); });
             return (ret);
         }
 

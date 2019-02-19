@@ -15,4 +15,4 @@ an in-house system.
 
 # Input
 
-The mapping or correspondenc file is a CSV format file (with a header and separator';') that has two columns of interest.
+The mapping or correspondence file is a CSV format file (with a header and separator';') that has two columns of interest.

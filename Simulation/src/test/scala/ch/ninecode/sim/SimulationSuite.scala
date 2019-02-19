@@ -263,7 +263,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 
-    ignore ("Transformers")
+    test ("Transformers")
     {
         val json = FILE_DEPOT + "transformers.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -383,7 +383,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "beach", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
     }
 
-    ignore ("Typical")
+    test ("Typical")
     {
         val json = FILE_DEPOT + "typical.json"
         using (new PrintWriter (new File (json), "UTF-8"))
@@ -489,12 +489,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         Main.main (Array ("--unittest", "--master", "spark://sandbox:7077", "--verbose", "--keep", "--batchsize", "32767", "--host", "beach", json))
     }
 
-    ignore ("Summarize")
+    test ("Summarize")
     {
         Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "sandbox", "--summarize"))
     }
 
-    ignore ("DemoData")
+    test ("DemoData")
     {
         val json = FILE_DEPOT + "basic.json"
         using (new PrintWriter (new File (json), "UTF-8"))
