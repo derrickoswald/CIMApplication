@@ -124,6 +124,10 @@ object Main
             action ((x, c) ⇒ c.copy (maxtime = parseTime (c, x))).
             text ("maximum time for ingestion timespan [%s]".format (formatTime (default, default.maxtime)))
 
+        opt [String]("keyspace").
+            action ((x, c) ⇒ c.copy (keyspace = x)).
+            text ("keyspace which will be used in cassandra [%s]".format (default.keyspace))
+
         arg [String]("<ZIP> or <CSV>...").optional ().unbounded ().
             action ((x, c) ⇒
             {

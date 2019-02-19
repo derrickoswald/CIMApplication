@@ -75,6 +75,11 @@ case class IngestOptions
     /**
      * Source Belvis files.
      */
-    belvis: Seq[String] = Seq ()
+    belvis: Seq[String] = Seq (),
+
+    /**
+     * cassandra keyspace
+     */
+    keyspace: String = "cimapplication"
 
 )
