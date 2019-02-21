@@ -72,14 +72,6 @@ object Main
             action ((x, c) ⇒ c.copy (host = x)).
             text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
-        opt [String]("keyspace").valueName ("<name>").
-            action ((x, c) ⇒ c.copy (keyspace = x)).
-            text ("Cassandra keyspace under which to store results [%s]".format (default.keyspace))
-
-        opt [Int]("batchsize").valueName ("<value>").
-            action ((x, c) ⇒ c.copy (batchsize = x)).
-            text ("Cassandra maximum batch size (<= 65535) [%s]".format (default.batchsize))
-
         opt [String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
@@ -158,10 +150,10 @@ object Main
      * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
      * mvn package
      * Invoke (on the cluster) with:
-     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox basic.json
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host beach demodata.json
      * or on AWS:
-     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox basic.json
-     * Note: At the moment the "cim" property in the json file is file-system dependent, e.g. "cim": "data/TRA2755_terminal_2_island.rdf", or "cim": "hdfs://sandbox:8020/data/TRA2755_terminal_2_island.rdf".
+     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox demodata.json
+     * Note: At the moment the "cim" property in the json file is file-system dependent, e.g. "cim": "data/DemoData.rdf", or "cim": "hdfs://sandbox:8020/data/DemoData.rdf".
      */
     def main (args: Array[String])
     {
@@ -174,7 +166,7 @@ object Main
 
                 if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
 
-                if (options.summarize || (0 != options.simulation.size))
+                if (options.simulation.nonEmpty)
                 {
                     val begin = System.nanoTime ()
 
@@ -220,17 +212,21 @@ object Main
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    if (0 != options.simulation.size)
+                    var to_summarize: Seq[String] = Seq()
+                    if (options.simulation.nonEmpty)
                     {
                         val sim = Simulation (session, options)
                         val runs = sim.run ()
+                        if (options.summarize)
+                            to_summarize = runs
                         log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
                     }
 
-                    if (options.summarize)
+                    if (to_summarize.nonEmpty)
                     {
                         val sum = Summarize (session, options)
-                        sum.run ()
+                        sum.run (to_summarize)
+                        log.info ("""summarized %s""".format (to_summarize.mkString (",")))
                     }
 
                     val calculate = System.nanoTime ()

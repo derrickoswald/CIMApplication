@@ -66,7 +66,10 @@ create table if not exists cimapplication.simulation (
     description text,
     cim text,
     cimreaderoptions map<text,text>,
-    interval map<text,timestamp>,
+    start_time timestamp,
+    end_time timestamp,
+    read_keyspace text,
+    write_keyspace text,
     transformers list<text>,
     players list<frozen <map<text,text>>>,
     recorders list<frozen <map<text,text>>>,
@@ -79,7 +82,10 @@ Describes each run of the Simulate code.
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation
     cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
-    interval - the time period simulated (start and end) in GMT
+    start_time - the simulation start time in GMT
+    end_time - the simulation end time in GMT
+    read_keyspace - the Cassandra keyspace for measurement data
+    write_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
     players - the details about GridLAB-D players applied to the model
     recorders - the details about GridLAB-D recorders read from the model
@@ -127,60 +133,6 @@ create table if not exists cimapplication.key_value (
     value text,
     primary key (simulation, query, key)
 ) with comment = 'Key-value pairs for extra data';
-
-create or replace function cimapplication.add_days (t timestamp, days int)
-    returns null on null input
-    returns timestamp
-    language java
-    as $$ return (new Date (t.getTime() + (long)(days * (24*60*60*1000)))); $$;
-
-create or replace function cimapplication.subtract_days (t timestamp, days int)
-    returns null on null input
-    returns timestamp
-    language java
-    as $$ return (new Date (t.getTime() - (long)(days * (24*60*60*1000)))); $$;
-
-create or replace function cimapplication.add_offset (t timestamp, offset int)
-    returns null on null input
-    returns timestamp
-    language java
-    as $$ return (new Date (t.getTime() + (long)(offset))); $$;
-
-create or replace function cimapplication.subtract_offset (t timestamp, offset int)
-    returns null on null input
-    returns timestamp
-    language java
-    as $$ return (new Date (t.getTime() - (long)(offset))); $$;
-
-create or replace function cimapplication.add_amount (value double, amount double)
-    returns null on null input
-    returns double
-    language java
-    as $$ return (value + amount); $$;
-
-create or replace function cimapplication.subtract_amount (value double, amount double)
-    returns null on null input
-    returns double
-    language java
-    as $$ return (value - amount); $$;
-
-create or replace function cimapplication.multiply (value double, amount double)
-    returns null on null input
-    returns double
-    language java
-    as $$ return (value * amount); $$;
-
-create or replace function cimapplication.divide (value double, amount double)
-    returns null on null input
-    returns double
-    language java
-    as $$ return (value / amount); $$;
-
-create or replace function cimapplication.magnitude (real double, imag double)
-    returns null on null input
-    returns double
-    language java
-    as $$ return (Math.sqrt (real * real + imag * imag)); $$;
 
 create table if not exists cimapplication.utilization (
    mrid text,

@@ -176,13 +176,19 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             new Unzip ().unzip (FILE_DEPOT + FILENAME + ".zip", FILE_DEPOT)
     }
 
+    override def afterAll (): Unit =
+    {
+        new File (FILE_DEPOT + FILENAME + ".rdf").delete
+    }
+
     test ("Help")
     {
         Main.main (Array ("--unittest", "--help"))
     }
+
     test ("DemoData")
     {
-        val json = FILE_DEPOT + "basic.json"
+        val json = FILE_DEPOT + "demodata.json"
         using (new PrintWriter (new File (json), "UTF-8"))
         {
             writer =>
@@ -203,8 +209,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        "ch.ninecode.cim.split_maxsize": 67108864
                       |    },
                       |    "interval": {
-                      |         "start": "2017-07-18T00:00:00.000+0100",
-                      |         "end": "2017-07-19T00:00:00.000+0100"
+                      |         "start": "2018-01-01T00:00:00.000+0100",
+                      |         "end": "2018-02-01T00:00:00.000+0100"
+                      |    },
+                      |    "keyspaces": {
+                      |         "read": "cimapplication",
+                      |         "write": "test"
                       |    },
                       |    "transformers": [
                       |    ],
@@ -254,15 +264,11 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        }
                       |    ]
                       |}
-                    """.stripMargin
+                      |""".stripMargin
                 )
         }
         val sep = System.getProperty ("file.separator")
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
-    }
-
-    test ("Summarize")
-    {
-        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--host", "localhost", "--summarize"))
+        Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--summarize", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
+        new File (FILE_DEPOT + "demodata.json").delete
     }
 }

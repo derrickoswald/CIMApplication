@@ -31,17 +31,6 @@ case class SimulationOptions
     host: String = "localhost",
 
     /**
-     * The Cassandra keyspace to save results to.
-     */
-    keyspace: String = "cimapplication",
-
-    /**
-     * The maximum number of statements to submit in one batch.
-     * Note: java.lang.IllegalStateException: Batch statement cannot contain more than 65535 statements.
-     */
-    batchsize: Int = 65535,
-
-    /**
      * Storage level for RDD serialization.
      */
     storage: String = "MEMORY_AND_DISK_SER",
@@ -67,7 +56,7 @@ case class SimulationOptions
     keep: Boolean = false,
 
     /**
-     * Summarize mode.
+     * Summarize results.
      */
     summarize: Boolean = false,
 

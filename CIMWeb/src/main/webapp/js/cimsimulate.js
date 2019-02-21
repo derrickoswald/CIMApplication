@@ -59,6 +59,10 @@ truncate table cimapplication.losses_summary_by_day;
                     "start": "2017-07-18T00:00:00.000+0100",
                     "end": "2017-07-19T00:00:00.000+0100"
                 },
+                keyspaces: {
+                    "read": "cimapplication",
+                    "write": "cimappplication"
+                },
                 players: [],
                 recorders: [],
                 transformers: [],
@@ -82,6 +86,10 @@ truncate table cimapplication.losses_summary_by_day;
         //        "interval": {
         //            "start": "2017-07-18T00:00:00.000+0100",
         //            "end": "2017-07-19T00:00:00.000+0100"
+        //        },
+        //        keyspaces: {
+        //            "read": "cimapplication",
+        //            "write": "cimappplication"
         //        },
         //        "transformers": [
         //            "TRA2755"
@@ -133,7 +141,6 @@ truncate table cimapplication.losses_summary_by_day;
                         'energy' type,
                         concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
-                        'energy' type,
                         'constant_power' property,
                         'Watt' unit,
                         n.TopologicalIsland island
@@ -517,6 +524,8 @@ truncate table cimapplication.losses_summary_by_day;
                 alert ("A CIM file must be specified");
                 return;
             }
+            TheSimulation.keyspaces.read = document.getElementById ("read_keyspace").value;
+            TheSimulation.keyspaces.write = document.getElementById ("write_keyspace").value;
             TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
@@ -524,7 +533,6 @@ truncate table cimapplication.losses_summary_by_day;
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
             var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
-            var keyspace = ";write_keyspace=" + write_keyspace;
             var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
             var to_map = document.getElementById ("to_map").checked;
@@ -534,7 +542,7 @@ truncate table cimapplication.losses_summary_by_day;
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation" + verbose + keep + keyspace + summarize;
+            url = util.home () + "cim/estimation" + verbose + keep + summarize;
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -700,18 +708,6 @@ truncate table cimapplication.losses_summary_by_day;
                       <form>
                         <div class="form-row">
                           <div class="col form-group">
-                            <label for="read_keyspace">Cassandra read keyspace</label>
-                            <input id="read_keyspace" type="text" class="form-control"aria-describedby="readKeyspaceHelp" value="cimapplication">
-                            <small id="readKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used reading from table <em>measured_value</em>.</small>
-                          </div>
-                          <div class="col form-group">
-                            <label for="write_keyspace">Cassandra write keyspace</label>
-                            <input id="write_keyspace" type="text" class="form-control"aria-describedby="writeKeyspaceHelp" value="cimapplication">
-                            <small id="writeKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used writing to table <em>simulated_value</em> and others.</small>
-                          </div>
-                        </div>
-                        <div class="form-row">
-                          <div class="col form-group">
                             <label for="simulation_name">Name</label>
                             <input  id="simulation_name" type="text" class="form-control"aria-describedby="nameHelp" placeholder="Enter a name for the simulation" value="{{name}}">
                             <small id="nameHelp" class="form-text text-muted">Enter a unique name for the simulation - used as a file name for the details.</small>
@@ -727,6 +723,18 @@ truncate table cimapplication.losses_summary_by_day;
                           <select id="cim_file" class="form-control custom-select" aria-describedby="cimFileHelp">
                           </select>
                           <small id="cimFileHelp" class="form-text text-muted">Select the CIM file to use in the simulation.</small>
+                        </div>
+                        <div class="form-row">
+                          <div class="col form-group">
+                            <label for="read_keyspace">Cassandra read keyspace</label>
+                            <input id="read_keyspace" type="text" class="form-control"aria-describedby="readKeyspaceHelp" value="cimapplication">
+                            <small id="readKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used reading from table <em>measured_value</em>.</small>
+                          </div>
+                          <div class="col form-group">
+                            <label for="write_keyspace">Cassandra write keyspace</label>
+                            <input id="write_keyspace" type="text" class="form-control"aria-describedby="writeKeyspaceHelp" value="cimapplication">
+                            <small id="writeKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used writing to table <em>simulated_value</em> and others.</small>
+                          </div>
                         </div>
                         <div class="form-group">
                           <label for="simulation_timerange">Time range</label>

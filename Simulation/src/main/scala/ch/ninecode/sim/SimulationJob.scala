@@ -1,6 +1,9 @@
 package ch.ninecode.sim
 
 import java.io.StringReader
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.TimeZone
 
 import javax.json.Json
 import javax.json.JsonArray
@@ -11,7 +14,6 @@ import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
 import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector._
 import org.slf4j.Logger
@@ -19,14 +21,141 @@ import org.slf4j.LoggerFactory
 
 case class SimulationJob
 (
+    /**
+     * A user specified name for the simulation.
+     *
+     * This would be used in chart titles or graph labels when comparing scenarios.
+     */
     name: String,
+
+    /**
+     * User specified description for the simulation.
+     *
+     * This would be a reminder to the user about why they did the simulation, i.e. a project name.
+     */
     description: String,
+
+    /**
+     * The CIM files used in the simulation.
+     *
+     * If there is more than one file, e.g. an additional switch setting overlay file, then separate the file
+     * names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
+     */
     cim: String,
+
+    /**
+     * Options to pass to the CIMReader.
+     *
+     * Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
+     */
     cimreaderoptions: Map[String, String],
-    interval: Map[String, String],
+
+    /**
+     * The Cassandra keyspace to read measured data from.
+     *
+     * A table named measured_value with an appropriate schema (see schema.sql) is expected.
+     */
+    read_keyspace: String,
+
+    /**
+     * The Cassandra keyspace to save results to.
+     *
+     * A table named simulated_value with an appropriate schema (see schema.sql) and if summarization
+     * operations are performed additional tables with appropriate schema are expected.
+     */
+    write_keyspace: String,
+
+    /**
+     * The starting time of the simulation.
+     */
+    start_time: Calendar,
+
+    /**
+     * The ending time of the simulation.
+     */
+    end_time: Calendar,
+
+    /**
+     * The name of the transformers to simulate.
+     *
+     * If this list is empty all transformers in the CIM file will be processed.
+     * The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
+     * low voltage topological node, then the name would be "TRA1234_TRA1235".
+     */
     transformers: Seq[String],
+
+    /**
+     * Queries for driving data.
+     *
+     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+     * yielding mrid, name, parent, type, property, unit and island for playing data.
+     * An example for energy consumed by house connections:
+     *
+     * select
+     *    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+     *    'energy' type,
+     *    concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+     *    t.TopologicalNode parent,
+     *    'constant_power' property,
+     *    'Watt' unit,
+     *     n.TopologicalIsland island
+     * from
+     *     EnergyConsumer c,
+     *     Terminal t,
+     *     TopologicalNode n
+     * where
+     *     c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+     *     c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+     *     t.TopologicalNode = n.IdentifiedObject.mRID
+     */
     players: Seq[SimulationPlayerQuery],
+
+    /**
+     * Queries for recording data and the recording interval and any aggregations.
+     *
+     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+     * yielding mrid, name, parent, type, property, unit and island for recording data.
+     * An example for recording transformer losses:
+     *
+     * select
+     *     concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+     *     p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+     *     p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+     *     'losses' type,
+     *     'power_losses' property,
+     *     'VA' unit,
+     *     n.TopologicalIsland island
+     * from
+     *     PowerTransformer p,
+     *     Terminal t,
+     *     TopologicalNode n
+     * where
+     *     t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+     *     t.ACDCTerminal.sequenceNumber > 1 and
+     *     t.TopologicalNode = n.IdentifiedObject.mRID
+     */
     recorders: Seq[SimulationRecorderQuery],
+
+    /**
+     * Queries for data to attach to the GeoJSON point, line and polygon features.
+     *
+     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+     * yielding key-value pairs. The key is the mRID of the object to attach the value to.
+     * The query name is used as the key.
+     * An example to attach the rated current to each conductor:
+     *
+     * select
+     *     l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
+     *     cast (w.ratedCurrent as string) value
+     * from
+     *     ACLineSegment l,
+     *     WireInfo w
+     * where
+     *     w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
+     *
+     * If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
+     *     "ratedCurrent": "200.0"
+     */
     extras: Seq[SimulationExtraQuery]
 )
 {
@@ -78,18 +207,20 @@ case class SimulationJob
         val json = session.sparkContext.parallelize (Seq (
             (
                 id,
+                name,
+                description,
                 cim,
                 cimreaderoptions,
-                description,
-                interval,
-                name,
+                start_time,
+                end_time,
+                read_keyspace,
+                write_keyspace,
                 player_map,
                 recorder_map,
                 transformers
             )
         ))
-
-        json.saveToCassandra (keyspace, "simulation")
+        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "read_keyspace", "write_keyspace", "players", "recorders", "transformers"))
     }
 }
 
@@ -126,24 +257,69 @@ object SimulationJob
 
     def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String, String] =
     {
-        val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala // ToDo: more robust checking
-    val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
+        // ToDo: more robust checking
+        val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala
+        val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
         map ("path") = cim // add path to support multiple files
         map ("StorageLevel") = options.storage // add storage option from command line
         map.toMap
     }
 
-    def parseInterval (json: JsonObject): Map[String, String] =
+    def parseKeyspaces (json: JsonObject): (String, String) =
     {
-        val interval: mutable.Map[String, JsonValue] = json.getJsonObject ("interval").asScala // ToDo: more robust checking
-    val map: mutable.Map[String, String] = interval.map (x ⇒ (x._1, x._2.asInstanceOf [JsonString].getString))
-        map.toMap
+        // ToDo: more robust checking
+        val keyspaces: mutable.Map[String, JsonValue] = json.getJsonObject ("keyspaces").asScala
+        var read: String = "cimappplication"
+        var write: String = "cimappplication"
+        keyspaces.foreach (
+            x ⇒
+            {
+                val s = x._2.asInstanceOf [JsonString].getString
+                if ("read" == x._1)
+                    read = s
+                else if ("write" == x._1)
+                    write = s
+            }
+        )
+        (read, write)
+    }
+
+    def parseInterval (json: JsonObject): (Calendar, Calendar) =
+    {
+        val calendar: Calendar = Calendar.getInstance ()
+        calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
+        calendar.setTimeInMillis (0L)
+        val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        iso_date_format.setCalendar (calendar)
+        def iso_parse (s: String): Calendar =
+        {
+            val ret = Calendar.getInstance ()
+            ret.setTime (iso_date_format.parse (s))
+            ret
+        }
+
+        // ToDo: more robust checking
+        val interval: mutable.Map[String, JsonValue] = json.getJsonObject ("interval").asScala
+        var start: Calendar = calendar
+        var end: Calendar = calendar
+        interval.foreach (
+            x ⇒
+            {
+                val d = iso_parse (x._2.asInstanceOf [JsonString].getString)
+                if ("start" == x._1)
+                    start = d
+                else if ("end" == x._1)
+                    end = d
+            }
+        )
+        (start, end)
     }
 
     def parseTransformers (json: JsonObject): Seq[String] =
     {
-        val transformers: JsonArray = json.getJsonArray ("transformers") // ToDo: more robust checking
-    val ret = Array.ofDim [String](transformers.size)
+        // ToDo: more robust checking
+        val transformers: JsonArray = json.getJsonArray ("transformers")
+        val ret = Array.ofDim [String](transformers.size)
         for (i <- 0 until transformers.size)
             ret (i) = transformers.getString (i)
         ret
@@ -164,7 +340,8 @@ object SimulationJob
 
     def parsePlayers (name: String, json: JsonObject): Seq[SimulationPlayerQuery] =
     {
-        val players: Seq[JsonObject] = json.getJsonArray ("players").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
+        // ToDo: more robust checking
+        val players: Seq[JsonObject] = json.getJsonArray ("players").getValuesAs (classOf [JsonObject]).asScala
         players.flatMap (parsePlayer (name, _))
     }
 
@@ -196,7 +373,8 @@ object SimulationJob
 
     def parseRecorders (name: String, json: JsonObject): Seq[SimulationRecorderQuery] =
     {
-        val recorders: Seq[JsonObject] = json.getJsonArray ("recorders").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
+        // ToDo: more robust checking
+        val recorders: Seq[JsonObject] = json.getJsonArray ("recorders").getValuesAs (classOf [JsonObject]).asScala
         recorders.flatMap (parseRecorder (name, _))
     }
 
@@ -215,7 +393,8 @@ object SimulationJob
 
     def parseExtras (name: String, json: JsonObject): Seq[SimulationExtraQuery] =
     {
-        val extras: Seq[JsonObject] = json.getJsonArray ("extras").getValuesAs (classOf [JsonObject]).asScala // ToDo: more robust checking
+        // ToDo: more robust checking
+        val extras: Seq[JsonObject] = json.getJsonArray ("extras").getValuesAs (classOf [JsonObject]).asScala
         extras.flatMap (parseExtra (name, _))
     }
 
@@ -233,12 +412,13 @@ object SimulationJob
         else
         {
             val cimreaderoptions = parseCIMReaderOptions (options, cim, json)
-            val interval = parseInterval (json)
+            val (read, write) = parseKeyspaces (json)
+            val (start, end) = parseInterval (json)
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
-            List (SimulationJob (name, description, cim, cimreaderoptions, interval, transformers, players, recorders, extras))
+            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, start, end, transformers, players, recorders, extras))
         }
     }
 

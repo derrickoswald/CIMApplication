@@ -1,7 +1,5 @@
 package ch.ninecode.sim
 
-import java.io.InputStream
-
 import scala.io.Source
 
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -19,7 +17,7 @@ import org.slf4j.LoggerFactory
  * $ sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml
  *
  */
-case class Schema (session: SparkSession, options: SimulationOptions)
+case class Schema (session: SparkSession, keyspace: String, options: SimulationOptions)
 {
     if (options.verbose)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
@@ -30,8 +28,8 @@ case class Schema (session: SparkSession, options: SimulationOptions)
 
     def toKeySpace (lines: String): String =
     {
-        if (options.keyspace != default_keyspace)
-            lines.replace (default_keyspace, options.keyspace)
+        if (keyspace != default_keyspace)
+            lines.replace (default_keyspace, keyspace)
         else
             lines
     }
@@ -42,7 +40,7 @@ case class Schema (session: SparkSession, options: SimulationOptions)
      * The file is in a special form:
      *   - DDL statements are separated by a blank line
      *   - only DDL is permitted in the schema script
-     *   - the keyspace must be cimapplication - which is changed according to options.keyspace via simple global substitution
+     *   - the keyspace must be cimapplication - which is changed according to keyspace via simple global substitution
      *
      * @return <code>true</code> if all DDL executed successsuflly, <code>false</code> if the schema file doesn't exist or there were errors
      */
@@ -51,12 +49,12 @@ case class Schema (session: SparkSession, options: SimulationOptions)
         val schema = this.getClass.getResourceAsStream (resource)
         if (null != schema)
         {
-            log.info ("""ensuring Cassandra keyspace %s exists""".format (options.keyspace))
+            log.info ("""ensuring Cassandra keyspace %s exists""".format (keyspace))
 
             // separate at blank lines and change keyspace
             var sqls = Source.fromInputStream (schema, "UTF-8").getLines.mkString ("\n").split ("\n\n").map (toKeySpace)
 
-            // need to apply each DDL separateley
+            // need to apply each DDL separately
             sqls.forall (
                 sql ⇒
                 {
@@ -68,13 +66,16 @@ case class Schema (session: SparkSession, options: SimulationOptions)
 
                     catch
                     {
-                        case exception: Exception ⇒ log.error ("""failed to create schema in Cassandra keyspace %s""".format (options.keyspace), exception)
+                        case exception: Exception ⇒ log.error ("""failed to create schema in Cassandra keyspace %s""".format (keyspace), exception)
                             false
                     }
                 }
             )
         }
         else
+        {
+            log.error ("""failed to get schema sql resource: %s""".format (resource))
             false
+        }
     }
 }

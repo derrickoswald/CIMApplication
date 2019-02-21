@@ -231,13 +231,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def iso_parse (s: String): Calendar =
-    {
-        val ret = Calendar.getInstance ()
-        ret.setTime (iso_date_format.parse (s))
-        ret
-    }
-
     def pack (string: String): String =
     {
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
@@ -337,8 +330,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val recordersets = job.recorders.foldLeft (emptyRecorders)(combineRecorders).groupByKey.flatMapValues (List (_)).cache
 
             // get the starting and ending times
-            val start = iso_parse (job.interval ("start"))
-            val end = iso_parse (job.interval ("end"))
+            val start = job.start_time
+            val end = job.end_time
 
             // maybe reduce the set of islands
             val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair ⇒ job.transformers.contains (pair._1)) else trafos_islands
@@ -377,15 +370,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def subtract_offset[Type_x: TypeTag, Type_y: TypeTag]: UserDefinedFunction = udf[Long, Timestamp, Int]((x: Timestamp, y: Int) =>
         x.getTime - y)
 
-    def meter_values: DataFrame =
+    def meter_values (keyspace: String): DataFrame =
     {
         val raw_meter_values = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
+            .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
             .load
             .drop ("real_b", "real_c", "imag_b", "imag_c") // ToDo: 3 phase
-        // cimapplication.subtract_offset (time, period) as time
         raw_meter_values
             .withColumn ("start_time", subtract_offset[Timestamp, Int].apply (raw_meter_values ("time"), raw_meter_values ("period")))
             .drop ("time")
@@ -393,9 +385,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             .cache
     }
 
-    def fetch (start_time: Calendar, finish_time: Calendar) : RDD[(House, Iterable[SimulationPlayerData])] =
+    def fetch (keyspace: String, start_time: Calendar, finish_time: Calendar) : RDD[(House, Iterable[SimulationPlayerData])] =
     {
-        meter_values
+        meter_values (keyspace)
             .filter ("time >= %s and time < %s".format (start_time.getTimeInMillis, finish_time.getTimeInMillis))
             .select ("mrid", "time", "real_a", "imag_a", "period", "type")
             .rdd
@@ -423,13 +415,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             .groupBy (_.mrid)
     }
 
-    def process (batch: Seq[SimulationJob]): String =
+    def process (batch: Seq[SimulationJob]): Seq[String] =
     {
         val storage = StorageLevel.fromString (options.storage)
 
-        val id = java.util.UUID.randomUUID.toString
-        log.info ("""starting simulation %s""".format (id))
-
+        log.info ("""starting simulations""")
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
 
         // clean up in case there was a file already loaded
@@ -441,35 +431,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             }
         )
         read (ajob.cim, ajob.cimreaderoptions, storage)
-
-        // perform the extra queries and insert into the key_value table
-        log.info ("""executing %d extra queries""".format (ajob.extras.length))
-        ajob.extras.foreach (
-            extra ⇒
-            {
-                log.info ("""executing %s""".format (extra.query))
-                val df: DataFrame = session.sql (extra.query)
-                if (df.count > 0)
-                {
-                    val fields = df.schema.fieldNames
-                    if (!fields.contains ("key") || !fields.contains ("value"))
-                        log.error ("""extra query "%s" schema does not contain either a "key" or a "value" field: %s""".format (extra.title, fields.mkString))
-                    else
-                    {
-                        val keyindex = df.schema.fieldIndex ("key")
-                        val valueindex = df.schema.fieldIndex ("value")
-                        val keytype = df.schema.fields (keyindex).dataType.simpleString
-                        val valuetype = df.schema.fields (valueindex).dataType.simpleString
-                        if ((keytype != "string") || (valuetype != "string"))
-                            log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
-                        else
-                            df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (options.keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
-                    }
-                }
-                else
-                    log.warn ("""extra query "%s" returned no rows""".format (extra.title))
-            }
-        )
 
         // get the transformer(s)
         val transformer_data = new Transformers (session, storage).getTransformers ()
@@ -489,129 +450,160 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val transformers = tx.map (toTransformerSet).collect.toMap
 
         var batchno = 1
-        batch.foreach (
+        val ids = batch.map (
             job ⇒
             {
-                val tasks = make_tasks (job)
-                val numtasks: Long = tasks.count
-                log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
-                if (1 == batchno)
-                    ajob.save (session, options.keyspace, id, if (0 < numtasks) tasks.first else null)
+                val id = java.util.UUID.randomUUID.toString
+                log.info ("""starting simulation %s""".format (id))
 
-                val simulations =
-                    tasks.flatMap (
-                        task ⇒
-                        {
-                            transformers.get (task.island) match
-                            {
-                                case Some (transformerset) ⇒
-                                    List (
-                                        SimulationTrafoKreis (
-                                            id,
-                                            task.island,
-                                            transformerset,
-                                            task.nodes,
-                                            task.edges,
-                                            task.start,
-                                            task.end,
-                                            task.players,
-                                            task.recorders,
-                                            transformerset.transformer_name + System.getProperty ("file.separator")
-                                        )
-                                    )
-                                case None ⇒
-                                    log.error ("""no transformer sets for island %s""".format (task.island))
-                                    List ()
-                            }
-                        }
-                    ).cache
-                simulations.name = "simulations"
-                val numsimulations = simulations.count.asInstanceOf [Int]
-                log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
-
-                // spread the simulations over the cluster
-                val exec = SimulationExecutors (session)
-                val map = exec.getActiveWorkerHostSet
-                val executors = map.keys.toArray
-                log.info ("""executors: %s""".format (executors.mkString (", ")))
-
-                val gridlabd = if (0 != executors.length)
+                val schema = Schema (session, job.write_keyspace, options)
+                if (schema.make)
                 {
-                    val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
-                    raw.name = "raw"
-                    val raw_count = raw.count
-                    log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
-                    //                raw.partitions.foreach (
+                    // perform the extra queries and insert into the key_value table
+                    log.info ("""executing %d extra queries""".format (job.extras.length))
+                    job.extras.foreach (
+                        extra ⇒
+                        {
+                            log.info ("""executing %s""".format (extra.query))
+                            val df: DataFrame = session.sql (extra.query)
+                            if (df.count > 0)
+                            {
+                                val fields = df.schema.fieldNames
+                                if (!fields.contains ("key") || !fields.contains ("value"))
+                                    log.error ("""extra query "%s" schema does not contain either a "key" or a "value" field: %s""".format (extra.title, fields.mkString))
+                                else
+                                {
+                                    val keyindex = df.schema.fieldIndex ("key")
+                                    val valueindex = df.schema.fieldIndex ("value")
+                                    val keytype = df.schema.fields (keyindex).dataType.simpleString
+                                    val valuetype = df.schema.fields (valueindex).dataType.simpleString
+                                    if ((keytype != "string") || (valuetype != "string"))
+                                        log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
+                                    else
+                                        df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.write_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                                }
+                            }
+                            else
+                                log.warn ("""extra query "%s" returned no rows""".format (extra.title))
+                        }
+                    )
+
+                    val tasks = make_tasks (job)
+                    val numtasks: Long = tasks.count
+                    log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
+                    if (1 == batchno)
+                        job.save (session, job.write_keyspace, id, if (0 < numtasks) tasks.first else null)
+
+                    val simulations =
+                        tasks.flatMap (
+                            task ⇒
+                            {
+                                transformers.get (task.island) match
+                                {
+                                    case Some (transformerset) ⇒
+                                        List (
+                                            SimulationTrafoKreis (
+                                                id,
+                                                task.island,
+                                                transformerset,
+                                                task.nodes,
+                                                task.edges,
+                                                task.start,
+                                                task.end,
+                                                task.players,
+                                                task.recorders,
+                                                transformerset.transformer_name + System.getProperty ("file.separator")
+                                            )
+                                        )
+                                    case None ⇒
+                                        log.error ("""no transformer sets for island %s""".format (task.island))
+                                        List ()
+                                }
+                            }
+                        ).cache
+                    simulations.name = "simulations"
+                    val numsimulations = simulations.count.asInstanceOf [Int]
+                    log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
+
+                    // spread the simulations over the cluster
+                    val exec = SimulationExecutors (session)
+                    val map = exec.getActiveWorkerHostSet
+                    val executors = map.keys.toArray
+                    log.info ("""executors: %s""".format (executors.mkString (", ")))
+
+                    val gridlabd = if (0 != executors.length)
+                    {
+                        val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
+                        raw.name = "raw"
+                        val raw_count = raw.count
+                        log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
+                        //                raw.partitions.foreach (
+                        //                    partition ⇒
+                        //                    {
+                        //                        val locations = raw.preferredLocations (partition)
+                        //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
+                        //                    }
+                        //                )
+                        raw.coalesce (executors.length, false, Some (SimulationCoalescer (executors))).cache
+                    }
+                    else
+                        simulations
+                    gridlabd.name = "gridlabd"
+                    val gridlabd_count = gridlabd.count
+                    log.info ("""gridlabd RDD has %d elements in %d partitions""".format (gridlabd_count, gridlabd.getNumPartitions))
+                    //                gridlabd.partitions.foreach (
                     //                    partition ⇒
                     //                    {
-                    //                        val locations = raw.preferredLocations (partition)
+                    //                        val locations = gridlabd.preferredLocations (partition)
                     //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
                     //                    }
                     //                )
-                    raw.coalesce (executors.length, false, Some (SimulationCoalescer (executors))).cache
+
+                    val geo = SimulationGeometry (session, job.write_keyspace)
+                    geo.storeGeometry (gridlabd)
+                    log.info ("""storing GeoJSON data""")
+
+                    // read the data
+                    val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (job.read_keyspace, gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
+                    // get the trafokreis for each house
+                    val house_trafo: RDD[(House, Trafo)] = gridlabd.flatMap (x ⇒ x.players.map (y ⇒ (y.mrid, x.transformer.transformer_name)))
+                    // join the transformer name to the data
+                    val trafo_houses: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = house_trafo.join (data)
+                        .map (x ⇒ (x._2._1, (x._1, x._2._2)))
+                        .groupByKey
+                    val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
+
+                    log.info ("""performing %d GridLAB-D simulation%s on the cluster""".format (gridlabd_count, if (gridlabd_count == 1) "" else "s"))
+                    val runner = SimulationRunner (options.host, job.write_keyspace, options.workdir, options.keep, options.verbose)
+                    val results = packages.flatMap (runner.execute).cache
+
+                    // save the results
+                    results.saveToCassandra (job.write_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
+                    log.info ("""saved GridLAB-D simulation results on the cluster""")
+
+                    // clean up
+                    session.sparkContext.getPersistentRDDs.foreach (
+                        named ⇒
+                        {
+                            named._2.unpersist (false)
+                            named._2.name = null
+                        }
+                    )
+
+                    batchno = batchno + 1
                 }
-                else
-                    simulations
-                gridlabd.name = "gridlabd"
-                val gridlabd_count = gridlabd.count
-                log.info ("""gridlabd RDD has %d elements in %d partitions""".format (gridlabd_count, gridlabd.getNumPartitions))
-                //                gridlabd.partitions.foreach (
-                //                    partition ⇒
-                //                    {
-                //                        val locations = gridlabd.preferredLocations (partition)
-                //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
-                //                    }
-                //                )
-
-                val geo = SimulationGeometry (session, options.keyspace)
-                geo.storeGeometry (gridlabd)
-                log.info ("""storing GeoJSON data""")
-
-                // read the data
-                val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
-                // get the trafokreis for each house
-                val house_trafo: RDD[(House, Trafo)] = gridlabd.flatMap (x ⇒ x.players.map (y ⇒ (y.mrid, x.transformer.transformer_name)))
-                // join the transformer name to the data
-                val trafo_houses: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = house_trafo.join (data)
-                    .map (x ⇒ (x._2._1, (x._1, x._2._2)))
-                    .groupByKey
-                val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
-
-                log.info ("""performing %d GridLAB-D simulation%s on the cluster""".format (gridlabd_count, if (gridlabd_count == 1) "" else "s"))
-                val runner = SimulationRunner (options.host, options.keyspace, options.batchsize, options.workdir, options.keep, options.verbose)
-                val results = packages.flatMap (runner.execute).cache
-
-                // save the results
-                results.saveToCassandra (options.keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
-                log.info ("""saved GridLAB-D simulation results on the cluster""")
-
-                // clean up
-                session.sparkContext.getPersistentRDDs.foreach (
-                    named ⇒
-                    {
-                        named._2.unpersist (false)
-                        named._2.name = null
-                    }
-                )
-
-                batchno = batchno + 1
+                id
             }
         )
-        id
+        ids
     }
 
     def run (): Seq[String] =
     {
-        val schema = Schema (session, options)
-        if (schema.make)
-        {
-            val jobs = SimulationJob.getAll (options)
-            // organize by same RDF and same options
-            val batches = jobs.groupBy (job ⇒ job.cim + job.optionString)
-            batches.values.map (process).toSeq
-        }
-        else
-            List ()
+        val jobs = SimulationJob.getAll (options)
+        // organize by same RDF, options and output keyspace
+        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString + job.write_keyspace).values
+        batches.flatMap (process).toSeq
     }
 }
 

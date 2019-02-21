@@ -36,11 +36,10 @@ import ch.ninecode.gl.ThreePhaseComplexDataElement
  *
  * @param cassandra a Cassandra seed node name
  * @param keyspace  the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
- * @param batchsize the number of insert statements per UNLOGGED batch insert
  * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
  * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
  */
-case class SimulationRunner (cassandra: String, keyspace: String, batchsize: Int, workdir: String, keep: Boolean = false, verbose: Boolean = false) extends Serializable
+case class SimulationRunner (cassandra: String, keyspace: String, workdir: String, keep: Boolean = false, verbose: Boolean = false) extends Serializable
 {
     if (verbose)
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
