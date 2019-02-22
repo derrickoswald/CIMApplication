@@ -55,7 +55,7 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         if (options.summarize)
         {
             val sum = Summarize (spark, options)
-            sum.run ()
+            sum.run (runs)
         }
         result.add ("summary", options.summarize)
         RESTfulJSONResult (OK, """GridLAB-D simulation%s successful""".format (if (runs.size > 1) "s" else ""), result.build).getJSON

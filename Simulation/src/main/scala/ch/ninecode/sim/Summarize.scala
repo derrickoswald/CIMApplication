@@ -942,17 +942,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
     def run (simulations: Seq[String]): Unit =
     {
-// this just hangs:
-//        val keyspaces = spark
-//            .read
-//            .format ("org.apache.spark.sql.cassandra")
-//            .options (Map ("table" -> "tables", "keyspace" -> "system_schema"))
-//            .load
-//            .where ("table_name='simulation'")
-//            .select ("keyspace_name")
-//            .rdd
-//            .map (row ⇒ row.getString (0))
-//            .collect
         val sql = "select keyspace_name from system_schema.tables where table_name = 'simulation' allow filtering"
         val keyspaces = CassandraConnector (spark.sparkContext.getConf).withSessionDo (
             session =>
