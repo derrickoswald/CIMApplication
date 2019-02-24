@@ -917,7 +917,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select JSON id, name, description, cim, cimreaderoptions, interval, transformers from cimapplication.simulation".replace ("cimapplication", write_keyspace)
+                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", write_keyspace)
                     }
                 ).then (render_prior_simulations)
             );

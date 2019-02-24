@@ -119,7 +119,6 @@ case class Fetcher (spark: SparkSession, simulation: String, keyspace: String, v
                 .load
                 .filter ("type = 'energy'")
                 .drop ("real_b", "real_c", "imag_b", "imag_c", "type", "units")
-                .filter ("simulation = '%s'".format (simulation))
                 .cache
             logInfo ("""%d measured values to process""".format (measured_values.count))
             show (measured_values)
