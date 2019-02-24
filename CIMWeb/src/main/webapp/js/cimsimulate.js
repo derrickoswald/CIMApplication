@@ -42,8 +42,8 @@ truncate table cimapplication.losses_summary_by_day;
         // The simulation details.
         var TheSimulation =
             {
-                name: "Sample",
-                description: "sample simulation",
+                name: "DemoData",
+                description: "simulation with demo data",
                 cim: "hdfs://sandbox:8020/DemoData.rdf",
                 cimreaderoptions: {
                     "ch.ninecode.cim.do_about": false,
@@ -474,6 +474,7 @@ truncate table cimapplication.losses_summary_by_day;
         {
             return ((null != TheSimulation) ? TheSimulation.name : "");
         }
+
         function getDescription ()
         {
             return ((null != TheSimulation) ? TheSimulation.description : "");
@@ -917,9 +918,22 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", write_keyspace)
+                        sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", write_keyspace)
                     }
-                ).then (render_prior_simulations)
+                ).then (
+                    function (resultset)
+                    {
+                        if (resultset.length > 0)
+                            return (
+                                cimquery.queryPromise (
+                                    {
+                                        cassandra: true,
+                                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", write_keyspace)
+                                    }
+                                ).then (render_prior_simulations)
+                            );
+                    }
+                )
             );
         }
 
