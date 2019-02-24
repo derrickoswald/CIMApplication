@@ -1064,7 +1064,8 @@ define
                 //        cimreaderoptions: { StorageLevel: "MEMORY_AND_DISK_SER", "ch.ninecode.cim.do_about": "false", "ch.ninecode.cim.do_deduplication": "false", … }
                 //        description: "sample simulation"
                 //        id: "c01a6f2f-48bf-4a8f-bc13-298e16b5cb21"
-                //        interval: { end: "2017-07-18 23:00:00.000Z", start: "2017-07-17 23:00:00.000Z" }
+                //        start_time: "2017-07-17 23:00:00.000Z",
+                //        end_time: "2017-07-18 23:00:00.000Z",
                 //        name: "Sample"
                 //        players: [ {…}, {…}, {…}, … ]
                 //        recorders: [ {…}, {…}, {…}, … ]
@@ -1073,8 +1074,8 @@ define
                 this._simulation = this._simulation_json.id;
                 var times =
                     {
-                        start: new Date (this._simulation_json.interval.start).getTime (),
-                        end: new Date (this._simulation_json.interval.end).getTime ()
+                        start: new Date (this._simulation_json.start_time).getTime (),
+                        end: new Date (this._simulation_json.end_time).getTime ()
                     };
                 this.getLegend ().setTimes (times);
             }
