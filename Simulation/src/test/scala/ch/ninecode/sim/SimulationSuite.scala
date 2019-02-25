@@ -213,8 +213,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                       |        "end": "2018-02-01T00:00:00.000+0100"
                       |    },
                       |    "keyspaces": {
-                      |        "read": "cimapplication",
-                      |        "write": "test"
+                      |        "input": "cimapplication",
+                      |        "output": "test"
                       |    },
                       |    "players": [
                       |        {

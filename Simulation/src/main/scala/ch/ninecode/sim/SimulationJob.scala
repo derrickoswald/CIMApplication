@@ -269,19 +269,19 @@ object SimulationJob
     {
         // ToDo: more robust checking
         val keyspaces: mutable.Map[String, JsonValue] = json.getJsonObject ("keyspaces").asScala
-        var read: String = "cimappplication"
-        var write: String = "cimappplication"
+        var input: String = "cimappplication"
+        var output: String = "cimappplication"
         keyspaces.foreach (
             x ⇒
             {
                 val s = x._2.asInstanceOf [JsonString].getString
-                if ("read" == x._1)
-                    read = s
-                else if ("write" == x._1)
-                    write = s
+                if ("input" == x._1)
+                    input = s
+                else if ("output" == x._1)
+                    output = s
             }
         )
-        (read, write)
+        (input, output)
     }
 
     def parseInterval (json: JsonObject): (Calendar, Calendar) =
