@@ -456,7 +456,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val id = java.util.UUID.randomUUID.toString
                 log.info ("""starting simulation %s""".format (id))
 
-                val schema = Schema (session, job.write_keyspace, options)
+                val schema = Schema (session, job.output_keyspace, options)
                 if (schema.make)
                 {
                     // perform the extra queries and insert into the key_value table
@@ -480,7 +480,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                     if ((keytype != "string") || (valuetype != "string"))
                                         log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
                                     else
-                                        df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.write_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                                        df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
                                 }
                             }
                             else
@@ -492,7 +492,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     val numtasks: Long = tasks.count
                     log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
                     if (1 == batchno)
-                        job.save (session, job.write_keyspace, id, if (0 < numtasks) tasks.first else null)
+                        job.save (session, job.output_keyspace, id, if (0 < numtasks) tasks.first else null)
 
                     val simulations =
                         tasks.flatMap (
@@ -559,12 +559,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     //                    }
                     //                )
 
-                    val geo = SimulationGeometry (session, job.write_keyspace)
+                    val geo = SimulationGeometry (session, job.output_keyspace)
                     geo.storeGeometry (gridlabd)
                     log.info ("""storing GeoJSON data""")
 
                     // read the data
-                    val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (job.read_keyspace, gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
+                    val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (job.input_keyspace, gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
                     // get the trafokreis for each house
                     val house_trafo: RDD[(House, Trafo)] = gridlabd.flatMap (x ⇒ x.players.map (y ⇒ (y.mrid, x.transformer.transformer_name)))
                     // join the transformer name to the data
@@ -574,11 +574,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
 
                     log.info ("""performing %d GridLAB-D simulation%s on the cluster""".format (gridlabd_count, if (gridlabd_count == 1) "" else "s"))
-                    val runner = SimulationRunner (options.host, job.write_keyspace, options.workdir, options.keep, options.verbose)
+                    val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)
                     val results = packages.flatMap (runner.execute).cache
 
                     // save the results
-                    results.saveToCassandra (job.write_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
+                    results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
                     log.info ("""saved GridLAB-D simulation results on the cluster""")
 
                     // clean up
@@ -602,7 +602,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     {
         val jobs = SimulationJob.getAll (options)
         // organize by same RDF, options and output keyspace
-        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString + job.write_keyspace).values
+        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString + job.output_keyspace).values
         batches.flatMap (process).toSeq
     }
 }

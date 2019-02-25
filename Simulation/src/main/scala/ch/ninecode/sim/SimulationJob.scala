@@ -55,7 +55,7 @@ case class SimulationJob
      *
      * A table named measured_value with an appropriate schema (see schema.sql) is expected.
      */
-    read_keyspace: String,
+    input_keyspace: String,
 
     /**
      * The Cassandra keyspace to save results to.
@@ -63,7 +63,7 @@ case class SimulationJob
      * A table named simulated_value with an appropriate schema (see schema.sql) and if summarization
      * operations are performed additional tables with appropriate schema are expected.
      */
-    write_keyspace: String,
+    output_keyspace: String,
 
     /**
      * The starting time of the simulation.
@@ -213,14 +213,14 @@ case class SimulationJob
                 cimreaderoptions,
                 start_time,
                 end_time,
-                read_keyspace,
-                write_keyspace,
+                input_keyspace,
+                output_keyspace,
                 player_map,
                 recorder_map,
                 transformers
             )
         ))
-        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "read_keyspace", "write_keyspace", "players", "recorders", "transformers"))
+        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "input_keyspace", "output_keyspace", "players", "recorders", "transformers"))
     }
 }
 

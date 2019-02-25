@@ -863,7 +863,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                     .format ("org.apache.spark.sql.cassandra")
                     .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
                     .load
-                    .select ("id", "read_keyspace", "write_keyspace")
+                    .select ("id", "input_keyspace", "output_keyspace")
                     .rdd
                     .map (row ⇒ (row.getString (0), row.getString (1), row.getString (2)))
                     .collect

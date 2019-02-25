@@ -340,7 +340,7 @@ define
                         alert (house);
                         break;
                     case "measurements":
-                        cimquery.queryPromise ({ sql: "select json * from " + self._simulation_json.read_keyspace + ".measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
+                        cimquery.queryPromise ({ sql: "select json * from " + self._simulation_json.input_keyspace + ".measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseMeasurement.call (self, data));
                         break;
                 }
@@ -1066,8 +1066,8 @@ define
                 //        id: "c01a6f2f-48bf-4a8f-bc13-298e16b5cb21"
                 //        start_time: "2017-07-17 23:00:00.000Z",
                 //        end_time: "2017-07-18 23:00:00.000Z",
-                //        read_keyspace: "cimapplication",
-                //        write_keyspace: "cimapplication",
+                //        input_keyspace: "cimapplication",
+                //        output_keyspace: "cimapplication",
                 //        name: "Sample"
                 //        players: [ {…}, {…}, {…}, … ]
                 //        recorders: [ {…}, {…}, {…}, … ]

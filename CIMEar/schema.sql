@@ -68,8 +68,8 @@ create table if not exists cimapplication.simulation (
     cimreaderoptions map<text,text>,
     start_time timestamp,
     end_time timestamp,
-    read_keyspace text,
-    write_keyspace text,
+    input_keyspace text,
+    output_keyspace text,
     transformers list<text>,
     players list<frozen <map<text,text>>>,
     recorders list<frozen <map<text,text>>>,
@@ -84,8 +84,8 @@ Describes each run of the Simulate code.
     cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT
-    read_keyspace - the Cassandra keyspace for measurement data
-    write_keyspace - The Cassandra keyspace for simulated results data
+    input_keyspace - the Cassandra keyspace for measurement data
+    output_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
     players - the details about GridLAB-D players applied to the model
     recorders - the details about GridLAB-D recorders read from the model

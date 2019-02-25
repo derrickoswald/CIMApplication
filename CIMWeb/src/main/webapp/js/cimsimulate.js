@@ -34,10 +34,10 @@ truncate table cimapplication.losses_summary_by_day;
     function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, DateRangePicker, SimulationTheme)
     {
         // The Cassandra keyspace where measurement data is read from for player files
-        var read_keyspace = "cimapplication";
+        var input_keyspace = "cimapplication";
 
         // The Cassandra keyspace where simulation results are stored - recorder files, summaries, simulations
-        var write_keyspace = "cimapplication";
+        var output_keyspace = "cimapplication";
 
         // The simulation details.
         var TheSimulation =
@@ -457,15 +457,15 @@ truncate table cimapplication.losses_summary_by_day;
             }
         ];
 
-        function set_read_keyspace (event)
+        function set_input_keyspace (event)
         {
-            read_keyspace = event.target.value;
+            input_keyspace = event.target.value;
             getDateRange ();
         }
 
-        function set_write_keyspace (event)
+        function set_output_keyspace (event)
         {
-            write_keyspace = event.target.value;
+            output_keyspace = event.target.value;
             getSimulationNames ();
         }
 
@@ -525,8 +525,8 @@ truncate table cimapplication.losses_summary_by_day;
                 alert ("A CIM file must be specified");
                 return;
             }
-            TheSimulation.keyspaces.read = document.getElementById ("read_keyspace").value;
-            TheSimulation.keyspaces.write = document.getElementById ("write_keyspace").value;
+            TheSimulation.keyspaces.read = document.getElementById ("input_keyspace").value;
+            TheSimulation.keyspaces.write = document.getElementById ("output_keyspace").value;
             TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
@@ -560,7 +560,7 @@ truncate table cimapplication.losses_summary_by_day;
                             if (to_map)
                             {
                                 var theme = new SimulationTheme ();
-                                theme.setSimulation (write_keyspace, simulation_id).then (
+                                theme.setSimulation (output_keyspace, simulation_id).then (
                                     function ()
                                     {
                                         cimmap.get_themer ().removeTheme (theme);
@@ -573,7 +573,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select json * from " + write_keyspace + ".simulation where id='" + simulation_id + "'"
+                                        sql: "select json * from " + output_keyspace + ".simulation where id='" + simulation_id + "'"
                                     }
                                 ).then (
                                     function (resultset)
@@ -599,7 +599,7 @@ truncate table cimapplication.losses_summary_by_day;
             if (document.getElementById ("to_map").checked)
             {
                 var theme = new SimulationTheme ();
-                theme.setSimulation (write_keyspace, simulation_id).then (
+                theme.setSimulation (output_keyspace, simulation_id).then (
                     function ()
                     {
                         cimmap.get_themer ().removeTheme (theme);
@@ -615,7 +615,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select json * from " + write_keyspace + ".simulation where id='" + simulation_id + "'"
+                        sql: "select json * from " + output_keyspace + ".simulation where id='" + simulation_id + "'"
                     }
                 ).then (
                     function (resultset)
@@ -727,14 +727,14 @@ truncate table cimapplication.losses_summary_by_day;
                         </div>
                         <div class="form-row">
                           <div class="col form-group">
-                            <label for="read_keyspace">Cassandra read keyspace</label>
-                            <input id="read_keyspace" type="text" class="form-control"aria-describedby="readKeyspaceHelp" value="cimapplication">
-                            <small id="readKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used reading from table <em>measured_value</em>.</small>
+                            <label for="input_keyspace">Cassandra input keyspace</label>
+                            <input id="input_keyspace" type="text" class="form-control"aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                            <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for input (table <em>measured_value</em>).</small>
                           </div>
                           <div class="col form-group">
-                            <label for="write_keyspace">Cassandra write keyspace</label>
-                            <input id="write_keyspace" type="text" class="form-control"aria-describedby="writeKeyspaceHelp" value="cimapplication">
-                            <small id="writeKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used writing to table <em>simulated_value</em> and others.</small>
+                            <label for="output_keyspace">Cassandra output keyspace</label>
+                            <input id="output_keyspace" type="text" class="form-control"aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                            <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for output (table <em>simulated_value</em> and others).</small>
                           </div>
                         </div>
                         <div class="form-group">
@@ -814,8 +814,8 @@ truncate table cimapplication.losses_summary_by_day;
                 }
             );
             document.getElementById ("simulate").innerHTML = text;
-            document.getElementById ("read_keyspace").onchange = set_read_keyspace;
-            document.getElementById ("write_keyspace").onchange = set_write_keyspace;
+            document.getElementById ("input_keyspace").onchange = set_input_keyspace;
+            document.getElementById ("output_keyspace").onchange = set_output_keyspace;
 
             // see https://wireddots.com/products/datetimepicker
             var start = new Date (TheSimulation.interval.start);
@@ -918,7 +918,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", write_keyspace)
+                        sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", output_keyspace)
                     }
                 ).then (
                     function (resultset)
@@ -928,7 +928,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", write_keyspace)
+                                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", output_keyspace)
                                     }
                                 ).then (render_prior_simulations)
                             );
@@ -983,7 +983,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where time < " + start.getTime () + " limit 1 allow filtering"
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where time < " + start.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
                     function (resultset)
@@ -997,7 +997,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
+                                        sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
                                     function (resultset)
@@ -1021,7 +1021,7 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where time > " + end.getTime () + " limit 1 allow filtering"
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where time > " + end.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
                     function (resultset)
@@ -1035,7 +1035,7 @@ truncate table cimapplication.losses_summary_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
+                                        sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
                                     function (resultset)
@@ -1063,13 +1063,13 @@ truncate table cimapplication.losses_summary_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select time from cimapplication.measured_value".replace ("cimapplication", read_keyspace) + " limit 1"
+                        sql: "select time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " limit 1"
                     }
                 ).then (
                     function (resultset)
                     {
                         if (0 == resultset.length)
-                            alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", read_keyspace));
+                            alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", input_keyspace));
                         else
                         {
                             var time = new Date (resultset[0].time);
