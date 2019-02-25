@@ -18,115 +18,6 @@ import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-case class Fetcher (spark: SparkSession, simulation: String, keyspace: String, verbose: Boolean = false, unittest: Boolean = false)
-{
-    if (verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
-    def logInfo (msg: => String): Unit = if (log.isInfoEnabled && unittest) log.info (msg)
-    def show (dataframe: DataFrame, records: Int = 5): Unit = if (unittest) dataframe.show (records)
-
-    var points: DataFrame = _
-
-    var lines: DataFrame = _
-
-    var polygons: DataFrame = _
-
-    var simulated_values: DataFrame = _
-
-    var measured_values: DataFrame = _
-
-    def geojson_points: DataFrame =
-    {
-        if (null == points)
-        {
-            points = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "geojson_points", "keyspace" -> keyspace))
-                .load
-                .drop ("type", "geometry")
-                .filter ("simulation = '%s'".format (simulation))
-                .cache
-            logInfo ("""%d GeoJSON points to process""".format (points.count))
-            show (points)
-        }
-        points
-    }
-
-    def geojson_lines: DataFrame =
-    {
-        if (null == lines)
-        {
-            lines = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "geojson_lines", "keyspace" -> keyspace))
-                .load
-                .drop ("type", "geometry")
-                .filter ("simulation = '%s'".format (simulation))
-                .cache
-            logInfo ("""%d GeoJSON lines to process""".format (lines.count))
-            show (lines)
-        }
-        lines
-    }
-
-    def geojson_polygons: DataFrame =
-    {
-        if (null == polygons)
-        {
-            polygons = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "geojson_polygons", "keyspace" -> keyspace))
-                .load
-                .drop ("type", "geometry")
-                .filter ("simulation = '%s'".format (simulation))
-                .cache
-            logInfo ("""%d GeoJSON polygons to process""".format (polygons.count))
-            show (polygons)
-        }
-        polygons
-    }
-
-    def raw_values: DataFrame =
-    {
-        if (null == simulated_values)
-        {
-            simulated_values = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "simulated_value", "keyspace" -> keyspace))
-                .load
-                .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
-                .filter ("simulation = '%s'".format (simulation))
-                .cache
-            logInfo ("""%d simulated values to process""".format (simulated_values.count))
-            show (simulated_values)
-            simulated_values
-        }
-        simulated_values
-    }
-
-    def raw_meter_values: DataFrame =
-    {
-        if (null == measured_values)
-        {
-            measured_values = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
-                .load
-                .filter ("type = 'energy'")
-                .drop ("real_b", "real_c", "imag_b", "imag_c", "type", "units")
-                .cache
-            logInfo ("""%d measured values to process""".format (measured_values.count))
-            show (measured_values)
-            measured_values
-        }
-        measured_values
-    }
-}
 
 
 /**
@@ -160,16 +51,16 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * For cables, this is the current divided by the ratedCurrent (A).
      * For transformers, this would be the power output divided by the ratedS (VA).
      */
-    def utilization (fetcher: Fetcher): Unit =
+    def utilization (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Utilization")
-        val simulated_current_values = fetcher.raw_values
+        val simulated_current_values = access.raw_values
             .filter ("type = 'current'")
             .cache
         logInfo ("""Utilization: %d simulated current values to process""".format (simulated_current_values.count))
         show (simulated_current_values)
 
-        val lines = fetcher.geojson_lines
+        val lines = access.geojson_lines
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -203,9 +94,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val work = utilization.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), row.getInt (period), row.getTimestamp (time), row.getDouble (current), row.getDouble (ratedCurrent), row.getDouble (percent), "A÷A×100", row.getString (transformer), row.getString (simulation))).cache
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "utilization",
+            work.saveToCassandra (access.output_keyspace, "utilization",
                 SomeColumns ("mrid", "type", "period", "time", "value", "reference", "utilization", "units", "transformer", "simulation"))
-            log.info ("""Utilization: utilization records saved to %s.utilization""".format (fetcher.keyspace))
+            log.info ("""Utilization: utilization records saved to %s.utilization""".format (access.output_keyspace))
         }
 
         val summary = utilization
@@ -237,9 +128,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val work = summary.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", row.getString (transformer), row.getString (simulation))).cache
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "utilization_summary_by_day",
+            work.saveToCassandra (access.output_keyspace, "utilization_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "transformer", "simulation"))
-            log.info ("""Utilization: utilization summary records saved to %s.utilization_summary_by_day""".format (fetcher.keyspace))
+            log.info ("""Utilization: utilization summary records saved to %s.utilization_summary_by_day""".format (access.output_keyspace))
         }
 
         val trafokreise = utilization
@@ -271,9 +162,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val work = trafokreise.rdd.map (row ⇒ (row.getString (transformer), row.getString (typ), row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", row.getString (simulation))).cache
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "utilization_summary_by_day_by_transformer",
+            work.saveToCassandra (access.output_keyspace, "utilization_summary_by_day_by_transformer",
                 SomeColumns ("mrid", "type", "date", "min_utilization", "avg_utilization", "max_utilization", "units", "simulation"))
-            log.info ("""Utilization: transformer area utilization summary records saved to %s.utilization_summary_by_day_by_transformer""".format (fetcher.keyspace))
+            log.info ("""Utilization: transformer area utilization summary records saved to %s.utilization_summary_by_day_by_transformer""".format (access.output_keyspace))
         }
 
         // do daily 1 month, 3 month, 6 month and 12 month historical series
@@ -428,9 +319,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             // println (history.take(5).mkString ("\n"))
 
             // save to Cassandra
-            history.rdd.saveToCassandra (fetcher.keyspace, "utilization_historical",
+            history.rdd.saveToCassandra (access.output_keyspace, "utilization_historical",
                 SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
-            log.info ("""Utilization: historical values saved to %s.utilization_historical""".format (fetcher.keyspace))
+            log.info ("""Utilization: historical values saved to %s.utilization_historical""".format (access.output_keyspace))
         }
 
         // do the 'all time' historical values
@@ -462,9 +353,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val work = alltime.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), 0L, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), row.getString (simulation), row.getString (transformer))).cache
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "utilization_historical",
+            work.saveToCassandra (access.output_keyspace, "utilization_historical",
                 SomeColumns ("mrid", "type", "period", "date", "min_utilization", "avg_utilization", "max_utilization", "simulation", "transformer"))
-            log.info ("""Utilization: all time historical values saved to %s.utilization_historical""".format (fetcher.keyspace))
+            log.info ("""Utilization: all time historical values saved to %s.utilization_historical""".format (access.output_keyspace))
         }
     }
 
@@ -477,16 +368,16 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * The highest possible load factor is 1, which indicates a flat load profile.
      * For this calculation we use the peak value per day.
      */
-    def load_factor (fetcher: Fetcher): Unit =
+    def load_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Load Factor")
-        val simulated__power_values = fetcher.raw_values
+        val simulated__power_values = access.raw_values
             .filter ("type = 'power'") // ToDo: how to pick the transformer power values if another recorder asks for power
             .cache
         logInfo ("""Load Factor: %d simulation values to process""".format (simulated__power_values.count))
         show (simulated__power_values)
 
-        val trafos = fetcher.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson_polygons.drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -525,9 +416,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", row.getString (simulation)))
 
         // save to Cassandra
-        work.saveToCassandra (fetcher.keyspace, "load_factor_by_day",
+        work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
-        log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (fetcher.keyspace))
+        log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (access.output_keyspace))
     }
 
     /**
@@ -538,13 +429,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * The highest possible coincidence factor is 1, when all of the individual components are peaking at the same time.
      * For this calculation we use the peak values per day.
      */
-    def coincidence_factor (fetcher: Fetcher): Unit =
+    def coincidence_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Coincidence Factor")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
-        val simulated_power_values = fetcher.raw_values
+        val simulated_power_values = access.raw_values
             .filter ("type = 'power'")
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("period")
@@ -552,7 +443,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Coincidence Factor: %d simulation values to process""".format (simulated_power_values.count))
         show (simulated_power_values)
 
-        val trafos = fetcher.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson_polygons.drop ("properties").cache
 
         val simulated_value_trafos = simulated_power_values
             .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
@@ -573,8 +464,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (peaks_trafos)
         // now do the peaks for the energy consumers
 
-        val _measured_value = fetcher.raw_meter_values
-        val houses = fetcher.geojson_points.drop ("properties").cache
+        val _measured_value = access.raw_meter_values
+        val houses = access.geojson_points.drop ("properties").cache
 
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
 
@@ -632,9 +523,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         )
 
         // save to Cassandra
-        work.saveToCassandra (fetcher.keyspace, "coincidence_factor_by_day",
+        work.saveToCassandra (access.output_keyspace, "coincidence_factor_by_day",
             SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
-        log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (fetcher.keyspace))
+        log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (access.output_keyspace))
     }
 
     /**
@@ -646,10 +537,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * When a component peaks at the same time as the system, its responsibility factor is 100%.
      * For this calculation we use the transformer peak value per day.
      */
-    def responsibility_factor (fetcher: Fetcher): Unit =
+    def responsibility_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Responsibility Factor")
-        val simulated_power_values = fetcher.raw_values
+        val simulated_power_values = access.raw_values
             .filter ("type = 'power'")
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("type", "period")
@@ -657,7 +548,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Responsibility Factor: %d simulation values to process""".format (simulated_power_values.count))
         show (simulated_power_values)
 
-        val trafos = fetcher.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson_polygons.drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -683,7 +574,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Responsibility Factor: %d peaks joined with simulation values""".format (info.count))
         show (info)
 
-        val _measured_value = fetcher.raw_meter_values
+        val _measured_value = access.raw_meter_values
 
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
 
@@ -695,7 +586,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Responsibility Factor: %d measured values to process""".format (measured_value.count))
         show (measured_value)
 
-        val houses = fetcher.geojson_points.drop ("properties").cache
+        val houses = access.geojson_points.drop ("properties").cache
 
         val measured_value_and_trafo = measured_value
             .join (
@@ -739,9 +630,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             }
         )
         // save to Cassandra
-        work.saveToCassandra (fetcher.keyspace, "responsibility_by_day",
+        work.saveToCassandra (access.output_keyspace, "responsibility_by_day",
             SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
-        log.info ("""Responsibility Factor: responsibility records saved to %s.responsibility_by_day""".format (fetcher.keyspace))
+        log.info ("""Responsibility Factor: responsibility records saved to %s.responsibility_by_day""".format (access.output_keyspace))
     }
 
     /**
@@ -750,10 +641,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * Determine the peak deviation (voltage drop) from the nominal voltage.
      *
      */
-    def voltage_quality (fetcher: Fetcher): Unit =
+    def voltage_quality (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Voltage quality")
-        val simulated_value = fetcher.raw_values
+        val simulated_value = access.raw_values
             .filter ("type = 'voltage'")
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("type", "period")
@@ -761,7 +652,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val houses = fetcher.geojson_points
+        val houses = access.geojson_points
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -813,9 +704,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             logInfo ("""Voltage quality: %d voltage extrema records""".format (work.count))
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "voltage_deviation_by_day",
+            work.saveToCassandra (access.output_keyspace, "voltage_deviation_by_day",
                 SomeColumns ("mrid", "type", "date", "min_voltage", "avg_voltage", "max_voltage", "nominal_voltage", "deviation", "units", "simulation", "transformer"))
-            log.info ("""Voltage quality: voltage deviation records saved to %s.voltage_deviation_by_day""".format (fetcher.keyspace))
+            log.info ("""Voltage quality: voltage deviation records saved to %s.voltage_deviation_by_day""".format (access.output_keyspace))
         }
 
         // roll up for each transformer
@@ -845,9 +736,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             logInfo ("""Voltage quality: %d transformer area voltage extrema records""".format (work.count))
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "voltage_deviation_summary_by_day",
+            work.saveToCassandra (access.output_keyspace, "voltage_deviation_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "min_voltage", "avg_voltage", "max_voltage", "nominal_voltage", "deviation", "units", "simulation"))
-            log.info ("""Voltage quality: transformer area voltage deviation records saved to %s.voltage_deviation_summary_by_day""".format (fetcher.keyspace))
+            log.info ("""Voltage quality: transformer area voltage deviation records saved to %s.voltage_deviation_summary_by_day""".format (access.output_keyspace))
         }
     }
 
@@ -857,10 +748,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
      * Determine the sum of losses for a transformer area.
      *
      */
-    def losses (fetcher: Fetcher): Unit =
+    def losses (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Losses")
-        val simulated_loss_values = fetcher.raw_values
+        val simulated_loss_values = access.raw_values
             .filter ("type = 'losses'")
             .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .cache
@@ -878,7 +769,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Losses: %d loss totals""".format (losses.count))
         show (losses)
 
-        val lines = fetcher.geojson_lines.drop ("properties").cache
+        val lines = access.geojson_lines.drop ("properties").cache
 
         val cables = losses
             .join (
@@ -890,7 +781,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Losses: %d daily cable loss totals""".format (cables.count))
         show (cables)
 
-        val polygons = fetcher.geojson_polygons.drop ("properties").cache
+        val polygons = access.geojson_polygons.drop ("properties").cache
 
         val _trafos = losses
             .join (
@@ -917,9 +808,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             logInfo ("""Losses: %d transformer area loss records""".format (work.count))
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "losses_by_day",
+            work.saveToCassandra (access.output_keyspace, "losses_by_day",
                 SomeColumns ("mrid", "type", "date", "losses", "units", "transformer", "simulation"))
-            log.info ("""Losses: transformer area loss records saved to %s.losses_by_day""".format (fetcher.keyspace))
+            log.info ("""Losses: transformer area loss records saved to %s.losses_by_day""".format (access.output_keyspace))
         }
 
         // roll up each transformer area
@@ -939,9 +830,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             logInfo ("""Losses: %d transformer area summary loss records""".format (work.count))
 
             // save to Cassandra
-            work.saveToCassandra (fetcher.keyspace, "losses_summary_by_day",
+            work.saveToCassandra (access.output_keyspace, "losses_summary_by_day",
                 SomeColumns ("mrid", "type", "date", "losses", "units", "simulation"))
-            log.info ("""Losses: transformer area summary loss records saved to %s.losses_summary_by_day""".format (fetcher.keyspace))
+            log.info ("""Losses: transformer area summary loss records saved to %s.losses_summary_by_day""".format (access.output_keyspace))
         }
     }
 
@@ -964,38 +855,37 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         )
         log.info ("""found keyspaces %s""".format (keyspaces.mkString (",")))
 
-        val lookup = keyspaces.map (
+        val lookup = keyspaces.flatMap (
             keyspace ⇒
             {
-                val sims = spark
+                spark
                     .read
                     .format ("org.apache.spark.sql.cassandra")
                     .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
                     .load
-                    .select ("id")
+                    .select ("id", "read_keyspace", "write_keyspace")
                     .rdd
-                    .map (row ⇒ row.getString (0))
+                    .map (row ⇒ (row.getString (0), row.getString (1), row.getString (2)))
                     .collect
-                (keyspace, sims)
             }
         )
 
         for (simulation ← simulations)
         {
-            val found = lookup.find (x ⇒ x._2.contains (simulation))
+            val found = lookup.find (_._1 == simulation)
             found match
             {
-                case Some ((keyspace, _)) ⇒
-                    val fetcher = Fetcher (spark, simulation, keyspace, options.verbose, options.unittest)
-                    log.info ("""summarizing %s.%s""".format (keyspace, simulation))
-                    utilization (fetcher)
-                    load_factor (fetcher)
-                    coincidence_factor (fetcher)
-                    responsibility_factor (fetcher)
-                    voltage_quality (fetcher)
-                    losses (fetcher)
+                case Some ((id, input, output)) ⇒
+                    val access = SimulationCassandraAccess (spark, id, input, output, options.verbose, options.unittest)
+                    log.info ("""summarizing %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
+                    utilization (access)
+                    load_factor (access)
+                    coincidence_factor (access)
+                    responsibility_factor (access)
+                    voltage_quality (access)
+                    losses (access)
                 case None ⇒
-                    log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._1).mkString (",")))
+                    log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
             }
         }
 
