@@ -138,7 +138,7 @@ define
                 var index = title.indexOf (" - ");
                 if (-1 != index)
                     title = title.substring (0, index);
-                title = title + " - " + CIM_File.files[0].replace (/\.(rdf|xml|RDF|XML)$/, "");
+                title = title + " - " + CIM_File.files.map (x => x.replace (/\.(rdf|xml|RDF|XML)$/, "")).join ();
                 document.title = title;
             }
         }
@@ -354,51 +354,71 @@ define
             return (document.getElementById ("streetview").checked);
         }
 
-        async function pause (predicate, callback)
+        /**
+         * Sleep for some milliseconds.
+         *
+         * @param ms number of milliseconds to sleep
+         * @return a Promise that resolves when the number of milliseconds elapses
+         */
+        function sleep (ms)
         {
-            function sleep(ms)
-            {
-                return new Promise (resolve => setTimeout (resolve, ms));
-            }
-            if (predicate ())
-                do
-                    await sleep (1000);
-                while (predicate ());
-            callback ();
+            return (new Promise (resolve => setTimeout (resolve, ms)));
+        }
+
+        /**
+         * Pause to wait for some occurrence.
+         *
+         * @param predicate function to test, returns false when the pause is over, true if pausing should continue
+         * @param ms number of milliseconds to wait between predicate tests
+         * @return a Promise that resolves only when the predicate fails
+         */
+        function pause (predicate, ms)
+        {
+            var ms = ms || 1000;
+            var ret = new Promise (
+                (resolve, reject) =>
+                {
+                    if (predicate ())
+                        sleep (ms).then (
+                            () =>
+                            {
+                                pause (predicate, ms).then (resolve, reject);
+                            }
+                        );
+                    else
+                        resolve ();
+                }
+            );
+            return (ret);
         }
 
         function wait_for_map ()
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
-                    {
-                        pause (() => null == TheMap, resolve);
-                    }
-                )
-            );
+            return (pause (() => null == TheMap));
         }
 
         function wait_for_map_loaded ()
         {
+            function predicate ()
+            {
+                return (!TheMap.loaded ())
+            }
+
             return (
                 new Promise (
                     function (resolve, reject)
                     {
-                        function predicate ()
-                        {
-                            return (!TheMap.loaded ())
-                        }
                         if (predicate ())
                         {
-                            function fuckoff (message)
+                            function handler (data) // {error: {message: string}}
                             {
+                                var message = JSON.stringify (data);
                                 console.log (message);
-                                TheMap.off ("error", fuckoff);
+                                TheMap.off ("error", handler);
                                 reject (message);
                             }
-                            TheMap.on ("error", fuckoff);
-                            pause (predicate, () => { TheMap.off ("error", fuckoff); resolve (); });
+                            TheMap.on ("error", handler);
+                            pause (predicate).then (() => { TheMap.off ("error", handler); resolve (); });
                         }
                         else
                             resolve ();
@@ -1062,6 +1082,20 @@ define
             return (ret);
         }
 
+        function measure (lon1, lat1, lon2, lat2)
+        {
+            var rlat1 = lat1 * Math.PI / 180;
+            var rlat2 = lat2 * Math.PI / 180
+            var dlat = rlat2 - rlat1;
+            var dlon = (lon2 -lon1) * Math.PI / 180;
+            var sin1 = Math.sin (dlat / 2.0)
+            var sin2 = Math.sin (dlon / 2.0)
+            var a = sin1 * sin1 + Math.cos (rlat1) * Math.cos (rlat2) * sin2 * sin2;
+            var c = 2.0 * Math.atan2 (Math.sqrt (a), Math.sqrt (1.0 - a));
+            return (c * 6378.137e3); // earth radius in meters
+        }
+
+
         /**
          * Search the element identifiers to find those that match the search text.
          * @description Scan through all elements and make a list of those
@@ -1114,22 +1148,28 @@ define
                             mrid = current;
                             var bounds = TheMap.getBounds ();
                             var zoom = TheMap.getZoom ();
+                            var x = (bb[1][0] - bb[0][0]) / 2.0 + bb[0][0];
+                            var y = (bb[1][1] - bb[0][1]) / 2.0 + bb[0][1];
+                            // resolution (meters/pixel) = (Math.cos (y * Math.PI / 180.0) * 2.0 * Math.PI * 6378.137e3) / (512 * Math.pow (2, zoom));
+                            // zoom = Math.log2 ((Math.cos (y * Math.PI / 180.0) * 2.0 * Math.PI * 6378.137e3) / (512 * resolution)) ;
+                            var margin = 20; // pixels
+                            var pixels = TheMap.getContainer ().clientHeight - 2 * margin;
+                            var height = measure (bb[0][0], bb[0][1], bb[0][0], bb[1][1])
+                            var new_zoom = Math.log2 ((Math.cos (y * Math.PI / 180.0) * 2.0 * Math.PI * 6378.137e3) / (512 * (height / pixels)));
                             // if we're not zoomed in already (showing symbols icons from 17 and deeper)
                             // or the object bounds are not within the map bounds,
                             // refocus the map
-                            if ((zoom < 17) ||
-                                ((bb[0][0] < bounds.getWest ()) ||
-                                 (bb[1][0] > bounds.getEast ()) ||
-                                 (bb[0][1] < bounds.getSouth ()) ||
-                                 (bb[1][1] > bounds.getNorth ())))
+                            new_zoom = Math.min (Math.max (17, zoom), new_zoom)
+                            if ((bb[0][0] < bounds.getWest ()) ||
+                                (bb[1][0] > bounds.getEast ()) ||
+                                (bb[0][1] < bounds.getSouth ()) ||
+                                (bb[1][1] > bounds.getNorth ()))
                             {
-                                var x = (bb[1][0] - bb[0][0]) / 2.0 + bb[0][0];
-                                var y = (bb[1][1] - bb[0][1]) / 2.0 + bb[0][1];
                                 TheMap.easeTo
                                 (
                                     {
                                         center: [x, y],
-                                        zoom: 17
+                                        zoom: new_zoom
                                     }
                                 );
                             }
@@ -1366,6 +1406,7 @@ define
                     scale_bar: scale_bar,
                     coordinates: coordinates,
                     trace: trace,
+                    measure: measure,
                     search: search,
                     redraw: redraw,
                     add_listeners: add_listeners,
