@@ -61,7 +61,7 @@ truncate table cimapplication.losses_summary_by_day;
                 },
                 keyspaces: {
                     "read": "cimapplication",
-                    "write": "cimappplication"
+                    "write": "cimapplication"
                 },
                 players: [],
                 recorders: [],
@@ -89,7 +89,7 @@ truncate table cimapplication.losses_summary_by_day;
         //        },
         //        keyspaces: {
         //            "read": "cimapplication",
-        //            "write": "cimappplication"
+        //            "write": "cimapplication"
         //        },
         //        "transformers": [
         //            "TRA2755"

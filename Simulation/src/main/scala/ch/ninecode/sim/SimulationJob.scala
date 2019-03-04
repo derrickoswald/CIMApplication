@@ -269,8 +269,8 @@ object SimulationJob
     {
         // ToDo: more robust checking
         val keyspaces: mutable.Map[String, JsonValue] = json.getJsonObject ("keyspaces").asScala
-        var input: String = "cimappplication"
-        var output: String = "cimappplication"
+        var input: String = "cimapplication"
+        var output: String = "cimapplication"
         keyspaces.foreach (
             x ⇒
             {

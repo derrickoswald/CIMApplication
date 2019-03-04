@@ -53,9 +53,11 @@ define
                 LAST_DIRECTORY = root;
                 var parent = ("/" != root) ? root.substring (0, root.substring (0, root.length - 1).lastIndexOf ("/")) + "/" : "/";
                 var file_table_template =
-                    "<div class='container'>\n" +
+                    "<div class='container-fluid'>\n" +
                     "  <div class='row justify-content-center'>\n" +
-                    "    <div class='col-12'>\n" +
+                    "    <div class='col-1'>\n" +
+                    "    </div>\n" +
+                    "    <div class='col-10'>\n" +
                     "      <h1>{{response.result.filesystem}}</h1>\n" +
                     "      <h2>{{dir}}</h2>\n" +
                     "      <form id='upload' class='form-inline float-left' role='form'>\n" +
@@ -66,10 +68,11 @@ define
                     "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
                     "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
                     "      </form>\n" +
-                    "      <table id='file_table' class='table table-striped table-hover'>\n" +
-                    "        <thead>\n" +
-                    "          <tr><td class='center'>Load</td><td class='center'>View</td><td>Path</td><td>Owner:Group</td><td>Permission</td><td>Modified</td><td class='right'>Size</td><td class='center'>Remove</td></tr>\n" +
-                    "        </thead>\n" +
+                    "      <div class='table-responsive'>\n" +
+                    "        <table id='file_table' class='table table-striped table-hover'>\n" +
+                    "          <thead>\n" +
+                    "            <tr><td class='center'>Load</td><td class='center'>View</td><td>Path</td><td>Owner:Group</td><td>Permission</td><td>Modified</td><td class='right'>Size</td><td class='center'>Remove</td></tr>\n" +
+                    "          </thead>\n" +
                     "{{{dots}}}\n" +
                     "{{#response.result.files}}\n" +
                     "          <tr>\n" +
@@ -83,10 +86,13 @@ define
                     "            <td class='center'>{{{remove}}}</td>\n" +
                     "          </tr>\n" +
                     "{{/response.result.files}}\n" +
-                    "        <tfoot>\n" +
-                    "          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td id='total_size' class='right'></td><td class='center'></td></tr>\n" +
-                    "        </tfoot>\n" +
-                    "      </table>\n" +
+                    "          <tfoot>\n" +
+                    "            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td id='total_size' class='right'></td><td class='center'></td></tr>\n" +
+                    "          </tfoot>\n" +
+                    "        </table>\n" +
+                    "      </div>\n" +
+                    "    </div>\n" +
+                    "    <div class='col-1'>\n" +
                     "    </div>\n" +
                     "  </div>\n" +
                     "</div>\n";
@@ -385,18 +391,16 @@ define
         {
             var start = new Date ().getTime ();
             console.log ("starting CIM read");
-            cim.read_xml_blob
-            (
-                blob,
-                function (result)
+            cim.read_xml_blobs ([blob]).then (
+                function (context)
                 {
                     var end = new Date ().getTime ();
-                    console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds)");
-                    if (result.parsed.ignored != 0)
-                        console.log ("ignored " + result.parsed.ignored + " elements");
-                    delete result.parsed.ignored;
-                    // display the results on the map
-                    cimmap.set_data (result.parsed);
+                    var elements = Object.keys (context.parsed.Element).length;
+                    console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds, " + elements + " elements)");
+                    if (0 != context.ignored)
+                        console.log (context.ignored.toString () + " unrecognized element" + ((1 < context.ignored) ? "s" : ""));
+                    cimmap.set_data (context.parsed);
+                    cimmap.set_loaded ({ files: blobs.map (b => b.name), options: {}, elements: elements });
                 }
             );
         }

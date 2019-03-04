@@ -181,6 +181,7 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>${version.plugin.war}</version>
                 <configuration>
+                    <archiveClasses>true</archiveClasses>
                     <archive>
                         <addMavenDescriptor>false</addMavenDescriptor>
                     </archive>
