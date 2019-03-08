@@ -11,16 +11,17 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
+import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
 import scala.collection._
-
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -44,6 +45,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     MeasurementCalendar.setTimeZone (MeasurementTimeZone)
     val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS")
     MeasurementTimestampFormat.setCalendar (MeasurementCalendar)
+    val MeasurementDateTimeFormat: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yy HH:mm:ss")
+    MeasurementDateTimeFormat.setCalendar (MeasurementCalendar)
 
     val ZuluTimeZone: TimeZone = TimeZone.getTimeZone ("GMT")
     val ZuluTimeCalendar: Calendar = Calendar.getInstance ()
@@ -108,47 +111,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         mapping_options.put ("inferSchema", inferSchema)
 
         mapping_options
-    }
-
-    def measurement_csv_options: mutable.HashMap[String, String] =
-    {
-        val measurement_options = new mutable.HashMap[String, String]()
-
-        val header = "false"
-        val ignoreLeadingWhiteSpace = "false"
-        val ignoreTrailingWhiteSpace = "false"
-        val sep = ";"
-        val quote = "\""
-        val escape = "\\"
-        val encoding = "UTF-8"
-        val comment = "#"
-        val nullValue = ""
-        val nanValue = "NaN"
-        val positiveInf = "Inf"
-        val negativeInf = "-Inf"
-        val dateFormat = "yyyy-MM-dd"
-        val timestampFormat = "dd.MM.yyyy HH:mm"
-        val mode = "DROPMALFORMED"
-        val inferSchema = "true"
-
-        measurement_options.put ("header", header)
-        measurement_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
-        measurement_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
-        measurement_options.put ("sep", sep)
-        measurement_options.put ("quote", quote)
-        measurement_options.put ("escape", escape)
-        measurement_options.put ("encoding", encoding)
-        measurement_options.put ("comment", comment)
-        measurement_options.put ("nullValue", nullValue)
-        measurement_options.put ("nanValue", nanValue)
-        measurement_options.put ("positiveInf", positiveInf)
-        measurement_options.put ("negativeInf", negativeInf)
-        measurement_options.put ("dateFormat", dateFormat)
-        measurement_options.put ("timestampFormat", timestampFormat)
-        measurement_options.put ("mode", mode)
-        measurement_options.put ("inferSchema", inferSchema)
-
-        measurement_options
     }
 
     def not_all_null (row: Row): Boolean =
@@ -331,7 +293,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         ret
     }
 
-    def sub (filename: String, measurement_options: Map[String, String], join_table: Map[String, String]): Unit =
+    def sub_belvis (filename: String, measurement_options: Map[String, String], join_table: Map[String, String]): Unit =
     {
         // we assume a very specific format since there is no header
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
@@ -347,8 +309,44 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         ok.unpersist (false)
     }
 
-    def process (measurement_options: Map[String, String], join_table: Map[String, String])(file: String): Unit =
+    def process_belvis (join_table: Map[String, String])(file: String): Unit =
     {
+        val header = "false"
+        val ignoreLeadingWhiteSpace = "false"
+        val ignoreTrailingWhiteSpace = "false"
+        val sep = ";"
+        val quote = "\""
+        val escape = "\\"
+        val encoding = "UTF-8"
+        val comment = "#"
+        val nullValue = ""
+        val nanValue = "NaN"
+        val positiveInf = "Inf"
+        val negativeInf = "-Inf"
+        val dateFormat = "yyyy-MM-dd"
+        val timestampFormat = "dd.MM.yyyy HH:mm"
+        val mode = "DROPMALFORMED"
+        val inferSchema = "true"
+
+        val measurement_csv_options = immutable.HashMap (
+            "header" → header,
+            "ignoreLeadingWhiteSpace" → ignoreLeadingWhiteSpace,
+            "ignoreTrailingWhiteSpace" → ignoreTrailingWhiteSpace,
+            "sep" → sep,
+            "quote" → quote,
+            "escape" → escape,
+            "encoding" → encoding,
+            "comment" → comment,
+            "nullValue" → nullValue,
+            "nanValue" → nanValue,
+            "positiveInf" → positiveInf,
+            "negativeInf" → negativeInf,
+            "dateFormat" → dateFormat,
+            "timestampFormat" → timestampFormat,
+            "mode" → mode,
+            "inferSchema" → inferSchema
+        )
+
         val belvis_files =
         {
             val start = System.nanoTime ()
@@ -358,10 +356,10 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             files
         }
         // dumpHeap ()
-        for (filename ← belvis_files) // "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
+        for (filename ← belvis_files) // e.g. "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
         {
             val start = System.nanoTime ()
-            sub (filename, measurement_options, join_table)
+            sub_belvis (filename, measurement_csv_options, join_table)
             hdfs.delete (new Path (filename), false)
             val end = System.nanoTime ()
             log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
@@ -369,15 +367,162 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // dumpHeap ()
     }
 
+    val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
+
+    /**
+     *
+     * @param code
+     * @param units
+     * @param factor
+     * @return (type: e.g. energy or power, real: true if active, imag: true if reactive, units: e.g. Wh, factor: to multiply the values by)
+     */
+    def decode_obis (code: String, units: String, factor: String): (String, Boolean, Boolean, String, Double) =
+    {
+        val matcher = obis.matcher (code)
+        if (matcher.find)
+        {
+            if (1 == matcher.group (2).toInt)
+            {
+                val channel = matcher.group (4).toInt
+                val quantity = matcher.group (5).toInt
+                val what = matcher.group (6).toInt
+                var (typ, real, imag, factor, unit) = quantity match
+                {
+                    // active power +
+                    case 1 ⇒ ("power", true, false, 1.0, "W")
+                    // active power -
+                    case 2 ⇒ ("power", true, false, -1.0, "W")
+                    // reactive power Q I
+                    case 5 ⇒ ("power", false, true, 1.0, "W")
+                    // reactive power Q IV
+                    case 8 ⇒ ("power", false, true, -1.0, "W")
+                    // error
+                    case _ ⇒ ("", false, false, 0.0, "")
+                }
+                if (factor != 0.0)
+                {
+                    what match
+                    {
+                        // last average
+                        case 5 ⇒
+                        // time integral
+                        case 29 ⇒ typ = "energy"; unit = "Wh"
+                    }
+                    units match
+                    {
+                        case "kWh" ⇒ factor = factor * 1000.0;
+                        case "kvarh" ⇒ factor = factor * 1000.0;
+                        case _ ⇒
+                    }
+                    (typ, real, imag, unit, factor)
+                }
+                else
+                    ("", false, false, "OBIS code '%s' has unrecognized quantity type %s".format (code, quantity), 0.0)
+            }
+            else
+                ("", false, false, "'%s' is not an electric OBIS code".format (code), 0.0)
+        }
+        else
+            ("", false, false, "'%s' has an OBIS code format error".format (code), 0.0)
+    }
+
+    /**
+     * Make tuples suitable for Cassandra:
+     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     * @param line one line from the PEx file
+     */
+    def to_tuples (join_table: Map[String, String]) (line: String): Seq[(String, String, Long, Int, Double, Double, String)] =
+    {
+        val ONE_MINUTE_IN_MILLIS = 60000
+
+        // described in GoerlitzExportImport_V131I04_FBe_DE.pdf
+        val fields = line.split (";")
+        // eliminate the version line and header line
+        if (fields.length > 15 && fields(0) != "Datum")
+        {
+            val datetime = MeasurementDateTimeFormat.parse (fields(0) + " " + fields(1))
+            val mrid = join_table.getOrElse (fields(10), null)
+            if (null != mrid)
+            {
+                val (typ, real, imag, units, factor) = decode_obis (fields(11), fields(12), fields(13))
+                val time = datetime.getTime
+                val period = fields(14).toInt
+                val interval = period * ONE_MINUTE_IN_MILLIS
+                val list = for {
+                        i ← 15 until fields.length by 2
+                        flags = fields(i + 1)
+                        if flags == "W"
+                        value = fields(i).toDouble * factor
+                        slot = (i - 15) / 2
+                        timestamp = time + (interval * slot)
+                    }
+                    yield
+                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                // discard all zero records
+                if (list.exists (x ⇒ x._5 != 0.0 || x._6 != 0.0))
+                    list
+                else
+                    List ()
+            }
+            else
+                List ()
+        }
+        else
+            List ()
+    }
+
+    def complex (measurements: Iterable[(String, String, Long, Int, Double, Double, String)]) : (String, String, Long, Int, Double, Double, String) =
+    {
+        val a = measurements.head
+        val size = measurements.size
+        if (size > 2)
+            log.warn ("too many values (%s) for %s %s @ %s".format (size, a._1, a._2, MeasurementDateTimeFormat.format (new Date (a._3))))
+        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
+    }
+
+    def sub_lpex (filename: String, join_table: Map[String, String]): Unit =
+    {
+        // it's almost a CSV file but they screwed up and gave it a version line
+        // and for daylight savings time changes, not all lines have the same number of columns
+        val lines = session.sparkContext.textFile (filename)
+        if (lines.first.startsWith ("LPEX V3.0"))
+        {
+            val rdd = lines.flatMap (to_tuples (join_table))
+            // combine real and imaginary parts
+            val grouped = rdd.groupBy (x ⇒ (x._1, x._2, x._3)).values.map (complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+    }
+
+    def process_lpex (join_table: Map[String, String])(file: String): Unit =
+    {
+        val lpex_files =
+        {
+            val start = System.nanoTime ()
+            val files = putFile (session, "/" + base_name (file), readFile (file), file.toLowerCase.endsWith (".zip"))
+            val end = System.nanoTime ()
+            log.info ("copy %s: %s seconds".format (new File (file).getName, (end - start) / 1e9))
+            files
+        }
+        for (filename ← lpex_files) // e.g. "hdfs://sandbox:8020/2000004515773_Lastprofil_Fremdgeräte_EDM_20190304031000.txt"
+        {
+            val start = System.nanoTime ()
+            sub_lpex (filename, join_table)
+            hdfs.delete (new Path (filename), false)
+            val end = System.nanoTime ()
+            log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
+        }
+    }
+
     def run (): Unit =
     {
         val begin = System.nanoTime ()
 
         val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
-        if (mapping_files.nonEmpty)
+        if (mapping_files.nonEmpty) // e.g. "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
         {
-            val filename = mapping_files.head // "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
-        val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
+            val filename = mapping_files.head
+            val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
             val read = System.nanoTime ()
             log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
@@ -390,7 +535,11 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             log.info ("map: %s seconds".format ((map - read) / 1e9))
 
             // dumpHeap ()
-            options.belvis.foreach (process (measurement_csv_options, join_table))
+            options.format.toString match
+            {
+                case "Belvis" ⇒ options.datafiles.foreach (process_belvis (join_table))
+                case "LPEx" ⇒ options.datafiles.foreach (process_lpex (join_table))
+            }
 
             hdfs.delete (new Path (filename), false)
         }

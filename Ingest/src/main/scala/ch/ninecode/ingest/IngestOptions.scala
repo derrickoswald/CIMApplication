@@ -1,5 +1,7 @@
 package ch.ninecode.ingest
 
+import ch.ninecode.ingest.Main.Formats
+import ch.ninecode.ingest.Main.Formats.Formats
 import ch.ninecode.ingest.Main.LogLevels
 import ch.ninecode.ingest.Main.LogLevels.LogLevels
 
@@ -73,9 +75,14 @@ case class IngestOptions
     maxtime: Long = Long.MaxValue, // "292278994-08-17 07:12:55.807+0000"
 
     /**
-     * Source Belvis files.
+     * Type of data file, either Belvis or LPEx.
      */
-    belvis: Seq[String] = Seq (),
+    format: Formats = Formats.Belvis,
+
+    /**
+     * Source Belvis/LPEx files.
+     */
+    datafiles: Seq[String] = Seq (),
 
     /**
      * cassandra keyspace

@@ -7,14 +7,14 @@ import java.util.Calendar
 import java.util.Properties
 import java.util.TimeZone
 
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+import scopt.OptionParser
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
-
-import scala.tools.nsc.io.Jar
-import scala.util.Random
 
 object Main
 {
@@ -38,6 +38,14 @@ object Main
     }
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
+
+    object Formats extends Enumeration
+    {
+        type Formats = Value
+        val Belvis, LPEx = Value
+    }
+
+    implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads (Formats.withName)
 
     var do_exit = true
 
@@ -128,6 +136,10 @@ object Main
             action ((x, c) ⇒ c.copy (keyspace = x)).
             text ("keyspace which will be used in cassandra [%s]".format (default.keyspace))
 
+        opt [Formats.Value]("format").
+            action ((x, c) ⇒ c.copy (format = x)).
+            text ("format of the data files, one of " + Formats.values.iterator.mkString (",") + " [%s]".format (default.format))
+
         arg [String]("<ZIP> or <CSV>...").optional ().unbounded ().
             action ((x, c) ⇒
             {
@@ -135,7 +147,7 @@ object Main
                 {
                     val sep = System.getProperty ("file.separator")
                     val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
-                    c.copy (belvis = c.belvis :+ file.toString)
+                    c.copy (datafiles = c.datafiles :+ file.toString)
                 }
                 catch
                 {
@@ -144,7 +156,7 @@ object Main
                         throw new Exception ("bad input file name")
                 }
             }).
-            text ("Belvis files to process")
+            text ("data files to process")
 
         help ("help").text ("prints this usage text")
     }

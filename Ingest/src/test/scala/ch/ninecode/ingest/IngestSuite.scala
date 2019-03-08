@@ -20,6 +20,11 @@ import ch.ninecode.ingest.Main.main
 
 class IngestSuite extends FunSuite with BeforeAndAfterAll
 {
+    val FILE_DEPOT = "data/"
+    val MAPPING_FILE = "mapping.csv"
+    val LPEX_FILE1 = "lpex1.txt"
+    val LPEX_FILE2 = "lpex2.txt"
+
     /**
      * Add to the process environment.
      *
@@ -186,5 +191,21 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     test ("Help")
     {
         main (Array ("--unittest", "--help"))
+    }
+
+    test ("Ingest")
+    {
+        // assumes schema has been set up, e.g. cqlsh --file schema.sql beach
+        // to reset use:
+        // delete from cimapplication.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy');
+        main (Array ("--unittest", "--verbose",
+            "--master", "local[*]",
+            "--host", "beach",
+            "--mapping", FILE_DEPOT + MAPPING_FILE,
+            "--metercol", "meter",
+            "--mridcol", "mRID",
+            "--format", "LPEx",
+            FILE_DEPOT + LPEX_FILE1,
+            FILE_DEPOT + LPEX_FILE2))
     }
 }
