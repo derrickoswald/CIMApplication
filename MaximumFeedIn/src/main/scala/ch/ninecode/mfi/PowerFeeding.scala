@@ -280,8 +280,8 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         edges.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
-            has.checkpoint ();
-            vertices.checkpoint ();
+            has.checkpoint ()
+            vertices.checkpoint ()
             edges.checkpoint ()
         }
 
