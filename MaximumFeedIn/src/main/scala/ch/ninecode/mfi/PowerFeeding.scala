@@ -63,31 +63,29 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                         log.debug ("%s <-- %s".format (triplet.dstId.toString, message.asString))
                     Iterator ((triplet.dstId, message))
                 }
-                else
-                    if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
-                    {
-                        val (dist_km, z, ir) = line_details (triplet.attr)
-                        val sum_z = triplet.dstAttr.sum_z + z * dist_km
-                        val min_ir = math.min (triplet.dstAttr.min_ir, ir)
-                        val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
-                        val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
-                        val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
-                        if (log.isDebugEnabled)
-                            log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
-                        Iterator ((triplet.srcId, message))
-                    }
+                else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
+                {
+                    val (dist_km, z, ir) = line_details (triplet.attr)
+                    val sum_z = triplet.dstAttr.sum_z + z * dist_km
+                    val min_ir = math.min (triplet.dstAttr.min_ir, ir)
+                    val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
+                    val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
+                    if (log.isDebugEnabled)
+                        log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
+                    Iterator ((triplet.srcId, message))
+                }
+                else if (triplet.srcAttr.source_obj != triplet.dstAttr.source_obj)
+                {
+                    if (triplet.srcAttr.hasIssues && !triplet.dstAttr.hasIssues)
+                        Iterator ((triplet.dstId, triplet.dstAttr.copy (problem = triplet.srcAttr.problem)))
+                    else if (!triplet.srcAttr.hasIssues && triplet.dstAttr.hasIssues)
+                        Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
                     else
-                        if (triplet.srcAttr.source_obj != triplet.dstAttr.source_obj)
-                        {
-                            if (triplet.srcAttr.hasIssues && !triplet.dstAttr.hasIssues)
-                                Iterator ((triplet.dstId, triplet.dstAttr.copy (problem = triplet.srcAttr.problem)))
-                            else if (!triplet.srcAttr.hasIssues && triplet.dstAttr.hasIssues)
-                                Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
-                            else
-                                Iterator.empty
-                        }
-                        else
-                            Iterator.empty
+                        Iterator.empty
+                }
+                else
+                    Iterator.empty
             else
                 Iterator.empty
         else
@@ -129,7 +127,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
-    def calc_max_feeding_power (options: EinspeiseleistungOptions) (args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
+    def calc_max_feeding_power (options: EinspeiseleistungOptions)(args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
     {
         val node: PowerFeedingNode = args._1
         val mrid = args._2.map (_._1).orNull
@@ -150,14 +148,12 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val (p_max, reason, details) =
             if (null != node.problem)
                 (trafo_ratedS, node.problem, null)
+            else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
+                (trafo_ratedS, "transformer limit", "assuming no EEA")
+            else if (p_max_u < p_max_i)
+                (p_max_u, "voltage limit", "assuming no EEA")
             else
-                if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
-                    (trafo_ratedS, "transformer limit", "assuming no EEA")
-                else
-                    if (p_max_u < p_max_i)
-                        (p_max_u, "voltage limit", "assuming no EEA")
-                    else
-                        (p_max_i, "current limit", "assuming no EEA")
+                (p_max_i, "current limit", "assuming no EEA")
 
         MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, mrid, psrtype, trafo_id, feeder_id, p_max, null, reason, details)
     }
@@ -237,7 +233,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 }
             }
         )
-        .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
+            .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
             arg ⇒
             {
                 arg._2 match
@@ -247,7 +243,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 }
             }
         )
-        .persist (storage_level)
+            .persist (storage_level)
 
         val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance ())(has)
         log.info ("the simulation number is " + simulation)
@@ -275,7 +271,9 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         edges.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
-            has.checkpoint (); vertices.checkpoint (); edges.checkpoint ()
+            has.checkpoint ();
+            vertices.checkpoint ();
+            edges.checkpoint ()
         }
 
         PreCalculationResults (simulation, has, vertices, edges)
