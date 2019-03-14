@@ -44,7 +44,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
     def vertexProgram (id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
     {
-        if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir || message.hasIssues) message else v
+        if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir || message.hasIssues || message.hasNonRadial) message else v
     }
 
     def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
@@ -58,7 +58,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val min_ir = math.min (triplet.srcAttr.min_ir, ir)
                     val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
                     val problem = if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.srcAttr.problem
-                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString, message.asString))
                     Iterator ((triplet.dstId, message))
@@ -70,7 +70,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val min_ir = math.min (triplet.dstAttr.min_ir, ir)
                     val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
                     val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
-                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                     Iterator ((triplet.srcId, message))
@@ -83,6 +83,15 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                         Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
                     else
                         Iterator.empty
+                }
+                else if (triplet.srcAttr.id != triplet.dstAttr.prev_node && triplet.dstAttr.id != triplet.srcAttr.prev_node)
+                {
+                    var iter: Iterator[(VertexId, PowerFeedingNode)] = Iterator.empty
+                    if (!triplet.srcAttr.hasNonRadial)
+                        iter = iter ++ Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")))
+                    if (!triplet.dstAttr.hasNonRadial)
+                        iter = iter ++ Iterator ((triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                    iter
                 }
                 else
                     Iterator.empty
@@ -106,7 +115,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
         // create the initial Graph with PowerFeedingNode vertices
         def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
-            PowerFeedingNode (v.id, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
+            PowerFeedingNode (v.id, null, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
 
         val pregraph = initial.outerJoinVertices (feeders.keyBy (_.node))(add_feeder)
 
@@ -119,7 +128,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin))(starting_map).persist (storage_level)
 
         // run Pregel
-        val default_message = PowerFeedingNode (null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
+        val default_message = PowerFeedingNode (null, null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
         graph.pregel [PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,

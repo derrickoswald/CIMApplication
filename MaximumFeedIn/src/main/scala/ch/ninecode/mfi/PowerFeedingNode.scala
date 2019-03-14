@@ -7,6 +7,7 @@ import ch.ninecode.gl.GLMNode
  * Vertex data for the precalculation Pregel algorithm.
  *
  * @param id              Node mRID.
+ * @param prev_node       The previos node in the tracing
  * @param nominal_voltage Nominal voltage.
  * @param source_obj      Feeding transformer.
  * @param feeder          Source connection from substation.
@@ -17,6 +18,7 @@ import ch.ninecode.gl.GLMNode
 case class PowerFeedingNode
 (
     id: String,
+    prev_node: String,
     nominal_voltage: Double,
     source_obj: StartingTrafo,
     feeder: Feeder,
@@ -25,6 +27,13 @@ case class PowerFeedingNode
     problem: String) extends GLMNode
 {
     def asString: String = "[%s %gV %s@%s %sΩ %gA %s]".format (id, nominal_voltage, source_obj.asString, feeder.feeder_id, sum_z.toString, min_ir, problem)
+
+    def hasNonRadial: Boolean =
+        (null != problem) &&
+        (
+            problem.indexOf ("non-radial network") != -1
+        )
+
     def hasIssues: Boolean =
         (null != problem) &&
         (
