@@ -51,6 +51,7 @@ class LowVoltageGLMGenerator
             Array (
                 PowerFeedingNode (
                     trafokreis.transformers.node0,
+                    null,
                     trafokreis.transformers.v0,
                     null,
                     null,
