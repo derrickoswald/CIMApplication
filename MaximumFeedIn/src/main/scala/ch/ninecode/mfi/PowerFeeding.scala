@@ -86,12 +86,11 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 }
                 else if (triplet.srcAttr.id != triplet.dstAttr.prev_node && triplet.dstAttr.id != triplet.srcAttr.prev_node)
                 {
-                    var iter: Iterator[(VertexId, PowerFeedingNode)] = Iterator.empty
-                    if (!triplet.srcAttr.hasNonRadial)
-                        iter = iter ++ Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")))
-                    if (!triplet.dstAttr.hasNonRadial)
-                        iter = iter ++ Iterator ((triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-                    iter
+                    if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
+                        Iterator.empty
+                    else
+                        Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
+                            (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
                 }
                 else
                     Iterator.empty
@@ -225,7 +224,17 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     {
 
         val graph = trace (initial, transformers.map (trafo_mapping), feeders)
-        val house_nodes = get_threshold_per_has (graph.vertices.values.filter (_.source_obj != null), options)
+
+        // raw nodes
+        val nodes = graph.vertices.values.filter (_.source_obj != null)
+        // find which ones detected they were in a non-radial network
+        val nonradial = nodes.filter (_.hasNonRadial)
+        // transformers with non-radial networks
+        val bad_tx = nonradial.map (_.source_obj).distinct.collect
+        // replace problem message in the nodes in those trafokreise (this overwrites any other problems so it's not perfect):
+        val new_nodes = nodes.map (x => if (bad_tx.contains (x.source_obj)) x.copy (problem = "non-radial network") else x)
+        // then get the threshold:
+        val house_nodes = get_threshold_per_has (new_nodes, options)
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
         // update each element in the transform er service area with bad value (just choose the first)
