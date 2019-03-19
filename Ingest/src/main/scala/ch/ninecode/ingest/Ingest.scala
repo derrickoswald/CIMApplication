@@ -474,9 +474,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     def complex (measurements: Iterable[(String, String, Long, Int, Double, Double, String)]) : (String, String, Long, Int, Double, Double, String) =
     {
         val a = measurements.head
-        val size = measurements.size
-        if (size > 2)
-            log.warn ("too many values (%s) for %s %s @ %s".format (size, a._1, a._2, MeasurementDateTimeFormat.format (new Date (a._3))))
         (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
     }
 
