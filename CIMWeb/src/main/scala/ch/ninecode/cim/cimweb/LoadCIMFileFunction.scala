@@ -90,61 +90,13 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             else
                 options
 
-            // there is a problem (infinite loop) if post processing is done in the CIMReader
-            // so we extract out topo, edge, and join processing
-            var topo = false
-            var isld = false
-            var join = false
-            var edge = false
             val reader_options = new HashMap[String, String] ()
             for (option ← op)
-                option._1 match
-                {
-                    case "ch.ninecode.cim.do_topo" ⇒
-                        topo = isld || asBoolean (option._2)
-                    case "ch.ninecode.cim.do_topo_islands" ⇒
-                        isld = asBoolean (option._2)
-                        topo = topo || isld
-                    case "ch.ninecode.cim.do_join" ⇒
-                        join = asBoolean (option._2)
-                    case "ch.ninecode.cim.make_edges" ⇒
-                        edge = asBoolean (option._2)
-                    case _ ⇒
-                        reader_options.put (option._1, option._2)
-                }
+                reader_options.put (option._1, option._2)
             reader_options.put ("path", files.mkString (","))
-
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
             var count = elements.count
             val storage = StorageLevel.fromString (reader_options.getOrElse ("StorageLevel", "MEMORY_AND_DISK_SER"))
-            if (topo)
-            {
-                val ntp = CIMNetworkTopologyProcessor (spark)
-                val elements2 = ntp.process (
-                    CIMTopologyOptions (
-                        identify_islands = isld,
-                        force_retain_switches = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced")),
-                        force_retain_fuses = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced")),
-                        force_switch_separate_islands = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")),
-                        force_fuse_separate_islands = parseState (reader_options.getOrElse ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")),
-                        default_switch_open_state = asBoolean (reader_options.getOrElse ("ch.ninecode.cim.default_switch_open_state", "false")),
-                        debug = asBoolean (reader_options.getOrElse ("ch.ninecode.cim.debug", "false")),
-                        storage = storage)
-                    )
-                count = elements2.count
-            }
-            if (join)
-            {
-                val join = new CIMJoin (spark, storage)
-                val elements3 = join.do_join ()
-                count = elements3.count
-            }
-            if (edge)
-            {
-                val edges = new CIMEdges (spark, storage)
-                val elements4 = edges.make_edges (topo)
-                count = elements4.count
-            }
             response.add ("elements", count)
 
             // echo options to the response
@@ -153,10 +105,10 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             opts.add ("ch.ninecode.cim.do_about", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_about", "false")))
             opts.add ("ch.ninecode.cim.do_normalize", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_normalize", "false")))
             opts.add ("ch.ninecode.cim.do_deduplication", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_deduplication", "false")))
-            opts.add ("ch.ninecode.cim.make_edges", edge)
-            opts.add ("ch.ninecode.cim.do_join", join)
-            opts.add ("ch.ninecode.cim.do_topo_islands", isld)
-            opts.add ("ch.ninecode.cim.do_topo", topo)
+            opts.add ("ch.ninecode.cim.make_edges", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.make_edges", "false")))
+            opts.add ("ch.ninecode.cim.do_join", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_join", "false")))
+            opts.add ("ch.ninecode.cim.do_topo_islands", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo_islands", "false")))
+            opts.add ("ch.ninecode.cim.do_topo", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo", "false")))
             opts.add ("ch.ninecode.cim.force_retain_switches", reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced"))
             opts.add ("ch.ninecode.cim.force_retain_fuses", reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced"))
             opts.add ("ch.ninecode.cim.force_switch_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced"))

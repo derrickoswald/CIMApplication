@@ -49,6 +49,9 @@
                     <a class="nav-link" href="#map">Map</a>
                 </li>
                 <li>
+                    <a class="nav-link" href="#files" data-toggle="modal" data-target="#save_modal">Save</a>
+                </li>
+                <li>
                     <a class="nav-link" href="#analysis">Analysis</a>
                 </li>
                 <li>
@@ -305,6 +308,61 @@
     <section id="analysis" class="intro" style="display: none;"></section>
     <section id="simulate" class="intro" style="display: none;"></section>
     <section id="query" class="intro" style="display: none;"></section>
+
+    <!-- Save Dialog Modal -->
+    <div id="save_modal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fa fa-download"></i> Save</h2>
+                    <button id="close_save_modal" class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="col-form-label" for="save_name">File name</label>
+                            <input id="save_name" class="form-control" type="text" name="save_name" placeholder="save">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="col-form-label" for="rdf_about">About</label>
+                            <input id="rdf_about" class="form-control" type="text" name="rdf_about" placeholder="rdf:about contents">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="col-form-label" for="md_description">Description</label>
+                            <input id="md_description" class="form-control" type="text" name="md_description" placeholder="md:description contents">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <label class="form-check-label" for="full_model">
+                                <input id="full_model" type="radio" name="save_mode" class="form-check-input" checked style="margin-right: 20px;">Full model
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <label class="form-check-label" for="difference_model">
+                                <input id="difference_model" type="radio" name="save_mode" class="form-check-input" style="margin-right: 20px;">Difference model
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <label class="form-check-label" for="only_new">
+                                <input id="only_new" type="radio" name="save_mode" class="form-check-input" style="margin-right: 20px;">Only new elements as full model
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a id="save" href="" class="btn btn-info">Save</a>
+                    <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- SCRIPTS -->
 

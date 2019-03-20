@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "./clock", "../daterangepicker"],
+    ["../mustache", "./clock"],
     /**
      * @summary Sumulation legend control.
      * @description UI element for the simulation legend.
@@ -13,7 +13,7 @@ define
      * @exports simulation_legend
      * @version 1.0
      */
-    function (mustache, Clock, DateRangePicker)
+    function (mustache, Clock)
     {
         class SimulationLegend
         {
