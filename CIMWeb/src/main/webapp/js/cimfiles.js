@@ -53,49 +53,52 @@ define
                 LAST_DIRECTORY = root;
                 var parent = ("/" != root) ? root.substring (0, root.substring (0, root.length - 1).lastIndexOf ("/")) + "/" : "/";
                 var file_table_template =
-                    "<div class='container-fluid'>\n" +
-                    "  <div class='row justify-content-center'>\n" +
-                    "    <div class='col-1'>\n" +
-                    "    </div>\n" +
-                    "    <div class='col-10'>\n" +
-                    "      <h1>{{response.result.filesystem}}</h1>\n" +
-                    "      <h2>{{dir}}</h2>\n" +
-                    "      <form id='upload' class='form-inline float-left' role='form'>\n" +
-                    "          <input id='file' class='form-control' type='file' name='file'/>\n" +
-                    "          <button id='do_put' type='button' class='btn btn-primary'>Upload</button>\n" +
-                    "      </form>\n" +
-                    "      <form id='sideload' class='form-inline float-right' role='form'>\n" +
-                    "          <input id='url' class='form-control' type='text' name='url' placeholder='URL of RDF or ZIP'/>\n" +
-                    "          <button id='do_sideload' type='button' class='btn btn-primary'>Sideload</button>\n" +
-                    "      </form>\n" +
-                    "      <div class='table-responsive'>\n" +
-                    "        <table id='file_table' class='table table-striped table-hover'>\n" +
-                    "          <thead>\n" +
-                    "            <tr><td class='center'>Load</td><td class='center'>View</td><td>Path</td><td>Owner:Group</td><td>Permission</td><td>Modified</td><td class='right'>Size</td><td class='center'>Remove</td></tr>\n" +
-                    "          </thead>\n" +
-                    "{{{dots}}}\n" +
-                    "{{#response.result.files}}\n" +
-                    "          <tr>\n" +
-                    "            <td class='center'>{{{load}}}</td>\n" +
-                    "            <td class='center'>{{{view}}}</td>\n" +
-                    "            <td>{{{file}}}</td>\n" +
-                    "            <td>{{owner}}:{{group}}</td>\n" +
-                    "            <td>{{permission}}</td>\n" +
-                    "            <td>{{modified}}</td>\n" +
-                    "            <td class='right'>{{size}}</td>\n" +
-                    "            <td class='center'>{{{remove}}}</td>\n" +
-                    "          </tr>\n" +
-                    "{{/response.result.files}}\n" +
-                    "          <tfoot>\n" +
-                    "            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td id='total_size' class='right'></td><td class='center'></td></tr>\n" +
-                    "          </tfoot>\n" +
-                    "        </table>\n" +
-                    "      </div>\n" +
-                    "    </div>\n" +
-                    "    <div class='col-1'>\n" +
-                    "    </div>\n" +
-                    "  </div>\n" +
-                    "</div>\n";
+`<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-1">
+    </div>
+    <div class="col-10">
+      <h1>{{response.result.filesystem}}</h1>
+      <h2>{{dir}}</h2>
+      <form id="upload" class="form-inline float-left" role="form">
+          <input id="file" class="form-control" type="file" name="file"/>
+          <button id="do_put" type="button" class="btn btn-primary">Upload</button>
+      </form>
+      <form id="sideload" class="form-inline float-left" style="margin-left: 20px;" role="form">
+          <input id="url" class="form-control" type="text" name="url" placeholder="URL of RDF or ZIP"/>
+          <button id="do_sideload" type="button" class="btn btn-primary">Sideload</button>
+      </form>
+      <form id="load" class="form-inline float-right" style="margin-right: 25px;" role="form">
+          <button id="do_load" type="button" class="btn btn-primary">Load</button>
+      </form>
+      <div class="table-responsive">
+        <table id="file_table" class="table table-striped table-hover">
+          <thead>
+            <tr><td class="text-center">Load</td><td class="text-center">View</td><td>Path</td><td>Owner:Group</td><td>Permission</td><td>Modified</td><td class="text-center">Size</td><td class="text-center">Remove</td></tr>
+          </thead>
+{{{dots}}}
+{{#response.result.files}}
+          <tr>
+            <td style="text-align: center;">{{{load}}}</td>
+            <td class="text-center">{{{view}}}</td>
+            <td>{{{file}}}</td>
+            <td>{{owner}}:{{group}}</td>
+            <td>{{permission}}</td>
+            <td>{{modified}}</td>
+            <td class="text-right">{{size}}</td>
+            <td class="text-center">{{{remove}}}</td>
+          </tr>
+{{/response.result.files}}
+          <tfoot>
+            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td id="total_size" class="right"></td><td class="center"></td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="col-1">
+    </div>
+  </div>
+</div>`;
                 var text = mustache.render
                 (
                     file_table_template,
@@ -116,8 +119,8 @@ define
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
-                                "            <td class='right'></td>\n" +
-                                "            <td class='center'></td>\n" +
+                                "            <td></td>\n" +
+                                "            <td></td>\n" +
                                 "          </tr>\n"
                             :
                                 "")
@@ -128,7 +131,8 @@ define
                             if (this.is_directory)
                                 text = ""
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml") || this.path.endsWith (".csv"))
-                                text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_load (\"" + root + this.path + "\");}); return false;'><i class='fa fa-play'></i></a>";
+                                // tag these checkboxes with class 'filename'
+                                text = `<input class="filename" type="checkbox" name="` + root + this.path + `">`;
                             else
                                 text = ""
                             return (text);
@@ -168,6 +172,7 @@ define
                 );
                 document.getElementById ("files").innerHTML = text;
                 document.getElementById ("do_put").onclick = do_put;
+                document.getElementById ("do_load").onclick = do_load;
             }
             else
                 document.getElementById ("files").innerHTML = response.message;
@@ -341,6 +346,18 @@ define
                 }
                 reader.readAsArrayBuffer (data);
             }
+        }
+
+        function do_load (event)
+        {
+            // get the file list
+            var collection = document.getElementsByClassName ("filename");
+            var files = [];
+            for (var i = 0; i < collection.length; i++)
+                if (collection[i].checked)
+                    files.push (collection[i].getAttribute ("name"));
+            if (0 != files.length)
+                load_files (files)
         }
 
         /**
@@ -730,18 +747,19 @@ define
         /**
          * @summary Read the file contents in Spark.
          * @description Trigger CIMReader to read in the file.
-         * @param {string} path - the file to load
-         * @function do_load
+         * @param {[string]} paths - the files to load
+         * @function load_files
          * @memberOf module:cimfiles
          */
-        function do_load (path)
+        function load_files (paths)
         {
             var csv;
             var url;
             var xmlhttp;
 
-            csv = path.toLowerCase ().endsWith (".csv");
-            path = path.startsWith ("/") ? path : "/" + path + ";StorageLevel=" + storage_level ();
+            csv = paths[0].toLowerCase ().endsWith (".csv");
+            var path = paths.map (p => (p.startsWith ("/")) ? p : "/" + p).join ();
+            path = path + ";StorageLevel=" + storage_level ();
             if (do_about ())
                 path += ";do_about=true";
             if (do_normalize ())
@@ -855,7 +873,8 @@ define
                 do_remove: do_remove,
                 do_view: do_view,
                 do_load: do_load,
-                do_fetch: do_fetch
+                do_fetch: do_fetch,
+                load_files: load_files
             }
         );
     }
