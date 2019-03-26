@@ -180,64 +180,49 @@ define
 
         /**
          * @summary Get the file at the given path.
-         * @description Invoke the server-side function to get file data and execute the callback.
+         * @description Invoke the server-side function to get file data.
          * @param {string} path - the path to list (this is forced to start with a slash).
-         * @param {function} fn - the callback function with signature fn (text).
-         * @param {function} err - the JSON callback function for an error with signature fn (response).
+         * @return A Promise that resolves with the text of the file, or rejects with a status "FAIL".
          * @function get
          * @memberOf module:cimfiles
          */
-        function get (path, fn, err)
+        function get (path)
         {
-            var url;
-            var xmlhttp;
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        var url;
+                        var xmlhttp;
 
-            path = path || "";
-            path = path.startsWith ("/") ? path : "/" + path;
-            url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        fn (xmlhttp.responseText);
-                    else
-                        if (null != err)
-                            err ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-            };
-            xmlhttp.send ();
+                        path = path || "";
+                        path = path.startsWith ("/") ? path : "/" + path;
+                        url = util.home () + "cim/file" + path;
+                        xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            if (4 == xmlhttp.readyState)
+                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                                    resolve (xmlhttp.responseText);
+                                else
+                                    if (null != err)
+                                        reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
+                        };
+                        xmlhttp.send ();
+                    }
+                )
+            );
         }
 
         /**
          * @summary Read the list of files at the given path.
-         * @description Invoke the server-side function to list files and execute the callback.
-         * The response will have a status "FAIL" if the path does not exist
+         * @description Invoke the server-side function to list files.
          * @param {string} path - the path to list (this is forced to start and end with a slash).
-         * @param {function} fn - the callback function for returned JSON with signature fn (response).
+         * @return a Promise that resolves with the server response or rejects with a status "FAIL" if the path does not exist.
          * @function fetch
          * @memberOf module:cimfiles
          */
-        function fetch (path, fn)
-        {
-            var url;
-            var xmlhttp;
-
-            path = path.startsWith ("/") ? path : "/" + path;
-            path = path.endsWith ("/") ? path : path + "/";
-            url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        fn (JSON.parse (xmlhttp.responseText));
-                    else
-                        fn ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-            };
-            xmlhttp.send ();
-        }
-
-        function fetchPromise (path)
+        function fetch (path)
         {
             return (
                 new Promise (
@@ -274,39 +259,46 @@ define
          */
         function do_fetch (path)
         {
-            fetch (path, make_file_list);
+            fetch (path).then (make_file_list);
         }
 
         /**
          * @summary Put a file on HDFS.
-         * @description Store data at URL and callback.
+         * @description Store data at URL.
          * @param {string} path - the HDFS path for the data
          * - forced to start with a slash
          * - if there is no data and the url ends in a slash, creates a directory.
          * @param {blob} data - the contents of the file
-         * @param {function} - callback for JSON response with signature fn (response)
-         * @function do_put
+         * @return A Promise that resolves with the server response JSON, or rejects with a status "FAIL".
+         * @function put
          * @memberOf module:cimfiles
          */
-        function put (path, data, fn)
+        function put (path, data)
         {
-            var url;
-            var xmlhttp;
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        var url;
+                        var xmlhttp;
 
-            path = path.startsWith ("/") ? path : "/" + path;
-            url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("PUT", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                var resp;
+                        path = path.startsWith ("/") ? path : "/" + path;
+                        url = util.home () + "cim/file" + path;
+                        xmlhttp = util.createCORSRequest ("PUT", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            var resp;
 
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
-                        fn (JSON.parse (xmlhttp.responseText));
-                    else
-                        fn ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-            };
-            xmlhttp.send (data);
+                            if (4 == xmlhttp.readyState)
+                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                                    resolve (JSON.parse (xmlhttp.responseText));
+                                else
+                                    reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
+                        };
+                        xmlhttp.send (data);
+                    }
+                )
+            );
         }
 
         /**
@@ -323,14 +315,6 @@ define
             var name; // file name
             var zip; // boolean zip flag
 
-            function callback (response)
-            {
-                if (response.status == "OK")
-                    do_fetch (LAST_DIRECTORY);
-                else
-                    alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
-            }
-
             file = document.getElementById ("file");
             if (file.value != "")
             {
@@ -339,7 +323,17 @@ define
                 url = url.endsWith (".zip") ? url + ";unzip=true" : url;
                 var data = file.files[0];
                 var reader = new FileReader ();
-                reader.onload = function () { put (url, reader.result, callback); };
+                reader.onload = function () {
+                    put (url, reader.result).then (
+                        function (response)
+                        {
+                            if (response.status == "OK")
+                                do_fetch (LAST_DIRECTORY);
+                            else
+                                alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
+                        }
+                    );
+                };
                 reader.onerror = function (event)
                 {
                     alert (JSON.stringify (event, null, 4));
@@ -498,7 +492,7 @@ define
         /**
          * @summary Show what's loaded in Spark.
          * @description Fetch the full export and display in a cimmap.
-         * @function do_fetch
+         * @function do_show
          * @memberOf module:cimfiles
          */
         function do_show ()
@@ -866,7 +860,6 @@ define
                 initialize: initialize,
                 get: get,
                 fetch: fetch,
-                fetchPromise: fetchPromise,
                 do_fetch: do_fetch,
                 put: put,
                 do_put: do_put,

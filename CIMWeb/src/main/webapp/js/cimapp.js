@@ -201,7 +201,7 @@ define
                                                             var end = new Date ().getTime ();
                                                             console.log ("finished zip (" + (Math.round (end - start) / 1000) + " seconds)");
                                                             console.log ("starting upload");
-                                                            cimfiles.put (name + ".zip;unzip=true", blob,
+                                                            cimfiles.put (name + ".zip;unzip=true", blob).then (
                                                                 function (json)
                                                                 {
                                                                     console.log (JSON.stringify (json, null, 4));
@@ -209,7 +209,7 @@ define
                                                                     window.location.href = window.location.pathname + "#files";
                                                                     cimfiles.initialize ();
                                                                 }
-                                                            )
+                                                            );
                                                         }
                                                     );
                                                 }

@@ -940,7 +940,7 @@ truncate table cimapplication.losses_summary_by_day;
         function getFiles ()
         {
             return (
-                cimfiles.fetchPromise ("\\").then (
+                cimfiles.fetch ("\\").then (
                     function (response)
                     {
                         if (response.status == "OK")
