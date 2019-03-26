@@ -153,7 +153,11 @@ object Main
 
         opt [Complex]("netz_max").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_max = x)).
-            text ("maximum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
+            text ("network impedance at maximum power if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
+
+        opt [Double]("neta_max").valueName ("<angle>").
+            action ((x, c) ⇒ c.copy (default_network_angle_max = x)).
+            text ("network power factor angle at maximum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_max))
 
         opt [Double]("netp_min").valueName ("<Sk_min>").
             action ((x, c) ⇒ c.copy (default_network_power_min = x)).
@@ -161,7 +165,11 @@ object Main
 
         opt [Complex]("netz_min").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_min = x)).
-            text ("minimum network impedance if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
+            text ("network impedance at minumum power if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
+
+        opt [Double]("neta_min").valueName ("<angle>").
+            action ((x, c) ⇒ c.copy (default_network_angle_min = x)).
+            text ("network power factor angle at minimum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_min))
 
         opt [Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
