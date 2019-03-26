@@ -142,7 +142,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- assemblies for stand-alone programs -->
+            <!-- assembly for stand-alone program -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
