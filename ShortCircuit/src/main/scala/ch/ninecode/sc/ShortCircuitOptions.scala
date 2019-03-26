@@ -8,9 +8,11 @@ import ch.ninecode.gl.Complex
  * @param verbose                             flag to output progress and interesting values
  * @param description                         text describing this program execution
  * @param default_short_circuit_power_max     maximum available short circuit power (at transformer primary) to be used if no equivalent injection is found (VA)
- * @param default_short_circuit_impedance_max maximum short circuit impedance to be used if no equivalent injection is found (Ω)
+ * @param default_short_circuit_impedance_max short circuit impedance to be used under maximum conditions if no equivalent injection is found (Ω)
+ * @param default_short_circuit_angle_max     short circuit angle to be used under maximum conditions if no equivalent injection is found, overrides impedance if specified (°)
  * @param default_short_circuit_power_min     minimum available short circuit power (at transformer primary) to be used if no equivalent injection is found (VA)
- * @param default_short_circuit_impedance_min minimum short circuit impedance to be used if no equivalent injection is found (Ω)
+ * @param default_short_circuit_impedance_min short circuit impedance to be used under minimum conditions if no equivalent injection is found (Ω)
+ * @param default_short_circuit_angle_min     short circuit angle to be used under minimum conditions if no equivalent injection is found, overrides impedance if specified (°)
  * @param default_transformer_power_rating    default transformer maximum power rating to be applied if a transformer has no ratedS specified (VA)
  * @param default_transformer_impedance       characteristic impedance to be applied if a transformer has no r or x specified (Ω)
  * @param base_temperature                    temperature of elements in the input CIM file (°C)
@@ -33,8 +35,10 @@ case class ShortCircuitOptions
     description: String = "",
     default_short_circuit_power_max: Double = 200.0e6,
     default_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+    default_short_circuit_angle_max: Double = Double.NaN,
     default_short_circuit_power_min: Double = 100.0e6,
-    default_short_circuit_impedance_min: Complex = Complex (0.437785783, -1.202806555),
+    default_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
+    default_short_circuit_angle_min: Double = Double.NaN,
     default_transformer_power_rating: Double = 630000,
     default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
     base_temperature: Double = 20.0,

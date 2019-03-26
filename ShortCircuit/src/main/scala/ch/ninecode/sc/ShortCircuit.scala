@@ -938,12 +938,16 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         FData.fuse_sizing_table (options.fuse_table)
         assert (null != get [TopologicalNode], "no topology")
 
-        val _transformers = new Transformers (spark, storage_level)
-        val transformer_data = _transformers.getTransformers (
+        val transformer_data = new Transformers (
+            spark,
+            storage_level,
             options.default_short_circuit_power_max,
             options.default_short_circuit_impedance_max,
+            options.default_short_circuit_angle_max,
             options.default_short_circuit_power_min,
-            options.default_short_circuit_impedance_min)
+            options.default_short_circuit_impedance_min,
+            options.default_short_circuit_angle_min
+        ).getTransformers ()
 
         val transformers = if (null != options.trafos && "" != options.trafos && "all" != options.trafos)
         {
