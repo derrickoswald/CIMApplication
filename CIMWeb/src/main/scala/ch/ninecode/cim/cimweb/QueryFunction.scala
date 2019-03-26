@@ -1,11 +1,14 @@
 package ch.ninecode.cim.cimweb
 
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+import java.util.Base64
+
 import javax.json.Json
 import javax.json.JsonObjectBuilder
 import javax.json.JsonStructure
 
 import scala.collection.JavaConversions._
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -58,32 +61,39 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             val typ: DataType = definitions.getType (index) // column.getType
             typ.getName match
             {
-                case ASCII ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case BIGINT ⇒ if (!row.isNull(index)) ret.add (name, row.getLong (index))
-                case BLOB ⇒ if (!row.isNull(index)) ret.add (name, row.getBytes (index).toString) // ToDo: handle blob
-                case BOOLEAN ⇒ if (!row.isNull(index)) ret.add (name, row.getBool (index))
-                case COUNTER ⇒ if (!row.isNull(index)) ret.add (name, row.getLong (index)) // ToDo: counter?
-                case DECIMAL ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case DOUBLE ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case FLOAT ⇒ if (!row.isNull(index)) ret.add (name, row.getDouble (index))
-                case INET ⇒ if (!row.isNull(index)) ret.add (name, row.getInet (index).toString) // ToDo: internet address?
-                case INT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case TEXT ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case TIMESTAMP ⇒ if (!row.isNull(index)) ret.add (name, row.getTimestamp (index).getTime)
-                case UUID ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case VARCHAR ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case VARINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
-                case TIMEUUID ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index))
-                case LIST ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: list of what?
-                case SET ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: set?
-                case MAP ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: map?
-                case CUSTOM ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: custom?
-                case UDT ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: udt?
-                case TUPLE ⇒ if (!row.isNull(index)) ret.add (name, row.getString (index)) // ToDo: tuple?
-                case SMALLINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case TINYINT ⇒ if (!row.isNull(index)) ret.add (name, row.getInt (index))
-                case DATE ⇒ if (!row.isNull(index)) ret.add (name, row.getDate (index).toString)
-                case TIME ⇒ if (!row.isNull(index)) ret.add (name, row.getTime (index).toString)
+                case ASCII ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case BIGINT ⇒ if (!row.isNull (index)) ret.add (name, row.getLong (index))
+                case BLOB ⇒
+                    if (!row.isNull (index))
+                    {
+                        val bytes = row.getBytes (index).asReadOnlyBuffer
+                        val encoded = Base64.getEncoder.encode (bytes)
+                        val string = new String (encoded.array, StandardCharsets.UTF_8)
+                        ret.add (name, string)
+                    }
+                case BOOLEAN ⇒ if (!row.isNull (index)) ret.add (name, row.getBool (index))
+                case COUNTER ⇒ if (!row.isNull (index)) ret.add (name, row.getLong (index)) // ToDo: counter?
+                case DECIMAL ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case DOUBLE ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case FLOAT ⇒ if (!row.isNull (index)) ret.add (name, row.getDouble (index))
+                case INET ⇒ if (!row.isNull (index)) ret.add (name, row.getInet (index).toString) // ToDo: internet address?
+                case INT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case TEXT ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case TIMESTAMP ⇒ if (!row.isNull (index)) ret.add (name, row.getTimestamp (index).getTime)
+                case UUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case VARCHAR ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case VARINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
+                case TIMEUUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+                case LIST ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: list of what?
+                case SET ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
+                case MAP ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: map?
+                case CUSTOM ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
+                case UDT ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
+                case TUPLE ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?
+                case SMALLINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case TINYINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index))
+                case DATE ⇒ if (!row.isNull (index)) ret.add (name, row.getDate (index).toString)
+                case TIME ⇒ if (!row.isNull (index)) ret.add (name, row.getTime (index).toString)
             }
         }
         ret
