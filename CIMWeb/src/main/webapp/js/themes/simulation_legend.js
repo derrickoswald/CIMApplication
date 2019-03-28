@@ -7,7 +7,7 @@ define
 (
     ["../mustache", "./clock"],
     /**
-     * @summary Sumulation legend control.
+     * @summary Simulation legend control.
      * @description UI element for the simulation legend.
      * @name simulation_legend
      * @exports simulation_legend

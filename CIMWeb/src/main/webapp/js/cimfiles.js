@@ -392,7 +392,7 @@ define
         }
 
         /**
-         * @summary Parse a zip file.
+         * @summary Parse a file.
          * @description Read in a CIM file.
          * @param {Blob} blob - the blob of CIM data
          * @function read_cim
@@ -411,7 +411,7 @@ define
                     if (0 != context.ignored)
                         console.log (context.ignored.toString () + " unrecognized element" + ((1 < context.ignored) ? "s" : ""));
                     cimmap.set_data (context.parsed);
-                    cimmap.set_loaded ({ files: blobs.map (b => b.name), options: {}, elements: elements });
+                    cimmap.set_loaded ({ files: blob.name, options: {}, elements: elements });
                 }
             );
         }
@@ -864,6 +864,8 @@ define
                 put: put,
                 do_put: do_put,
                 do_remove: do_remove,
+                read_cim: read_cim,
+                read_zip: read_zip,
                 do_view: do_view,
                 do_load: do_load,
                 do_fetch: do_fetch,

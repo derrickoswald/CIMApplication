@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
+    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/project_theme"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
+    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, ProjectTheme)
     {
         /**
          * The map object.
@@ -34,6 +34,7 @@ define
         TheThemer.addTheme (new VoltageTheme ());
         TheThemer.addTheme (new IslandTheme ());
         TheThemer.addTheme (new InServiceTheme ());
+        TheThemer.addTheme (new ProjectTheme ());
         TheThemer.theme_change_listener (redraw);
 
         /**
@@ -156,13 +157,16 @@ define
         /**
          * Set the CIM data for the map to draw.
          * @param {JSON} Data parsed from the cim module.
+         * @param nozoom If <code>true</code> does not perform a zoom extents.
          * @function set_data
          * @memberOf module:cimmap
          */
-        function set_data (data)
+        function set_data (data, nozoom)
         {
             CIM_Data = data;
-            make_map ().then (zoom_extents);;
+            var make = make_map ();
+            if (!nozoom)
+                make.then (zoom_extents);
         }
 
         /**

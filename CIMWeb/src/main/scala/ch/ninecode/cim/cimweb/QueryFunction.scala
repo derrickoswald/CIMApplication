@@ -68,7 +68,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                     {
                         val bytes = row.getBytes (index).asReadOnlyBuffer
                         val encoded = Base64.getEncoder.encode (bytes)
-                        val string = new String (encoded.array, StandardCharsets.UTF_8)
+                        val string = new String (encoded.array, StandardCharsets.US_ASCII)
                         ret.add (name, string)
                     }
                 case BOOLEAN ⇒ if (!row.isNull (index)) ret.add (name, row.getBool (index))
