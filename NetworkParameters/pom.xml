@@ -25,6 +25,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMExport</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.github.scopt</groupId>
             <artifactId>scopt_${version.dependency.scala}</artifactId>
             <version>${version.dependency.scopt}</version>

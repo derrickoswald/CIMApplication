@@ -221,14 +221,14 @@ define
                                                                         }
                                                                     self._cimmap.set_data (original, true);
                                                                     var loaded = self._cimmap.get_loaded ();
-                                                                    loaded.files = loaded.files + "_" + name;
+                                                                    loaded.files.push (name);
                                                                     loaded.elements = loaded.elements + elements;
                                                                     self._cimmap.set_loaded (loaded);
                                                                 }
                                                                 else
                                                                 {
                                                                     self._cimmap.set_data (context.parsed, true);
-                                                                    self._cimmap.set_loaded ({ files: name, options: {}, elements: elements });
+                                                                    self._cimmap.set_loaded ({ files: [name], options: {}, elements: elements });
                                                                 }
                                                             }
                                                         );
