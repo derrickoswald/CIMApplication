@@ -295,8 +295,8 @@ define
                     }
                 );
 
-                // simple circle from 14 to 25
-                map.addLayer (layers.full_circle_layer ("nodes", "nodes", "#000000"))
+                // label the polygons
+                map.addLayer (layers.label_layer ("nodes", "nodes", "#000000"))
 
                 // lines 3 pixels wide
                 map.addLayer (layers.line_layer ("edges", "edges", "#000000"));
@@ -350,6 +350,46 @@ define
                 };
             }
 
+            centroid (coordinates)
+            {
+                var centroid = [0.0, 0.0];
+                var area = 0.0;
+                var x0 = 0.0; // current vertex X
+                var y0 = 0.0; // current vertex Y
+                var x1 = 0.0; // next vertex X
+                var y1 = 0.0; // next vertex Y
+                var a = 0.0;  // partial signed area
+
+                coordinates.forEach (
+                    perimeter =>
+                    {
+                        for (var i = 0; i < perimeter.length - 1; ++i)
+                        {
+                            x0 = perimeter[i][0];
+                            y0 = perimeter[i][1];
+                            if (i == perimeter.length - 1)
+                            {
+                                x1 = perimeter[0][0];
+                                y1 = perimeter[0][1];
+                            }
+                            else
+                            {
+                                x1 = perimeter[i+1][0];
+                                y1 = perimeter[i+1][1];
+                            }
+                            a = x0 * y1 - x1 * y0;
+                            area += a;
+                            centroid[0] += (x0 + x1) * a;
+                            centroid[1] += (y0 + y1) * a;
+                        }
+                    }
+                );
+                centroid[0] /= (3.0 * area);
+                centroid[1] /= (3.0 * area);
+
+                return (centroid);
+            }
+
             setProjectGeoJSON_Polygons (data)
             {
                 //  {"id": "2f956deb-75ba-426a-99be-a29684ab8428", "name": "TX0001", "geometry": {"type": "Polygon", "coordinates": [[[5.270025681883567, 51.471759093742094], [5.269886154431646, 51.47177654841522], [5.269554541950953, 51.471945318378914], [5.269122160971165, 51.47240697336926], [5.269002467393875, 51.47254885425582], [5.269002467393875, 51.47254888036082], [5.269022391821153, 51.47278951418596], [5.269132702340698, 51.47281786323444], [5.269132722169161, 51.47281786547049], [5.269623965172592, 51.472633014284845], [5.269901236980701, 51.47206227547255], [5.270012366281179, 51.471814907323335], [5.270025681883567, 51.471759093742094]]]}, "properties": {"name": "TX0001"}, "type": "Feature"}
@@ -360,6 +400,33 @@ define
                     "type" : "FeatureCollection",
                     "features" : features
                 };
+
+                // generate the labels JSON
+                this._project_points =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                features.forEach (
+                    polygon =>
+                    {
+                        var position = this.centroid (polygon.geometry.coordinates);
+                        this._project_points.features.push
+                        (
+                            {
+                                type : "Feature",
+                                geometry :
+                                {
+                                    type : "Point",
+                                    coordinates : position
+                                },
+                                properties : polygon.properties
+                            }
+                        );
+                    }
+                )
+
+                // get the extents of the theme
                 var extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
                 features.forEach (
                     polygon =>
@@ -402,7 +469,12 @@ define
                 var self = this;
                 var promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
                 .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
-                .then (() => self._TheMap.getSource ("areas").setData (self._project_polygons))
+                .then (() =>
+                    {
+                        self._TheMap.getSource ("areas").setData (self._project_polygons);
+                        self._TheMap.getSource ("nodes").setData (self._project_points);
+                    }
+                )
                 .then (() => self._cimmap.set_data (null));
 
                 return (promise);

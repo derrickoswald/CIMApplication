@@ -182,13 +182,43 @@ define
             return (ret);
         }
 
+        function label_layer (id, source, color, filter)
+        {
+            var ret =
+                {
+                    id: id,
+                    type: "symbol",
+                    source: source,
+                    layout:
+                    {
+                        "text-field": "{name}",
+                        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+                        "text-allow-overlap": true,
+                        "text-size":
+                        {
+                            stops: [[12, 8], [17, 16], [18, 24], [19, 48], [20, 56]]
+                        }
+
+                    },
+                    paint:
+                    {
+                        "text-color": color
+                    }
+                };
+            if ("undefined" != typeof (filter) && (null != filter))
+                ret.filter = filter;
+
+            return (ret);
+        }
+
         return (
             {
                 line_layer: line_layer,
                 circle_layer: circle_layer,
                 symbol_layer: symbol_layer,
                 full_circle_layer: full_circle_layer,
-                polygon_layer: polygon_layer
+                polygon_layer: polygon_layer,
+                label_layer: label_layer
             }
         );
     }
