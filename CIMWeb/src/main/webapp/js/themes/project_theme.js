@@ -88,6 +88,7 @@ define
                 {
                     this._TheMap.removeLayer ("nodes");
                     this._TheMap.removeLayer ("edges");
+                    this._TheMap.removeLayer ("edge_labels");
                     this._TheMap.removeLayer ("areas");
                     this._TheMap.removeSource ("nodes");
                     this._TheMap.removeSource ("edges");
@@ -161,6 +162,7 @@ define
                 };
                 this._TheMap.getSource ("nodes").setData (this._project_points);
                 this._TheMap.getSource ("edges").setData (this._project_lines);
+                this._TheMap.getSource ("edge_labels").setData (this._project_lines);
                 this._TheMap.getSource ("areas").setData (this._project_polygons);
             }
 
@@ -271,7 +273,7 @@ define
                     {
                         type: "geojson",
                         data: this._project_points,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 
@@ -281,7 +283,7 @@ define
                     {
                         type: "geojson",
                         data: this._project_lines,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 
@@ -291,15 +293,16 @@ define
                     {
                         type: "geojson",
                         data: this._project_polygons,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 
                 // label the polygons
-                map.addLayer (layers.label_layer ("nodes", "nodes", "#000000"))
+                map.addLayer (layers.label_layer ("nodes", "nodes", "point", "{name}", "#0000ff"))
 
-                // lines 3 pixels wide
-                map.addLayer (layers.line_layer ("edges", "edges", "#000000"));
+                // yellow lines 3 pixels wide with a label
+                map.addLayer (layers.line_layer ("edges", "edges", "#ffff00"));
+                map.addLayer (layers.label_layer ("edge_labels", "edges", "line-center", "{mrid}:{island1}-{island2}", "#000000"))
 
                 // blue with border
                 map.addLayer (layers.polygon_layer ("areas", "areas", "#0000ff", "#000000"))
@@ -341,13 +344,43 @@ define
 
             setProjectGeoJSON_Lines (data)
             {
-                var features = data.map (this.fixup);
-                // the lines GeoJSON
+                // id                                   | mrid     | island1 | island2
+                //--------------------------------------+----------+---------+---------
+                // d0d17f07-7dcf-4208-9a45-f16eab441739 | JPR00001 |  TX0002 |  TX0001
+
+                // generate the link lines JSON
                 this._project_lines =
                 {
                     "type" : "FeatureCollection",
-                    "features" : features
+                    "features" : []
                 };
+                data.forEach ((row) =>
+                    {
+                        var coordinates_island1 = this._project_points.features.find ((x) => x.properties.name == row.island1).geometry.coordinates;
+                        var coordinates_island2 = this._project_points.features.find ((x) => x.properties.name == row.island2).geometry.coordinates;
+                        // shorten the lines by 8% on each end using the parametric form of the line x = x0 + at; y = y0 + bt
+                        var offset = 8. / 100.0;
+                        var x0 = coordinates_island1[0];
+                        var y0 = coordinates_island1[1];
+                        var a = (coordinates_island2[0] - x0);
+                        var b = (coordinates_island2[1] - y0);
+                        var p1 = [x0 + a * offset, y0 + b * offset];
+                        var p2 = [x0 + a * (1.0 - offset), y0 + b * (1.0 - offset)];
+                        delete row.id;
+                        this._project_lines.features.push
+                        (
+                            {
+                                type : "Feature",
+                                geometry :
+                                {
+                                    type : "LineString",
+                                    coordinates : [p1, p2]
+                                },
+                                properties : row
+                            }
+                        );
+                    }
+                );
             }
 
             centroid (coordinates)
@@ -468,14 +501,17 @@ define
                 this._project = id;
                 var self = this;
                 var promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
-                .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
-                .then (() =>
-                    {
-                        self._TheMap.getSource ("areas").setData (self._project_polygons);
-                        self._TheMap.getSource ("nodes").setData (self._project_points);
-                    }
-                )
-                .then (() => self._cimmap.set_data (null));
+                    .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
+                    .then (() =>
+                        {
+                            self._TheMap.getSource ("areas").setData (self._project_polygons);
+                            self._TheMap.getSource ("nodes").setData (self._project_points);
+                        }
+                    )
+                    .then (() => cimquery.queryPromise ({ sql: "select * from " + keyspace + ".boundary_switches where id='" + id + "'", cassandra: true }))
+                    .then (data => self.setProjectGeoJSON_Lines.call (self, data))
+                    .then (() => self._TheMap.getSource ("edges").setData (self._project_lines))
+                    .then (() => self._cimmap.set_data (null));
 
                 return (promise);
             }

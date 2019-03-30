@@ -427,7 +427,7 @@ define
                     {
                         type: "geojson",
                         data: this._simulation_points,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 
@@ -437,7 +437,7 @@ define
                     {
                         type: "geojson",
                         data: this._simulation_lines,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 
@@ -447,7 +447,7 @@ define
                     {
                         type: "geojson",
                         data: this._simulation_polygons,
-                        maxzoom: 25
+                        maxzoom: 24
                     }
                 );
 

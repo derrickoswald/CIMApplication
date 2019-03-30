@@ -182,7 +182,7 @@ define
             return (ret);
         }
 
-        function label_layer (id, source, color, filter)
+        function label_layer (id, source, placement, text, color, filter)
         {
             var ret =
                 {
@@ -191,7 +191,9 @@ define
                     source: source,
                     layout:
                     {
-                        "text-field": "{name}",
+                        "symbol-placement": placement,
+                        "text-field": text,
+                        "text-justify": "center",
                         "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
                         "text-allow-overlap": true,
                         "text-size":
@@ -205,6 +207,13 @@ define
                         "text-color": color
                     }
                 };
+            if (placement == "line" || placement == "line-center")
+            {
+                ret.paint["text-halo-color"] = "#ffffff";
+                ret.paint["text-halo-width"] = 8;
+                ret.layout["text-allow-overlap"] = false;
+                ret.layout["symbol-avoid-edges"] = true;
+            }
             if ("undefined" != typeof (filter) && (null != filter))
                 ret.filter = filter;
 
