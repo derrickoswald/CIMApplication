@@ -4,8 +4,8 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimsimulate"],
-    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimsimulate)
+    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimsimulate", "themes/project_theme"],
+    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimsimulate, ProjectTheme)
     {
         /**
          * Get the hash portion of the url.
@@ -93,7 +93,12 @@ requirejs
                     switch (next)
                     {
                         case "files": cimfiles.initialize (event); break;
-                        case "map": cimmap.initialize (event); break;
+                        case "map":
+                            cimmap.initialize (event);
+                            var theme = new ProjectTheme ();
+                            cimmap.get_themer ().removeTheme (theme);
+                            cimmap.get_themer ().addTheme (theme);
+                            break;
                         case "analysis": cimanalysis.initialize (event); break;
                         case "simulate": cimsimulate.initialize (event); break;
                         case "query": cimquery.initialize (event); break;

@@ -302,7 +302,7 @@ define
 
                 // yellow lines 3 pixels wide with a label
                 map.addLayer (layers.line_layer ("edges", "edges", "#ffff00"));
-                map.addLayer (layers.label_layer ("edge_labels", "edges", "line-center", "{mrid}:{island1}-{island2}", "#000000"))
+                map.addLayer (layers.label_layer ("edge_labels", "edges", "line-center", "{mrid}: {island1}-{island2}", "#000000"))
 
                 // blue with border
                 map.addLayer (layers.polygon_layer ("areas", "areas", "#0000ff", "#000000"))

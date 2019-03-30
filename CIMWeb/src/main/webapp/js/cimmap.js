@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/project_theme"],
+    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, ProjectTheme)
+    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme)
     {
         /**
          * The map object.
@@ -34,7 +34,6 @@ define
         TheThemer.addTheme (new VoltageTheme ());
         TheThemer.addTheme (new IslandTheme ());
         TheThemer.addTheme (new InServiceTheme ());
-        TheThemer.addTheme (new ProjectTheme ());
         TheThemer.theme_change_listener (redraw);
 
         /**
