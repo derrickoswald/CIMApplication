@@ -1412,6 +1412,8 @@ define
                     measure: measure,
                     search: search,
                     redraw: redraw,
+                    default_mousedown_listener: default_mousedown_listener,
+                    default_touchstart_listener: default_touchstart_listener,
                     add_listeners: add_listeners,
                     remove_listeners: remove_listeners,
                     initialize: initialize,

@@ -38,7 +38,6 @@ define
                 this._extents = { xmin: 0.0, ymin: 0.0, xmax: 0.0, ymax: 0.0 };
                 this._render_listener = null;
                 this.getLegend ().legend_change_listener (this.legend_changed.bind (this));
-                this._Trafo = null;
             }
 
             getName ()
@@ -102,8 +101,10 @@ define
                 super.remove_theme ();
             }
 
-            click (x, y)
+            click (event)
             {
+                var x = event.point.x;
+                var y = event.point.y;
                 var width = 4;
                 var height = 4;
                 var features = this._TheMap.queryRenderedFeatures
@@ -120,8 +121,19 @@ define
                     for (var i = 0; i < features.length; i++)
                         if (features[i].layer.id == "areas")
                             trafo = features[i].properties.name;
-                    if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo))
-                        this.load_trafo (trafo);
+                    if (trafo)
+                    {
+                        // check if it's already loaded
+                        var loaded = this._cimmap.get_loaded ();
+                        var existing = loaded && loaded.files.includes (trafo);
+                        if (existing)
+                            // pass click up to map
+                            this._cimmap.default_mousedown_listener (event);
+                        else
+                            this.load_trafo (trafo);
+                    }
+                    else
+                        this._cimmap.default_mousedown_listener (event);
                 }
             }
 
@@ -139,7 +151,7 @@ define
                     var leftbutton = 0 != (buttons & 1);
                     var rightbutton = 0 != (buttons & 2);
                     if (leftbutton)
-                        this.click (event.point.x, event.point.y);
+                        this.click (event);
                 }
             }
 
