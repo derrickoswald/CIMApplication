@@ -195,8 +195,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
 
     test ("Ingest")
     {
-        // assumes schema has been set up, e.g. cqlsh --file schema.sql beach
-        // to reset use:
+        // to reset schema use:
         // delete from cimapplication.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy');
         main (Array ("--unittest", "--verbose",
             "--master", "local[*]",

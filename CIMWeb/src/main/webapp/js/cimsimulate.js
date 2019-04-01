@@ -51,7 +51,7 @@ truncate table cimapplication.losses_summary_by_day;
                     "ch.ninecode.cim.do_deduplication": false,
                     "ch.ninecode.cim.make_edges": false,
                     "ch.ninecode.cim.do_join": false,
-                    "ch.ninecode.cim.do_topo_islands": false,
+                    "ch.ninecode.cim.do_topo_islands": true,
                     "ch.ninecode.cim.do_topo": false,
                     "ch.ninecode.cim.split_maxsize": 67108864
                 },

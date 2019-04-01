@@ -15,13 +15,13 @@ import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
 import scala.collection._
+
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -370,10 +370,11 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
     /**
+     * Decode an OBIS code into actionable values.
      *
-     * @param code
-     * @param units
-     * @param factor
+     * @param code the OBIS code to deconstruct
+     * @param units the original units provided for the values
+     * @param factor the original scaling factor for the values
      * @return (type: e.g. energy or power, real: true if active, imag: true if reactive, units: e.g. Wh, factor: to multiply the values by)
      */
     def decode_obis (code: String, units: String, factor: String): (String, Boolean, Boolean, String, Double) =
@@ -515,30 +516,35 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         val begin = System.nanoTime ()
 
-        val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
-        if (mapping_files.nonEmpty) // e.g. "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
+        val schema = Schema (session, options.keyspace, true)
+        if (schema.make)
         {
-            val filename = mapping_files.head
-            val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
-            val read = System.nanoTime ()
-            log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
-
-            val ch_number = dataframe.schema.fieldIndex (options.metercol)
-            val nis_number = dataframe.schema.fieldIndex (options.mridcol)
-            val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
-
-            val map = System.nanoTime ()
-            log.info ("map: %s seconds".format ((map - read) / 1e9))
-
-            // dumpHeap ()
-            options.format.toString match
+            val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
+            if (mapping_files.nonEmpty) // e.g. "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
             {
-                case "Belvis" ⇒ options.datafiles.foreach (process_belvis (join_table))
-                case "LPEx" ⇒ options.datafiles.foreach (process_lpex (join_table))
-            }
+                val filename = mapping_files.head
+                val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
-            hdfs.delete (new Path (filename), false)
+                val read = System.nanoTime ()
+                log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
+
+                val ch_number = dataframe.schema.fieldIndex (options.metercol)
+                val nis_number = dataframe.schema.fieldIndex (options.mridcol)
+                val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+
+                val map = System.nanoTime ()
+                log.info ("map: %s seconds".format ((map - read) / 1e9))
+
+                // dumpHeap ()
+                options.format.toString match
+                {
+                    case "Belvis" ⇒ options.datafiles.foreach (process_belvis (join_table))
+                    case "LPEx" ⇒ options.datafiles.foreach (process_lpex (join_table))
+                }
+
+                hdfs.delete (new Path (filename), false)
+            }
         }
     }
 }
