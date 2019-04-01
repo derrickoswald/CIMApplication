@@ -7,19 +7,20 @@
 */
 // Follow the UMD template https://github.com/umdjs/umd/blob/master/templates/returnExportsGlobal.js
 (function (root, factory) {
+    var jQuery = (typeof window != 'undefined') ? window.jQuery : undefined;
+    if (!jQuery)
+    {
+        jQuery = require('jquery');
+        if (!jQuery.fn)
+            jQuery.fn = {};
+    }
     if (typeof define === 'function' && define.amd) {
         // AMD. Make globaly available as well
-        define(['moment', 'jquery'], function (moment, jquery) {
-            return (root.daterangepicker = factory(moment, jquery));
+        define(['moment'], function (moment) {
+            return (root.daterangepicker = factory(moment, jQuery));
         });
     } else if (typeof module === 'object' && module.exports) {
         // Node / Browserify
-        //isomorphic issue
-        var jQuery = (typeof window != 'undefined') ? window.jQuery : undefined;
-        if (!jQuery) {
-            jQuery = require('jquery');
-            if (!jQuery.fn) jQuery.fn = {};
-        }
         module.exports = factory(require('moment'), jQuery);
     } else {
         // Browser globals

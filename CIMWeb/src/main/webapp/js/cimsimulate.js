@@ -6,7 +6,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme"], // "daterangepicker",
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme", "daterangepicker"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
@@ -31,7 +31,7 @@ truncate table cimapplication.losses_summary_by_day;
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme) // DateRangePicker,
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme, DateRangePicker)
     {
         // The Cassandra keyspace where measurement data is read from for player files
         var input_keyspace = "cimapplication";
@@ -820,23 +820,23 @@ truncate table cimapplication.losses_summary_by_day;
             // see https://wireddots.com/products/datetimepicker
             var start = new Date (TheSimulation.interval.start);
             var end = new Date (TheSimulation.interval.end);
-//            var dater = new DateRangePicker (
-//                "#simulation_timerange",
-//                {
-//                    timePicker: true,
-//                    timePickerIncrement: 15,
-//                    locale: {
-//                        format: 'YYYY.MM.DD HH:mm'
-//                    },
-//                    timePicker24Hour: true,
-//                    linkedCalendars: false,
-//                    startDate: start,
-//                    endDate: end,
-//                    showDropdowns: true
-//                    //showISOWeekNumbers: true
-//                },
-//                setDateRange
-//            );
+            var dater = new DateRangePicker (
+                "#simulation_timerange",
+                {
+                    timePicker: true,
+                    timePickerIncrement: 15,
+                    locale: {
+                        format: 'YYYY.MM.DD HH:mm'
+                    },
+                    timePicker24Hour: true,
+                    linkedCalendars: false,
+                    startDate: start,
+                    endDate: end,
+                    showDropdowns: true
+                    //showISOWeekNumbers: true
+                },
+                setDateRange
+            );
             if (null == TransformerChooser)
             {
                 var help =
@@ -1078,26 +1078,26 @@ truncate table cimapplication.losses_summary_by_day;
                                 {
                                     var start = minmax[0];
                                     var end = minmax[1];
-//                                    setDateRange (start, end);
-//                                    var dater = new DateRangePicker (
-//                                        "#simulation_timerange",
-//                                        {
-//                                            timePicker: true,
-//                                            timePickerIncrement: 15,
-//                                            locale: {
-//                                                format: 'YYYY.MM.DD HH:mm'
-//                                            },
-//                                            timePicker24Hour: true,
-//                                            linkedCalendars: false,
-//                                            startDate: start,
-//                                            endDate: end,
-//                                            minDate: start,
-//                                            maxDate: end,
-//                                            showDropdowns: true
-//                                            //showISOWeekNumbers: true
-//                                        },
-//                                        setDateRange
-//                                    );
+                                    setDateRange (start, end);
+                                    var dater = new DateRangePicker (
+                                        "#simulation_timerange",
+                                        {
+                                            timePicker: true,
+                                            timePickerIncrement: 15,
+                                            locale: {
+                                                format: 'YYYY.MM.DD HH:mm'
+                                            },
+                                            timePicker24Hour: true,
+                                            linkedCalendars: false,
+                                            startDate: start,
+                                            endDate: end,
+                                            minDate: start,
+                                            maxDate: end,
+                                            showDropdowns: true
+                                            //showISOWeekNumbers: true
+                                        },
+                                        setDateRange
+                                    );
                                     // unfortunately you can't set the min and max date as well, so this doesn't work:
                                     // $('#simulation_timerange').data('daterangepicker').setEndDate (end);
                                     // $('#simulation_timerange').data('daterangepicker').setStartDate (start);
