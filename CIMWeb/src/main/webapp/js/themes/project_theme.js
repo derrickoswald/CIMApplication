@@ -317,7 +317,7 @@ define
                 map.addLayer (layers.label_layer ("edge_labels", "edges", "line-center", "{mrid}: {island1}-{island2}", "#000000"))
 
                 // blue with border
-                map.addLayer (layers.polygon_layer ("areas", "areas", "#0000ff", "#000000"))
+                map.addLayer (layers.polygon_layer ("areas", "areas", { type: "identity", property: "color" }, "#000000"))
 
                 var end = new Date ().getTime ();
                 console.log ("finished rendering project data (" + (Math.round (end - start) / 1000) + " seconds)");
@@ -437,8 +437,12 @@ define
 
             setProjectGeoJSON_Polygons (data)
             {
-                //  {"id": "2f956deb-75ba-426a-99be-a29684ab8428", "name": "TX0001", "geometry": {"type": "Polygon", "coordinates": [[[5.270025681883567, 51.471759093742094], [5.269886154431646, 51.47177654841522], [5.269554541950953, 51.471945318378914], [5.269122160971165, 51.47240697336926], [5.269002467393875, 51.47254885425582], [5.269002467393875, 51.47254888036082], [5.269022391821153, 51.47278951418596], [5.269132702340698, 51.47281786323444], [5.269132722169161, 51.47281786547049], [5.269623965172592, 51.472633014284845], [5.269901236980701, 51.47206227547255], [5.270012366281179, 51.471814907323335], [5.270025681883567, 51.471759093742094]]]}, "properties": {"name": "TX0001"}, "type": "Feature"}
-                var features = data.map (this.fixup);
+                // {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[5.270025681883567, 51.471759093742094], [5.269886154431646, 51.47177654841522], [5.269554541950953, 51.471945318378914], [5.269122160971165, 51.47240697336926], [5.269002467393875, 51.47254885425582], [5.269002467393875, 51.47254888036082], [5.269022391821153, 51.47278951418596], [5.269132702340698, 51.47281786323444], [5.269132722169161, 51.47281786547049], [5.269623965172592, 51.472633014284845], [5.269901236980701, 51.47206227547255], [5.270012366281179, 51.471814907323335], [5.270025681883567, 51.471759093742094]]]}, "properties": {"name": "TX0001"}}
+                var features = data.map ((raw) => JSON.parse (raw["[json]"]));
+
+                // color them blue until we get information about whether they have data or not
+                features.forEach ((feature) => feature.properties.color = "#0000ff");
+
                 // the polygons GeoJSON
                 this._project_polygons =
                 {
@@ -501,10 +505,62 @@ define
                 this._extents = extents;
             }
 
-            setProjectJSON (data)
+            // color the polygons based on whether they have data or not
+            checkForData ()
             {
-                this._project_json = JSON.parse (data[0]["[json]"]);
-                this._project = this._project_json.id;
+                var self = this;
+                cimquery.queryPromise ({ sql: "select name, elements from " + self._keyspace + ".transformers", cassandra: true })
+                    .then (
+                        function (trafos)
+                        {
+                            Promise.all (
+                                trafos.map (
+                                    function (trafo)
+                                    {
+                                        var transformer = trafo.name;
+                                        function truncate (e)
+                                        {
+                                            var ret;
+                                            var index = e.indexOf ("_");
+                                            if (-1 == index)
+                                                ret = e;
+                                            else
+                                                ret = e.substring (0, index);
+                                            return (ret);
+                                        }
+                                        function distinct (value, index, self)
+                                        {
+                                            return (self.indexOf (value) === index);
+                                        }
+                                        var houses = trafo.elements.filter ((e) => e.startsWith ("HAS")).map ((e) => truncate (e)).filter (distinct);
+                                        if (houses.length == 0)
+                                            return (Promise.resolve ());
+                                        else
+                                            return (
+                                                cimquery.queryPromise ({ sql: "select time from cimapplication.measured_value where mrid in (" + houses.map ((x) => "'" + x + "'").join (",") + ") and type='energy' limit 1;", cassandra: true })
+                                                    .then (
+                                                        function (data)
+                                                        {
+                                                            if (data.length > 0)
+                                                            {
+                                                                // find the polygon in the GeoJSON set and update it's color
+                                                                var polygon = self._project_polygons.features.find ((x) => x.properties.name == transformer)
+                                                                if (polygon)
+                                                                    polygon.properties.color = "#00ff00";
+                                                            }
+                                                        }
+                                                    )
+                                                );
+                                    }
+                                )
+                            ).then (
+                                function ()
+                                {
+                                    self._TheMap.getSource ("areas").setData (self._project_polygons);
+                                }
+                            );
+                        }
+                    );
             }
 
             setProject (keyspace, id)
@@ -512,7 +568,7 @@ define
                 this._keyspace = keyspace;
                 this._project = id;
                 var self = this;
-                var promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
+                var promise = cimquery.queryPromise ({ sql: "select json type, geometry, properties from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
                     .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
                     .then (() =>
                         {
@@ -523,7 +579,8 @@ define
                     .then (() => cimquery.queryPromise ({ sql: "select * from " + keyspace + ".boundary_switches where id='" + id + "'", cassandra: true }))
                     .then (data => self.setProjectGeoJSON_Lines.call (self, data))
                     .then (() => self._TheMap.getSource ("edges").setData (self._project_lines))
-                    .then (() => self._cimmap.set_data (null));
+                    .then (() => self._cimmap.set_data (null))
+                    .then (() => self.checkForData ());
 
                 return (promise);
             }
