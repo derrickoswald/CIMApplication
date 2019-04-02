@@ -9,26 +9,19 @@
     See the application.xml in project CIMEar.
     -->
 
-	<description>Application to access CIM files via Apache Spark.</description>
+    <description>Application to access CIM files via Apache Spark.</description>
 
-	<display-name>CIMWeb</display-name>
+    <display-name>CIMWeb</display-name>
 
-	<module>
-		<web>
-			<web-uri>CIMWeb.war</web-uri>
-			<context-root>/cimweb</context-root>
-		</web>
-	</module>
+    <module>
+        <web>
+            <web-uri>CIMWeb.war</web-uri>
+            <context-root>/cimweb</context-root>
+        </web>
+    </module>
 
-	<module>
-		<connector>CIMConnector.rar</connector>
-	</module>
-
-    <data-source>
-        <description>JDBC connection factory to time series database</description>
-        <name>java:app/jdbc/TimeSeries</name>
-        <class-name>org.sqlite.JDBC</class-name>
-        <url>jdbc:sqlite:/opt/apache-tomee-plus-7.0.1/database/timeseries.db</url>
-    </data-source>
+    <module>
+        <connector>CIMConnector.rar</connector>
+    </module>
 
 </application>
