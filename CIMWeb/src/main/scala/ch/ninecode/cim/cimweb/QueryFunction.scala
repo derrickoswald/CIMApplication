@@ -2,6 +2,7 @@ package ch.ninecode.cim.cimweb
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.util
 import java.util.Base64
 
 import javax.json.Json
@@ -84,7 +85,13 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 case VARCHAR ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
                 case VARINT ⇒ if (!row.isNull (index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
                 case TIMEUUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case LIST ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: list of what?
+                case LIST ⇒ if (!row.isNull (index))
+                {
+                    val list = row.getList (name, classOf[String])
+                    val array = Json.createArrayBuilder
+                    list.foreach (x ⇒ array.add (x))
+                    ret.add (name, array)
+                }
                 case SET ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
                 case MAP ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: map?
                 case CUSTOM ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?

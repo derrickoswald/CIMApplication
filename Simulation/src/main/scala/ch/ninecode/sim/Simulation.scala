@@ -92,7 +92,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     type House = String
 
     if (options.verbose)
+    {
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
+    }
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     implicit val spark: SparkSession = session
 
@@ -117,7 +120,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         session.sparkContext.getPersistentRDDs.find (_._2.name == "TopologicalIsland") match
         {
             case Some (_) =>
+                log.info ("topology exists")
             case None =>
+                log.info ("generating topology")
                 val ntp = CIMNetworkTopologyProcessor (session)
                 val ele = ntp.process (
                     CIMTopologyOptions (

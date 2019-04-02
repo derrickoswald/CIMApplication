@@ -1,6 +1,5 @@
 package ch.ninecode.cim.cimweb
 
-//import javax.annotation.sql.DataSourceDefinition;
 //import javax.resource.ConnectionFactoryDefinition;
 //import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 import javax.ws.rs.ApplicationPath
@@ -18,13 +17,6 @@ import java.util
 //    transactionSupport = TransactionSupportLevel.NoTransaction
 //)
 //
-//@DataSourceDefinition
-
-//    description = "JDBC connection factory to time series database",
-//    name = "java:app/jdbc/TimeSeries",
-//    className = "org.sqlite.JDBC",
-//    properties = { "JdbcUrl=jdbc:sqlite:/opt/apache-tomee-plus-7.0.1/database/timeseries.db" }
-
 
 @ApplicationPath ("cim/")
 class ApplicationConfig extends Application
@@ -48,7 +40,6 @@ class ApplicationConfig extends Application
             classOf[EnergyConsumer],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
-            classOf[TimeSeries],
             classOf[Estimation]))
     }
 }
