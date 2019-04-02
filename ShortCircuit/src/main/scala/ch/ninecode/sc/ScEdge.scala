@@ -112,16 +112,16 @@ case class ScEdge
      * @param messagemax the maximum number of error messages to be maintained
      * @return a new list of errors with additional information about validity.
      */
-    def hasIssues (errors: List[ScError], messagemax: Int): List[ScError] =
+    def hasIssues (errors: List[ScError], options: ShortCircuitOptions): List[ScError] =
     {
         element match
         {
             case cable: ACLineSegment ⇒
                 // ToDo: use PSRType_Bogus
-                if (cable.r >= 5.0)
+                if (cable.r >= options.cable_impedance_limit)
                 {
                     val error = ScError (false, true, "invalid element (%s)".format (cable.id))
-                    ScError.combine_errors (errors, List (error), messagemax)
+                    ScError.combine_errors (errors, List (error), options.messagemax)
                 }
                 else
                     errors
@@ -130,21 +130,21 @@ case class ScEdge
                 if (num_terminals > 2)
                 {
                     val error = ScError (false, true, "%s transformer windings for edge %s".format (num_terminals, id_equ))
-                    ScError.combine_errors (errors, List (error), messagemax)
+                    ScError.combine_errors (errors, List (error), options.messagemax)
                 }
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
                 else
                     if (v1 == v2)
                     {
                         val error = ScError (false, true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
-                        ScError.combine_errors (errors, List (error), messagemax)
+                        ScError.combine_errors (errors, List (error), options.messagemax)
                     }
                     // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
                         if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
                         {
                             val error = ScError (false, true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                            ScError.combine_errors (errors, List (error), messagemax)
+                            ScError.combine_errors (errors, List (error), options.messagemax)
                         }
                         else
                             errors

@@ -817,7 +817,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
                 else
                     null.asInstanceOf [List[ScError]]
-            val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options.messagemax))
+            val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options))
             ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, trafo.transformer.total_impedance._1, "self", trafo.secondary_impedance, null, problems)
         }
 
