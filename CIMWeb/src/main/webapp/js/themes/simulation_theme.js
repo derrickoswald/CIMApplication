@@ -577,10 +577,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]);
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Utilization (%)", transformer, values)
+                this._TheChart.setChart ("Utilization (%)", [{ name: transformer, data: values}])
             }
 
             setUtilization_for_Lines (data)
@@ -626,10 +626,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (cable + " Cable Utilization (%)", cable, values)
+                this._TheChart.setChart (cable + " Cable Utilization (%)", [{ name: cable, data: values}])
             }
 
             setHouseResponsibility (data)
@@ -645,10 +645,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (house + " Responsibility (0 → 1)", house, values)
+                this._TheChart.setChart (house + " Responsibility (0 → 1)", [{ name: house, data: values}])
             }
 
             setHouseVoltageDeviation (data)
@@ -664,10 +664,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (house + " Voltage Deviation (%)", house, values)
+                this._TheChart.setChart (house + " Voltage Deviation (%)", [{ name: house, data: values}])
             }
 
             setHouseMeasurement (data)
@@ -685,10 +685,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (house + " Measurements (Wh)", house, values)
+                this._TheChart.setChart (house + " Measurements (Wh)", [{ name: house, data: values}])
             }
 
             setLoadFactor_for_Polygons (data)
@@ -735,10 +735,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]);
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Load Factor (0 → 1)", transformer, values)
+                this._TheChart.setChart ("Load Factor (0 → 1)", [{ name: transformer, data: values}])
             }
 
             setCoincidenceFactor_for_Polygons (invert, data)
@@ -787,10 +787,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]);
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (invert ? "Diversity Factor (1 → ∞)" : "Coincidence Factor (0 → 1)", transformer, values)
+                this._TheChart.setChart (invert ? "Diversity Factor (1 → ∞)" : "Coincidence Factor (0 → 1)", [{ name: transformer, data: values}])
             }
 
             setResponsibility_for_Points (data)
@@ -867,10 +867,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]);
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Voltage Deviation (%)", transformer, values)
+                this._TheChart.setChart ("Voltage Deviation (%)", [{ name: transformer, data: values}])
             }
 
             setVoltageDeviation_for_Points (data)
@@ -947,10 +947,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]);
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Transformer Area Losses (Wh)", transformer, values)
+                this._TheChart.setChart ("Transformer Area Losses (Wh)", [{ name: transformer, data: values}])
             }
 
             setLosses_for_Lines (data)
@@ -996,10 +996,10 @@ define
                 )
                 .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
                 if (!this._TheChart)
-                    this._TheChart = new CIMChart ();
+                    this._TheChart = new CIMChart (this._cimmap);
                 if (!this._TheChart.visible ())
                     this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (cable + " Cable Losses (Wh)", cable, values)
+                this._TheChart.setChart (cable + " Cable Losses (Wh)", [{ name: cable, data: values}])
             }
 
             setSimulationGeoJSON_Polygons (data)

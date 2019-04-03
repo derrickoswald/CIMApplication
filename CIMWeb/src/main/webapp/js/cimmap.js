@@ -4,7 +4,7 @@
 "use strict";
 define
 (
-    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram"],
+    ["cimnav", "cimdetails", "cimcoordinates", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cim", "mustache", "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram"],
     /**
      * @summary Main entry point for the application.
      * @description Performs application initialization as the first step in the RequireJS load sequence.
@@ -13,7 +13,7 @@ define
      * @exports cimmap
      * @version 1.0
      */
-    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme)
+    function (cimnav, CIMDetails, CIMCoordinates, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cim, mustache, ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme)
     {
         /**
          * The map object.
@@ -56,6 +56,11 @@ define
          * The diagram control object.
          */
         var TheDiagram = new CIMDiagram (getInterface ());
+
+        /**
+         * The chart control object.
+         */
+        var TheChart = new CIMChart (getInterface ());
 
         /**
          * The scale bar control.
@@ -302,6 +307,17 @@ define
         function get_diagram ()
         {
             return (TheDiagram);
+        }
+
+        /**
+         * Get the time series chart.
+         * @return {Object} The object handling time series.
+         * @function get_chart
+         * @memberOf module:cimmap
+         */
+        function get_chart ()
+        {
+            return (TheChart);
         }
 
         /**
@@ -1354,7 +1370,8 @@ define
                     toggle (function () { return (get_themer ().getTheme ().getLegend ()); }),
                     toggle (get_editor),
                     toggle (get_connectivity),
-                    toggle (get_diagram)));
+                    toggle (get_diagram),
+                    toggle (get_chart)));
             add_listeners ();
         }
 

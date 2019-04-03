@@ -50,9 +50,9 @@ define
          * @see [Display map navigation controls](https://www.mapbox.com/mapbox-gl-js/example/navigation/)
          * @see [Add a third party vector tile source](https://www.mapbox.com/mapbox-gl-js/example/third-party/)
          */
-        class NavigationControl {
-
-            constructor (zoome, info, themer, legend, edit, connectivity, diagram)
+        class NavigationControl
+        {
+            constructor (zoome, info, themer, legend, edit, connectivity, diagram, chart)
             {
                 bindAll (["_rotateCompassArrow"], this);
 
@@ -70,6 +70,7 @@ define
                 this._edit = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-edit', 'Edit', edit);
                 this._connectivity = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-connectivity', 'Connectivity', connectivity);
                 this._diagram = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-diagram', 'Diagram', diagram);
+                this._diagram = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-chart', 'Chart', chart);
             }
 
             _rotateCompassArrow ()

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="svg6" version="1.1" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <style id="style837"/>
+ <metadata id="metadata12">
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <path id="path1653" d="m4 10h12" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1655" d="m4.5 4v12" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1657" d="m5 10.5h1v-2h1v-1h2.2334l-0.010761-1h2.7774v2h2v2h1v3h1" fill="none" stroke="#333" stroke-width="1px"/>
+ <path id="path1659" d="m13 4.5h3" fill="none" stroke="#333" stroke-width="1px"/>
+ <path id="path1661" d="m7 10v1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1663" d="m9.5 10v1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1665" d="m12 10v1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1667" d="m5 12.462h1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1669" d="m5 15h1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1671" d="m5 7.4739h1" fill="none" stroke="#ccc" stroke-width="1px"/>
+ <path id="path1673" d="m5 5h1" fill="none" stroke="#ccc" stroke-width="1px"/>
+</svg>

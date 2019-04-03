@@ -5,7 +5,7 @@
 
 define
 (
-    ["highstock"],
+    ["highstock", "cimquery"],
     /**
      * @summary Chart control.
      * @description UI element for displaying measured, simulated and summarized data.
@@ -13,12 +13,15 @@ define
      * @exports cimchart
      * @version 1.0
      */
-    function (notaAMDmodule)
+    function (notaAMDmodule, cimquery)
     {
         class CIMChart
         {
-            constructor ()
+            constructor (cimmap)
             {
+                // ToDo: need a way to set the keyspace
+                this._keyspace = "cimapplication";
+                this._cimmap = cimmap;
             }
 
             onAdd (map)
@@ -42,11 +45,13 @@ define
                 close.innerHTML = `<span aria-hidden="true">&times;</span>`;
                 this._container.appendChild (close);
                 this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
+                this._cimmap.add_feature_listener (this);
                 return (this._container);
             }
 
             onRemove ()
             {
+                this._cimmap.remove_feature_listener (this);
                 // destroy the chart
                 if (this._theChart)
                     delete this._theChart;
@@ -71,13 +76,40 @@ define
                 return ("undefined" != typeof (this._container));
             }
 
-            setChart (title, name, data)
+            initialize ()
+            {
+                var self = this;
+                cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".simulation", cassandra: true })
+                    .then (data =>
+                        {
+                            self._simulations = data.map (row => JSON.parse (row["[json]"]));
+                            // chart and already selected element
+                            if (self._cimmap.get_selected_feature ())
+                                self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
+                        }
+                    );
+            }
+
+            // series is an array of objects with at least { name: "XXX", data: [] }
+            setChart (title, series)
             {
                 // delete any existing chart
                 var chart = document.getElementById ("chart");
                 if (chart)
                     chart.innerHTML = "";
                 // create the chart
+                series.forEach (data =>
+                    {
+                        if (!data.step)
+                            data.step = true;
+                        if (!data.tooltip)
+                            data.tooltip =
+                                {
+                                    valueDecimals: 2
+                                };
+                    }
+                );
+
                 this._theChart = window.Highcharts.stockChart
                 (
                     'chart',
@@ -98,18 +130,7 @@ define
                             enabled: false
                         },
 
-                        series:
-                        [
-                            {
-                                name: name,
-                                data: data,
-                                step: true,
-                                tooltip:
-                                {
-                                    valueDecimals: 2
-                                }
-                            }
-                        ]
+                        series: series
                     }
                 );
             }
@@ -167,7 +188,101 @@ define
                     this.deleteChartCursor ();
             }
 
+            clearChart (contents)
+            {
+                contents = contents || "";
+                var chart = document.getElementById ("chart");
+                if (chart)
+                    chart.innerHTML = contents;
+                if (this._theChart)
+                    delete this._theChart;
+            }
 
+            getDataFor (feature)
+            {
+                var chart = document.getElementById ("chart");
+                if (chart)
+                    chart.innerHTML = "<b>fetching data for " + feature + "</b>";
+                // find out what data we have, compose a { name: xxx, query: yyy } array
+                var queries = [];
+                this._simulations.forEach (
+                    simulation =>
+                    {
+                        var start = new Date (simulation.start_time).getTime ();
+                        var end = new Date (simulation.end_time).getTime ();
+                        simulation.players.forEach (
+                            player =>
+                            {
+                                var name = player.name.substring (0, player.name.indexOf ("_load")); // ToDo: could store the EnergyConsumer mRID with each player
+                                if (name == feature)
+                                    queries.push (
+                                        {
+                                            name: simulation.name + " " + player.type + " (Wh)", // ToDo: how to get units from the query
+                                            sql: "select time, real_a, imag_a from " + simulation.input_keyspace + ".measured_value where mrid = '" + name + "' and type = '" + player.type + "' and time >= " + start + " and time <= " + end + " allow filtering",
+                                            cassandra: true
+                                        }
+                                    );
+                            }
+                        );
+                        simulation.recorders.forEach (
+                            recorder =>
+                            {
+                                if (recorder.mrid == feature)
+                                    queries.push (
+                                        {
+                                            name: simulation.name + " " + recorder.type + " (" + recorder.unit + ")",
+                                            sql: "select time, real_a, imag_a from " + simulation.output_keyspace + ".simulated_value where mrid = '" + recorder.mrid + "' and type = '" + recorder.type + "' and period = " + (recorder.interval * 1000) + " allow filtering",
+                                            cassandra: true
+                                        }
+                                    );
+                            }
+                        );
+                    }
+                );
+
+                if (0 != queries.length)
+                {
+                    var self = this;
+                    Promise.all (
+                        queries.map (
+                            query =>
+                            {
+                                return (
+                                    cimquery.queryPromise (query)
+                                        .then (data =>
+                                            {
+                                                // make a series
+                                                function rms (r, i) { return (Math.sqrt (r * r + i * i)); }
+                                                var values = data.map (
+                                                    row =>
+                                                    {
+                                                        return ([(new Date (row.time)).getTime (), rms (row.real_a, row.imag_a)]);
+                                                    }
+                                                )
+                                                .sort ((a, b) => a[0] - b[0]);
+                                                return ({ name: query.name, data: values});
+                                            }
+                                        )
+                                    );
+                            }
+                        )
+                    )
+                    .then (series => self.setChart.call (self, feature, series));
+                }
+                else
+                    this.clearChart ("<b>no data for " + feature + "</b>");
+            }
+
+            /**
+             * Connect the selected object at user selected terminal synchronously.
+             */
+            selection_change (current_feature, current_selection)
+            {
+                if (null != current_feature)
+                    var data = this.getDataFor (current_feature);
+                else
+                    this.clearChart ();
+            }
         }
 
         return (CIMChart);
