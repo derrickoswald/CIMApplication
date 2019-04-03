@@ -198,7 +198,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     def feederIslands: RDD[(String, Element)] =
     {
         val t = getOrElse [TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
-    val ret = t.join (feederNodes).values // (islandid, Feeder)
+        val ret = t.join (feederNodes).values // (islandid, Feeder)
 
         ret.persist (storage)
         ret.name = "FeederIslands"
@@ -270,8 +270,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         val equipment_islands = getOrElse [Terminal].keyBy (_.TopologicalNode).join (getOrElse [TopologicalNode].keyBy (_.id)).values
             .map (x ⇒ (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-    val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
-        .join (equipment_islands).values // (Element, [islandid])
+        val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+            .join (equipment_islands).values // (Element, [islandid])
         equipment.flatMap (
             x ⇒
             {

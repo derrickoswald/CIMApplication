@@ -3,28 +3,13 @@ package ch.ninecode.on
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.Breaker
-import ch.ninecode.model.Conductor
-import ch.ninecode.model.Cut
-import ch.ninecode.model.Disconnector
-import ch.ninecode.model.Element
-import ch.ninecode.model.Fuse
-import ch.ninecode.model.GroundDisconnector
-import ch.ninecode.model.Jumper
-import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.MktSwitch
-import ch.ninecode.model.ProtectedSwitch
-import ch.ninecode.model.Recloser
-import ch.ninecode.model.Sectionaliser
-import ch.ninecode.model.Switch
+import ch.ninecode.model._
 
 case class AbgangKreis
 (
@@ -52,6 +37,45 @@ object AbgangKreis
         }
     }
 
+    def toSwitch (element: Element): Switch =
+    {
+        element match
+        {
+            case s: Switch ⇒ s.asInstanceOf [Switch]
+            case c: Cut ⇒ c.asInstanceOf [Cut].Switch
+            case d: Disconnector ⇒ d.asInstanceOf [Disconnector].Switch
+            case f: Fuse ⇒ f.asInstanceOf [Fuse].Switch
+            case g: GroundDisconnector ⇒ g.asInstanceOf [GroundDisconnector].Switch
+            case j: Jumper ⇒ j.asInstanceOf [Jumper].Switch
+            case m: MktSwitch ⇒ m.asInstanceOf [MktSwitch].Switch
+            case p: ProtectedSwitch ⇒ p.asInstanceOf [ProtectedSwitch].Switch
+            case b: Breaker ⇒ b.asInstanceOf [Breaker].ProtectedSwitch.Switch
+            case l: LoadBreakSwitch ⇒ l.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch
+            case r: Recloser ⇒ r.asInstanceOf [Recloser].ProtectedSwitch.Switch
+            case s: Sectionaliser ⇒ s.asInstanceOf [Sectionaliser].Switch
+            case _ ⇒
+                println ("non-switch (%s:%s)".format (element.getClass, element.id))
+                null.asInstanceOf [Switch]
+        }
+    }
+
+    def pickSwitch (elements: Iterable[Element]): Switch =
+    {
+        var ret: Switch = null
+        // try for (the first) closed switch
+        for (element ← elements)
+        {
+            val switch = toSwitch (element)
+            if (!switch.normalOpen)
+                if (null == ret)
+                    ret = switch
+        }
+        // otherwise fall back to just the first switch
+        if (null == ret)
+            ret = toSwitch (elements.head)
+        ret
+    }
+
     /**
      * Create subclasses of GMLEdge for the given elements.
      *
@@ -67,43 +91,19 @@ object AbgangKreis
 
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        element match
         {
-            case "Switch" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Switch], false)
-            case "Cut" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Cut].Switch, false)
-            case "Disconnector" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Disconnector].Switch, false)
-            case "Fuse" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Fuse].Switch, true)
-            case "GroundDisconnector" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [GroundDisconnector].Switch, false)
-            case "Jumper" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Jumper].Switch, false)
-            case "MktSwitch" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [MktSwitch].Switch, false)
-            case "ProtectedSwitch" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [ProtectedSwitch].Switch, false)
-            case "Breaker" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Breaker].ProtectedSwitch.Switch, false)
-            case "LoadBreakSwitch" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch, false)
-            case "Recloser" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Recloser].ProtectedSwitch.Switch, false)
-            case "Sectionaliser" ⇒
-                PlayerSwitchEdge (cn1, cn2, element.asInstanceOf [Sectionaliser].Switch, false)
-            case "Conductor" ⇒
+            case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser ⇒
+                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), false)
+            case _: Conductor ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
-            case "ACLineSegment" ⇒
+            case _: ACLineSegment ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
-            case "PowerTransformer" ⇒
+            case _: PowerTransformer ⇒
                 // find the transformer in the list
                 val t = transformers.find (_.transformers.map (_.transformer.id).contains (element.id)).orNull
                 if (null == t)
@@ -127,7 +127,7 @@ object AbgangKreis
                     TransformerEdge (n1, n2, t)
                 }
             case _ ⇒
-                println ("""edge %s has unhandled class '%s'""".format (element.id, cls)) // ToDo: log somehow
+                println ("""edge %s has unhandled class '%s'""".format (element.id, element.getClass.getName)) // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)
         }
     }
