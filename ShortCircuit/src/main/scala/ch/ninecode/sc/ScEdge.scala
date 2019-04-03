@@ -108,8 +108,8 @@ case class ScEdge
     /**
      * Warn of special cases of cables and transformers that preclude accurate short-circuit calculation.
      *
-     * @param errors     current list of errors in the trace
-     * @param messagemax the maximum number of error messages to be maintained
+     * @param errors current list of errors in the trace
+     * @param options the options for this run
      * @return a new list of errors with additional information about validity.
      */
     def hasIssues (errors: List[ScError], options: ShortCircuitOptions): List[ScError] =
