@@ -25,7 +25,7 @@ define
             {
                 this._map = map;
                 this._container = document.createElement ("div");
-                this._container.className = "mapboxgl-ctrl card";
+                this._container.className = "mapboxgl-ctrl card card_resizeable";
                 // add the chart div
                 var text = document.createElement ("div");
                 text.id = "chart";
