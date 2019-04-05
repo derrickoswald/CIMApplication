@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory
 /**
  * Summarize the simulation.
  *
- * Comupte various quality factors for the network after running a simulation.
+ * Compute various quality factors for the network after running a simulation.
  *
  * @param spark   The Spark session
  * @param options The simulation options. Note: Currently only the verbose option is used.
@@ -54,8 +54,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def utilization (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Utilization")
-        val simulated_current_values = access.raw_values
-            .filter ("type = 'current'")
+        val simulated_current_values = access.raw_values ("current")
             .cache
         logInfo ("""Utilization: %d simulated current values to process""".format (simulated_current_values.count))
         show (simulated_current_values)
@@ -100,7 +99,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         }
 
         val summary = utilization
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
             .groupBy ("mrid", "type", "date", "transformer", "simulation")
@@ -134,7 +132,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         }
 
         val trafokreise = utilization
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("period")
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
@@ -169,7 +166,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         // do daily 1 month, 3 month, 6 month and 12 month historical series
         val timeseries = utilization
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("period")
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
@@ -371,8 +367,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def load_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Load Factor")
-        val simulated__power_values = access.raw_values
-            .filter ("type = 'power'") // ToDo: how to pick the transformer power values if another recorder asks for power
+        val simulated__power_values = access.raw_values ("power") // ToDo: how to pick the transformer power values if another recorder asks for power
             .cache
         logInfo ("""Load Factor: %d simulation values to process""".format (simulated__power_values.count))
         show (simulated__power_values)
@@ -382,7 +377,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
         val simulated_value_trafos = simulated__power_values
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
             .drop ("period")
             .withColumn ("date", simulated__power_values ("time").cast (DateType))
             .drop ("time")
@@ -435,9 +429,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
-        val simulated_power_values = access.raw_values
-            .filter ("type = 'power'")
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+        val simulated_power_values = access.raw_values ("power")
             .drop ("period")
             .cache
         logInfo ("""Coincidence Factor: %d simulation values to process""".format (simulated_power_values.count))
@@ -540,9 +532,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def responsibility_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Responsibility Factor")
-        val simulated_power_values = access.raw_values
-            .filter ("type = 'power'")
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+        val simulated_power_values = access.raw_values ("power")
             .drop ("type", "period")
             .cache
         logInfo ("""Responsibility Factor: %d simulation values to process""".format (simulated_power_values.count))
@@ -644,9 +634,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def voltage_quality (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Voltage quality")
-        val simulated_value = access.raw_values
-            .filter ("type = 'voltage'")
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+        val simulated_value = access.raw_values ("voltage")
             .drop ("type", "period")
             .cache
         logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_value.count))
@@ -751,9 +739,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def losses (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Losses")
-        val simulated_loss_values = access.raw_values
-            .filter ("type = 'losses'")
-            .filter ("period = 900000") // ToDo: how can we not hard-code this?
+        val simulated_loss_values = access.raw_values ("losses")
             .cache
         logInfo ("""Losses: %d simulation values to process""".format (simulated_loss_values.count))
         show (simulated_loss_values)

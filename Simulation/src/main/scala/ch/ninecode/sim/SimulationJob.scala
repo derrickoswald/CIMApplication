@@ -14,8 +14,10 @@ import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import org.apache.spark.sql.SparkSession
+
 import com.datastax.spark.connector._
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -167,43 +169,8 @@ case class SimulationJob
      * @param session the Spark session to use
      * @param id the id to store this job under
      */
-    def save (session: SparkSession, keyspace: String, id: String, task: SimulationTask): Unit =
+    def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
     {
-        val player_map =
-            if (null != task)
-                task.players.map (
-                    player ⇒
-                        Map (
-                        "name" → player.name,
-                        "mrid" → player.parent,
-                        "type" → player.`type`,
-                        "property" → player.property)
-                        // "file" → player.file
-                        // "sql" → player.sql
-                        // "start" → iso_date_format.format (new Date (player.start))
-                        // "end" → iso_date_format.format (new Date (player.end))
-                ).toList
-            else
-                List()
-
-        val recorder_map =
-            if (null != task)
-                task.recorders.map (
-                    recorder ⇒
-                        Map (
-                            "name" → recorder.name,
-                            "mrid" → recorder.mrid,
-                            // "parent" → recorder.parent,
-                            "type" → recorder.`type`,
-                            "property" → recorder.property,
-                            "unit" → recorder.unit,
-                            // "file" → recorder.file,
-                            "interval" → recorder.interval.toString)
-                            // "aggregations" → recorder.aggregations.map (y ⇒ if (y.time_to_live == "") y.intervals.toString else y.intervals.toString + "@" + y.time_to_live.substring (y.time_to_live.lastIndexOf (" ") + 1)).mkString (",")
-                ).toList
-            else
-                List()
-
         val json = session.sparkContext.parallelize (Seq (
             (
                 id,
@@ -215,12 +182,20 @@ case class SimulationJob
                 end_time,
                 input_keyspace,
                 output_keyspace,
-                player_map,
-                recorder_map,
                 transformers
             )
         ))
-        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "input_keyspace", "output_keyspace", "players", "recorders", "transformers"))
+        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
+
+        val players =
+            tasks.flatMap (
+                task ⇒ task.players.map (player ⇒ (id, player.name, player.mrid, player.`type`, player.property)))
+        players.saveToCassandra (keyspace, "simulation_player", SomeColumns ("id", "name", "mrid", "type", "property"))
+
+        val recorders =
+            tasks.flatMap (
+                task ⇒ task.recorders.map (recorder ⇒ (id,  recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval)))
+        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("id", "name", "mrid", "type", "property", "unit", "interval"))
     }
 }
 

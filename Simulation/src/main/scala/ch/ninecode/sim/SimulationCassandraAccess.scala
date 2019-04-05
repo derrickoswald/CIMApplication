@@ -76,7 +76,8 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
         polygons
     }
 
-    def raw_values: DataFrame =
+    // ToDo: how can we not hard-code this period?
+    def raw_values (`type`: String, period: Int = 900000): DataFrame =
     {
         if (null == simulated_values)
         {
@@ -85,8 +86,8 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
                 .load
+                .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
                 .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
-                .filter ("simulation = '%s'".format (simulation))
                 .cache
             logInfo ("""%d simulated values to process""".format (simulated_values.count))
             show (simulated_values)

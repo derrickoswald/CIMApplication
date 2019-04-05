@@ -78,14 +78,37 @@ define
 
             initialize ()
             {
+                this._simulations = [];
                 var self = this;
                 cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".simulation", cassandra: true })
-                    .then (data =>
+                    .then (
+                        data =>
                         {
-                            self._simulations = data.map (row => JSON.parse (row["[json]"]));
-                            // chart and already selected element
-                            if (self._cimmap.get_selected_feature ())
-                                self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
+                            return (
+                                Promise.all (
+                                    data.map (
+                                        row =>
+                                        {
+                                            var simulation = JSON.parse (row["[json]"]);
+                                            self._simulations.push (simulation);
+                                            return (
+                                                cimquery.queryPromise ({ sql: "select * from " + self._keyspace + ".simulation_player where id = '" + simulation.id + "'", cassandra: true })
+                                                    .then (players => simulation.players = players)
+                                                    .then (() => { return (cimquery.queryPromise ({ sql: "select * from " + self._keyspace + ".simulation_recorder where id = '" + simulation.id + "'", cassandra: true })); })
+                                                    .then (recorders => simulation.recorders = recorders)
+                                                );
+                                        }
+                                    )
+                                )
+                                .then (
+                                    () =>
+                                    {
+                                        // check for an already selected element
+                                        if (self._cimmap.get_selected_feature ())
+                                            self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
+                                    }
+                                )
+                            );
                         }
                     );
             }
@@ -213,12 +236,11 @@ define
                         simulation.players.forEach (
                             player =>
                             {
-                                var name = player.name.substring (0, player.name.indexOf ("_load")); // ToDo: could store the EnergyConsumer mRID with each player
-                                if (name == feature)
+                                if (player.mrid == feature)
                                     queries.push (
                                         {
                                             name: simulation.name + " " + player.type + " (Wh)", // ToDo: how to get units from the query
-                                            sql: "select time, real_a, imag_a from " + simulation.input_keyspace + ".measured_value where mrid = '" + name + "' and type = '" + player.type + "' and time >= " + start + " and time <= " + end + " allow filtering",
+                                            sql: "select time, real_a, imag_a from " + simulation.input_keyspace + ".measured_value where mrid = '" + player.mrid + "' and type = '" + player.type + "' and time >= " + start + " and time <= " + end + " allow filtering",
                                             cassandra: true
                                         }
                                     );
@@ -231,7 +253,7 @@ define
                                     queries.push (
                                         {
                                             name: simulation.name + " " + recorder.type + " (" + recorder.unit + ")",
-                                            sql: "select time, real_a, imag_a from " + simulation.output_keyspace + ".simulated_value where mrid = '" + recorder.mrid + "' and type = '" + recorder.type + "' and period = " + (recorder.interval * 1000) + " allow filtering",
+                                            sql: "select time, real_a, imag_a from " + simulation.output_keyspace + ".simulated_value where simulation = '" + simulation.id + "' and mrid = '" + recorder.mrid + "' and type = '" + recorder.type + "' and period = " + (recorder.interval * 1000),
                                             cassandra: true
                                         }
                                     );

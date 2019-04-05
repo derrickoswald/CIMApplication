@@ -30,6 +30,7 @@ These are typically smart meter readings, or transformer values from a SCADA sys
 ';
 
 create table if not exists cimapplication.simulated_value (
+    simulation text,
     mrid text,
     type text,
     period int,
@@ -41,8 +42,7 @@ create table if not exists cimapplication.simulated_value (
     real_c double,
     imag_c double,
     units text,
-    simulation text,
-    primary key ((mrid, type, period), time)
+    primary key ((simulation, mrid, type, period), time)
 ) with clustering order by (time asc) and comment = '
 Simulation results.
 These are values obtained from load-flow simulations or other analysis software.
@@ -71,8 +71,6 @@ create table if not exists cimapplication.simulation (
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
-    players list<frozen <map<text,text>>>,
-    recorders list<frozen <map<text,text>>>,
     primary key (id)
 ) with comment = '
 Details about a simulation execution.
@@ -87,8 +85,44 @@ Describes each run of the Simulate code.
     input_keyspace - the Cassandra keyspace for measurement data
     output_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
-    players - the details about GridLAB-D players applied to the model
-    recorders - the details about GridLAB-D recorders read from the model
+';
+
+create table if not exists cimapplication.simulation_player (
+    id text,
+    name text,
+    mrid text,
+    type text,
+    property text,
+    primary key (id, name)
+) with comment = '
+Details about GridLAB-D players in the simulation.
+Describes each player used in the simulation.
+    id   - the simulation run identifier, UUID
+    name - the user supplied name of the player
+    mrid - the cim mRID of the element being driven
+    type - the player type, e.g. energy
+    property - the GridLAB-D property being driven, e.g. constant_power
+Note: not included here are the player file name, the SQL that generated this player, and the start and end times
+';
+
+create table if not exists cimapplication.simulation_recorder (
+    id text,
+    name text,
+    mrid text,
+    type text,
+    property text,
+    unit text,
+    interval int,
+    primary key (id, name)
+) with comment = '
+Details about GridLAB-D recorders in the simulation.
+Describes each recorder used in the simulation.
+    id   - the simulation run identifier, UUID
+    name - the user supplied name of the recorder
+    mrid - the cim mRID of the element being recorded
+    type - the recorder type, e.g. current
+    property - the GridLAB-D property being recorder, e.g. current_in
+Note: not included here are the recorder parent, file name, or aggregations
 ';
 
 create type if not exists cimapplication.point_data (type text, coordinates list<double>);

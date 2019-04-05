@@ -495,9 +495,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                     val tasks = make_tasks (job)
                     val numtasks: Long = tasks.count
+                    job.save (session, job.output_keyspace, id, tasks)
                     log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
-                    if (1 == batchno)
-                        job.save (session, job.output_keyspace, id, if (0 < numtasks) tasks.first else null)
 
                     val simulations =
                         tasks.flatMap (
