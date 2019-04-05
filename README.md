@@ -66,24 +66,6 @@ and then change the password as appropriate
     cp ~/code/CIMApplication/CIMEar/target/CIMApplication.ear apps
     bin/startup.sh
 
-- to enable SQLite access via JNDI, copy the SQLite jar file to the lib directory, and copy the SQLite data file too:
-
-    cp .../org/xerial/sqlite-jdbc/3.14.2.1/sqlite-jdbc-3.14.2.1.jar /opt/apache-tomee-plus-7.0.1/lib
-    mkdir /opt/apache-tomee-plus-7.0.1/database
-    cp .../results.db /opt/apache-tomee-plus-7.0.1/database/timeseries.db
-
-- then add a resource entry to the conf/tomee.xml, like so:
-
-    <?xml version="1.0" encoding="UTF-8"?>
-    <tomee>
-      <!-- see http://tomee.apache.org/containers-and-resources.html -->
-      <Deployments dir="apps" />
-      <Resource id="SQLite Database" type="DataSource">
-        JdbcDriver  org.sqlite.JDBC
-        JdbcUrl jdbc:sqlite:/opt/apache-tomee-plus-7.0.1/database/timeseries.db
-      </Resource>
-    </tomee>
-
 # REST Services
 
 The CIMApplication (HTML/Javascript) accessed at http://server:8080/cimweb is supported on the backend by
@@ -105,4 +87,3 @@ Endpoint | Verb | Parameters | Description|
 /cimweb/cim/view | GET | about xmin ymin, xmax, ymax, reduceLines, maxLines, dougPeuk dougPeukFactor, resolution | Return (simplified) RDF for features within the bounding box from the CIM loaded into Spark.|
 /cimweb/cim/short_circuit | GET | optional transformer | Returns the short circuit data for the house connections attached to the transformer, or all transfromers if none was specified.|
 /cimweb/cim/spatial/nearest | GET | optional lat lon n | Finds the n nearest house connections to the given wgs84 lat,long.|
-/cimweb/cim/timeseries | GET | | Sample to read SQLite database and return measurement data.|
