@@ -286,13 +286,21 @@ define
                             recorder =>
                             {
                                 if (recorder.mrid == feature)
+                                {
+                                    var biggest = -1;
+                                    for (var interval in recorder.aggregations)
+                                        if (recorder.aggregations.hasOwnProperty (interval))
+                                            if (interval > biggest)
+                                                biggest = interval;
+                                    var period = (recorder.interval * 1000) * biggest;
                                     queries.push (
                                         {
                                             name: simulation.name + " " + recorder.type + " (" + recorder.unit + ")",
-                                            sql: "select time, real_a, imag_a from " + simulation.output_keyspace + ".simulated_value where simulation = '" + simulation.id + "' and mrid = '" + recorder.mrid + "' and type = '" + recorder.type + "' and period = " + (recorder.interval * 1000),
+                                            sql: "select time, real_a, imag_a from " + simulation.output_keyspace + ".simulated_value where simulation = '" + simulation.id + "' and mrid = '" + recorder.mrid + "' and type = '" + recorder.type + "' and period = " + period,
                                             cassandra: true
                                         }
                                     );
+                                }
                             }
                         );
                     }
