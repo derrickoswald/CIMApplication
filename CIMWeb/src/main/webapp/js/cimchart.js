@@ -19,7 +19,7 @@ define
         {
             constructor (cimmap)
             {
-                this._keyspace = "cimapplication";
+                this._keyspaces = ["cimapplication"];
                 this._cimmap = cimmap;
             }
 
@@ -78,8 +78,13 @@ define
 
             changeKeyspace (event)
             {
-                var keyspace = document.getElementById ("current_keyspace").value;
-                this._keyspace = keyspace;
+                var keyspace = event.target.value;
+                var checked = event.target.checked;
+                var index = this._keyspaces.indexOf (keyspace);
+                if (index > -1)
+                    this._keyspaces.splice (index, 1);
+                if (checked)
+                    this._keyspaces.push (keyspace);
                 this.initialize ();
             }
 
@@ -93,20 +98,26 @@ define
                         {
                             if (resultset.length > 0)
                             {
-                                resultset.forEach (x => { if (x.keyspace_name == self._keyspace) x.selected = true });
+                                resultset.forEach (x => { if (self._keyspaces.includes (x.keyspace_name)) x.checked = true });
                                 var template =
                                 `
-<h6 style="margin-top: 20px;">
-    <select id="current_keyspace" class="form-control custom-select">
-        {{#keyspaces}}
-        <option value="{{keyspace_name}}"{{#selected}} selected{{/selected}}>{{{keyspace_name}}}</option>
-        {{/keyspaces}}
-    </select>
-</h6>
+<div style="margin-top: 20px;">
+    {{#keyspaces}}
+    <div class="form-check">
+        <input id="{{keyspace_name}}" class="form-check-input" type="checkbox" name="{{keyspace_name}}" value="{{keyspace_name}}" {{#checked}} checked{{/checked}}>
+        <label class="form-check-label" for="{{keyspace_name}}">{{keyspace_name}}</label>
+    </div>
+    {{/keyspaces}}
+</div>
                                 `;
                                 var text = mustache.render (template, { keyspaces: resultset })
                                 div.innerHTML = text;
-                                document.getElementById ("current_keyspace").addEventListener ("change", self.changeKeyspace.bind (self));
+                                var elements = div.getElementsByTagName ("INPUT");
+                                for (var i = 0; i < elements.length; i++)
+                                {
+                                    var checkbox = elements[i];
+                                    checkbox.addEventListener ("change", self.changeKeyspace.bind (self));
+                                }
                             }
                         }
                     );
@@ -116,37 +127,46 @@ define
             {
                 this._simulations = [];
                 var self = this;
-                cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".simulation", cassandra: true })
-                    .then (
-                        data =>
+                Promise.all (
+                    self._keyspaces.map (
+                        keyspace =>
                         {
                             return (
-                                Promise.all (
-                                    data.map (
-                                        row =>
+                                cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".simulation", cassandra: true })
+                                    .then (
+                                        data =>
                                         {
-                                            var simulation = JSON.parse (row["[json]"]);
-                                            self._simulations.push (simulation);
                                             return (
-                                                cimquery.queryPromise ({ sql: "select * from " + self._keyspace + ".simulation_player where id = '" + simulation.id + "'", cassandra: true })
-                                                    .then (players => simulation.players = players)
-                                                    .then (() => { return (cimquery.queryPromise ({ sql: "select * from " + self._keyspace + ".simulation_recorder where id = '" + simulation.id + "'", cassandra: true })); })
-                                                    .then (recorders => simulation.recorders = recorders)
-                                                );
+                                                Promise.all (
+                                                    data.map (
+                                                        row =>
+                                                        {
+                                                            var simulation = JSON.parse (row["[json]"]);
+                                                            self._simulations.push (simulation);
+                                                            return (
+                                                                cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_player where id = '" + simulation.id + "'", cassandra: true })
+                                                                    .then (players => simulation.players = players)
+                                                                    .then (() => { return (cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_recorder where id = '" + simulation.id + "'", cassandra: true })); })
+                                                                    .then (recorders => simulation.recorders = recorders)
+                                                                );
+                                                        }
+                                                    )
+                                                )
+                                            );
                                         }
                                     )
-                                )
-                                .then (
-                                    () =>
-                                    {
-                                        // check for an already selected element
-                                        if (self._cimmap.get_selected_feature ())
-                                            self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
-                                    }
-                                )
-                            );
+                                );
                         }
-                    );
+                    )
+                )
+                .then (
+                    () =>
+                    {
+                        // check for an already selected element
+                        if (self._cimmap.get_selected_feature ())
+                            self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
+                    }
+                );
             }
 
             // series is an array of objects with at least { name: "XXX", data: [] }
