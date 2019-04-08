@@ -194,8 +194,8 @@ case class SimulationJob
 
         val recorders =
             tasks.flatMap (
-                task ⇒ task.recorders.map (recorder ⇒ (id,  recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval)))
-        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("id", "name", "mrid", "type", "property", "unit", "interval"))
+                task ⇒ task.recorders.map (recorder ⇒ (id,  recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval, recorder.aggregationsMap)))
+        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("id", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
     }
 }
 

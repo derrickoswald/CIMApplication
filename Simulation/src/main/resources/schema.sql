@@ -46,6 +46,7 @@ create table if not exists cimapplication.simulated_value (
 ) with clustering order by (time asc) and comment = '
 Simulation results.
 These are values obtained from load-flow simulations or other analysis software.
+    simulation - the simulation run identifier, UUID
     mrid   - the unique CIM mRID for the element with this measurement
     type   - the type of value, e.g. energy, power, voltage, current
     time   - the time at which the simulated value was taken in GMT
@@ -57,7 +58,23 @@ These are values obtained from load-flow simulations or other analysis software.
     real_c - the real component of the phase C (or T) value
     imag_c - the imaginary component of the phase C (or T) value
     units  - the units for the simulated value
+';
+
+create table if not exists cimapplication.simulation_event (
+    simulation text,
+    mrid text,
+    type text,
+    start_time timestamp,
+    end_time timestamp,
+    primary key ((simulation, mrid, type), end_time)
+) with clustering order by (end_time asc) and comment = '
+Simulation events.
+These are events of interest from a post-analysis of the simulated values.
     simulation - the simulation run identifier, UUID
+    mrid       - the unique CIM mRID for the element with this event
+    type       - the type of event, e.g. voltage threshold exceeded, or current threshold exceeded
+    start_time - the event start time in GMT
+    end_time   - the event end time in GMT
 ';
 
 create table if not exists cimapplication.simulation (
@@ -113,6 +130,7 @@ create table if not exists cimapplication.simulation_recorder (
     property text,
     unit text,
     interval int,
+    aggregations map<int,int>,
     primary key (id, name)
 ) with comment = '
 Details about GridLAB-D recorders in the simulation.
@@ -122,7 +140,10 @@ Describes each recorder used in the simulation.
     mrid - the cim mRID of the element being recorded
     type - the recorder type, e.g. current
     property - the GridLAB-D property being recorder, e.g. current_in
-Note: not included here are the recorder parent, file name, or aggregations
+    unit - the units for the recorder, e.g. Volts
+    interval - the recording interval (seconds)
+    aggregations - summary aggregations as pairs of intervals:time-to-live (#:seconds)
+Note: not included here are the recorder parent or file name.
 ';
 
 create type if not exists cimapplication.point_data (type text, coordinates list<double>);

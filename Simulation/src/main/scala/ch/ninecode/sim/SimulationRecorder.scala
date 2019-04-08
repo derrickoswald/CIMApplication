@@ -47,6 +47,8 @@ case class SimulationRecorder
     /**
      * The list of aggregations.
      */
-    aggregations: List[SimulationAggregate]
+    aggregations: List[SimulationAggregate] = List (SimulationAggregate (1, 0))
 )
-
+{
+    def aggregationsMap: Map[Int, Int] = aggregations.map (x ⇒ (x.intervals, x.time_to_live)).toMap
+}

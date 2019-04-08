@@ -1,7 +1,8 @@
 package ch.ninecode.cim.cimweb
 
-import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.sql.Date
+import java.sql.Time
 import java.util
 import java.util.Base64
 
@@ -50,7 +51,41 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
 
         ret
     }
-    
+
+    def getDataTypeClass (datatype: DataType): Class[_] =
+    {
+        datatype.getName match
+        {
+            case ASCII ⇒ classOf[String]
+            case BIGINT ⇒ classOf[Long]
+//            case BLOB ⇒
+            case BOOLEAN ⇒ classOf[Boolean]
+            case COUNTER ⇒ classOf[Long]
+            case DECIMAL ⇒ classOf[Double]
+            case DOUBLE ⇒  classOf[Double]
+            case FLOAT ⇒ classOf[Double]
+//            case INET ⇒
+            case INT ⇒ classOf[Integer]
+            case TEXT ⇒ classOf[String]
+            case TIMESTAMP ⇒ classOf[Date]
+//            case UUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+            case VARCHAR ⇒ classOf[String]
+            case VARINT ⇒ classOf[Integer]
+//            case TIMEUUID ⇒
+//            case LIST ⇒
+//            case SET ⇒
+//            case MAP ⇒
+//            case CUSTOM ⇒
+//            case UDT ⇒
+//            case TUPLE ⇒
+            case SMALLINT ⇒ classOf[Integer]
+            case TINYINT ⇒ classOf[Integer]
+            case DATE ⇒ classOf[Date]
+            case TIME ⇒ classOf[Time]
+            case _ ⇒ classOf[String] // BLOB, CUSTOM, INET, LIST, MAP, SET, TIMEUUID, TUPLE, UDT, UUID
+        }
+    }
+
     def packRow2 (row: com.datastax.driver.core.Row): JsonObjectBuilder =
     {
         val ret = Json.createObjectBuilder
@@ -93,7 +128,16 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                     ret.add (name, array)
                 }
                 case SET ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
-                case MAP ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: map?
+                case MAP ⇒ if (!row.isNull (index))
+                {
+                    val types: util.List[DataType] = typ.getTypeArguments
+                    val c1 = getDataTypeClass (types.head)
+                    val c2 = getDataTypeClass (types.tail.head)
+                    val map = row.getMap (index, c1, c2)
+                    val obj = Json.createObjectBuilder ()
+                    map.entrySet.map (x ⇒ obj.add (x.getKey.toString, x.getValue.toString)) // ToDo: pick correctly overloaded add() method
+                    ret.add (name, obj)
+                }
                 case CUSTOM ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
                 case UDT ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
                 case TUPLE ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?

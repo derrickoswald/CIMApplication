@@ -5,9 +5,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import com.datastax.driver.core.ResultSet
-
 import scala.reflect.runtime.universe.TypeTag
+
+import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.DataFrame

@@ -5,7 +5,7 @@
 
 define
 (
-    ["highstock", "cimquery"],
+    ["highstock", "cimquery", "mustache"],
     /**
      * @summary Chart control.
      * @description UI element for displaying measured, simulated and summarized data.
@@ -13,13 +13,12 @@ define
      * @exports cimchart
      * @version 1.0
      */
-    function (notaAMDmodule, cimquery)
+    function (notaAMDmodule, cimquery, mustache)
     {
         class CIMChart
         {
             constructor (cimmap)
             {
-                // ToDo: need a way to set the keyspace
                 this._keyspace = "cimapplication";
                 this._cimmap = cimmap;
             }
@@ -46,6 +45,7 @@ define
                 this._container.appendChild (close);
                 this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
                 this._cimmap.add_feature_listener (this);
+                this.chooseKeyspace (text);
                 return (this._container);
             }
 
@@ -74,6 +74,42 @@ define
             visible ()
             {
                 return ("undefined" != typeof (this._container));
+            }
+
+            changeKeyspace (event)
+            {
+                var keyspace = document.getElementById ("current_keyspace").value;
+                this._keyspace = keyspace;
+                this.initialize ();
+            }
+
+            chooseKeyspace (div)
+            {
+                var self = this;
+                // get the keyspaces with simulation data
+                var promise = cimquery.queryPromise ({ sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' allow filtering", cassandra: true })
+                    .then (
+                        function (resultset)
+                        {
+                            if (resultset.length > 0)
+                            {
+                                resultset.forEach (x => { if (x.keyspace_name == self._keyspace) x.selected = true });
+                                var template =
+                                `
+<h6 style="margin-top: 20px;">
+    <select id="current_keyspace" class="form-control custom-select">
+        {{#keyspaces}}
+        <option value="{{keyspace_name}}"{{#selected}} selected{{/selected}}>{{{keyspace_name}}}</option>
+        {{/keyspaces}}
+    </select>
+</h6>
+                                `;
+                                var text = mustache.render (template, { keyspaces: resultset })
+                                div.innerHTML = text;
+                                document.getElementById ("current_keyspace").addEventListener ("change", self.changeKeyspace.bind (self));
+                            }
+                        }
+                    );
             }
 
             initialize ()
