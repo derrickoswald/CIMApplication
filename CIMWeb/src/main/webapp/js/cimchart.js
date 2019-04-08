@@ -33,8 +33,23 @@ define
                 text.id = "chart";
                 text.className = "card-body";
                 text.setAttribute ("style", "min-width: 600px; height: 400px; margin: 0 auto; position: relative;");
-                text.innerHTML = "";
                 this._container.appendChild (text);
+
+                // add choices dropdown placeholder
+                var dropdown = document.createElement ("div");
+                dropdown.id = "chart_source_menu";
+                dropdown.setAttribute ("style", "position: absolute; top: 2px; left: 8px; display: none;");
+                dropdown.innerHTML = `
+<div class="dropdown show">
+  <a class="dropdown-toggle" href="#" role="button" id="chart_sources_link" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+    Sources
+  </a>
+  <div id="chart_sources" class="dropdown-menu" aria-labelledby="chart_source_link">
+  </div>
+</div>
+`;
+                this._container.appendChild (dropdown);
+
                 // add close button
                 var close = document.createElement ("button");
                 close.className = "close";
@@ -209,7 +224,17 @@ define
                             enabled: false
                         },
 
-                        series: series
+                        series: series,
+
+                        legend:
+                        {
+                            enabled: true,
+                            floating: true,
+                            backgroundColor: '#FCFFC5',
+                            borderColor: 'black',
+                            borderWidth: 1,
+                            layout: 'vertical'
+                        }
                     }
                 );
             }
@@ -275,6 +300,8 @@ define
                     chart.innerHTML = contents;
                 if (this._theChart)
                     delete this._theChart;
+                var menu = document.getElementById ("chart_source_menu");
+                menu.style.display = "none";
             }
 
             getDataFor (feature)
@@ -328,6 +355,19 @@ define
 
                 if (0 != queries.length)
                 {
+                    var menu = document.getElementById ("chart_source_menu");
+                    menu.style.display = "block";
+                    var sources = document.getElementById ("chart_sources");
+                    queries.forEach (x => { x.checked = true });
+                    var template = `
+    {{#queries}}
+    <div class="form-check">
+        <input id="{{name}}" class="form-check-input" type="checkbox" name="{{name}}" value="{{name}}" {{#checked}} checked{{/checked}}>
+        <label class="form-check-label" for="{{name}}">{{name}}</label>
+    </div>
+    {{/queries}}
+`;
+                    sources.innerHTML = mustache.render (template, { queries: queries });
                     var self = this;
                     Promise.all (
                         queries.map (
