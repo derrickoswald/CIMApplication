@@ -2,6 +2,7 @@ package ch.ninecode.sim
 
 import ch.ninecode.sim.Main.LogLevels
 import ch.ninecode.sim.Main.LogLevels.LogLevels
+import org.apache.spark.storage.StorageLevel
 
 case class SimulationOptions
 (
@@ -51,6 +52,11 @@ case class SimulationOptions
     workdir: String = "/tmp/",
 
     /**
+     * Cacheing option.
+     */
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+
+    /**
      * If <code>true</code>, keep glm and input/output files in workdir.
      */
     keep: Boolean = false,
@@ -59,6 +65,11 @@ case class SimulationOptions
      * Summarize results.
      */
     summarize: Boolean = false,
+
+    /**
+     * Perform event checking.
+     */
+    events: Boolean = false,
 
     /**
      * Simulation JSON files.

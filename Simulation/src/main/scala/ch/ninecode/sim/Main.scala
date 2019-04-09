@@ -99,6 +99,10 @@ object Main
             action ((_, c) ⇒ c.copy (summarize = true)).
             text ("perform summary operations [%s]".format (default.summarize))
 
+        opt [Unit]("events").
+            action ((_, c) ⇒ c.copy (events = true)).
+            text ("perform event detection operations [%s]".format (default.events))
+
         arg [String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒
             {
@@ -217,16 +221,25 @@ object Main
                     {
                         val sim = Simulation (session, options)
                         val runs = sim.run ()
-                        if (options.summarize)
+                        if (options.summarize || options.events)
                             to_summarize = runs
                         log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
                     }
 
                     if (to_summarize.nonEmpty)
                     {
-                        val sum = Summarize (session, options)
-                        sum.run (to_summarize)
-                        log.info ("""summarized %s""".format (to_summarize.mkString (",")))
+                        if (options.summarize)
+                        {
+                            val sum = Summarize (session, options)
+                            sum.run (to_summarize)
+                            log.info ("""summarized %s""".format (to_summarize.mkString (",")))
+                        }
+                        if (options.events)
+                        {
+                            val events = SimulationEvents (session, options)
+                            events.run (to_summarize)
+                            log.info ("""event detected %s""".format (to_summarize.mkString (",")))
+                        }
                     }
 
                     val calculate = System.nanoTime ()

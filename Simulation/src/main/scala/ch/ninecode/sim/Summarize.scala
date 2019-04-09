@@ -18,8 +18,6 @@ import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-
-
 /**
  * Summarize the simulation.
  *
@@ -54,7 +52,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def utilization (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Utilization")
-        val simulated_current_values = access.raw_values ("current")
+        val typ = "current"
+        val simulated_current_values = access.raw_values (typ)
             .cache
         logInfo ("""Utilization: %d simulated current values to process""".format (simulated_current_values.count))
         show (simulated_current_values)
@@ -70,7 +69,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("real_a", "imag_a")
             .join (
                 lines,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
         val ratedCables = cables
             .withColumn ("ratedCurrent", maxCurrent [Map[String, String]].apply (cables ("properties")))
             .drop ("properties")
@@ -81,16 +80,14 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         { // open a scope to avoid variable name clashes
             val mrid = utilization.schema.fieldIndex ("mrid")
-            val typ = utilization.schema.fieldIndex ("type")
             val period = utilization.schema.fieldIndex ("period")
             val time = utilization.schema.fieldIndex ("time")
             val current = utilization.schema.fieldIndex ("current")
             val ratedCurrent = utilization.schema.fieldIndex ("ratedCurrent")
             val percent = utilization.schema.fieldIndex ("utilization")
-            val simulation = utilization.schema.fieldIndex ("simulation")
             val transformer = utilization.schema.fieldIndex ("transformer")
 
-            val work = utilization.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), row.getInt (period), row.getTimestamp (time), row.getDouble (current), row.getDouble (ratedCurrent), row.getDouble (percent), "A÷A×100", row.getString (transformer), row.getString (simulation))).cache
+            val work = utilization.rdd.map (row ⇒ (row.getString (mrid), typ, row.getInt (period), row.getTimestamp (time), row.getDouble (current), row.getDouble (ratedCurrent), row.getDouble (percent), "A÷A×100", row.getString (transformer), access.simulation)).cache
 
             // save to Cassandra
             work.saveToCassandra (access.output_keyspace, "utilization",
@@ -101,7 +98,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val summary = utilization
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
-            .groupBy ("mrid", "type", "date", "transformer", "simulation")
+            .groupBy ("mrid", "date", "transformer")
             .agg (
                 "utilization" → "min",
                 "utilization" → "avg",
@@ -115,15 +112,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         {
             val mrid = summary.schema.fieldIndex ("mrid")
-            val typ = summary.schema.fieldIndex ("type")
             val date = summary.schema.fieldIndex ("date")
             val min_utilization = summary.schema.fieldIndex ("min_utilization")
             val avg_utilization = summary.schema.fieldIndex ("avg_utilization")
             val max_utilization = summary.schema.fieldIndex ("max_utilization")
-            val simulation = summary.schema.fieldIndex ("simulation")
             val transformer = summary.schema.fieldIndex ("transformer")
 
-            val work = summary.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", row.getString (transformer), row.getString (simulation))).cache
+            val work = summary.rdd.map (row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", row.getString (transformer), access.simulation)).cache
 
             // save to Cassandra
             work.saveToCassandra (access.output_keyspace, "utilization_summary_by_day",
@@ -135,7 +130,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("period")
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
-            .groupBy ("type", "date", "transformer", "simulation")
+            .groupBy ("date", "transformer")
             .agg (
                 "utilization" → "min",
                 "utilization" → "avg",
@@ -148,15 +143,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (trafokreise)
 
         {
-            val typ = trafokreise.schema.fieldIndex ("type")
             val date = trafokreise.schema.fieldIndex ("date")
             val min_utilization = trafokreise.schema.fieldIndex ("min_utilization")
             val avg_utilization = trafokreise.schema.fieldIndex ("avg_utilization")
             val max_utilization = trafokreise.schema.fieldIndex ("max_utilization")
-            val simulation = trafokreise.schema.fieldIndex ("simulation")
             val transformer = trafokreise.schema.fieldIndex ("transformer")
 
-            val work = trafokreise.rdd.map (row ⇒ (row.getString (transformer), row.getString (typ), row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", row.getString (simulation))).cache
+            val work = trafokreise.rdd.map (row ⇒ (row.getString (transformer), typ, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), "A÷A×100", access.simulation)).cache
 
             // save to Cassandra
             work.saveToCassandra (access.output_keyspace, "utilization_summary_by_day_by_transformer",
@@ -169,7 +162,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("period")
             .withColumn ("date", utilization ("time").cast (DateType))
             .drop ("time")
-            .groupBy ("mrid", "type", "date", "transformer", "simulation")
+            .groupBy ("mrid", "date", "transformer")
             .agg (
                 "utilization" → "min",
                 "utilization" → "avg",
@@ -180,20 +173,18 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .withColumnRenamed ("max(utilization)", "max_utilization")
             .union (trafokreise.withColumn ("mrid", trafokreise ("transformer"))
                 // reorder the columns because union is brain-dead
-                .select ("mrid", "type", "date", "transformer", "simulation", "min_utilization", "avg_utilization", "max_utilization"))
-            .orderBy ("simulation", "type", "transformer", "mrid", "date")
+                .select ("mrid", "date", "transformer", "min_utilization", "avg_utilization", "max_utilization"))
+            .orderBy ("transformer", "mrid", "date")
             .cache
         logInfo ("""Utilization: %d time series values""".format (timeseries.count))
         show (timeseries)
 
         {
             val mrid = timeseries.schema.fieldIndex ("mrid")
-            val typ = timeseries.schema.fieldIndex ("type")
             val date = timeseries.schema.fieldIndex ("date")
             val min_utilization = timeseries.schema.fieldIndex ("min_utilization")
             val avg_utilization = timeseries.schema.fieldIndex ("avg_utilization")
             val max_utilization = timeseries.schema.fieldIndex ("max_utilization")
-            val simulation = timeseries.schema.fieldIndex ("simulation")
             val transformer = timeseries.schema.fieldIndex ("transformer")
 
             //case class Record (mrid: String, `type`: String, period: Long, date: Date, min_utilization: Double, avg_utilization: Double, max_utilization: Double, simulation: String, transformer: String)
@@ -261,9 +252,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                     history.avgvalues (i) = 0.0
                     history.maxvalues (i) = 0.0
                 }
-                history.simulation = row.getString (simulation)
+                history.simulation = access.simulation
                 history.transformer = row.getString (transformer)
-                history.`type` = row.getString (typ)
+                history.`type` = typ
                 history.mrid = row.getString (mrid)
                 ret
             }
@@ -322,7 +313,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         // do the 'all time' historical values
         val alltime = timeseries
-            .groupBy ("mrid", "type", "transformer", "simulation")
+            .groupBy ("mrid", "transformer")
             .agg (
                 "date" → "max",
                 "min_utilization" → "min",
@@ -338,15 +329,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         {
             val mrid = alltime.schema.fieldIndex ("mrid")
-            val typ = alltime.schema.fieldIndex ("type")
             val date = alltime.schema.fieldIndex ("date")
             val min_utilization = alltime.schema.fieldIndex ("min_utilization")
             val avg_utilization = alltime.schema.fieldIndex ("avg_utilization")
             val max_utilization = alltime.schema.fieldIndex ("max_utilization")
-            val simulation = alltime.schema.fieldIndex ("simulation")
             val transformer = alltime.schema.fieldIndex ("transformer")
 
-            val work = alltime.rdd.map (row ⇒ (row.getString (mrid), row.getString (typ), 0L, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), row.getString (simulation), row.getString (transformer))).cache
+            val work = alltime.rdd.map (row ⇒ (row.getString (mrid), typ, 0L, row.getDate (date), row.getDouble (min_utilization), row.getDouble (avg_utilization), row.getDouble (max_utilization), access.simulation, row.getString (transformer))).cache
 
             // save to Cassandra
             work.saveToCassandra (access.output_keyspace, "utilization_historical",
@@ -367,7 +356,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def load_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Load Factor")
-        val simulated__power_values = access.raw_values ("power") // ToDo: how to pick the transformer power values if another recorder asks for power
+        val typ = "power"
+        val simulated__power_values = access.raw_values (typ) // ToDo: how to pick the transformer power values if another recorder asks for power
             .cache
         logInfo ("""Load Factor: %d simulation values to process""".format (simulated__power_values.count))
         show (simulated__power_values)
@@ -384,12 +374,12 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("real_a", "imag_a")
             .join (
                 trafos,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
         logInfo ("""Load Factor: %d power values to process""".format (simulated_value_trafos.count))
         show (simulated_value_trafos)
 
         val aggregates = simulated_value_trafos
-            .groupBy ("mrid", "type", "date", "simulation") // sum over time for each day
+            .groupBy ("mrid", "date") // sum over time for each day
             .agg ("power" → "avg", "power" → "max")
             .withColumnRenamed ("avg(power)", "avg_power")
             .withColumnRenamed ("max(power)", "peak_power")
@@ -399,15 +389,13 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (loadfactors)
 
         val mrid = loadfactors.schema.fieldIndex ("mrid")
-        val typ = loadfactors.schema.fieldIndex ("type")
         val date = loadfactors.schema.fieldIndex ("date")
         val avg_power = loadfactors.schema.fieldIndex ("avg_power")
         val peak_power = loadfactors.schema.fieldIndex ("peak_power")
         val load_factor = loadfactors.schema.fieldIndex ("load_factor")
-        val simulation = loadfactors.schema.fieldIndex ("simulation")
 
         val work = loadfactors.rdd.map (
-            row ⇒ (row.getString (mrid), row.getString (typ), row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", row.getString (simulation)))
+            row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
 
         // save to Cassandra
         work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
@@ -429,7 +417,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
-        val simulated_power_values = access.raw_values ("power")
+        val typ = "power"
+        val simulated_power_values = access.raw_values (typ)
             .drop ("period")
             .cache
         logInfo ("""Coincidence Factor: %d simulation values to process""".format (simulated_power_values.count))
@@ -443,12 +432,12 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .withColumn ("date", simulated_power_values ("time").cast (DateType))
             .join (
                 trafos,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
         logInfo ("""Coincidence Factor: %d simulation values with transformers to process""".format (simulated_value_trafos.count))
         show (simulated_value_trafos)
 
         val peaks_trafos = simulated_value_trafos
-            .groupBy ("simulation", "mrid", "date", "type")
+            .groupBy ("mrid", "date")
             .agg ("power" → "max")
             .withColumnRenamed ("mrid", "transformer")
             .withColumnRenamed ("max(power)", "peak_power")
@@ -500,17 +489,15 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val transformer = coincidences.schema.fieldIndex ("transformer")
         val date = coincidences.schema.fieldIndex ("date")
-        val typ = coincidences.schema.fieldIndex ("type")
         val peak_power = coincidences.schema.fieldIndex ("peak_power")
         val sum_power = coincidences.schema.fieldIndex ("sum_power")
         val coincidence = coincidences.schema.fieldIndex ("coincidence")
-        val simulation = coincidences.schema.fieldIndex ("simulation")
 
         val work = coincidences.rdd.map (
             row ⇒
             {
                 val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
-                (row.getString (transformer), row.getString (typ), row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", row.getString (simulation))
+                (row.getString (transformer), typ, row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", access.simulation)
             }
         )
 
@@ -532,8 +519,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def responsibility_factor (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Responsibility Factor")
-        val simulated_power_values = access.raw_values ("power")
-            .drop ("type", "period")
+        val typ = "power"
+        val simulated_power_values = access.raw_values (typ)
+            .drop ("period")
             .cache
         logInfo ("""Responsibility Factor: %d simulation values to process""".format (simulated_power_values.count))
         show (simulated_power_values)
@@ -548,7 +536,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .withColumn ("date", simulated_power_values ("time").cast (DateType))
             .join (
                 trafos,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
         logInfo ("""Responsibility Factor: %d simulation values with transformers to process""".format (simulated_value_trafos.count))
         show (simulated_value_trafos)
 
@@ -593,7 +581,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (maximums)
 
         val peak_times = measured_value_and_trafo
-            .join (info, Seq ("date", "time", "transformer", "simulation"))
+            .join (info, Seq ("date", "time", "transformer"))
             .drop ("magnitude")
         logInfo ("""Responsibility Factor: %d peak times found""".format (peak_times.count))
         show (peak_times)
@@ -610,13 +598,12 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val p = responsibilities.schema.fieldIndex ("power")
         val peak = responsibilities.schema.fieldIndex ("peak")
         val responsibility = responsibilities.schema.fieldIndex ("responsibility")
-        val simulation = responsibilities.schema.fieldIndex ("simulation")
 
         val work = responsibilities.rdd.map (
             row ⇒
             {
                 val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
-                (row.getString (mrid), "power", row.getDate (date), row.getTimestamp (time), row.getString (transformer), row.getDouble (p), row.getDouble (peak), resp, "VA÷VA×100", row.getString (simulation))
+                (row.getString (mrid), typ, row.getDate (date), row.getTimestamp (time), row.getString (transformer), row.getDouble (p), row.getDouble (peak), resp, "VA÷VA×100", access.simulation)
             }
         )
         // save to Cassandra
@@ -634,8 +621,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def voltage_quality (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Voltage quality")
-        val simulated_value = access.raw_values ("voltage")
-            .drop ("type", "period")
+        val typ = "voltage"
+        val simulated_value = access.raw_values (typ)
+            .drop ("period")
             .cache
         logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_value.count))
         show (simulated_value)
@@ -650,7 +638,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("real_a", "imag_a")
             .join (
                 houses,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
 
         def nominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
 
@@ -661,7 +649,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         show (consumers)
 
         val aggregations = consumers
-            .groupBy ("mrid", "date", "nominal_voltage", "transformer", "simulation")
+            .groupBy ("mrid", "date", "nominal_voltage", "transformer")
             .agg ("voltage" → "min", "voltage" → "avg", "voltage" → "max")
             .withColumnRenamed ("min(voltage)", "min_voltage")
             .withColumnRenamed ("avg(voltage)", "avg_voltage")
@@ -685,10 +673,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val nominal_voltage = deviations.schema.fieldIndex ("nominal_voltage")
             val min_deviation = deviations.schema.fieldIndex ("min_deviation")
             val max_deviation = deviations.schema.fieldIndex ("max_deviation")
-            val simulation = deviations.schema.fieldIndex ("simulation")
             val transformer = deviations.schema.fieldIndex ("transformer")
 
-            val work = deviations.rdd.map (row ⇒ (row.getString (mrid), "voltage", row.getDate (date), row.getDouble (min_voltage), row.getDouble (avg_voltage), row.getDouble (max_voltage), row.getDouble (nominal_voltage), deviation (row.getDouble (min_deviation), row.getDouble (max_deviation)), "V÷V×100", row.getString (simulation), row.getString (transformer)))
+            val work = deviations.rdd.map (row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (min_voltage), row.getDouble (avg_voltage), row.getDouble (max_voltage), row.getDouble (nominal_voltage), deviation (row.getDouble (min_deviation), row.getDouble (max_deviation)), "V÷V×100", access.simulation, row.getString (transformer)))
             logInfo ("""Voltage quality: %d voltage extrema records""".format (work.count))
 
             // save to Cassandra
@@ -699,7 +686,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         // roll up for each transformer
         val aggregations_trafos = deviations
-            .groupBy ("transformer", "date", "nominal_voltage", "simulation")
+            .groupBy ("transformer", "date", "nominal_voltage")
             .agg ("min_voltage" → "min", "avg_voltage" → "avg", "max_voltage" → "max")
             .withColumnRenamed ("min(min_voltage)", "min_voltage")
             .withColumnRenamed ("avg(avg_voltage)", "avg_voltage")
@@ -718,9 +705,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val nominal_voltage = deviations_trafos.schema.fieldIndex ("nominal_voltage")
             val min_deviation = deviations_trafos.schema.fieldIndex ("min_deviation")
             val max_deviation = deviations_trafos.schema.fieldIndex ("max_deviation")
-            val simulation = deviations_trafos.schema.fieldIndex ("simulation")
 
-            val work = deviations_trafos.rdd.map (row ⇒ (row.getString (transformer), "voltage", row.getDate (date), row.getDouble (min_voltage), row.getDouble (avg_voltage), row.getDouble (max_voltage), row.getDouble (nominal_voltage), deviation (row.getDouble (min_deviation), row.getDouble (max_deviation)), "V÷V×100", row.getString (simulation)))
+            val work = deviations_trafos.rdd.map (row ⇒ (row.getString (transformer), "voltage", row.getDate (date), row.getDouble (min_voltage), row.getDouble (avg_voltage), row.getDouble (max_voltage), row.getDouble (nominal_voltage), deviation (row.getDouble (min_deviation), row.getDouble (max_deviation)), "V÷V×100", access.simulation))
             logInfo ("""Voltage quality: %d transformer area voltage extrema records""".format (work.count))
 
             // save to Cassandra
@@ -739,7 +725,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
     def losses (access: SimulationCassandraAccess): Unit =
     {
         log.info ("Losses")
-        val simulated_loss_values = access.raw_values ("losses")
+        val typ = "losses"
+        val simulated_loss_values = access.raw_values (typ)
             .cache
         logInfo ("""Losses: %d simulation values to process""".format (simulated_loss_values.count))
         show (simulated_loss_values)
@@ -760,8 +747,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val cables = losses
             .join (
                 lines,
-                Seq ("simulation", "mrid"))
-            .groupBy ("mrid", "date", "simulation", "transformer")
+                Seq ("mrid"))
+            .groupBy ("mrid", "date", "transformer")
             .agg ("losses" → "sum")
             .withColumnRenamed ("sum(losses)", "losses")
         logInfo ("""Losses: %d daily cable loss totals""".format (cables.count))
@@ -772,10 +759,10 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         val _trafos = losses
             .join (
                 polygons,
-                Seq ("simulation", "mrid"))
+                Seq ("mrid"))
         val trafos = _trafos
             .withColumn ("transformer", _trafos ("mrid"))
-            .groupBy ("mrid", "date", "simulation", "transformer")
+            .groupBy ("mrid", "date", "transformer")
             .agg ("losses" → "sum")
             .withColumnRenamed ("sum(losses)", "losses")
         logInfo ("""Losses: %d daily transformer loss totals""".format (trafos.count))
@@ -787,10 +774,9 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val mrid = total.schema.fieldIndex ("mrid")
             val date = total.schema.fieldIndex ("date")
             val losses = total.schema.fieldIndex ("losses")
-            val simulation = total.schema.fieldIndex ("simulation")
             val transformer = total.schema.fieldIndex ("transformer")
 
-            val work = total.rdd.map (row ⇒ (row.getString (mrid), "energy", row.getDate (date), row.getDouble (losses), "Wh", row.getString (transformer), row.getString (simulation)))
+            val work = total.rdd.map (row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (losses), "Wh", row.getString (transformer), access.simulation))
             logInfo ("""Losses: %d transformer area loss records""".format (work.count))
 
             // save to Cassandra
@@ -801,7 +787,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         // roll up each transformer area
         val sum = total
-            .groupBy ("date", "simulation", "transformer")
+            .groupBy ("date", "transformer")
             .agg ("losses" → "sum")
             .withColumnRenamed ("sum(losses)", "losses")
             .withColumnRenamed ("transformer", "mrid")
@@ -810,9 +796,8 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val mrid = sum.schema.fieldIndex ("mrid")
             val date = sum.schema.fieldIndex ("date")
             val losses = sum.schema.fieldIndex ("losses")
-            val simulation = sum.schema.fieldIndex ("simulation")
 
-            val work = sum.rdd.map (row ⇒ (row.getString (mrid), "energy", row.getDate (date), row.getDouble (losses), "Wh", row.getString (simulation)))
+            val work = sum.rdd.map (row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (losses), "Wh", access.simulation))
             logInfo ("""Losses: %d transformer area summary loss records""".format (work.count))
 
             // save to Cassandra

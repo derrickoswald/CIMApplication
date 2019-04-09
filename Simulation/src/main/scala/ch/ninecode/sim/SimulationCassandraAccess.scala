@@ -31,8 +31,8 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "geojson_points", "keyspace" -> output_keyspace))
                 .load
-                .drop ("type", "geometry")
                 .filter ("simulation = '%s'".format (simulation))
+                .drop ("type", "geometry", "simulation")
                 .cache
             logInfo ("""%d GeoJSON points to process""".format (points.count))
             show (points)
@@ -49,8 +49,8 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "geojson_lines", "keyspace" -> output_keyspace))
                 .load
-                .drop ("type", "geometry")
                 .filter ("simulation = '%s'".format (simulation))
+                .drop ("type", "geometry", "simulation")
                 .cache
             logInfo ("""%d GeoJSON lines to process""".format (lines.count))
             show (lines)
@@ -67,8 +67,8 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "geojson_polygons", "keyspace" -> output_keyspace))
                 .load
-                .drop ("type", "geometry")
                 .filter ("simulation = '%s'".format (simulation))
+                .drop ("type", "geometry", "simulation")
                 .cache
             logInfo ("""%d GeoJSON polygons to process""".format (polygons.count))
             show (polygons)
@@ -86,8 +86,9 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .format ("org.apache.spark.sql.cassandra")
                 .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
                 .load
+                // push down partition key = (simulation, mrid, type, period)
                 .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
-                .drop ("real_b", "real_c", "imag_b", "imag_c", "units")
+                .drop ("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units")
                 .cache
             logInfo ("""%d simulated values to process""".format (simulated_values.count))
             show (simulated_values)
