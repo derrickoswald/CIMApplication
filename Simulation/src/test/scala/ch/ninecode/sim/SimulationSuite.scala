@@ -194,7 +194,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("NetworkParameterSuite")
+        configuration.setAppName ("SimulationSuite")
         configuration.setMaster ("local[2]")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "2g")
@@ -424,12 +424,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
             Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--summarize", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
             new File (FILE_DEPOT + "demodata.json").delete
     }
-//
+
 //    test ("events")
 //    {
 //        spark ⇒
 //            val options = SimulationOptions (verbose = true, events = true)
-//            val events = SimulationEvents (spark, options)
-//            events.run (Array("ba923061-f931-4479-b8be-d0c85851f550"))
+//            val check = SimulationEvents (spark, options)
+//            check.run (Array("ba923061-f931-4479-b8be-d0c85851f550"))
 //    }
 }

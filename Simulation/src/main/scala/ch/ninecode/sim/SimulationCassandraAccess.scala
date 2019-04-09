@@ -12,6 +12,10 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
     def logInfo (msg: => String): Unit = if (log.isInfoEnabled && unittest) log.info (msg)
     def show (dataframe: DataFrame, records: Int = 5): Unit = if (unittest) dataframe.show (records)
 
+    // ToDo: how can we not hard-code this period?
+    val PERIOD: Int = 900000
+    def getPeriod: Int = PERIOD
+
     var points: DataFrame = _
 
     var lines: DataFrame = _
@@ -32,7 +36,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .options (Map ("table" -> "geojson_points", "keyspace" -> output_keyspace))
                 .load
                 .filter ("simulation = '%s'".format (simulation))
-                .drop ("type", "geometry", "simulation")
+                .drop ("simulation", "type", "geometry")
                 .cache
             logInfo ("""%d GeoJSON points to process""".format (points.count))
             show (points)
@@ -50,7 +54,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .options (Map ("table" -> "geojson_lines", "keyspace" -> output_keyspace))
                 .load
                 .filter ("simulation = '%s'".format (simulation))
-                .drop ("type", "geometry", "simulation")
+                .drop ("simulation", "type", "geometry")
                 .cache
             logInfo ("""%d GeoJSON lines to process""".format (lines.count))
             show (lines)
@@ -68,7 +72,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .options (Map ("table" -> "geojson_polygons", "keyspace" -> output_keyspace))
                 .load
                 .filter ("simulation = '%s'".format (simulation))
-                .drop ("type", "geometry", "simulation")
+                .drop ("simulation", "type", "geometry")
                 .cache
             logInfo ("""%d GeoJSON polygons to process""".format (polygons.count))
             show (polygons)
@@ -76,8 +80,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
         polygons
     }
 
-    // ToDo: how can we not hard-code this period?
-    def raw_values (`type`: String, period: Int = 900000): DataFrame =
+    def raw_values (`type`: String, period: Int = PERIOD): DataFrame =
     {
         if (null == simulated_values)
         {
