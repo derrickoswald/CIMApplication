@@ -63,15 +63,20 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     val BOUNDARY2 = Trigger (0.90,  3 * 60 * 60 * 1000)
     val BOUNDARY3 = Trigger (1.10,      15 * 60 * 1000)
 
-    class Checker (simulation: String, mrid: String, boundary: Trigger, ratedCurrent: Double)
+    // also the same for transformer apparent power
+    // power >75% and >14h within 24h
+    // power >90% and >3h within 24h
+    // power >110% for 15 minutes or more
+
+    class Checker (simulation: String, mrid: String, boundary: Trigger, limit: Double, typ: String)
     {
         var ret: List[Event] = Nil
 
-        val threshold = boundary.ratio * ratedCurrent // test value
-        var start = 0L                                // starting time
-        var end = 0L                                  // ending time
-        var timeout = 0                               // count-down
-        lazy val message = "current exceeds %s%% threshold for %s milliseconds".format (boundary.ratio * 100.0, boundary.duration)
+        val threshold = boundary.ratio * limit // test value
+        var start = 0L                         // starting time
+        var end = 0L                           // ending time
+        var timeout = 0                        // count-down
+        lazy val message = "%s exceeds %s%% threshold for %s milliseconds".format (typ, boundary.ratio * 100.0, boundary.duration)
 
         def next (time: Long, period: Int, current: Double): Unit =
         {
@@ -232,9 +237,9 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             // pare down the data and sort by time
             val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
 
-            val b1 = new Checker (access.simulation, mrid, boundary1, ratedCurrent)
-            val b2 = new Checker (access.simulation, mrid, boundary2, ratedCurrent)
-            val b3 = new Checker (access.simulation, mrid, boundary3, ratedCurrent)
+            val b1 = new Checker (access.simulation, mrid, boundary1, ratedCurrent, typ)
+            val b2 = new Checker (access.simulation, mrid, boundary2, ratedCurrent, typ)
+            val b3 = new Checker (access.simulation, mrid, boundary3, ratedCurrent, typ)
             for (i ← values.indices)
             {
                 val time = values(i)._1
@@ -253,6 +258,73 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
         val events: RDD[Event] = work.groupBy (_._1).values.flatMap (checkCable).persist (options.storage_level)
         save (access, events)
         log.info ("""currentCheck: overcurrent records saved to %s.simulation_event""".format (access.output_keyspace))
+    }
+
+    def powerCheck (access: SimulationCassandraAccess, boundary1: Trigger = BOUNDARY1, boundary2: Trigger = BOUNDARY2, boundary3: Trigger = BOUNDARY3): Unit =
+    {
+        log.info ("Power events")
+        val typ = "power"
+        val simulated_power_values = access.raw_values (typ).persist (options.storage_level)
+        logInfo ("""Power limit: %d simulated power values to process""".format (simulated_power_values.count))
+        show (simulated_power_values)
+
+        val polygons = access.geojson_polygons
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        def maxPower[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("ratedS", "1.0").toDouble)
+
+        val trafos = simulated_power_values
+            .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+            .drop ("real_a", "imag_a")
+            .join (
+                polygons,
+                Seq ("mrid"))
+        val ratedTrafos = trafos
+            .withColumn ("ratedS", maxPower [Map[String, String]].apply (trafos ("properties")))
+            .drop ("properties")
+            .persist (options.storage_level)
+
+        val minratio = if (boundary1.ratio < boundary2.ratio) if (boundary1.ratio < boundary3.ratio) boundary1.ratio else boundary3.ratio else if (boundary2.ratio < boundary3.ratio) boundary2.ratio else boundary3.ratio
+        val interesting = ratedTrafos.filter ("power > (%s * ratedS)".format (minratio))
+
+        val mrid = interesting.schema.fieldIndex ("mrid")
+        val period = interesting.schema.fieldIndex ("period")
+        val time = interesting.schema.fieldIndex ("time")
+        val power = interesting.schema.fieldIndex ("power")
+        val ratedS = interesting.schema.fieldIndex ("ratedS")
+        val work = interesting.rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
+
+        def checkTrafo (stuff: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
+        {
+            // all the mRID and ratedS are the same
+            val mrid = stuff.head._1
+            val ratedS = stuff.head._5
+
+            // pare down the data and sort by time
+            val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
+
+            val b1 = new Checker (access.simulation, mrid, boundary1, ratedS, typ)
+            val b2 = new Checker (access.simulation, mrid, boundary2, ratedS, typ)
+            val b3 = new Checker (access.simulation, mrid, boundary3, ratedS, typ)
+            for (i ← values.indices)
+            {
+                val time = values(i)._1
+                val ltime = time.getTime
+                val period = values(i)._2
+                val power = values(i)._3
+                b1.next (ltime, period, power)
+                b2.next (ltime, period, power)
+                b3.next (ltime, period, power)
+            }
+
+            b1.gimme ::: b2.gimme ::: b3.gimme
+        }
+
+        // group by mRID and check each transformer three ways
+        val events: RDD[Event] = work.groupBy (_._1).values.flatMap (checkTrafo).persist (options.storage_level)
+        save (access, events)
+        log.info ("""powerCheck: overpower records saved to %s.simulation_event""".format (access.output_keyspace))
     }
 
     def run (simulations: Seq[String]): Unit =
@@ -299,6 +371,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                     log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
                     voltageCheck (access)
                     currentCheck (access)
+                    powerCheck (access)
                 case None ⇒
                     log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
             }

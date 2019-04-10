@@ -118,10 +118,36 @@ define
                 if ((null != features) && (0 != features.length))
                 {
                     var trafo = null;
+                    var boundaryswitch = null;
                     for (var i = 0; i < features.length; i++)
+                    {
                         if (features[i].layer.id == "areas")
                             trafo = features[i].properties.name;
-                    if (trafo)
+                        if (features[i].layer.id == "edge_labels" || features[i].layer.id == "edges")
+                            boundaryswitch = features[i].properties.mrid;
+                    }
+                    if (boundaryswitch)
+                    {
+                        // check if it's in memory
+                        var data = this._cimmap.get_data ();
+                        if (data)
+                        {
+                            var sw = data["Element"][boundaryswitch];
+                            if (sw)
+                            {
+                                // select the switch
+                                this._cimmap.select (boundaryswitch, [boundaryswitch]);
+                                // make the editor visible
+                                var editor = this._cimmap.get_editor ();
+                                if (!editor.visible ())
+                                {
+                                    this._cimmap.get_map ().addControl (editor);
+                                    editor.initialize ();
+                                }
+                            }
+                        }
+                    }
+                    else if (trafo)
                     {
                         // check if it's already loaded
                         var loaded = this._cimmap.get_loaded ();

@@ -88,8 +88,8 @@ truncate table cimapplication.losses_summary_by_day;
         //            "end": "2017-07-19T00:00:00.000+0100"
         //        },
         //        keyspaces: {
-        //            "read": "cimapplication",
-        //            "write": "cimapplication"
+        //            "input": "cimapplication",
+        //            "output": "cimapplication"
         //        },
         //        "transformers": [
         //            "TRA2755"
