@@ -116,7 +116,7 @@ EXPOSE 9080
 
 # copy start script
 COPY CIMEar/start-tomee /opt/util/bin/start-tomee
-COPY CIMEar/schema.sql /opt/util/bin/schema.sql
+COPY CIMEar/simulation_schema.sql /opt/util/bin/simulation_schema.sql
 
 # set up apps directory
 RUN mv /usr/local/tomee/conf/tomee.xml /usr/local/tomee/conf/tomee.xml.bak

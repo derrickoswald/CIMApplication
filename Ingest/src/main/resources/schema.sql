@@ -1,1 +1,0 @@
-../../../../Simulation/src/main/resources/schema.sql

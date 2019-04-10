@@ -81,8 +81,8 @@ if [[ "localhost" == "$CASSANDRANODE" ]]; then
         fi
     done
     # load Cassandra schema (for a single node)
-    sed -i "s|'replication_factor': 2|'replication_factor': 1|g" /opt/util/bin/schema.sql
-    cqlsh --file /opt/util/bin/schema.sql $CASSANDRANODE
+    sed -i "s|'replication_factor': 2|'replication_factor': 1|g" /opt/util/bin/simulation_schema.sql
+    cqlsh --file /opt/util/bin/simulation_schema.sql $CASSANDRANODE
 fi
 
 # add Spark and Hadoop configuration directories to shared classpath

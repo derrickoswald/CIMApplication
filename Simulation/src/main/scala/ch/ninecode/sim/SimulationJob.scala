@@ -55,14 +55,14 @@ case class SimulationJob
     /**
      * The Cassandra keyspace to read measured data from.
      *
-     * A table named measured_value with an appropriate schema (see schema.sql) is expected.
+     * A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
      */
     input_keyspace: String,
 
     /**
      * The Cassandra keyspace to save results to.
      *
-     * A table named simulated_value with an appropriate schema (see schema.sql) and if summarization
+     * A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
      * operations are performed additional tables with appropriate schema are expected.
      */
     output_keyspace: String,
