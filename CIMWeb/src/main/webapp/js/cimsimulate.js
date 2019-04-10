@@ -60,8 +60,8 @@ truncate table cimapplication.losses_summary_by_day;
                     "end": "2017-07-19T00:00:00.000+0100"
                 },
                 keyspaces: {
-                    "read": "cimapplication",
-                    "write": "cimapplication"
+                    "input": "cimapplication",
+                    "output": "cimapplication"
                 },
                 players: [],
                 recorders: [],
@@ -525,8 +525,8 @@ truncate table cimapplication.losses_summary_by_day;
                 alert ("A CIM file must be specified");
                 return;
             }
-            TheSimulation.keyspaces.read = document.getElementById ("input_keyspace").value;
-            TheSimulation.keyspaces.write = document.getElementById ("output_keyspace").value;
+            TheSimulation.keyspaces.input = document.getElementById ("input_keyspace").value;
+            TheSimulation.keyspaces.output = document.getElementById ("output_keyspace").value;
             TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
