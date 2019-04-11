@@ -151,7 +151,7 @@ define
                     {
                         // check if it's already loaded
                         var loaded = this._cimmap.get_loaded ();
-                        var existing = loaded && loaded.files.includes (trafo);
+                        var existing = loaded && loaded.files && loaded.files.includes (trafo);
                         if (existing)
                             // pass click up to map
                             this._cimmap.default_mousedown_listener (event);

@@ -70,7 +70,7 @@ define
                 this._edit = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-edit', 'Edit', edit);
                 this._connectivity = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-connectivity', 'Connectivity', connectivity);
                 this._diagram = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-diagram', 'Diagram', diagram);
-                this._diagram = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-chart', 'Chart', chart);
+                this._chart = this._createButton ('mapboxgl-ctrl-icon mapboxgl-ctrl-chart', 'Chart', chart);
             }
 
             _rotateCompassArrow ()

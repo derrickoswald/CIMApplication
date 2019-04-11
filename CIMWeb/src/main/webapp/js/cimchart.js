@@ -159,11 +159,15 @@ define
                                                             var simulation = JSON.parse (row["[json]"]);
                                                             self._simulations.push (simulation);
                                                             return (
-                                                                cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_player where id = '" + simulation.id + "'", cassandra: true })
-                                                                    .then (players => simulation.players = players)
-                                                                    .then (() => { return (cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_recorder where id = '" + simulation.id + "'", cassandra: true })); })
-                                                                    .then (recorders => simulation.recorders = recorders)
-                                                                );
+                                                                Promise.all (
+                                                                    [
+                                                                        cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_player where id = '" + simulation.id + "'", cassandra: true })
+                                                                            .then (players => simulation.players = players, reason => { alert (reason); simulation.players = []; }),
+                                                                        cimquery.queryPromise ({ sql: "select * from " + keyspace + ".simulation_recorder where id = '" + simulation.id + "'", cassandra: true })
+                                                                            .then (recorders => simulation.recorders = recorders, reason => { alert (reason); simulation.recorders = []; })
+                                                                    ]
+                                                                )
+                                                            );
                                                         }
                                                     )
                                                 )

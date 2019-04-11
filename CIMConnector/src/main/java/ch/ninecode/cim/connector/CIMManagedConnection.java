@@ -220,6 +220,8 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             configuration.set ("spark.submit.deployMode", "client");
             // dial down the console verbosity
             configuration.set ("spark.ui.showConsoleProgress", "false");
+            // use Kryo
+            configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
 
             // add the other properties
             for (String key : _RequestInfo.getProperties ().keySet ())

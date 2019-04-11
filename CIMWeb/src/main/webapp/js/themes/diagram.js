@@ -28,6 +28,7 @@ define
         var switch_symbol = "switch";
         var transformer_station_symbol = "transformer_station";
         var transformer_symbol = "transformer";
+        var feeder_symbol = "feeder";
 
         var TheExtents;
 
@@ -180,6 +181,7 @@ define
                                 }
                             );
                             objects[id].id = id;
+                            objects[id].rotation = 0.0;
 
                             // assign the symbol and color
                             if ("PowerTransformer" == objects[id].cls)
@@ -257,7 +259,7 @@ define
                             }
                             else if ("Connector" == objects[id].cls)
                             {
-                                objects[id].symbol = connector_symbol;
+                                objects[id].symbol = feeder_symbol;
                                 objects[id].color = "rgb(139, 0, 0)";
                             }
                             else if ("Junction" == objects[id].cls)
@@ -324,6 +326,38 @@ define
                             );
                             objects[id].id = id;
                             objects[id].color = "rgb(0, 0, 0)";
+                        }
+                    }
+                }
+            }
+
+            process_spatial_objects_again (data, options)
+            {
+                var diagram_object = data.DiagramObject;
+                for (var id in diagram_object)
+                {
+                    var obj = diagram_object[id];
+                    if (obj.rotation != 0.0)
+                    {
+                        var id = obj.IdentifiedObject;
+                        if (null != id)
+                        {
+                            var element = data.Element[id];
+                            if (null != element)
+                                // -90.0: fix symbol, zero is east & not down
+                                // value is in degrees clockwise, not counter-clockwise
+                                // +180: symbol points in to station
+                                element.rotation =  -90.0 + (-obj.rotation * 180.0 / Math.PI) + 180.0;
+                        }
+                    }
+                    if (null != obj.DiagramObjectStyle)
+                    {
+                        var id = obj.IdentifiedObject;
+                        if (null != id)
+                        {
+                            var element = data.Element[id];
+                            if (null != element)
+                                element.color = ("feeder_externally_feed_style" == obj.DiagramObjectStyle) ? "rgb(255, 0, 255)" : "rgb(139, 0, 0)";
                         }
                     }
                 }

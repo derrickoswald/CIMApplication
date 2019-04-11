@@ -1,5 +1,23 @@
 create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 2 };
 
+create or replace function cimapplication.magnitude (real double, imag double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (Math.sqrt (real * real + imag * imag)); $$;
+
+create or replace function cimapplication.phase (real double, imag double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (Math.atan2 (imag, real)); $$;
+
+create or replace function cimapplication.radians2degrees (radians double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return (radians / Math.PI * 180.0); $$;
+
 create table if not exists cimapplication.measured_value (
     mrid text,
     type text,

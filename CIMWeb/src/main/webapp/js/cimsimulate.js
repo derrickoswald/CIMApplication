@@ -162,62 +162,7 @@ truncate table cimapplication.losses_summary_by_day;
         var RecorderChooser;
         var RecorderChoices = [
             {
-                "title": "All node voltages",
-                "query":
-                    `
-                    select
-                        concat (n.IdentifiedObject.mRID, '_voltage_recorder') name,
-                        ifnull (t.ConductingEquipment, n.IdentifiedObject.mRID) mrid,
-                        n.IdentifiedObject.mRID parent,
-                        'voltage' type,
-                        'voltage' property,
-                        'Volts' unit,
-                        n.TopologicalIsland island
-                    from
-                        TopologicalNode n
-                    left outer join
-                        (
-                            select
-                                distinct (t1.TopologicalNode) TopologicalNode, first (t1.ConductingEquipment) ConductingEquipment
-                            from
-                                Terminal t1
-                            where
-                                t1.ConductingEquipment not in
-                                (
-                                    select
-                                        t2.ConductingEquipment
-                                    from
-                                        Terminal t2
-                                    where
-                                        ACDCTerminal.sequenceNumber > 1
-                                )
-                            group by t1.TopologicalNode
-                        ) t
-                    on
-                        n.IdentifiedObject.mRID = t.TopologicalNode
-                    `,
-                "interval": 900,
-                "aggregations": [
-                    {
-                        "intervals": 1,
-                        "ttl": null
-                    },
-                    {
-                        "intervals": 4,
-                        "ttl": null
-                    },
-                    {
-                        "intervals": 12,
-                        "ttl": null
-                    },
-                    {
-                        "intervals": 96,
-                        "ttl": null
-                    }
-                ]
-            },
-            {
-                "title": "All transformer power flows",
+                "title": "All transformer output power",
                 "query":
                     `
                     select
@@ -317,6 +262,166 @@ truncate table cimapplication.losses_summary_by_day;
                         t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                         t.ACDCTerminal.sequenceNumber > 1 and
                         t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All BusbarSection node voltages",
+                "query":
+                    `
+                    select
+                        concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,
+                        b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        n.IdentifiedObject.mRID parent,
+                        'voltage' type,
+                        'voltage' property,
+                        'Volts' unit,
+                        n.TopologicalIsland island
+                    from
+                        TopologicalNode n,
+                        Terminal t,
+                        BusbarSection b
+                    where
+                        t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        n.IdentifiedObject.mRID = t.TopologicalNode
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All BusbarSection output power",
+                "query":
+                    `
+                    select
+                        concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
+                        b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        n.IdentifiedObject.mRID parent,
+                        'power' type,
+                        'power' property,
+                        'VA' unit,
+                        n.TopologicalIsland island
+                    from
+                        TopologicalNode n,
+                        Terminal t,
+                        BusbarSection b
+                    where
+                        t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        n.IdentifiedObject.mRID = t.TopologicalNode
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All EnergyConsumer node voltages",
+                "query":
+                    `
+                    select
+                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        n.IdentifiedObject.mRID parent,
+                        'voltage' type,
+                        'voltage' property,
+                        'Volts' unit,
+                        n.TopologicalIsland island
+                    from
+                        TopologicalNode n,
+                        Terminal t,
+                        EnergyConsumer c
+                    where
+                        t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        n.IdentifiedObject.mRID = t.TopologicalNode
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All EnergyConsumer output power",
+                "query":
+                    `
+                    select
+                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        n.IdentifiedObject.mRID parent,
+                        'power' type,
+                        'power' property,
+                        'VA' unit,
+                        n.TopologicalIsland island
+                    from
+                        TopologicalNode n,
+                        Terminal t,
+                        EnergyConsumer c
+                    where
+                        t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        n.IdentifiedObject.mRID = t.TopologicalNode
                     `,
                 "interval": 900,
                 "aggregations": [
