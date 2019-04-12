@@ -6,7 +6,7 @@
 #   http://localhost:8080/cimweb/cim/ping
 #   http://localhost:8080/cimweb/cim/list
 
-# Most of this is directly copied from https://github.com/tomitribe/docker-tomee/blob/master/8-jre-7.0.4-plus/Dockerfile
+# Most of this is directly copied from https://github.com/tomitribe/docker-tomee/blob/master/8-jre-7.1.0-plus/Dockerfile
 # but based on a hadoop image from spark-docker, both of which have a common root at openjdk:8-jre.
 
 FROM derrickoswald/spark-docker:latest
@@ -64,12 +64,12 @@ RUN set -xe \
     done
 
 RUN set -x \
-	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz.asc -o tomee.tar.gz.asc \
-	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.0.4/apache-tomee-7.0.4-plus.tar.gz -o tomee.tar.gz \
+	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.1.0/apache-tomee-7.1.0-plus.tar.gz.asc -o tomee.tar.gz.asc \
+	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/7.1.0/apache-tomee-7.1.0-plus.tar.gz -o tomee.tar.gz \
     && gpg --batch --verify tomee.tar.gz.asc tomee.tar.gz \
 	&& tar -zxf tomee.tar.gz \
-	&& mv apache-tomee-plus-7.0.4/* /usr/local/tomee \
-	&& rm -Rf apache-tomee-plus-7.0.4 \
+	&& mv apache-tomee-plus-7.1.0/* /usr/local/tomee \
+	&& rm -Rf apache-tomee-plus-7.1.0 \
 	&& rm bin/*.bat \
 	&& rm tomee.tar.gz*
 
@@ -93,7 +93,7 @@ EXPOSE 9080
 # COPY CIMEar/logging.properties /usr/local/tomee/conf/logging.properties
 
 # configuring Tomcat to use log4j rather than java.util.logging doesn't work either, see https://tomcat.apache.org/tomcat-8.0-doc/logging.html#Using_Log4j
-# the only juli jars are for an earlier version and support was apparently dropped in 8.5.20 (TomEE 7.0.4)
+# the only juli jars are for an earlier version and support was apparently dropped in 8.5.20 (TomEE 7.1.0)
 # RUN mv /usr/local/tomee/conf/logging.properties /usr/local/tomee/conf/logging.properties.original
 # COPY CIMEar/log4j.properties /usr/local/tomee/lib/log4j.properties
 # COPY CIMEar/apache-log4j-1.2.17/log4j-1.2.17.jar /usr/local/tomee/liblog4j-1.2.17.jar
