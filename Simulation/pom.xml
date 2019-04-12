@@ -12,7 +12,7 @@
     </parent>
     <artifactId>Simulation</artifactId>
     <groupId>ch.ninecode.sim</groupId>
-    <name>GridLAB-D</name>
+    <name>Simulation</name>
     <description>Perform time series simulation using GridLAB-D load flow via Spark and Scala</description>
     <inceptionYear>2018</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/Simulation</url>

@@ -49,7 +49,6 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     type Event = (String, String, String, Timestamp, Timestamp)
 
     // 400V >±6%, >±10%
-    val NOMINAL_VOLTAGE = 400.0
     val THRESHOLD1 = 0.06
     val THRESHOLD2 = 0.10
 
@@ -138,7 +137,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     }
 
     // voltage exceeds ±10%=red, voltage exceeds ±6%=orange
-    def voltageCheck (access: SimulationCassandraAccess, voltage: Double = NOMINAL_VOLTAGE, threshold1: Double = THRESHOLD1, threshold2: Double = THRESHOLD2): Unit =
+    def voltageCheck (access: SimulationCassandraAccess, threshold1: Double = THRESHOLD1, threshold2: Double = THRESHOLD2): Unit =
     {
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -147,47 +146,60 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
         val simulated_voltages = access.raw_values (typ).persist (options.storage_level)
         logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_voltages.count))
         show (simulated_voltages)
+
+        val points = access.geojson_points
+
+        def nominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
+
         val voltages = simulated_voltages
             .withColumn ("voltage", magnitude [Double, Double].apply (simulated_voltages ("real_a"), simulated_voltages ("imag_a")))
             .drop ("real_a", "imag_a")
+            .join (
+                points,
+                Seq ("mrid"))
+        val nominalVoltages = voltages
+            .withColumn ("nominal", nominalVoltage [Map[String, String]].apply (voltages ("properties")))
+            .drop ("transformer", "properties")
             .persist (options.storage_level)
 
         {
-            val voltage_over_threshold = voltages
-                .filter ("voltage > %s".format (voltage * (1.0 + threshold1)))
+            val voltage_over_threshold = nominalVoltages
+                .filter ("voltage > nominal * %s".format (1.0 + threshold1))
 
             val mrid = voltage_over_threshold.schema.fieldIndex ("mrid")
             val period = voltage_over_threshold.schema.fieldIndex ("period")
             val time = voltage_over_threshold.schema.fieldIndex ("time")
             val volts = voltage_over_threshold.schema.fieldIndex ("voltage")
-            val work = voltage_over_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts))).cache
+            val nominal = voltage_over_threshold.schema.fieldIndex ("nominal")
+            val work = voltage_over_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts), row.getDouble (nominal))).cache
 
             // save to Cassandra - split based on second threshold
             val over1 = typ + " exceeds %s%% threshold".format (threshold1 * 100.0)
-            val overvoltage1: RDD[Event] = work.filter (_._5 <= voltage * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over1, x._3, x._4))
+            val overvoltage1: RDD[Event] = work.filter (v ⇒ v._5 <= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over1, x._3, x._4))
             save (access, overvoltage1)
             val over2 = typ + " exceeds %s%% threshold".format (threshold2 * 100.0)
-            val overvoltage2: RDD[Event] = work.filter (_._5 > voltage * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over2, x._3, x._4))
+            val overvoltage2: RDD[Event] = work.filter (v ⇒ v._5 <= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over2, x._3, x._4))
             save (access, overvoltage2)
             log.info ("""voltageCheck: overvoltage records saved to %s.simulation_event""".format (access.output_keyspace))
         }
 
         {
-            val voltage_under_threshold = voltages
-                .filter ("voltage < %s".format (voltage * (1.0 - threshold1)))
+            val voltage_under_threshold = nominalVoltages
+                .filter ("voltage < nominal * %s".format (1.0 - threshold1))
 
             val mrid = voltage_under_threshold.schema.fieldIndex ("mrid")
             val period = voltage_under_threshold.schema.fieldIndex ("period")
             val time = voltage_under_threshold.schema.fieldIndex ("time")
             val volts = voltage_under_threshold.schema.fieldIndex ("voltage")
-            val work = voltage_under_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts))).cache
+            val nominal = voltage_under_threshold.schema.fieldIndex ("nominal")
+            val work = voltage_under_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts), row.getDouble (nominal))).cache
 
             // save to Cassandra - split based on second threshold
             val under1 = typ + " subceeds %s%% threshold".format (threshold1 * 100.0)
-            val undervoltage1 = work.filter (_._5 >= voltage * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under1, x._3, x._4))
+            val undervoltage1 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under1, x._3, x._4))
             save (access, undervoltage1)
             val under2 = typ + " subceeds %s%% threshold".format (threshold2 * 100.0)
-            val undervoltage2 = work.filter (_._5 < voltage * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under2, x._3, x._4))
+            val undervoltage2 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under2, x._3, x._4))
             save (access, undervoltage2)
             log.info ("""voltageCheck: undervoltage records saved to %s.simulation_event""".format (access.output_keyspace))
         }

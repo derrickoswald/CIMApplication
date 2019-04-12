@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
-mvn -DskipTests clean install; docker build --quiet --tag derrickoswald/cimapplication .
+set -x
+# mvn clean dependency:purge-local-repository;
+mvn -DskipTests --projects CIMConnector,GridLAB-D,ShortCircuit,Simulation,Spatial,CIMWeb,CIMEar install; docker build --quiet --tag derrickoswald/cimapplication .

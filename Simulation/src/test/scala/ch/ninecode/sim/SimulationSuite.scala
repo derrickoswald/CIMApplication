@@ -263,31 +263,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |    ],
                           |    "recorders": [
                           |        {
-                          |            "title": "All node voltages",
-                          |            "query": " select concat (n.IdentifiedObject.mRID, '_voltage_recorder') name, ifnull (t.ConductingEquipment, n.IdentifiedObject.mRID) mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n left outer join (     select         distinct (t1.TopologicalNode) TopologicalNode, first (t1.ConductingEquipment) ConductingEquipment     from         Terminal t1     where         t1.ConductingEquipment not in         (             select                 t2.ConductingEquipment             from                 Terminal t2             where                 ACDCTerminal.sequenceNumber > 1         )     group by t1.TopologicalNode ) t on n.IdentifiedObject.mRID = t.TopologicalNode ",
-                          |            "interval": 900,
-                          |            "aggregations": [
-                          |                {
-                          |                    "intervals": 1,
-                          |                    "ttl": 1800
-                          |                },
-                          |                {
-                          |                    "intervals": 4,
-                          |                    "ttl": 3600
-                          |                },
-                          |                {
-                          |                    "intervals": 12,
-                          |                    "ttl": 7200
-                          |                },
-                          |                {
-                          |                    "intervals": 96,
-                          |                    "ttl": null
-                          |                }
-                          |            ]
-                          |        },
-                          |        {
-                          |            "title": "All transformer power flows",
-                          |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'power' type, 'power_out' property, 'VA' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID ",
+                          |            "title": "All transformer output power",
+                          |            "query": "select    concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'power' type,    'power_out' property,    'VA' unit,    n.TopologicalIsland islandfrom    PowerTransformer p,    Terminal t,    TopologicalNode nwhere    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -310,7 +287,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All transformer output currents",
-                          |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_out' property, 'Amperes' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID ",
+                          |            "query": "select    concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'current' type,    'current_out' property,    'Amperes' unit,    n.TopologicalIsland islandfrom    PowerTransformer p,    Terminal t,    TopologicalNode nwhere    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -333,7 +310,99 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All transformer power losses",
-                          |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'losses' type, 'power_losses' property, 'VA' unit, n.TopologicalIsland island from PowerTransformer p, Terminal t, TopologicalNode n where t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t.ACDCTerminal.sequenceNumber > 1 and t.TopologicalNode = n.IdentifiedObject.mRID ",
+                          |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'losses' type,    'power_losses' property,    'VA' unit,    n.TopologicalIsland islandfrom    PowerTransformer p,    Terminal t,    TopologicalNode nwhere    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
+                          |            "interval": 900,
+                          |            "aggregations": [
+                          |                {
+                          |                    "intervals": 1,
+                          |                    "ttl": 1800
+                          |                },
+                          |                {
+                          |                    "intervals": 4,
+                          |                    "ttl": 3600
+                          |                },
+                          |                {
+                          |                    "intervals": 12,
+                          |                    "ttl": 7200
+                          |                },
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "title": "All BusbarSection node voltages",
+                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland islandfrom    TopologicalNode n,    Terminal t,    BusbarSection bwhere    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "interval": 900,
+                          |            "aggregations": [
+                          |                {
+                          |                    "intervals": 1,
+                          |                    "ttl": 1800
+                          |                },
+                          |                {
+                          |                    "intervals": 4,
+                          |                    "ttl": 3600
+                          |                },
+                          |                {
+                          |                    "intervals": 12,
+                          |                    "ttl": 7200
+                          |                },
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "title": "All BusbarSection output power",
+                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland islandfrom    TopologicalNode n,    Terminal t,    BusbarSection bwhere    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "interval": 900,
+                          |            "aggregations": [
+                          |                {
+                          |                    "intervals": 1,
+                          |                    "ttl": 1800
+                          |                },
+                          |                {
+                          |                    "intervals": 4,
+                          |                    "ttl": 3600
+                          |                },
+                          |                {
+                          |                    "intervals": 12,
+                          |                    "ttl": 7200
+                          |                },
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "title": "All EnergyConsumer node voltages",
+                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland islandfrom    TopologicalNode n,    Terminal t,    EnergyConsumer cwhere    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "interval": 900,
+                          |            "aggregations": [
+                          |                {
+                          |                    "intervals": 1,
+                          |                    "ttl": 1800
+                          |                },
+                          |                {
+                          |                    "intervals": 4,
+                          |                    "ttl": 3600
+                          |                },
+                          |                {
+                          |                    "intervals": 12,
+                          |                    "ttl": 7200
+                          |                },
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "title": "All EnergyConsumer output power",
+                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland islandfrom    TopologicalNode n,    Terminal t,    EnergyConsumer cwhere    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -356,7 +425,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All cable currents",
-                          |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'current' type, 'current_in' property, 'Amperes' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (     t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and     t1.ACDCTerminal.sequenceNumber = 1 and     t1.TopologicalNode != n.IdentifiedObject.mRID ) and (     t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and     t2.ACDCTerminal.sequenceNumber = 2 and     t2.TopologicalNode = n.IdentifiedObject.mRID ) ",
+                          |            "query": "select    concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'current' type,    'current_in' property,    'Amperes' unit,    n.TopologicalIsland islandfrom    ACLineSegment a,    Terminal t1,    Terminal t2,    TopologicalNode nwhere    (        t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and        t1.ACDCTerminal.sequenceNumber = 1 and        t1.TopologicalNode != n.IdentifiedObject.mRID    )    and    (        t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and        t2.ACDCTerminal.sequenceNumber = 2 and        t2.TopologicalNode = n.IdentifiedObject.mRID    )",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -379,7 +448,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All cable losses",
-                          |            "query": "select concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent, 'losses' type, 'power_losses' property, 'Wh' unit, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where (     t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and     t1.ACDCTerminal.sequenceNumber = 1 and     t1.TopologicalNode != n.IdentifiedObject.mRID ) and (     t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and     t2.ACDCTerminal.sequenceNumber = 2 and     t2.TopologicalNode = n.IdentifiedObject.mRID ) ",
+                          |            "query": "select    concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'losses' type,    'power_losses' property,    'Wh' unit,    n.TopologicalIsland islandfrom    ACLineSegment a,    Terminal t1,    Terminal t2,    TopologicalNode nwhere    (        t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and        t1.ACDCTerminal.sequenceNumber = 1 and        t1.TopologicalNode != n.IdentifiedObject.mRID    )    and    (        t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and        t2.ACDCTerminal.sequenceNumber = 2 and        t2.TopologicalNode = n.IdentifiedObject.mRID    )",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -413,7 +482,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "nominalVoltage",
-                          |            "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
+                          |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
                           |        }
                           |    ]
                           |}
@@ -430,6 +499,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //        spark ⇒
 //            val options = SimulationOptions (verbose = true, events = true)
 //            val check = SimulationEvents (spark, options)
-//            check.run (Array("67022739-1d2c-4e4c-8ae9-a1d03f0718ef"))
+//            check.run (Array("c6d9e365-f5d3-4abd-a6d3-fcdf2814c3be"))
 //    }
 }
