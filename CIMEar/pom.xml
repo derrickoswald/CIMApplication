@@ -64,13 +64,6 @@
             <type>jar</type>
         </dependency>
 
-        <dependency>
-            <groupId>ch.ninecode.sm</groupId>
-            <artifactId>SmartMeter</artifactId>
-            <version>${project.version}</version>
-            <type>jar</type>
-        </dependency>
-
     </dependencies>
 
     <build>
@@ -116,11 +109,6 @@
                             <groupId>ch.ninecode.sp</groupId>
                             <artifactId>Spatial</artifactId>
                             <bundleFileName>Spatial-${project.version}.jar</bundleFileName>
-                        </jarModule>
-                        <jarModule>
-                            <groupId>ch.ninecode.sm</groupId>
-                            <artifactId>SmartMeter</artifactId>
-                            <bundleFileName>SmartMeter-${project.version}}.jar</bundleFileName>
                         </jarModule>
                     </modules>
                 </configuration>

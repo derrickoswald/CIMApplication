@@ -85,13 +85,6 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.sm</groupId>
-            <artifactId>SmartMeter</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
             <scope>provided</scope>
