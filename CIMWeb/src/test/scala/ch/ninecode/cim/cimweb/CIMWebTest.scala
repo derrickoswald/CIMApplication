@@ -37,13 +37,13 @@ object CIMWebTest
             war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")) // getClass().getPackage()
             war.deleteClass (classOf [CIMWebTest])
             war.addAsWebResource (new File (WEBAPP_SRC, "index.html"))
-            war.addManifest
+            war.addManifest ()
             println (war.toString (true))
             war.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
             val ear = ShrinkWrap.create (classOf [EnterpriseArchive], "CIMWeb.ear")
             ear.addAsModules (war)
             ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.3.3.rar")), "CIMConnector.rar")
-            ear.addManifest
+            ear.addManifest ()
             ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
             println (ear.toString (true))
             ear.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)

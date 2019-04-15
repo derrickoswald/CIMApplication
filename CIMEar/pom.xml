@@ -24,6 +24,20 @@
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMReader</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMExport</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMConnector</artifactId>
             <version>${project.version}</version>
             <type>rar</type>

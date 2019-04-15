@@ -23,6 +23,7 @@ import org.apache.spark.sql.SparkSession;
 
 import ch.ninecode.cim.CIMClasses;
 import ch.ninecode.cim.DefaultSource;
+import ch.ninecode.cim.Schema;
 
 /**
  * Connection to Apache Spark (http://spark.apache.org).
@@ -117,8 +118,16 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMreader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.1.2-2.6.0.jar)
+        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.3.2-3.4.0.jar)
         return (jarForObject (new DefaultSource ()));
+    }
+
+    protected String CIMExportJarPath ()
+        throws ResourceException
+    {
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.3.2-3.4.0.jar)
+        return (jarForObject (new Schema (null, "", false)));
     }
 
     protected String CIMConnectorLibJarPath ()
@@ -229,13 +238,16 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
 
             // set up the list of jars to send with the connection request: CIMReader and CIMConnector
             String reader = CIMReaderJarPath ();
+            String export = CIMExportJarPath ();
             String connector = CIMConnectorLibJarPath ();
             String j2ee = J2EEAPIJarPath ();
             int size = _RequestInfo.getJars ().size ();
-            String[] jars = new String[size + (null == reader ? 0 : 1) + (null == connector ? 0 : 1) + (null == j2ee ? 0 : 1)];
+            String[] jars = new String[size + (null == reader ? 0 : 1) + (null == export ? 0 : 1) + (null == connector ? 0 : 1) + (null == j2ee ? 0 : 1)];
             jars = _RequestInfo.getJars ().toArray (jars);
             if (null != reader)
                 jars[size++] = reader;
+            if (null != export)
+                jars[size++] = export;
             if (null != connector)
                 jars[size++] = connector;
             if (null != j2ee)
