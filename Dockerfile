@@ -140,6 +140,10 @@ RUN sed -i.bak "s|</web-app>|\
         <filter-name>CorsFilter</filter-name>\n\
         <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>\n\
         <init-param>\n\
+          <param-name>cors.allowed.origins</param-name>\n\
+          <param-value>*</param-value>\n\
+        </init-param>\n\
+        <init-param>\n\
             <param-name>cors.allowed.methods</param-name>\n\
             <param-value>GET,POST,HEAD,OPTIONS,PUT,DELETE</param-value>\n\
         </init-param>\n\

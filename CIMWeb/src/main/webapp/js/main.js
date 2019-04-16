@@ -4,8 +4,10 @@
 "use strict";
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimanalysis", "cimquery", "cimsimulate", "themes/project_theme"],
-    function (cimapp, cimfiles, cimmap, cimanalysis, cimquery, cimsimulate, ProjectTheme)
+    ["cimapp", "cimfiles", "cimmap", "cimnav", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
+     "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme"],
+    function (cimapp, cimfiles, cimmap, cimnav, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
+     ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme)
     {
         /**
          * Get the hash portion of the url.
@@ -94,7 +96,7 @@ requirejs
                     {
                         case "files": cimfiles.initialize (event); break;
                         case "map":
-                            cimmap.initialize (event);
+                            cimmap.initialize (TheNavigator, TheThemer, TheEditor);
                             var theme = new ProjectTheme ();
                             cimmap.get_themer ().removeTheme (theme);
                             cimmap.get_themer ().addTheme (theme);
@@ -116,6 +118,134 @@ requirejs
         document.getElementById ("search").onsubmit = cimmap.search;
         document.getElementById ("search_button").onclick = cimmap.search;
         document.getElementById ("save").onclick = cimapp.save;
+
+        /**
+         * The detail view control object.
+         */
+        var TheDetails = new CIMDetails (cimmap);
+
+        /**
+         * The editor control object.
+         */
+        var TheEditor = new CIMEdit (cimmap);
+
+        /**
+         * The connectivity control object.
+         */
+        var TheConnectivity = new CIMConnectivity (cimmap, TheEditor);
+
+        /**
+         * The diagram control object.
+         */
+        var TheDiagram = new CIMDiagram (cimmap);
+
+        /**
+         * The chart control object.
+         */
+        var TheChart = new CIMChart (cimmap);
+
+        /**
+         * The theme setting control object.
+         */
+        var TheThemer = new ThemeControl ();
+        TheThemer.addTheme (new DefaultTheme ());
+        TheThemer.addTheme (new VoltageTheme ());
+        TheThemer.addTheme (new IslandTheme ());
+        TheThemer.addTheme (new InServiceTheme ());
+        TheThemer.addTheme (new DiagramTheme ());
+
+        /**
+         * Get the detail view object for access to viewing.
+         * @return {Object} The object handling details view.
+         * @function get_details
+         * @memberOf module:cimmain
+         */
+        function get_details ()
+        {
+            return (TheDetails);
+        }
+
+        /**
+         * Get the editor object for access to editing.
+         * @return {Object} The object handling editing.
+         * @function get_editor
+         * @memberOf module:main
+         */
+        function get_editor ()
+        {
+            return (TheEditor);
+        }
+
+        /**
+         * Get the connectivity for changing connectivity.
+         * @return {Object} The object handling connectivity.
+         * @function get_connectivity
+         * @memberOf module:main
+         */
+        function get_connectivity ()
+        {
+            return (TheConnectivity);
+        }
+
+        /**
+         * Get the diagram editor.
+         * @return {Object} The object handling diagrams.
+         * @function get_diagram
+         * @memberOf module:main
+         */
+        function get_diagram ()
+        {
+            return (TheDiagram);
+        }
+
+        /**
+         * Get the chart component.
+         * @return {Object} The object handling charts.
+         * @function get_chart
+         * @memberOf module:main
+         */
+        function get_chart ()
+        {
+            return (TheChart);
+        }
+
+        /**
+         * Get the theming object for access to themes.
+         * @return {Object} The object handling theming.
+         * @function get_themer
+         * @memberOf module:main
+         */
+        function get_themer ()
+        {
+            return (TheThemer);
+        }
+
+        function toggle (control_function)
+        {
+            return (
+                function ()
+                {
+                    var control = control_function ();
+                    if (control.visible ())
+                        cimmap.get_map ().removeControl (control);
+                    else
+                    {
+                        cimmap.get_map ().addControl (control);
+                        control.initialize ();
+                    }
+                }
+            );
+        }
+
+        var TheNavigator =  new cimnav.NavigationControl (
+            cimmap.zoom_extents,
+            toggle (get_details),
+            toggle (get_themer),
+            toggle (function () { return (get_themer ().getTheme ().getLegend ()); }),
+            toggle (get_editor),
+            toggle (get_connectivity),
+            toggle (get_diagram),
+            toggle (get_chart));
 
         // set URLs in the external links
         cimapp.initialize ();
