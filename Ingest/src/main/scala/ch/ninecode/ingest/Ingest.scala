@@ -1,7 +1,8 @@
 package ch.ninecode.ingest
 
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import java.io.BufferedWriter
+import java.io.FileOutputStream
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
@@ -247,7 +248,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                             }
                             else
                             {
-                                val baos = new ByteArrayOutputStream ()
+                                val tmp = File.createTempFile ("ingest", null, null)
+                                val stream = new FileOutputStream (tmp)
                                 var eof = false
                                 do
                                 {
@@ -255,14 +257,12 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                                     if (-1 == len)
                                         eof = true
                                     else
-                                        baos.write (buffer, 0, len)
+                                        stream.write (buffer, 0, len)
                                 }
                                 while (!eof)
-                                baos.close ()
+                                stream.close ()
                                 val f = new Path (parent, entry.getName)
-                                val out = hdfs.create (f)
-                                out.write (baos.toByteArray)
-                                out.close ()
+                                hdfs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
                                 ret = ret :+ f.toString
                             }
                             zip.closeEntry ()
