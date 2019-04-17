@@ -21,7 +21,6 @@ define
             constructor ()
             {
                 super ();
-                this.setAttribute ("class", "mapboxgl-ctrl");
                 const shadow = this.attachShadow ({mode: 'open'});
                 // create a text element to display the coordinates
                 var text = document.createElement ("span");
@@ -42,6 +41,11 @@ define
                 shadow.appendChild (style);
                 // prepare to listen with a method bound to this
                 this._listener = this.mousemove_listener.bind (this);
+            }
+
+            connectedCallback ()
+            {
+                this.setAttribute ("class", "mapboxgl-ctrl");
             }
 
             onAdd (map)
