@@ -83,10 +83,11 @@ define
             /**
              * Add analysis information.
              * @param {Object} data - the hash table object of CIM classes by class name
+             * @param {Object} options - options for processing
              * @function process_spatial_objects_again
              * @memberOf module:analysis_theme
              */
-            process_spatial_objects_again (data)
+            process_spatial_objects_again (data, options)
             {
                 var equipment = data.ConductingEquipment;
                 for (var i = 0; i < this._analysis.length; i++)

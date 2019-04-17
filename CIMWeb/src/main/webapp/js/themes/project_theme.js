@@ -204,6 +204,71 @@ define
                 this._TheMap.getSource ("areas").setData (this._project_polygons);
             }
 
+            /**
+             * For subclasses to override stylization information.
+             * @param {Object} data - the hash table object of CIM classes by class name
+             * @param {Object} options - options for processing
+             * @function process_spatial_objects_again
+             * @memberOf module:default_theme
+             */
+            process_spatial_objects_again (data, options)
+            {
+                var consumers = data.EnergyConsumer;
+                // all black
+                for (var id in consumers)
+                    if (consumers.hasOwnProperty (id))
+                        consumers[id].color = "#0000000";
+                // except for the ones that have data
+                for (var trafo in this._consumers_with_data)
+                    if (this._consumers_with_data.hasOwnProperty (trafo))
+                    {
+                        var consumerlist = this._consumers_with_data[trafo];
+                        consumerlist.forEach (
+                            mrid =>
+                            {
+                                var consumer = consumers[mrid];
+                                if (consumer)
+                                    consumer.color = "#00ff00";
+                            }
+                        );
+                    }
+            }
+
+            color_energy_consumers (transformer)
+            {
+                // find the polygon in the GeoJSON set and get the time at which to check for data
+                var polygon = this._project_polygons.features.find (x => x.properties.name == transformer);
+                if (polygon)
+                {
+                    var time = polygon.properties.time;
+                    var self = this;
+                    var promise = cimquery.queryPromise ({ sql: "select elements from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + transformer + "'", cassandra: true })
+                    .then (
+                        function (data)
+                        {
+                            var elements = data[0].elements;
+                            // make a list of EnergyConsumer
+                            var houses = [];
+                            for (var id in elements)
+                                if (elements.hasOwnProperty (id))
+                                    if (elements[id] == "EnergyConsumer")
+                                        houses.push(id);
+                            // now see if any of the houses has meter data at that time
+                            var inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
+                            if (houses.length != 0)
+                                cimquery.queryPromise ({ sql: "select mrid from cimapplication.measured_value where " + inclause + " and type='energy' and time=" + time + ";", cassandra: true })
+                                    .then (
+                                        function (data)
+                                        {
+                                            self._consumers_with_data[transformer] = data.map (x => x.mrid);
+                                            self._cimmap.make_map ();
+                                        }
+                                    );
+                        }
+                    );
+                }
+            }
+
             load_trafo (name)
             {
                 var self = this;
@@ -270,6 +335,8 @@ define
                                                                     self._cimmap.set_data (context.parsed, true);
                                                                     self._cimmap.set_loaded ({ files: [name], options: {}, elements: elements });
                                                                 }
+                                                                // set the color of EnergyConsumer based on whether there is data at the time retrieved when the polygon was loaded
+                                                                self.color_energy_consumers.call (self, name);
                                                             }
                                                         );
                                                     }
@@ -356,30 +423,6 @@ define
                 this._TheMap.on ("mousedown", this._mousedown_listener);
             }
 
-            fixup (raw)
-            {
-                var feature = JSON.parse (raw["[json]"]);
-                delete feature.id;
-                var name = feature.name;
-                delete feature.name;
-                if (!feature.properties)
-                    feature.properties = {};
-                feature.properties.name = name;
-                return (feature);
-            }
-
-            setProjectGeoJSON_Points (data)
-            {
-                // {"id": "2f956deb-75ba-426a-99be-a29684ab8428", "mrid": "JPR00001", "island1": "TX0002", "island2": "TX0001"}
-                var features = data.map (this.fixup);
-                // the points GeoJSON
-                this._project_points =
-                {
-                    "type" : "FeatureCollection",
-                    "features" : features
-                };
-            }
-
             setProjectGeoJSON_Lines (data)
             {
                 // id                                   | mrid     | island1 | island2
@@ -394,8 +437,8 @@ define
                 };
                 data.forEach ((row) =>
                     {
-                        var coordinates_island1 = this._project_points.features.find ((x) => x.properties.name == row.island1).geometry.coordinates;
-                        var coordinates_island2 = this._project_points.features.find ((x) => x.properties.name == row.island2).geometry.coordinates;
+                        var coordinates_island1 = this._project_points.features.find (x => x.properties.name == row.island1).geometry.coordinates;
+                        var coordinates_island2 = this._project_points.features.find (x => x.properties.name == row.island2).geometry.coordinates;
                         // shorten the lines by 8% on each end using the parametric form of the line x = x0 + at; y = y0 + bt
                         var offset = 8. / 100.0;
                         var x0 = coordinates_island1[0];
@@ -544,35 +587,32 @@ define
                                     function (trafo)
                                     {
                                         var transformer = trafo.name;
-                                        function truncate (e)
-                                        {
-                                            var ret;
-                                            var index = e.indexOf ("_");
-                                            if (-1 == index)
-                                                ret = e;
-                                            else
-                                                ret = e.substring (0, index);
-                                            return (ret);
-                                        }
-                                        function distinct (value, index, self)
-                                        {
-                                            return (self.indexOf (value) === index);
-                                        }
-                                        var houses = trafo.elements.filter ((e) => e.startsWith ("HAS")).map ((e) => truncate (e)).filter (distinct);
+                                        var elements = trafo.elements;
+                                        // make a list of EnergyConsumer
+                                        var houses = [];
+                                        for (var id in elements)
+                                            if (elements.hasOwnProperty (id))
+                                                if (elements[id] == "EnergyConsumer")
+                                                    houses.push(id);
+                                        // now see if any of the houses has meter data
+                                        var inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
                                         if (houses.length == 0)
                                             return (Promise.resolve ());
                                         else
                                             return (
-                                                cimquery.queryPromise ({ sql: "select time from cimapplication.measured_value where mrid in (" + houses.map ((x) => "'" + x + "'").join (",") + ") and type='energy' limit 1;", cassandra: true })
+                                                cimquery.queryPromise ({ sql: "select TOUNIXTIMESTAMP(time) as time from cimapplication.measured_value where " + inclause + " and type='energy' limit 1;", cassandra: true })
                                                     .then (
                                                         function (data)
                                                         {
                                                             if (data.length > 0)
                                                             {
-                                                                // find the polygon in the GeoJSON set and update it's color
-                                                                var polygon = self._project_polygons.features.find ((x) => x.properties.name == transformer)
+                                                                // find the polygon in the GeoJSON set and update it's color and a time at which to check for data
+                                                                var polygon = self._project_polygons.features.find (x => x.properties.name == transformer);
                                                                 if (polygon)
+                                                                {
                                                                     polygon.properties.color = "#00ff00";
+                                                                    polygon.properties.time = data[0].time;
+                                                                }
                                                             }
                                                         }
                                                     )
@@ -593,6 +633,7 @@ define
             {
                 this._keyspace = keyspace;
                 this._project = id;
+                this._consumers_with_data = {};
                 var self = this;
                 var promise = cimquery.queryPromise ({ sql: "select json type, geometry, properties from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
                     .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
