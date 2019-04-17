@@ -161,6 +161,8 @@ define
                     else
                         this._cimmap.default_mousedown_listener (event);
                 }
+                else
+                    this._cimmap.default_mousedown_listener (event);
             }
 
             // handle mouse click

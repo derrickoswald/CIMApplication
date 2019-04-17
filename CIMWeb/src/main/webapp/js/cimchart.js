@@ -111,11 +111,31 @@ define
                     .then (
                         function (resultset)
                         {
-                            if (resultset.length > 0)
-                            {
-                                resultset.forEach (x => { if (self._keyspaces.includes (x.keyspace_name)) x.checked = true });
-                                var template =
-                                `
+                            // check if they have any simulations
+                            Promise.all (
+                                resultset.map (
+                                    keyspace =>
+                                    {
+                                        return (
+                                            cimquery.queryPromise ({ sql: "select id from " + keyspace.keyspace_name + ".simulation", cassandra: true })
+                                            .then (data =>
+                                                {
+                                                    return ({ keyspace_name: keyspace.keyspace_name, has_simulations: (0 != data.length)});
+                                                }
+                                            )
+                                        );
+                                    }
+                                )
+                            )
+                            .then (
+                                data =>
+                                {
+                                    var keyspaces = data.filter (x => x.has_simulations);
+                                    if (keyspaces.length > 0)
+                                    {
+                                        keyspaces.forEach (x => { if (self._keyspaces.includes (x.keyspace_name)) x.checked = true });
+                                        var template =
+`
 <div style="margin-top: 20px;">
     {{#keyspaces}}
     <div class="form-check">
@@ -124,16 +144,18 @@ define
     </div>
     {{/keyspaces}}
 </div>
-                                `;
-                                var text = mustache.render (template, { keyspaces: resultset })
-                                div.innerHTML = text;
-                                var elements = div.getElementsByTagName ("INPUT");
-                                for (var i = 0; i < elements.length; i++)
-                                {
-                                    var checkbox = elements[i];
-                                    checkbox.addEventListener ("change", self.changeKeyspace.bind (self));
+`;
+                                        var text = mustache.render (template, { keyspaces: keyspaces })
+                                        div.innerHTML = text;
+                                        var elements = div.getElementsByTagName ("INPUT");
+                                        for (var i = 0; i < elements.length; i++)
+                                        {
+                                            var checkbox = elements[i];
+                                            checkbox.addEventListener ("change", self.changeKeyspace.bind (self));
+                                        }
+                                    }
                                 }
-                            }
+                            );
                         }
                     );
             }
@@ -400,7 +422,59 @@ define
                     .then (series => self.setChart.call (self, feature, series));
                 }
                 else
-                    this.clearChart ("<b>no data for " + feature + "</b>");
+                {
+                    // try for raw data
+                    var keyspaces = [];
+                    this._simulations.forEach (
+                        simulation =>
+                        {
+                            if (!keyspaces.includes (simulation.input_keyspace))
+                                keyspaces.push (simulation.input_keyspace);
+                        }
+                    );
+                    if (0 != keyspaces.length)
+                    {
+                        var self = this;
+                        Promise.all (
+                            keyspaces.map (
+                                keyspace =>
+                                {
+                                    var name = keyspace + " Measured Values (Wh)"; // ToDo: how to get units from the query
+                                    var sql = "select time, real_a, imag_a from " + keyspace + ".measured_value where mrid = '" + feature + "' and type = 'energy'";
+                                    return (
+                                        cimquery.queryPromise ({sql: sql, cassandra: true})
+                                            .then (data =>
+                                                {
+                                                    // make a series
+                                                    function rms (r, i) { return (Math.sqrt (r * r + i * i)); }
+                                                    var values = data.map (
+                                                        row =>
+                                                        {
+                                                            return ([(new Date (row.time)).getTime (), rms (row.real_a, row.imag_a)]);
+                                                        }
+                                                    )
+                                                    .sort ((a, b) => a[0] - b[0]);
+                                                    return ({ name: name, data: values});
+                                                }
+                                            )
+                                        );
+                                }
+                            )
+                        )
+                        .then (
+                            series =>
+                            {
+                                var data = series.filter (x => 0 != x.data.length);
+                                if (0 != data.length)
+                                    self.setChart.call (self, feature, data);
+                                else
+                                    self.clearChart ("<b>no data for " + feature + "</b>");
+                            }
+                        );
+                    }
+                    else
+                        this.clearChart ("<b>no data for " + feature + "</b>");
+                }
             }
 
             /**
