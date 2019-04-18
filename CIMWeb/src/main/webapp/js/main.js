@@ -2,6 +2,15 @@
  * Main javascript file for CIM Application
  */
 "use strict";
+
+requirejs.config({
+    "paths": {
+      "jquery": "jquery.min",
+      "moment": "moment.min"
+    }
+});
+
+
 requirejs
 (
     ["cimapp", "cimfiles", "cimmap", "cimnav", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",

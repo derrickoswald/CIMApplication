@@ -6,7 +6,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme", "daterangepicker"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme", "moment", "daterangepicker"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
@@ -31,7 +31,7 @@ truncate table cimapplication.losses_summary_by_day;
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme, DateRangePicker)
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme, moment, DateRangePicker)
     {
         // The Cassandra keyspace where measurement data is read from for player files
         var input_keyspace = "cimapplication";
@@ -610,13 +610,12 @@ truncate table cimapplication.losses_summary_by_day;
         }
 
         /**
-         * @summary Run the simulation using GridLAB-D to populate simmulated_value_by_day Cassandra table.
-         * @description Execute gridlabd for the simulation parameters provided by the user.
-         * Typical command line call: wget --output-document=simulation.log --post-file=sak.json "http://localhost:9080/cimweb/cim/estimation;verbose=true;keep=true"
-         * @function do_simulate
+         * @summary Set up the simulation JSON.
+         * @description Build the JSON file from user input.
+         * @function do_json
          * @memberOf module:cimsimulate
          */
-        function do_simulate ()
+        function do_json ()
         {
             var name = document.getElementById ("simulation_name").value;
             var description = document.getElementById ("simulation_description").value;
@@ -625,11 +624,6 @@ truncate table cimapplication.losses_summary_by_day;
             if (description != "")
                 TheSimulation.description = description;
             TheSimulation.cim = document.getElementById ("cim_file").value;
-            if ("" == TheSimulation.cim)
-            {
-                alert ("A CIM file must be specified");
-                return;
-            }
             TheSimulation.keyspaces.input = document.getElementById ("input_keyspace").value;
             TheSimulation.keyspaces.output = document.getElementById ("output_keyspace").value;
             TheSimulation.transformers = query_transformers ();
@@ -637,8 +631,26 @@ truncate table cimapplication.losses_summary_by_day;
             TheSimulation.recorders = query_recorders ();
             TheSimulation.extras = query_extras ();
             document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+        }
+
+        /**
+         * @summary Run the simulation using GridLAB-D to populate simmulated_value_by_day Cassandra table.
+         * @description Execute gridlabd for the simulation parameters provided by the user.
+         * Typical command line call: wget --output-document=simulation.log --post-file=sak.json "http://localhost:9080/cimweb/cim/estimation;verbose=true;keep=true"
+         * @function do_simulate
+         * @memberOf module:cimsimulate
+         */
+        function do_simulate ()
+        {
+            do_json ();
+            if ("" == TheSimulation.cim)
+            {
+                alert ("A CIM file must be specified");
+                return;
+            }
             var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
+            var events = document.getElementById ("events").checked ? ";events=true" : "";
             var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
             var to_map = document.getElementById ("to_map").checked;
@@ -648,7 +660,7 @@ truncate table cimapplication.losses_summary_by_day;
             var url;
             var xmlhttp;
 
-            url = util.home () + "cim/estimation" + verbose + keep + summarize;
+            url = util.home () + "cim/estimation" + verbose + keep + events + summarize;
             xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
@@ -860,12 +872,21 @@ truncate table cimapplication.losses_summary_by_day;
                         </div>
                         <div class="form-row">
                           <div class="col form-group">
+                            <label for="events">Event detection</label>
+                              <div class="form-check">
+                                <input id="events" class="form-check-input" type="checkbox" name="events" aria-describedby="eventsHelp" checked>
+                                <small id="eventsHelp" class="form-text text-muted">Perform event detection (overvoltage, overcurrent, overpower) after simulation.</small>
+                              </div>
+                          </div>
+                          <div class="col form-group">
                             <label for="summarize">Summarize</label>
                               <div class="form-check">
-                                <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp" checked>
+                                <input id="summarize" class="form-check-input" type="checkbox" name="summarize" aria-describedby="summarizeHelp">
                                 <small id="summarizeHelp" class="form-text text-muted">Perform summarization (utilization, load & coincidence factor) after simulation.</small>
                               </div>
                           </div>
+                        </div>
+                        <div class="form-row">
                           <div class="col form-group">
                             <label for="keep">Keep GridLAB-D intermediate files</label>
                               <div class="form-check">
@@ -890,8 +911,13 @@ truncate table cimapplication.losses_summary_by_day;
                               </div>
                           </div>
                         </div>
-                        <div class="form-group">
-                          <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
+                        <div class="form-row">
+                            <div class="col form-group">
+                              <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
+                            </div>
+                            <div class="col form-group">
+                              <button id="do_json" name="do_json" type="button" class="btn btn-primary">Show JSON</button>
+                            </div>
                         </div>
                         <div class="form-group">
                           <label for="simulation_id">Prior simulations</label>
@@ -989,6 +1015,7 @@ truncate table cimapplication.losses_summary_by_day;
 
             document.getElementById ("collect_it_all").onclick = collect_it_all;
             document.getElementById ("do_simulate").onclick = do_simulate;
+            document.getElementById ("do_json").onclick = do_json;
             document.getElementById ("show_simulation").onclick = do_show;
         }
 

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.sim.Simulation
+import ch.ninecode.sim.SimulationEvents
 import ch.ninecode.sim.SimulationOptions
 import ch.ninecode.sim.Summarize
 
@@ -56,8 +57,16 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         {
             val sum = Summarize (spark, options)
             sum.run (runs)
+            log.info ("""summarized %s""".format (runs.mkString (",")))
         }
         result.add ("summary", options.summarize)
+        if (options.events)
+        {
+            val events = SimulationEvents (spark, options)
+            events.run (runs)
+            log.info ("""event detected %s""".format (runs.mkString (",")))
+        }
+        result.add ("events", options.events)
         RESTfulJSONResult (OK, """GridLAB-D simulation%s successful""".format (if (runs.size > 1) "s" else ""), result.build).getJSON
     }
 
