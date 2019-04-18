@@ -74,7 +74,6 @@
                     <includeJar>true</includeJar>
                     <rarResources>
                         <rarResource>
-                            <targetPath></targetPath>
                             <include>*.jar</include>
                             <directory>${basedir}/target/</directory>
                         </rarResource>
@@ -109,14 +108,14 @@
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMReader</artifactId>
             <version>${version.dependency.cimreader}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMExport</artifactId>
             <version>${version.dependency.cimreader}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
