@@ -10,13 +10,14 @@ requirejs.config({
     }
 });
 
-
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimnav", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
-     "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme"],
-    function (cimapp, cimfiles, cimmap, cimnav, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
-     ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme)
+    ["cimapp", "cimfiles", "cimmap", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
+     "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme",
+     "nav/cimnav", "nav/zoominnav", "nav/zoomoutnav", "nav/rotationnav", "nav/zoomnav", "nav/infonav", "nav/themenav", "nav/legendnav", "nav/editnav", "nav/connectivitynav", "nav/diagramnav", "nav/chartnav"],
+    function (cimapp, cimfiles, cimmap, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
+     ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme,
+     NavigationControl, ZoomInNav, ZoomOutNav, RotationNav, ZoomNav, InfoNav, ThemeNav, LegendNav, EditNav, ConnectivityNav, DiagramNav, ChartNav)
     {
         /**
          * Get the hash portion of the url.
@@ -30,7 +31,7 @@ requirejs
             var parser = document.createElement('a'); // see https://www.joezimjs.com/javascript/the-lazy-mans-url-parsing/
             parser.href = url;
             var ret = parser.hash;
-            if (0 != ret.length)
+            if (0 !== ret.length)
             {
                 ret = ret.substring (1);
                 if (!isNaN (Number (ret.charAt (0)))) // test for MapBox being greedy with their hash
@@ -48,7 +49,7 @@ requirejs
          */
         function hide (id)
         {
-            if ("" != id)
+            if ("" !== id)
             {
                 var element = document.getElementById (id);
                 if (null != element)
@@ -65,7 +66,7 @@ requirejs
          */
         function show (id)
         {
-            if ("" != id)
+            if ("" !== id)
             {
                 var element = document.getElementById (id);
                 if (null != element)
@@ -81,7 +82,7 @@ requirejs
                 // make the correct tab visible
                 var prev = get_hash (event.oldURL);
                 var next = get_hash (event.newURL);
-                if ("" == next)
+                if ("" === next)
                     next = "files"; // default tab
                 hide (prev);
                 show (next);
@@ -116,7 +117,7 @@ requirejs
                     }
                     initialized[next] = true;
                 }
-            }
+            };
 
         document.getElementById ("internal_features").onchange = cimmap.redraw;
         document.getElementById ("buildings_3d").onchange = cimmap.buildings_3d;
@@ -131,110 +132,44 @@ requirejs
         /**
          * The detail view control object.
          */
-        var TheDetails = new CIMDetails (cimmap);
+        const TheDetails = new CIMDetails (cimmap);
 
         /**
          * The editor control object.
          */
-        var TheEditor = new CIMEdit (cimmap);
+        const TheEditor = new CIMEdit (cimmap);
 
         /**
          * The connectivity control object.
          */
-        var TheConnectivity = new CIMConnectivity (cimmap, TheEditor);
+        const TheConnectivity = new CIMConnectivity (cimmap, TheEditor);
 
         /**
          * The diagram control object.
          */
-        var TheDiagram = new CIMDiagram (cimmap);
+        const TheDiagram = new CIMDiagram (cimmap);
 
         /**
          * The chart control object.
          */
-        var TheChart = new CIMChart (cimmap);
+        const TheChart = new CIMChart (cimmap);
 
         /**
          * The theme setting control object.
          */
-        var TheThemer = new ThemeControl ();
+        const TheThemer = new ThemeControl ();
         TheThemer.addTheme (new DefaultTheme ());
         TheThemer.addTheme (new VoltageTheme ());
         TheThemer.addTheme (new IslandTheme ());
         TheThemer.addTheme (new InServiceTheme ());
         TheThemer.addTheme (new DiagramTheme ());
 
-        /**
-         * Get the detail view object for access to viewing.
-         * @return {Object} The object handling details view.
-         * @function get_details
-         * @memberOf module:cimmain
-         */
-        function get_details ()
-        {
-            return (TheDetails);
-        }
-
-        /**
-         * Get the editor object for access to editing.
-         * @return {Object} The object handling editing.
-         * @function get_editor
-         * @memberOf module:main
-         */
-        function get_editor ()
-        {
-            return (TheEditor);
-        }
-
-        /**
-         * Get the connectivity for changing connectivity.
-         * @return {Object} The object handling connectivity.
-         * @function get_connectivity
-         * @memberOf module:main
-         */
-        function get_connectivity ()
-        {
-            return (TheConnectivity);
-        }
-
-        /**
-         * Get the diagram editor.
-         * @return {Object} The object handling diagrams.
-         * @function get_diagram
-         * @memberOf module:main
-         */
-        function get_diagram ()
-        {
-            return (TheDiagram);
-        }
-
-        /**
-         * Get the chart component.
-         * @return {Object} The object handling charts.
-         * @function get_chart
-         * @memberOf module:main
-         */
-        function get_chart ()
-        {
-            return (TheChart);
-        }
-
-        /**
-         * Get the theming object for access to themes.
-         * @return {Object} The object handling theming.
-         * @function get_themer
-         * @memberOf module:main
-         */
-        function get_themer ()
-        {
-            return (TheThemer);
-        }
-
-        function toggle (control_function)
+        function toggle (control_or_function)
         {
             return (
-                function ()
+                function (event)
                 {
-                    var control = control_function ();
+                    const control = ("function" == typeof (control_or_function)) ? control_or_function () : control_or_function;
                     if (control.visible ())
                         cimmap.get_map ().removeControl (control);
                     else
@@ -246,18 +181,39 @@ requirejs
             );
         }
 
-        var TheNavigator =  new cimnav.NavigationControl (
-            cimmap.zoom_extents,
-            toggle (get_details),
-            toggle (get_themer),
-            toggle (function () { return (get_themer ().getTheme ().getLegend ()); }),
-            toggle (get_editor),
-            toggle (get_connectivity),
-            toggle (get_diagram),
-            toggle (get_chart));
+        const zoom = document.createElement ("button", { is: "zoom-nav-button" });
+        const info = document.createElement ("button", { is: "info-nav-button" });
+        const theme = document.createElement ("button", { is: "theme-nav-button" });
+        const legend = document.createElement ("button", { is: "legend-nav-button" });
+        const edit = document.createElement ("button", { is: "edit-nav-button" });
+        const connectivity = document.createElement ("button", { is: "connectivity-nav-button" });
+        const diagram = document.createElement ("button", { is: "diagram-nav-button" });
+        const chart = document.createElement ("button", { is: "chart-nav-button" });
+
+        const TheNavigator =  new NavigationControl ();
+        TheNavigator.addButton (document.createElement ("button", { is: "zoomin-nav-button" }));
+        TheNavigator.addButton (document.createElement ("button", { is: "zoomout-nav-button" }));
+        TheNavigator.addButton (document.createElement ("button", { is: "rotation-nav-button" }));
+        TheNavigator.addButton (zoom);
+        TheNavigator.addButton (info);
+        TheNavigator.addButton (theme);
+        TheNavigator.addButton (legend);
+        TheNavigator.addButton (edit);
+        TheNavigator.addButton (connectivity);
+        TheNavigator.addButton (diagram);
+        TheNavigator.addButton (chart);
 
         // set URLs in the external links
         cimapp.initialize ();
+
+        zoom.addEventListener ("click", cimmap.zoom_extents);
+        info.addEventListener ("click", toggle (TheDetails));
+        theme.addEventListener ("click", toggle (TheThemer));
+        legend.addEventListener ("click", toggle (function () { return (TheThemer.getTheme ().getLegend ()); }));
+        edit.addEventListener ("click", toggle (TheEditor));
+        connectivity.addEventListener ("click", toggle (TheConnectivity));
+        diagram.addEventListener ("click", toggle (TheDiagram));
+        chart.addEventListener ("click", toggle (TheChart));
 
         // manually trigger a hashchange to start the app.
         window.location.hash = "files";

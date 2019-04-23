@@ -552,9 +552,8 @@ define
          * @function unhighlight
          * @memberOf module:cimmap
          */
-        function unhighlight (event)
+        function unhighlight ()
         {
-            if (event && event.preventDefault) event.preventDefault ();
             glow (["==", "mRID", ""]);
             return (false);
         }
@@ -1326,7 +1325,6 @@ define
                     get: get,
                     forAll: forAll,
                     fetch: fetch,
-                    unhighlight: unhighlight,
                     select: select,
                     buildings_3d: buildings_3d,
                     scale_bar: scale_bar,
