@@ -522,15 +522,21 @@ define
         {
             if (TheMap && TheMap.getSource ("cim lines"))
             {
-                TheMap.setFilter ("lines_highlight", filter);
-                TheMap.setFilter ("circle_highlight", filter);
-                TheMap.setFilter ("symbol_highlight", filter);
+                if (TheMap.getLayer("lines_highlight"))
+                    TheMap.setFilter ("lines_highlight", filter);
+                if (TheMap.getLayer("circle_highlight"))
+                    TheMap.setFilter ("circle_highlight", filter);
+                if (TheMap.getLayer("symbol_highlight"))
+                    TheMap.setFilter ("symbol_highlight", filter);
             }
             if (TheMap && TheMap.getSource ("edit lines"))
             {
-                TheMap.setFilter ("edit_lines_highlight", filter);
-                TheMap.setFilter ("edit_circle_highlight", filter);
-                TheMap.setFilter ("edit_symbol_highlight", filter);
+                if (TheMap.getLayer("edit_lines_highlight"))
+                    TheMap.setFilter ("edit_lines_highlight", filter);
+                if (TheMap.getLayer("edit_circle_highlight"))
+                    TheMap.setFilter ("edit_circle_highlight", filter);
+                if (TheMap.getLayer("edit_symbol_highlight"))
+                    TheMap.setFilter ("edit_symbol_highlight", filter);
             }
         }
 

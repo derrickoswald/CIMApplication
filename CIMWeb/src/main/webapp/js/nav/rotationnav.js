@@ -33,7 +33,7 @@ define
                 this.setAttribute ("title", "Reset bearing and pitch to north");
                 this.setAttribute ("type", "button");
                 this.innerHTML = this.template;
-                $(this).tooltip ();
+                $(this).tooltip ({ placement: "left" });
             }
 
             onAdd (map)

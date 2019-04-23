@@ -13,10 +13,10 @@ requirejs.config({
 requirejs
 (
     ["cimapp", "cimfiles", "cimmap", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
-     "themes/cimthemes", "themes/default_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme",
+     "themes/cimthemes", "themes/default_theme", "themes/icon_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme",
      "nav/cimnav", "nav/zoominnav", "nav/zoomoutnav", "nav/rotationnav", "nav/zoomnav", "nav/infonav", "nav/themenav", "nav/legendnav", "nav/editnav", "nav/connectivitynav", "nav/diagramnav", "nav/chartnav"],
     function (cimapp, cimfiles, cimmap, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
-     ThemeControl, DefaultTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme,
+     ThemeControl, DefaultTheme, IconTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme,
      NavigationControl, ZoomInNav, ZoomOutNav, RotationNav, ZoomNav, InfoNav, ThemeNav, LegendNav, EditNav, ConnectivityNav, DiagramNav, ChartNav)
     {
         /**
@@ -159,6 +159,7 @@ requirejs
          */
         const TheThemer = new ThemeControl ();
         TheThemer.addTheme (new DefaultTheme ());
+        TheThemer.addTheme (new IconTheme ());
         TheThemer.addTheme (new VoltageTheme ());
         TheThemer.addTheme (new IslandTheme ());
         TheThemer.addTheme (new InServiceTheme ());

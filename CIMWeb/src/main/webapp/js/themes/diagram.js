@@ -379,19 +379,6 @@ define
                 for (var id in diagram_object)
                 {
                     var obj = diagram_object[id];
-                    if (obj.rotation != 0.0)
-                    {
-                        var id = obj.IdentifiedObject;
-                        if (null != id)
-                        {
-                            var element = data.Element[id];
-                            if (null != element)
-                                // -90.0: fix symbol, zero is east & not down
-                                // value is in degrees clockwise, not counter-clockwise
-                                // +180: symbol points in to station
-                                element.rotation = -90.0 + (-obj.rotation * 180.0 / Math.PI) + 180.0;
-                        }
-                    }
                     if (null != obj.DiagramObjectStyle)
                     {
                         var id = obj.IdentifiedObject;
@@ -463,8 +450,6 @@ define
                     this._TheMap.removeLayer ("lines_highlight");
                     this._TheMap.removeLayer ("circle");
                     this._TheMap.removeLayer ("circle_highlight");
-                    this._TheMap.removeLayer ("symbol");
-                    this._TheMap.removeLayer ("symbol_highlight");
                     this._TheMap.removeLayer ("polygons");
                     this._TheMap.removeSource ("cim points");
                     this._TheMap.removeSource ("cim lines");
@@ -559,15 +544,11 @@ define
                 map.addLayer (layers.line_layer ("lines", "cim lines", { type: "identity", property: "kolour" }, ["!has", "EditDisposition"]));
                 map.addLayer (layers.line_layer ("lines_highlight", "cim lines", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
-                // simple circle from 14 to 17
-                map.addLayer (layers.circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]))
-                map.addLayer (layers.circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]))
+                // simple circle
+                map.addLayer (layers.full_circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
+                map.addLayer (layers.full_circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
-                // symbol icon from 17 and deeper
-                map.addLayer (layers.symbol_layer ("symbol", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
-                map.addLayer (layers.symbol_layer ("symbol_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]));
-
-                map.addLayer (layers.polygon_layer ("polygons", "cim polygons", { type: "identity", property: "kolour" }, "#000000"))
+                map.addLayer (layers.polygon_layer ("polygons", "cim polygons", { type: "identity", property: "kolour" }, "#000000"));
 
                 // set the current filter
                 this.legend_changed ();

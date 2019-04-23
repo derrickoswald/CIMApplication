@@ -9,10 +9,8 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Make globaly available as well
-        define(['moment', 'jquery'], function (moment, jquery) {
-            if (!jquery.fn) jquery.fn = {}; // webpack server rendering
-            if (typeof moment !== 'function' && moment.default) moment = moment.default
-            return factory(moment, jquery);
+        define(['moment'], function (moment) {
+            return factory(moment, window.jQuery);
         });
     } else if (typeof module === 'object' && module.exports) {
         // Node / Browserify

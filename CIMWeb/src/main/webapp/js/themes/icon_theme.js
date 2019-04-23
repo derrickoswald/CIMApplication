@@ -1,5 +1,5 @@
 /**
- * Default theme.
+ * Icon theme.
  */
 "use strict";
 
@@ -9,8 +9,8 @@ define
     /**
      * @summary Base class for themes.
      * @description Theme class for colorizing by equipment type.
-     * @name default_theme
-     * @exports default_theme
+     * @name icon_theme
+     * @exports icon_theme
      * @version 1.0
      */
     function (mustache, Legend, layers)
@@ -40,7 +40,7 @@ define
          * @param {object} options layer options, e.g. show_internal_features
          * @return {object} object of arrays stored by Location.id
          * @function get_locations
-         * @memberOf module:default_theme
+         * @memberOf module:icon_theme
          */
         function get_locations (data, options)
         {
@@ -107,7 +107,7 @@ define
             return (ret);
         }
 
-        class DefaultTheme
+        class IconTheme
         {
             constructor()
             {
@@ -156,17 +156,17 @@ define
 
             getName ()
             {
-                return ("DefaultTheme");
+                return ("IconTheme");
             }
 
             getTitle ()
             {
-                return ("Default");
+                return ("Icon");
             }
 
             getDescription ()
             {
-                return ("Equipment colored by function.");
+                return ("Equipment icons colored by function.");
             }
 
             getExtents ()
@@ -198,6 +198,7 @@ define
                     colors.unshift ("in", "color");
                     this._TheMap.setFilter ("lines", colors);
                     this._TheMap.setFilter ("circle", colors);
+                    this._TheMap.setFilter ("symbol", colors);
                 }
             }
 
@@ -208,7 +209,7 @@ define
              * @param {Object} options - options for processing
              * @return {Object} with points, lines and polygons feature collections
              * @function process_spatial_objects
-             * @memberOf module:default_theme
+             * @memberOf module:icon_theme
              */
             process_spatial_objects (data, locations, options)
             {
@@ -417,7 +418,7 @@ define
              * @param {Object} data - the hash table object of CIM classes by class name
              * @param {Object} options - options for processing
              * @function process_spatial_objects_again
-             * @memberOf module:default_theme
+             * @memberOf module:icon_theme
              */
             process_spatial_objects_again (data, options)
             {
@@ -429,7 +430,7 @@ define
              * @param {Object} options - options for processing
              * @return {Object} with points, lines and polygons feature collections
              * @function make_geojson
-             * @memberOf module:default_theme
+             * @memberOf module:icon_theme
              */
             make_geojson (data, options)
             {
@@ -451,7 +452,7 @@ define
             /**
              * Remove layers and sources from the map.
              * @function remove_theme
-             * @memberOf module:default_theme
+             * @memberOf module:icon_theme
              */
             remove_theme ()
             {
@@ -461,6 +462,8 @@ define
                     this._TheMap.removeLayer ("lines_highlight");
                     this._TheMap.removeLayer ("circle");
                     this._TheMap.removeLayer ("circle_highlight");
+                    this._TheMap.removeLayer ("symbol");
+                    this._TheMap.removeLayer ("symbol_highlight");
                     this._TheMap.removeSource ("cim points");
                     this._TheMap.removeSource ("cim lines");
                     this._TheMap.removeSource ("cim polygons");
@@ -473,7 +476,7 @@ define
              * @param {Object} options - object with rendering options, e.g.
              *   show_internal_features flag - render internal features
              * @function make_theme
-             * @memberOf module:default_theme
+             * @memberOf module:icon_theme
              */
             make_theme (cimmap, options)
             {
@@ -520,9 +523,13 @@ define
                 map.addLayer (layers.line_layer ("lines", "cim lines", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
                 map.addLayer (layers.line_layer ("lines_highlight", "cim lines", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
-                // simple circles
-                map.addLayer (layers.full_circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]))
-                map.addLayer (layers.full_circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]))
+                // simple circle from 14 to 17
+                map.addLayer (layers.circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]))
+                map.addLayer (layers.circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]))
+
+                // symbol icon from 17 and deeper
+                map.addLayer (layers.symbol_layer ("symbol", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
+                map.addLayer (layers.symbol_layer ("symbol_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
                 // set the current filter
                 this.legend_changed ();
@@ -532,6 +539,6 @@ define
             }
         }
 
-        return (DefaultTheme);
+        return (IconTheme);
     }
 )
