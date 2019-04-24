@@ -118,7 +118,11 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     {
         log.info ("""executing GridLAB-D for %s""".format (trafo.name))
 
-        val command = Seq ("bash", "-c", """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, trafo.directory, trafo.name))
+        var dir = trafo.directory
+        if (dir.takeRight(1) == """\""")
+            dir = dir.slice(0, dir.length - 1)
+        val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, dir, trafo.name)
+        val command = Seq ("bash", "-c", bash)
         var lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
