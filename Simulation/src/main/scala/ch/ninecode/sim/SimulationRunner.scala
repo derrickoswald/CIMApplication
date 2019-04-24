@@ -254,17 +254,17 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                                     entry ⇒
                                         SimulationResult
                                         (
+                                            trafo.simulation,
                                             entry.element,
                                             recorder.`type`,
-                                            recorder.interval * 1000,
                                             entry.millis,
-                                            entry.value_a.im,
-                                            entry.value_b.im,
-                                            entry.value_c.im,
+                                            recorder.interval * 1000,
                                             entry.value_a.re,
+                                            entry.value_a.im,
                                             entry.value_b.re,
+                                            entry.value_b.im,
                                             entry.value_c.re,
-                                            trafo.simulation,
+                                            entry.value_c.im,
                                             entry.units,
                                             baseline.time_to_live
                                         )
@@ -309,20 +309,20 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                                                         val timepoint = entry.time - (entry.period * (accumulator.intervals - 1))
                                                         val period = entry.period * accumulator.intervals
                                                         val new_entry = SimulationResult (
-                                                                entry.mrid,
-                                                                entry.`type`,
-                                                                period,
-                                                                timepoint,
-                                                                accumulator.value_a_re,
-                                                                accumulator.value_a_im,
-                                                                accumulator.value_b_re,
-                                                                accumulator.value_b_im,
-                                                                accumulator.value_c_re,
-                                                                accumulator.value_c_im,
-                                                                entry.simulation,
-                                                                entry.units,
-                                                                accumulator.ttl
-                                                            )
+                                                            entry.simulation,
+                                                            entry.mrid,
+                                                            entry.`type`,
+                                                            timepoint,
+                                                            period,
+                                                            accumulator.value_a_re,
+                                                            accumulator.value_a_im,
+                                                            accumulator.value_b_re,
+                                                            accumulator.value_b_im,
+                                                            accumulator.value_c_re,
+                                                            accumulator.value_c_im,
+                                                            entry.units,
+                                                            accumulator.ttl
+                                                        )
                                                         accumulator.reset ()
                                                         Some (new_entry)
                                                     }
