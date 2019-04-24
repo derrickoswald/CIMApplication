@@ -49,7 +49,7 @@ case class SimulationOptions
     /**
      * Working directory for executors.
      */
-    workdir: String = "/tmp/",
+    workdir: String = "simulation/",
 
     /**
      * Cacheing option.
