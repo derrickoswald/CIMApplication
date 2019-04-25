@@ -475,3 +475,26 @@ Energy losses per day.
     units        - the units for the loss values
     simulation   - the simulation run identifier, UUID
 ';
+
+create table if not exists cimapplication.summary_by_day (
+    simulation text,
+    mrid text,
+    type text,
+    date date,
+    min_value double,
+    avg_value double,
+    max_value double,
+    units text,
+    primary key ((simulation, mrid, type), date)
+) with clustering order by (date asc) and comment = '
+Simulated values
+Summary aggregations by day.
+    simulation  - the simulation run identifier, UUID
+    mrid        - the unique CIM mRID for the element with this summary
+    type        - the type of value, e.g. energy, power, voltage, current
+    date        - the date for which the aggregations are computed in GMT
+    min_value   - the minumum value for the day in percent
+    avg_value   - the average value for the day in percent
+    max_value   - the maximum value for the day in percent
+    units       - the units for the value
+';

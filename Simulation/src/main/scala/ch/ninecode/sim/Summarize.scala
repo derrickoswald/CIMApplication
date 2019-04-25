@@ -807,6 +807,59 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         }
     }
 
+    /**
+     * TransformerPower
+     *
+     * Determine the daily max, avg and min transformer apparent power.
+     *
+     */
+    def transformerpower (access: SimulationCassandraAccess): Unit =
+    {
+        log.info ("TransformerPower")
+        val typ = "power"
+        val simulated_power_values = access.raw_values (typ).persist (options.storage_level)
+        logInfo ("""TransformerPower: %d simulation values to process""".format (simulated_power_values.count))
+        show (simulated_power_values)
+
+        val transformers = simulated_power_values
+            .join (
+                access.geojson_polygons,
+                Seq ("mrid"))
+
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        val powers = transformers
+            .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+            .drop ("real_a", "imag_a")
+            .withColumn ("date", simulated_power_values ("time").cast (DateType))
+            .drop ("time")
+            .persist (options.storage_level)
+
+        val total = powers
+            .groupBy ("mrid", "date")
+            .agg ("power" → "min", "power" → "avg", "power" → "max")
+            .withColumnRenamed ("min(power)", "min_value")
+            .withColumnRenamed ("avg(power)", "avg_value")
+            .withColumnRenamed ("max(power)", "max_value")
+        logInfo ("""TransformerPower: %d daily daily power statistics""".format (total.count))
+        show (total)
+
+        {
+            val mrid = total.schema.fieldIndex ("mrid")
+            val date = total.schema.fieldIndex ("date")
+            val min_value = total.schema.fieldIndex ("min_value")
+            val avg_value = total.schema.fieldIndex ("avg_value")
+            val max_value = total.schema.fieldIndex ("max_value")
+
+            val work = total.rdd.map (row ⇒ (access.simulation, row.getString (mrid), typ, row.getDate (date), row.getDouble (min_value), row.getDouble (avg_value), row.getDouble (max_value), "Watts")).cache
+
+            // save to Cassandra
+            work.saveToCassandra (access.output_keyspace, "summary_by_day",
+                SomeColumns ("simulation", "mrid", "type", "date", "min_value", "avg_value", "max_value", "units"))
+            log.info ("""TransformerPower: power summary records saved to %s.summary_by_day""".format (access.output_keyspace))
+        }
+    }
+
     def run (simulations: Seq[String]): Unit =
     {
         val sql = "select keyspace_name from system_schema.tables where table_name = 'simulation' allow filtering"
@@ -855,6 +908,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
                     responsibility_factor (access)
                     voltage_quality (access)
                     losses (access)
+                    transformerpower (access)
                 case None ⇒
                     log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
             }

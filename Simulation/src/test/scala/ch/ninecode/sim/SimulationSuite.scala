@@ -501,4 +501,11 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //            val check = SimulationEvents (spark, options)
 //            check.run (Array("c6d9e365-f5d3-4abd-a6d3-fcdf2814c3be"))
 //    }
+
+//    test ("power")
+//    {
+//        spark ⇒
+//            val summarize = Summarize (spark, SimulationOptions (verbose = true, unittest = true, summarize = true))
+//            summarize.run (Array("bf34b237-c798-485d-90ba-9a990d570f7c"))
+//    }
 }
