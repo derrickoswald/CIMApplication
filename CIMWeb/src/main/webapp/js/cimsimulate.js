@@ -27,6 +27,7 @@ truncate table cimapplication.voltage_deviation_by_day;
 truncate table cimapplication.voltage_deviation_summary_by_day;
 truncate table cimapplication.losses_by_day;
 truncate table cimapplication.losses_summary_by_day;
+truncate table cimapplication.summary_by_day;
      * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0

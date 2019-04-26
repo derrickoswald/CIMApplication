@@ -22,7 +22,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
 
     var polygons: DataFrame = _
 
-    var simulated_values: DataFrame = _
+    var simulated_values: Map[String,DataFrame] = Map()
 
     var measured_values: DataFrame = _
 
@@ -82,22 +82,24 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
 
     def raw_values (`type`: String, period: Int = PERIOD): DataFrame =
     {
-        if (null == simulated_values)
+        simulated_values.get(`type`) match
         {
-            simulated_values = spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
-                .load
-                // push down partition key = (simulation, mrid, type, period)
-                .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
-                .drop ("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units")
-                .cache
-            logInfo ("""%d simulated values to process""".format (simulated_values.count))
-            show (simulated_values)
-            simulated_values
+            case Some(dataframe) ⇒ dataframe
+            case None ⇒
+                val values = spark
+                    .read
+                    .format ("org.apache.spark.sql.cassandra")
+                    .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
+                    .load
+                    // push down partition key = (simulation, mrid, type, period)
+                    .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
+                    .drop ("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units")
+                    .cache
+                logInfo ("""%d simulated values to process""".format (values.count))
+                show (values)
+                simulated_values = simulated_values + (`type` → values)
+                values
         }
-        simulated_values
     }
 
     def raw_meter_values: DataFrame =
