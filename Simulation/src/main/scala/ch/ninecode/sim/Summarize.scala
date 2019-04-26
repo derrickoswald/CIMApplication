@@ -851,7 +851,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             val avg_value = total.schema.fieldIndex ("avg_value")
             val max_value = total.schema.fieldIndex ("max_value")
 
-            val work = total.rdd.map (row ⇒ (access.simulation, row.getString (mrid), typ, row.getDate (date), row.getDouble (min_value), row.getDouble (avg_value), row.getDouble (max_value), "Watts")).cache
+            val work = total.rdd.map (row ⇒ (access.simulation, row.getString (mrid), typ, row.getDate (date), row.getDouble (min_value), row.getDouble (avg_value), row.getDouble (max_value), "VA")).cache
 
             // save to Cassandra
             work.saveToCassandra (access.output_keyspace, "summary_by_day",
