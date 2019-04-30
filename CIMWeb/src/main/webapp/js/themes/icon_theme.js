@@ -9,7 +9,6 @@ define
     /**
      * @summary Base class for themes.
      * @description Theme class for colorizing by equipment type.
-     * @name icon_theme
      * @exports icon_theme
      * @version 1.0
      */
@@ -18,19 +17,19 @@ define
         /**
          * symbology
          */
-        var junction_symbol = "alternate_junction";
-        var connector_symbol = "connector";
-        var distribution_box_symbol = "distribution_box";
-        var energy_consumer_symbol = "energy_consumer";
-        var fuse_symbol = "fuse";
-        var other_symbol = "junction";
-        var street_light_symbol = "street_light";
-        var substation_symbol = "substation";
-        var switch_symbol = "switch";
-        var transformer_station_symbol = "transformer_station";
-        var transformer_symbol = "transformer";
+        const junction_symbol = "alternate_junction";
+        const connector_symbol = "connector";
+        const distribution_box_symbol = "distribution_box";
+        const energy_consumer_symbol = "energy_consumer";
+        const fuse_symbol = "fuse";
+        const other_symbol = "junction";
+        const street_light_symbol = "street_light";
+        const substation_symbol = "substation";
+        const switch_symbol = "switch";
+        const transformer_station_symbol = "transformer_station";
+        const transformer_symbol = "transformer";
 
-        var TheExtents;
+        let TheExtents;
 
         /**
          * @summary Gather position points into locations.
@@ -44,61 +43,59 @@ define
          */
         function get_locations (data, options)
         {
-            var ret = {};
+            const ret = {};
 
-            var points = data.PositionPoint;
-            var locations = data.Location;
+            const points = data.PositionPoint;
+            const locations = data.Location;
             // list of locations to exclude
-            var blacklist = {};
-            var extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
+            const blacklist = {};
+            const extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
 
             if (!options.show_internal_features)
             {
-                for (var location in locations)
-                {
-                    var l = locations[location];
-                    if (l.CoordinateSystem == "pseudo_wgs84")
+                for (let location in locations)
+                    if (locations.hasOwnProperty (location) && (locations[location].CoordinateSystem === "pseudo_wgs84"))
                         blacklist[location] = true;
-                }
             }
-            for (var point in points)
-            {
-                var p = points[point];
-                if (!p.EditDisposition || (p.EditDisposition != "delete"))
+            for (let point in points)
+                if (points.hasOwnProperty (point))
                 {
-                    var location = p.Location;
-                    if ((null != location) && ("undefined" == typeof (blacklist[location])))
+                    const p = points[point];
+                    if (!p.EditDisposition || (p.EditDisposition !== "delete"))
                     {
-                        if (null == ret[location])
-                            ret[location] = [];
-                        var seq = Number (p.sequenceNumber);
-                        if (null != seq)
+                        const location = p.Location;
+                        if ((null != location) && !blacklist[location])
                         {
-                            var x = Number (p.xPosition);
-                            var y = Number (p.yPosition);
-                            ret[location][seq * 2] = x;
-                            ret[location][seq * 2 + 1] = y;
-                            if ((x >= -180.0) && (x <= 180.0) && (y >= -90.0) && (y <= 90.0)) // eliminate fucked up coordinates
+                            if (null == ret[location])
+                                ret[location] = [];
+                            const seq = Number (p.sequenceNumber);
+                            if (null != seq)
                             {
-                                if (x < extents.xmin)
-                                    extents.xmin = x;
-                                if (x > extents.xmax)
-                                    extents.xmax = x;
-                                if (y < extents.ymin)
-                                    extents.ymin = y;
-                                if (y > extents.ymax)
-                                    extents.ymax = y;
+                                const x = Number (p.xPosition);
+                                const y = Number (p.yPosition);
+                                ret[location][seq * 2] = x;
+                                ret[location][seq * 2 + 1] = y;
+                                if ((x >= -180.0) && (x <= 180.0) && (y >= -90.0) && (y <= 90.0)) // eliminate fucked up coordinates
+                                {
+                                    if (x < extents.xmin)
+                                        extents.xmin = x;
+                                    if (x > extents.xmax)
+                                        extents.xmax = x;
+                                    if (y < extents.ymin)
+                                        extents.ymin = y;
+                                    if (y > extents.ymax)
+                                        extents.ymax = y;
+                                }
                             }
                         }
                     }
                 }
-            }
 
             // fix non-zero based sequence numbers
-            for (var property in ret)
+            for (let property in ret)
                 if (ret.hasOwnProperty (property))
                 {
-                    var a = ret[property];
+                    const a = ret[property];
                     if (("undefined" == typeof (a[0])) && ("undefined" == typeof (a[1])))
                         ret[property] = a.slice (2);
                 }
@@ -194,7 +191,7 @@ define
             {
                 if ((null != this._TheMap) && this._TheMap.getSource ("cim lines") && this._TheMap.getSource ("cim points"))
                 {
-                    var colors = this._items.filter (function (item) { return (item.checked); }).map (function (item) { return (item.color); });
+                    const colors = this._items.filter (function (item) { return (item.checked); }).map (function (item) { return (item.color); });
                     colors.unshift ("in", "color");
                     this._TheMap.setFilter ("lines", colors);
                     this._TheMap.setFilter ("circle", colors);
@@ -214,38 +211,38 @@ define
             process_spatial_objects (data, locations, options)
             {
                 // the points GeoJSON
-                var points =
+                const points =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
                 // the lines GeoJSON
-                var lines =
+                const lines =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
                 // the polygons GeoJSON
-                var polygons =
+                const polygons =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
 
-                var coordinates;
-                var location;
-                var psr = data.PowerSystemResource
-                for (var id in psr)
+                let coordinates;
+                let location;
+                const psr = data.PowerSystemResource;
+                for (let id in psr)
                 {
-                    if (null != (location = psr[id].Location))
+                    if (psr.hasOwnProperty (id) && (null != (location = psr[id].Location)))
                     {
                         if (null != (coordinates = locations[location]))
                         {
                             // don't show deleted elements
-                            if (psr[id].EditDisposition && ("delete" == psr[id].EditDisposition))
+                            if (psr[id].EditDisposition && ("delete" === psr[id].EditDisposition))
                                 continue;
 
-                            if (2 == coordinates.length)
+                            if (2 === coordinates.length)
                             {
                                 points.features.push
                                 (
@@ -263,90 +260,90 @@ define
                                 psr[id].rotation = 0.0;
 
                                 // assign the symbol and color
-                                if ("PowerTransformer" == psr[id].cls)
+                                if ("PowerTransformer" === psr[id].cls)
                                 {
                                     psr[id].symbol = transformer_symbol;
                                     psr[id].color = "rgb(0, 100, 0)";
                                 }
-                                else if ("Fuse" == psr[id].cls)
+                                else if ("Fuse" === psr[id].cls)
                                 {
                                     psr[id].symbol = fuse_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Switch" == psr[id].cls)
+                                else if ("Switch" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Cut" == psr[id].cls)
+                                else if ("Cut" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Disconnector" == psr[id].cls)
+                                else if ("Disconnector" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("GroundDisconnector" == psr[id].cls)
+                                else if ("GroundDisconnector" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Jumper" == psr[id].cls)
+                                else if ("Jumper" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("MktSwitch" == psr[id].cls)
+                                else if ("MktSwitch" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("ProtectedSwitch" == psr[id].cls)
+                                else if ("ProtectedSwitch" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Breaker" == psr[id].cls)
+                                else if ("Breaker" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("LoadBreakSwitch" == psr[id].cls)
+                                else if ("LoadBreakSwitch" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Recloser" == psr[id].cls)
+                                else if ("Recloser" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("Sectionaliser" == psr[id].cls)
+                                else if ("Sectionaliser" === psr[id].cls)
                                 {
                                     psr[id].symbol = switch_symbol;
                                     psr[id].color = "rgb(0, 0, 139)";
                                 }
-                                else if ("EnergyConsumer" == psr[id].cls)
+                                else if ("EnergyConsumer" === psr[id].cls)
                                 {
-                                    if (psr[id].PSRType == "PSRType_StreetLight")
+                                    if (psr[id].PSRType === "PSRType_StreetLight")
                                         psr[id].symbol = street_light_symbol;
                                     else
                                         psr[id].symbol = energy_consumer_symbol;
                                     psr[id].color = "rgb(0, 139, 139)";
                                 }
-                                else if ("Connector" == psr[id].cls)
+                                else if ("Connector" === psr[id].cls)
                                 {
                                     psr[id].symbol = connector_symbol;
                                     psr[id].color = "rgb(139, 0, 0)";
                                 }
-                                else if ("Junction" == psr[id].cls)
+                                else if ("Junction" === psr[id].cls)
                                 {
                                     psr[id].symbol = other_symbol;
                                     psr[id].color = "rgb(139, 0, 0)";
                                 }
-                                else if ("BusbarSection" == psr[id].cls)
+                                else if ("BusbarSection" === psr[id].cls)
                                 {
                                     psr[id].symbol = junction_symbol;
                                     psr[id].color = "rgb(139, 0, 0)";
@@ -355,11 +352,11 @@ define
                                 {
                                     if (data.Substation && ("undefined" != typeof (data.Substation[id])))
                                     {
-                                        if (psr[id].PSRType == "PSRType_DistributionBox")
+                                        if (psr[id].PSRType === "PSRType_DistributionBox")
                                             psr[id].symbol = distribution_box_symbol;
-                                        else if (psr[id].PSRType == "PSRType_Substation")
+                                        else if (psr[id].PSRType === "PSRType_Substation")
                                             psr[id].symbol = substation_symbol;
-                                        else if (psr[id].PSRType == "PSRType_TransformerStation")
+                                        else if (psr[id].PSRType === "PSRType_TransformerStation")
                                             psr[id].symbol = transformer_station_symbol;
                                         else
                                             psr[id].symbol = substation_symbol;
@@ -385,7 +382,7 @@ define
                                             (
                                                 function (ret, item)
                                                 {
-                                                    var next;
+                                                    let next;
 
                                                     next = ret[ret.length - 1];
                                                     if (!next || (2 <= next.length))
@@ -434,16 +431,16 @@ define
              */
             make_geojson (data, options)
             {
-                var ret;
+                let ret;
                 if (null != data)
                 {
-                    var locations = get_locations (data, options);
+                    const locations = get_locations (data, options);
                     ret = this.process_spatial_objects (data, locations, options);
                     this.process_spatial_objects_again (data, options);
                 }
                 else
                 {
-                    var fc = { "type" : "FeatureCollection", "features" : [] };
+                    const fc = { "type" : "FeatureCollection", "features" : [] };
                     ret = { points: fc, lines: fc, polygons: fc };
                 }
                 return (ret);
@@ -480,13 +477,13 @@ define
              */
             make_theme (cimmap, options)
             {
-                var start = new Date ().getTime ();
+                const start = new Date ().getTime ();
                 console.log ("rendering CIM data");
 
-                var map = cimmap.get_map ();
+                const map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
 
-                var geo = this.make_geojson (cimmap.get_data (), options);
+                const geo = this.make_geojson (cimmap.get_data (), options);
 
                 // update the map
                 map.addSource
@@ -524,8 +521,8 @@ define
                 map.addLayer (layers.line_layer ("lines_highlight", "cim lines", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
                 // simple circle from 14 to 17
-                map.addLayer (layers.circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]))
-                map.addLayer (layers.circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]))
+                map.addLayer (layers.circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
+                map.addLayer (layers.circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
                 // symbol icon from 17 and deeper
                 map.addLayer (layers.symbol_layer ("symbol", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
@@ -534,11 +531,11 @@ define
                 // set the current filter
                 this.legend_changed ();
 
-                var end = new Date ().getTime ();
+                const end = new Date ().getTime ();
                 console.log ("finished rendering CIM data (" + (Math.round (end - start) / 1000) + " seconds)");
             }
         }
 
         return (IconTheme);
     }
-)
+);

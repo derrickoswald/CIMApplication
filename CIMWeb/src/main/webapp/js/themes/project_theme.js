@@ -5,15 +5,15 @@
 
 define
 (
-    ["../mustache", "./default_theme", "./project_legend", "./layers", "../cimquery", "../cim"],
+    ["../mustache", "./diagram", "./project_legend", "./layers", "../cimquery", "../cim"],
     /**
      * @summary Theme of projects.
      * @exports project_theme
      * @version 1.0
      */
-    function (mustache, DefaultTheme, ProjectLegend, layers, cimquery, cim)
+    function (mustache, DiagramTheme, ProjectLegend, layers, cimquery, cim)
     {
-        class ProjectTheme extends DefaultTheme
+        class ProjectTheme extends DiagramTheme
         {
             constructor ()
             {
