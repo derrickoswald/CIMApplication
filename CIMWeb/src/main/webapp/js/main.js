@@ -13,10 +13,10 @@ requirejs.config({
 requirejs
 (
     ["cimapp", "cimfiles", "cimmap", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
-     "themes/cimthemes", "themes/default_theme", "themes/icon_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme",
+     "themes/cimthemes", "themes/default_theme", "themes/icon_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme", "themes/event_theme",
      "nav/cimnav", "nav/zoominnav", "nav/zoomoutnav", "nav/rotationnav", "nav/zoomnav", "nav/infonav", "nav/themenav", "nav/legendnav", "nav/editnav", "nav/connectivitynav", "nav/diagramnav", "nav/chartnav"],
     function (cimapp, cimfiles, cimmap, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
-     ThemeControl, DefaultTheme, IconTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme,
+     ThemeControl, DefaultTheme, IconTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme, EventTheme,
      NavigationControl, ZoomInNav, ZoomOutNav, RotationNav, ZoomNav, InfoNav, ThemeNav, LegendNav, EditNav, ConnectivityNav, DiagramNav, ChartNav)
     {
         /**
@@ -24,7 +24,6 @@ requirejs
          * @param {String} url the full URL to get the hash from
          * @return {String} just the hash portion
          * @function get_hash
-         * @memberOf module:main
          */
         function get_hash (url)
         {
@@ -45,7 +44,6 @@ requirejs
          * Sets the display style to "none".
          * @param {String} id the element id
          * @function hide
-         * @memberOf module:main
          */
         function hide (id)
         {
@@ -62,7 +60,6 @@ requirejs
          * Sets the display style to "block".
          * @param {String} id the element id
          * @function show
-         * @memberOf module:main
          */
         function show (id)
         {
@@ -164,6 +161,7 @@ requirejs
         TheThemer.addTheme (new IslandTheme ());
         TheThemer.addTheme (new InServiceTheme ());
         TheThemer.addTheme (new DiagramTheme ());
+        TheThemer.addTheme (new EventTheme ());
 
         function toggle (control_or_function)
         {

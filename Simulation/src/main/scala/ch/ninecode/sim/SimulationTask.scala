@@ -7,6 +7,7 @@ import ch.ninecode.gl.GLMNode
 
 case class SimulationTask
 (
+    transformer: String,
     island: String,
     start: Calendar,
     end: Calendar,

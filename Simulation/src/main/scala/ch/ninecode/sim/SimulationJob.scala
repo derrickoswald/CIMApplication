@@ -189,13 +189,13 @@ case class SimulationJob
 
         val players =
             tasks.flatMap (
-                task ⇒ task.players.map (player ⇒ (id, player.name, player.mrid, player.`type`, player.property)))
-        players.saveToCassandra (keyspace, "simulation_player", SomeColumns ("id", "name", "mrid", "type", "property"))
+                task ⇒ task.players.map (player ⇒ (id, task.transformer, player.name, player.mrid, player.`type`, player.property)))
+        players.saveToCassandra (keyspace, "simulation_player", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property"))
 
         val recorders =
             tasks.flatMap (
-                task ⇒ task.recorders.map (recorder ⇒ (id,  recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval, recorder.aggregationsMap)))
-        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("id", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
+                task ⇒ task.recorders.map (recorder ⇒ (id, task.transformer, recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval, recorder.aggregationsMap)))
+        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
     }
 }
 

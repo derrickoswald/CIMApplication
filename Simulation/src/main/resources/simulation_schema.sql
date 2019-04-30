@@ -82,6 +82,7 @@ create table if not exists cimapplication.simulation_event (
     simulation text,
     mrid text,
     type text,
+    severity int,
     start_time timestamp,
     end_time timestamp,
     primary key ((simulation, mrid, type), end_time)
@@ -91,6 +92,7 @@ These are events of interest from a post-analysis of the simulated values.
     simulation - the simulation run identifier, UUID
     mrid       - the unique CIM mRID for the element with this event
     type       - the type of event, e.g. voltage threshold exceeded, or current threshold exceeded
+    severity   - the weight (1 = orange, 2 = red) of the event
     start_time - the event start time in GMT
     end_time   - the event end time in GMT
 ';
@@ -123,25 +125,28 @@ Describes each run of the Simulate code.
 ';
 
 create table if not exists cimapplication.simulation_player (
-    id text,
+    simulation text,
+    transformer text,
     name text,
     mrid text,
     type text,
     property text,
-    primary key (id, name)
+    primary key (simulation, transformer, name)
 ) with comment = '
 Details about GridLAB-D players in the simulation.
 Describes each player used in the simulation.
-    id   - the simulation run identifier, UUID
-    name - the user supplied name of the player
-    mrid - the cim mRID of the element being driven
-    type - the player type, e.g. energy
-    property - the GridLAB-D property being driven, e.g. constant_power
+    simulation  - the simulation run identifier, UUID
+    transformer - the transformer mRID of the topological island in which this element is found
+    name        - the user supplied name of the player
+    mrid        - the cim mRID of the element being driven
+    type        - the player type, e.g. energy
+    property    - the GridLAB-D property being driven, e.g. constant_power
 Note: not included here are the player file name, the SQL that generated this player, and the start and end times
 ';
 
 create table if not exists cimapplication.simulation_recorder (
-    id text,
+    simulation text,
+    transformer text,
     name text,
     mrid text,
     type text,
@@ -149,17 +154,18 @@ create table if not exists cimapplication.simulation_recorder (
     unit text,
     interval int,
     aggregations map<int,int>,
-    primary key (id, name)
+    primary key (simulation, transformer, name)
 ) with comment = '
 Details about GridLAB-D recorders in the simulation.
 Describes each recorder used in the simulation.
-    id   - the simulation run identifier, UUID
-    name - the user supplied name of the recorder
-    mrid - the cim mRID of the element being recorded
-    type - the recorder type, e.g. current
-    property - the GridLAB-D property being recorder, e.g. current_in
-    unit - the units for the recorder, e.g. Volts
-    interval - the recording interval (seconds)
+    simulation   - the simulation run identifier, UUID
+    transformer  - the transformer mRID of the topological island in which this element is found
+    name         - the user supplied name of the recorder
+    mrid         - the cim mRID of the element being recorded
+    type         - the recorder type, e.g. current
+    property     - the GridLAB-D property being recorder, e.g. current_in
+    unit         - the units for the recorder, e.g. Volts
+    interval     - the recording interval (seconds)
     aggregations - summary aggregations as pairs of intervals:time-to-live (#:seconds)
 Note: not included here are the recorder parent or file name.
 ';
@@ -176,7 +182,7 @@ create table if not exists cimapplication.geojson_points (
     transformer text,
     type text,
     geometry frozen<cimapplication.point_data>,
-    properties map<text,text>,
+    properties frozen<map<text,text>>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated point elements';
 
@@ -186,7 +192,7 @@ create table if not exists cimapplication.geojson_lines (
     transformer text,
     type text,
     geometry frozen<cimapplication.line_data>,
-    properties map<text,text>,
+    properties frozen<map<text,text>>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated line elements';
 
@@ -195,7 +201,7 @@ create table if not exists cimapplication.geojson_polygons (
     mrid text,
     type text,
     geometry frozen<cimapplication.polygon_data>,
-    properties map<text,text>,
+    properties frozen<map<text,text>>,
     primary key (simulation, mrid)
 ) with comment = 'GeoJSON for simulated polygon elements';
 

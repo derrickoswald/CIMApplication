@@ -357,15 +357,16 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
+                        function handler (data) // {error: {message: string}}
+                        {
+                            var message = JSON.stringify (data);
+                            console.log (message);
+                            TheMap.off ("error", handler);
+                            reject (message);
+                        }
+
                         if (predicate ())
                         {
-                            function handler (data) // {error: {message: string}}
-                            {
-                                var message = JSON.stringify (data);
-                                console.log (message);
-                                TheMap.off ("error", handler);
-                                reject (message);
-                            }
                             TheMap.on ("error", handler);
                             pause (predicate).then (() => { TheMap.off ("error", handler); resolve (); });
                         }
@@ -572,14 +573,15 @@ define
          */
         function select (mrid, list)
         {
+            // cheap check for array equality
+            function lists_equal (list1, list2)
+            {
+                return (list1.sort ().join (",") === list2.sort ().join (","))
+            }
+
             if (null != mrid)
             {
-                // cheap check for array equality
-                function lists_equal (list1, list2)
-                {
-                    return (list1.sort ().join (",") == list2.sort ().join (","))
-                }
-                if (mrid != get_selected_feature () || !lists_equal (get_selected_features (), list))
+                if (mrid !== get_selected_feature () || !lists_equal (get_selected_features (), list))
                 {
                     if (!list || !list.includes (mrid))
                         list = [mrid];

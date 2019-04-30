@@ -208,7 +208,7 @@ define
                         "text-color": color
                     }
                 };
-            if (placement == "line" || placement == "line-center")
+            if (placement === "line" || placement === "line-center")
             {
                 ret.paint["text-halo-color"] = "#ffffff";
                 ret.paint["text-halo-width"] = 8;

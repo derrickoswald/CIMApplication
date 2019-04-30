@@ -3,13 +3,14 @@ package ch.ninecode.sim
 import java.sql.Timestamp
 
 import scala.reflect.runtime.universe.TypeTag
-
 import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
 import org.slf4j.Logger
@@ -45,22 +46,22 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     //   - ACLineSegment (N7) current [Strom (I)] (A)
 
     // database schema
-    //          simulation mrid   type    start_time end_time
-    type Event = (String, String, String, Timestamp, Timestamp)
+    //          simulation mrid   type  severity, start_time end_time
+    type Event = (String, String, String, Int, Timestamp, Timestamp)
 
     // 400V >±6%, >±10%
     val THRESHOLD1 = 0.06
     val THRESHOLD2 = 0.10
 
-    case class Trigger (ratio: Double, duration: Int)
+    case class Trigger (severity: Int, ratio: Double, duration: Int)
 
     // current >75% and >14h within 24h
     // current >90% and >3h within 24h
     // current >110% for 15 minutes or more
 
-    val BOUNDARY1 = Trigger (0.75, 14 * 60 * 60 * 1000)
-    val BOUNDARY2 = Trigger (0.90,  3 * 60 * 60 * 1000)
-    val BOUNDARY3 = Trigger (1.10,      15 * 60 * 1000)
+    val BOUNDARY1 = Trigger (1, 0.75, 14 * 60 * 60 * 1000)
+    val BOUNDARY2 = Trigger (2, 0.90,  3 * 60 * 60 * 1000)
+    val BOUNDARY3 = Trigger (2, 1.10,      15 * 60 * 1000)
 
     // also the same for transformer apparent power
     // power >75% and >14h within 24h
@@ -71,11 +72,11 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     {
         var ret: List[Event] = Nil
 
-        val threshold = boundary.ratio * limit // test value
+        val threshold: Double = boundary.ratio * limit // test value
         var start = 0L                         // starting time
         var end = 0L                           // ending time
         var timeout = 0                        // count-down
-        lazy val message = "%s exceeds %s%% threshold for %s milliseconds".format (typ, boundary.ratio * 100.0, boundary.duration)
+        lazy val message: String = "%s exceeds %s%% threshold for %s milliseconds".format (typ, boundary.ratio * 100.0, boundary.duration)
 
         def next (time: Long, period: Int, current: Double): Unit =
         {
@@ -101,7 +102,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                         // non consecutive periods
                         // emit an event if the duration has elapsed
                         if (timeout < 0L)
-                            ret = (simulation, mrid, message, new Timestamp (start), new Timestamp (end)) :: ret
+                            ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
                         // start counting again
                         start = time
                         end = time + period
@@ -113,7 +114,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             {
                 // emit an event if the duration has elapsed
                 if (timeout < 0L)
-                    ret = (simulation, mrid, message, new Timestamp (start), new Timestamp (end)) :: ret
+                    ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
             }
         }
 
@@ -122,7 +123,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             // emit an event if the duration has elapsed
             if (0L != start && timeout < 0L)
             {
-                ret = (simulation, mrid, message, new Timestamp (start), new Timestamp (end)) :: ret
+                ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
                 start = 0L // don't do it again
                 timeout = 0
             }
@@ -133,7 +134,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     def save (access: SimulationCassandraAccess, events: RDD[Event]): Unit =
     {
         events.saveToCassandra (access.output_keyspace, "simulation_event",
-            SomeColumns ("simulation", "mrid", "type", "start_time", "end_time"))
+            SomeColumns ("simulation", "mrid", "type", "severity", "start_time", "end_time"))
     }
 
     // voltage exceeds ±10%=red, voltage exceeds ±6%=orange
@@ -175,10 +176,10 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
 
             // save to Cassandra - split based on second threshold
             val over1 = typ + " exceeds %s%% threshold".format (threshold1 * 100.0)
-            val overvoltage1: RDD[Event] = work.filter (v ⇒ v._5 <= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over1, x._3, x._4))
+            val overvoltage1: RDD[Event] = work.filter (v ⇒ v._5 < v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over1, 1, x._3, x._4))
             save (access, overvoltage1)
             val over2 = typ + " exceeds %s%% threshold".format (threshold2 * 100.0)
-            val overvoltage2: RDD[Event] = work.filter (v ⇒ v._5 <= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over2, x._3, x._4))
+            val overvoltage2: RDD[Event] = work.filter (v ⇒ v._5 >= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over2, 2, x._3, x._4))
             save (access, overvoltage2)
             log.info ("""voltageCheck: overvoltage records saved to %s.simulation_event""".format (access.output_keyspace))
         }
@@ -196,10 +197,10 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
 
             // save to Cassandra - split based on second threshold
             val under1 = typ + " subceeds %s%% threshold".format (threshold1 * 100.0)
-            val undervoltage1 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under1, x._3, x._4))
+            val undervoltage1 = work.filter (v ⇒ v._5 > v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under1, 1, x._3, x._4))
             save (access, undervoltage1)
             val under2 = typ + " subceeds %s%% threshold".format (threshold2 * 100.0)
-            val undervoltage2 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under2, x._3, x._4))
+            val undervoltage2 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under2, 2, x._3, x._4))
             save (access, undervoltage2)
             log.info ("""voltageCheck: undervoltage records saved to %s.simulation_event""".format (access.output_keyspace))
         }

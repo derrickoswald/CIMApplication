@@ -1069,8 +1069,6 @@ define
                 //        input_keyspace: "cimapplication",
                 //        output_keyspace: "cimapplication",
                 //        name: "Sample"
-                //        players: [ {…}, {…}, {…}, … ]
-                //        recorders: [ {…}, {…}, {…}, … ]
                 //        transformers: [ "TRA2755", "TRA2769" ]
                 //    }
                 this._simulation = this._simulation_json.id;

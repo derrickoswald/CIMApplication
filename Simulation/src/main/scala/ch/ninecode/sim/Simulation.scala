@@ -303,7 +303,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-            get [TopologicalNode]
+                get [TopologicalNode]
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
@@ -346,20 +346,21 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
 
             // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
-            val fuckedup_areas: RDD[(island_id, (Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands).values.map (_.swap)
-
-            val rdd2 = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._2))).cache // (island, ([nodes], [edges], [players]))
-            val rdd3 = rdd2.join (recordersets).map (l ⇒ (l._1, l._2._1._1, l._2._1._2, l._2._1._3, l._2._2)).cache // (island, [nodes], [edges], [players], [recorders])
+            val fuckedup_areas: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands)
+                .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
+            val rdd2: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult]))] = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._1._3, l._2._2))).cache // (island, (trafo, [nodes], [edges], [players]))
+            val rdd3: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = rdd2.join (recordersets).map (l ⇒ (l._2._1._1, l._1, l._2._1._2, l._2._1._3, l._2._1._4, l._2._2)).cache // (island, [nodes], [edges], [players], [recorders])
             rdd3.map (l ⇒
             {
-                val players = l._4.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
-                val recorders = l._5.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                val players = l._5.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                val recorders = l._6.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
                 SimulationTask (
-                    l._1, // island
+                    l._1, // trafo
+                    l._2, // island
                     start.clone.asInstanceOf [Calendar],
                     end.clone.asInstanceOf [Calendar],
-                    l._2, // nodes
-                    l._3, // edges
+                    l._3, // nodes
+                    l._4, // edges
                     players,
                     recorders)
             }

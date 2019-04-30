@@ -5,31 +5,36 @@
 
 define
 (
-    ["../mustache", "./default_theme", "./project_legend", "./layers", "../cimquery", "../cim"],
+    ["../mustache", "./default_theme", "./event_legend", "./layers", "../cimquery", "../cim"],
     /**
-     * @summary Theme of projects.
-     * @exports project_theme
+     * @summary Theme of events (overvoltage, overcurrent, overpower).
+     * @exports event_theme
      * @version 1.0
      */
-    function (mustache, DefaultTheme, ProjectLegend, layers, cimquery, cim)
+    function (mustache, DefaultTheme, EventLegend, layers, cimquery, cim)
     {
-        class ProjectTheme extends DefaultTheme
+        class EventTheme extends DefaultTheme
         {
             constructor ()
             {
                 super ();
-                this._legend = new ProjectLegend (this);
-                this._project_points =
+                this._legend = new EventLegend (this);
+                this._event_points =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                this._project_lines =
+                this._event_lines =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                this._project_polygons =
+                this._event_polygons =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                this._event_polygons_labels =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
@@ -41,17 +46,17 @@ define
 
             getName ()
             {
-                return ("ProjectTheme");
+                return ("EventTheme");
             }
 
             getTitle ()
             {
-                return ("Project builder");
+                return ("Events");
             }
 
             getDescription ()
             {
-                return ("Create a project by assembling transformer service areas.");
+                return ("Show anomolous events (overvoltage, overcurrent, overpower).");
             }
 
             getExtents ()
@@ -67,7 +72,7 @@ define
             legend_changed (value)
             {
                 if (value)
-                    this.setProject (value.keyspace, value.id);
+                    this.setSimulation (value);
             }
 
             /**
@@ -84,13 +89,13 @@ define
                 }
                 if ((null != this._TheMap) && this._TheMap.getSource ("nodes"))
                 {
-                    this._TheMap.removeLayer ("nodes");
                     this._TheMap.removeLayer ("edges");
-                    this._TheMap.removeLayer ("edge_labels");
                     this._TheMap.removeLayer ("areas");
+                    this._TheMap.removeLayer ("labels");
                     this._TheMap.removeSource ("nodes");
                     this._TheMap.removeSource ("edges");
                     this._TheMap.removeSource ("areas");
+                    this._TheMap.removeSource ("labels");
                 }
                 if (this._TheMap)
                 {
@@ -122,7 +127,7 @@ define
                     {
                         if (features[i].layer.id === "areas")
                             trafo = features[i].properties.name;
-                        if (features[i].layer.id === "edge_labels" || features[i].layer.id === "edges")
+                        if (features[i].layer.id === "edges")
                             boundaryswitch = features[i].properties.mrid;
                     }
                     if (boundaryswitch)
@@ -184,25 +189,30 @@ define
 
             clear ()
             {
-                this._project_points =
+                this._event_points =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                this._project_lines =
+                this._event_lines =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                this._project_polygons =
+                this._event_polygons =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                this._TheMap.getSource ("nodes").setData (this._project_points);
-                this._TheMap.getSource ("edges").setData (this._project_lines);
-                this._TheMap.getSource ("edge_labels").setData (this._project_lines);
-                this._TheMap.getSource ("areas").setData (this._project_polygons);
+                this._event_polygons_labels =
+                {
+                    "type" : "FeatureCollection",
+                    "features" : []
+                };
+                this._TheMap.getSource ("nodes").setData (this._event_points);
+                this._TheMap.getSource ("edges").setData (this._event_lines);
+                this._TheMap.getSource ("areas").setData (this._event_polygons);
+                this._TheMap.getSource ("labels").setData (this._event_polygons_labels);
             }
 
             /**
@@ -235,124 +245,6 @@ define
                     }
             }
 
-            color_energy_consumers (transformer)
-            {
-                // find the polygon in the GeoJSON set and get the time at which to check for data
-                const polygon = this._project_polygons.features.find (x => x.properties.name === transformer);
-                if (polygon)
-                {
-                    const time = polygon.properties.time;
-                    const self = this;
-                    cimquery.queryPromise ({ sql: "select elements from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + transformer + "'", cassandra: true })
-                    .then (
-                        function (data)
-                        {
-                            const elements = data[0].elements;
-                            // make a list of EnergyConsumer
-                            const houses = [];
-                            for (let id in elements)
-                                if (elements.hasOwnProperty (id))
-                                    if (elements[id] === "EnergyConsumer")
-                                        houses.push(id);
-                            // now see if any of the houses has meter data at that time
-                            const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
-                            if (houses.length !== 0)
-                                cimquery.queryPromise ({ sql: "select mrid from cimapplication.measured_value where " + inclause + " and type='energy' and time=" + time + ";", cassandra: true })
-                                    .then (
-                                        function (data)
-                                        {
-                                            self._consumers_with_data[transformer] = data.map (x => x.mrid);
-                                            self._cimmap.make_map ();
-                                        }
-                                    );
-                        }
-                    );
-                }
-            }
-
-            load_trafo (name)
-            {
-                const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select cim from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + name + "' allow filtering", cassandra: true })
-                .then (
-                    function (data)
-                    {
-                        const zip = atob (data[0].cim);
-                        const bytes = new Array (zip.length);
-                        for (let i = 0; i < zip.length; i++)
-                            bytes[i] = zip.charCodeAt (i);
-                        const blob = new Blob([new Uint8Array (bytes)], {type : 'application/zip'});
-                        const start = new Date ().getTime ();
-                        console.log ("starting unzip");
-                        require (
-                            ["zip/zip", "zip/mime-types"],
-                            function (zip, mimeTypes)
-                            {
-                                //zip.workerScriptsPath = "js/zip/";
-                                zip.useWebWorkers = false;
-                                zip.createReader (new zip.BlobReader (blob),
-                                    function (zipReader)
-                                    {
-                                        zipReader.getEntries (
-                                            function (entries) {
-                                                entries[0].getData (
-                                                    new zip.BlobWriter (mimeTypes.getMimeType (entries[0].filename)),
-                                                    function (data)
-                                                    {
-                                                        zipReader.close ();
-                                                        const end = new Date ().getTime ();
-                                                        console.log ("finished unzip (" + (Math.round (end - start) / 1000) + " seconds)");
-
-                                                        console.log ("starting CIM read");
-                                                        cim.read_xml_blobs ([data]).then (
-                                                            function (context)
-                                                            {
-                                                                const elements = Object.keys (context.parsed.Element).length;
-                                                                console.log ("finished CIM read (" + (Math.round (new Date ().getTime () - end) / 1000) + " seconds, " + elements + " elements)");
-                                                                if (0 !== context.ignored)
-                                                                    console.log (context.ignored.toString () + " unrecognized element" + ((1 < context.ignored) ? "s" : ""));
-                                                                const original = self._cimmap.get_data ();
-                                                                if (original)
-                                                                {
-                                                                    // combine the data
-                                                                    for (let property in context.parsed)
-                                                                        if (context.parsed.hasOwnProperty (property))
-                                                                        {
-                                                                            let bucket = original[property];
-                                                                            if (!bucket)
-                                                                                original[property] = bucket = {};
-                                                                            const c = context.parsed[property];
-                                                                            for (let p in c)
-                                                                                bucket[p] = c[p];
-                                                                        }
-                                                                    self._cimmap.set_data (original, true);
-                                                                    const loaded = self._cimmap.get_loaded ();
-                                                                    loaded.files.push (name);
-                                                                    loaded.elements = loaded.elements + elements;
-                                                                    self._cimmap.set_loaded (loaded);
-                                                                }
-                                                                else
-                                                                {
-                                                                    self._cimmap.set_data (context.parsed, true);
-                                                                    self._cimmap.set_loaded ({ files: [name], options: {}, elements: elements });
-                                                                }
-                                                                // set the color of EnergyConsumer based on whether there is data at the time retrieved when the polygon was loaded
-                                                                self.color_energy_consumers.call (self, name);
-                                                            }
-                                                        );
-                                                    }
-                                            );
-                                        })
-                                    }
-                                );
-                            }
-                        );
-                    }
-                );
-
-                return (promise);
-            }
-
             /**
              * Add sources and layers to the map.
              * @param {Object} cimmap - the CIM map object
@@ -377,7 +269,7 @@ define
                     "nodes",
                     {
                         type: "geojson",
-                        data: this._project_points,
+                        data: this._event_points,
                         maxzoom: 24
                     }
                 );
@@ -387,7 +279,7 @@ define
                     "edges",
                     {
                         type: "geojson",
-                        data: this._project_lines,
+                        data: this._event_lines,
                         maxzoom: 24
                     }
                 );
@@ -397,20 +289,29 @@ define
                     "areas",
                     {
                         type: "geojson",
-                        data: this._project_polygons,
+                        data: this._event_polygons,
                         maxzoom: 24
                     }
                 );
 
-                // label the polygons
-                map.addLayer (layers.label_layer ("nodes", "nodes", "point", "{name}", "#0000ff"));
+                map.addSource
+                (
+                    "labels",
+                    {
+                        type: "geojson",
+                        data: this._event_polygons_labels,
+                        maxzoom: 24
+                    }
+                );
 
                 // yellow lines 3 pixels wide with a label
                 map.addLayer (layers.line_layer ("edges", "edges", "#ffff00"));
-                map.addLayer (layers.label_layer ("edge_labels", "edges", "line-center", "{mrid}: {island1}-{island2}", "#000000"));
 
                 // blue with border
                 map.addLayer (layers.polygon_layer ("areas", "areas", { type: "identity", property: "color" }, "#000000"));
+
+                // label the polygons
+                map.addLayer (layers.label_layer ("labels", "labels", "point", "{name}", "#000000"));
 
                 const end = new Date ().getTime ();
                 console.log ("finished rendering project data (" + (Math.round (end - start) / 1000) + " seconds)");
@@ -430,15 +331,15 @@ define
                 // d0d17f07-7dcf-4208-9a45-f16eab441739 | JPR00001 |  TX0002 |  TX0001
 
                 // generate the link lines JSON
-                this._project_lines =
+                this._event_lines =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
                 };
                 data.forEach ((row) =>
                     {
-                        const coordinates_island1 = this._project_points.features.find (x => x.properties.name === row.island1).geometry.coordinates;
-                        const coordinates_island2 = this._project_points.features.find (x => x.properties.name === row.island2).geometry.coordinates;
+                        const coordinates_island1 = this._event_points.features.find (x => x.properties.name === row.island1).geometry.coordinates;
+                        const coordinates_island2 = this._event_points.features.find (x => x.properties.name === row.island2).geometry.coordinates;
                         // shorten the lines by 8% on each end using the parametric form of the line x = x0 + at; y = y0 + bt
                         const offset = 8. / 100.0;
                         const x0 = coordinates_island1[0];
@@ -448,7 +349,7 @@ define
                         const p1 = [x0 + a * offset, y0 + b * offset];
                         const p2 = [x0 + a * (1.0 - offset), y0 + b * (1.0 - offset)];
                         delete row.id;
-                        this._project_lines.features.push
+                        this._event_lines.features.push
                         (
                             {
                                 type : "Feature",
@@ -504,23 +405,26 @@ define
                 return (centroid);
             }
 
-            setProjectGeoJSON_Polygons (data)
+            setEventGeoJSON_Polygons (data)
             {
                 // {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[5.270025681883567, 51.471759093742094], [5.269886154431646, 51.47177654841522], [5.269554541950953, 51.471945318378914], [5.269122160971165, 51.47240697336926], [5.269002467393875, 51.47254885425582], [5.269002467393875, 51.47254888036082], [5.269022391821153, 51.47278951418596], [5.269132702340698, 51.47281786323444], [5.269132722169161, 51.47281786547049], [5.269623965172592, 51.472633014284845], [5.269901236980701, 51.47206227547255], [5.270012366281179, 51.471814907323335], [5.270025681883567, 51.471759093742094]]]}, "properties": {"name": "TX0001"}}
                 const features = data.map ((raw) => JSON.parse (raw["[json]"]));
 
-                // color them blue until we get information about whether they have data or not
-                features.forEach ((feature) => feature.properties.color = "#0000ff");
+                // move the mrid into the properties
+                features.forEach ((feature) => { if (!feature.properties) feature.properties = {}; feature.properties.mrid = feature.mrid; delete feature.mrid; });
+
+                // color them green until we get information about whether they have events or not
+                features.forEach ((feature) => feature.properties.color = "#00ff00");
 
                 // the polygons GeoJSON
-                this._project_polygons =
+                this._event_polygons =
                 {
                     "type" : "FeatureCollection",
                     "features" : features
                 };
 
                 // generate the labels JSON
-                this._project_points =
+                this._event_polygons_labels =
                 {
                     "type" : "FeatureCollection",
                     "features" : []
@@ -529,7 +433,7 @@ define
                     polygon =>
                     {
                         const position = this.centroid (polygon.geometry.coordinates);
-                        this._project_points.features.push
+                        this._event_polygons_labels.features.push
                         (
                             {
                                 type : "Feature",
@@ -574,80 +478,59 @@ define
                 this._extents = extents;
             }
 
-            // color the polygons based on whether they have data or not
-            checkForData ()
+            // fetch the event objects and color them
+            // colorElements (lookup)
+            // {
+            //     let uniques = {};
+            //     self._events.foreach (x => uniques[x.mrid] = Math.max (x.severity, uniques[x.mrid] ? uniques[x.mrid] : 0));
+            //     let mrids = [];
+            //     for (var mrid in uniques)
+            //         if (uniques.hasOwnProperty (mrid))
+            //             mrids.push (mrid);
+            //
+            // }
+
+            // color the polygons based on whether they have events or not
+            checkForEvents ()
             {
+                // ToDo: can we take all events for a simulation rather than just 5000?
                 const self = this;
-                cimquery.queryPromise ({ sql: "select name, elements from " + self._keyspace + ".transformers", cassandra: true })
+                cimquery.queryPromise ({ sql: "select mrid, type, severity, TOUNIXTIMESTAMP(start_time), TOUNIXTIMESTAMP(end_time) from " + self._simulation.output_keyspace + ".simulation_event where simulation='" + self._simulation.id + "' limit 5000 allow filtering", cassandra: true })
                     .then (
-                        function (trafos)
+                        function (events)
                         {
-                            Promise.all (
-                                trafos.map (
-                                    function (trafo)
-                                    {
-                                        const transformer = trafo.name;
-                                        const elements = trafo.elements;
-                                        // make a list of EnergyConsumer
-                                        const houses = [];
-                                        for (let id in elements)
-                                            if (elements.hasOwnProperty (id))
-                                                if (elements[id] === "EnergyConsumer")
-                                                    houses.push(id);
-                                        // now see if any of the houses has meter data
-                                        const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
-                                        if (houses.length === 0)
-                                            return (Promise.resolve ());
-                                        else
-                                            return (
-                                                cimquery.queryPromise ({ sql: "select TOUNIXTIMESTAMP(time) as time from cimapplication.measured_value where " + inclause + " and type='energy' limit 1;", cassandra: true })
-                                                    .then (
-                                                        function (data)
-                                                        {
-                                                            if (data.length > 0)
-                                                            {
-                                                                // find the polygon in the GeoJSON set and update it's color and a time at which to check for data
-                                                                const polygon = self._project_polygons.features.find (x => x.properties.name === transformer);
-                                                                if (polygon)
-                                                                {
-                                                                    polygon.properties.color = "#00ff00";
-                                                                    polygon.properties.time = data[0].time;
-                                                                }
-                                                            }
-                                                        }
-                                                    )
-                                                );
-                                    }
-                                )
-                            ).then (
-                                function ()
-                                {
-                                    self._TheMap.getSource ("areas").setData (self._project_polygons);
-                                }
-                            );
+                            // mrid    | type                             | severity | start_time                      | end_time
+                            // ---------+----------------------------------+----------+---------------------------------+---------------------------------
+                            // HAS2596 | voltage subceeds 10.0% threshold |        2 | 2018-02-13 22:30:00.000000+0000 | 2018-02-13 22:45:00.000000+0000
+                            // HAS2596 | voltage subceeds 10.0% threshold |        2 | 2018-03-19 22:15:00.000000+0000 | 2018-03-19 22:30:00.000000+0000
+                            self._events = events;
+
+                            // if any events are transformer events mark them directly,
+                            // first make a hash map of polygon features
+                            let lookup = {};
+                            self._event_polygons.features.forEach (x => lookup[x.properties.mrid] = x);
+                            // now scoot through the events and label any polygons they refer to
+                            self._events.forEach (x => { if (lookup[x.mrid]) lookup[x.mrid].properties.color = (x.severity === 1) ? "0xffa500" : "0xff0000"; });
+                            self._TheMap.getSource ("areas").setData (self._event_polygons);
+                            // return (self.colorElements.call (self, lookup));
                         }
                     );
             }
 
-            setProject (keyspace, id)
+            setSimulation (simulation)
             {
-                this._keyspace = keyspace;
-                this._project = id;
-                this._consumers_with_data = {};
+                this._simulation = simulation;
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select json type, geometry, properties from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
-                    .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
+                const promise = cimquery.queryPromise ({ sql: "select json mrid, type, geometry, properties from " + self._simulation.output_keyspace + ".geojson_polygons where simulation='" + self._simulation.id + "'", cassandra: true })
+                    .then (data => self.setEventGeoJSON_Polygons.call (self, data))
                     .then (() =>
                         {
-                            self._TheMap.getSource ("areas").setData (self._project_polygons);
-                            self._TheMap.getSource ("nodes").setData (self._project_points);
+                            self._TheMap.getSource ("areas").setData (self._event_polygons);
+                            self._TheMap.getSource ("labels").setData (self._event_polygons_labels);
                         }
                     )
-                    .then (() => cimquery.queryPromise ({ sql: "select * from " + keyspace + ".boundary_switches where id='" + id + "'", cassandra: true }))
-                    .then (data => self.setProjectGeoJSON_Lines.call (self, data))
-                    .then (() => self._TheMap.getSource ("edges").setData (self._project_lines))
                     .then (() => self._cimmap.set_data (null))
-                    .then (() => self.checkForData ());
+                    .then (() => self.checkForEvents ());
 
                 return (promise);
             }
@@ -658,6 +541,6 @@ define
             }
         }
 
-        return (ProjectTheme);
+        return (EventTheme);
     }
 );
