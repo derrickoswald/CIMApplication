@@ -5,14 +5,14 @@
 
 define
 (
-    ["../mustache", "../cimquery"],
+    ["../mustache", "../cimquery", "../cimcassandra"],
     /**
      * @summary Event legend control.
      * @description UI element for the event legend.
      * @exports event_legend
      * @version 1.0
      */
-    function (mustache, cimquery)
+    function (mustache, cimquery, cimcassandra)
     {
         class EventLegend
         {
@@ -49,69 +49,33 @@ define
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
                 // refresh simulations
-                this._simulations = [];
-                var self = this;
-                // get the keyspaces with simulations
-                var promise = cimquery.queryPromise ({ sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' allow filtering", cassandra: true })
-                    .then (
-                        function (data)
-                        {
-                            // collect all the simulations
-                            Promise.all (
-                                data.map (
-                                    function (keyspace)
-                                    {
-                                        return (
-                                            cimquery.queryPromise ({ sql: "select JSON * from " + keyspace.keyspace_name + ".simulation", cassandra: true })
-                                                .then (
-                                                    function (runs)
-                                                    {
-                                                        runs.map (
-                                                            function (run)
-                                                            {
-                                                                var json = JSON.parse (run["[json]"]);
-                                                                self._simulations.push (json);
-                                                            }
-                                                        );
-                                                    }
-                                                )
-                                        );
-                                    }
-                                )
-                            ).then (
-                                function ()
-                                {
-                                    // condition the list for display
-                                    self._simulations.map (
-                                        function (simulation)
-                                        {
-                                            simulation.selected = false;
-                                        }
-                                    );
-                                    self._simulations.push (
-                                        {
-                                            name: "Choose simulation",
-                                            id: "",
-                                            selected: true
-                                        }
-                                    );
+                const self = this;
+                cimcassandra.getAllSimulations ().then (
+                    simulations =>
+                    {
+                        self._simulations = simulations;
+                        const item = {
+                            name: "Choose simulation",
+                            id: "",
+                            selected: true
+                        };
+                        self._simulations.push (item);
+                        // display the list
+                        self._container.innerHTML = mustache.render (
+                            self._template,
+                            {
+                                "simulations": self._simulations
+                            }
+                        );
+                        self._simulations.splice (self._simulations.length - 1, 1);
+                        // handle close button
+                        self._container.getElementsByClassName ("close")[0].onclick = self.close.bind (self);
+                        // handle changes
+                        document.getElementById ("current_simulation").onchange = self.changeSimulation.bind (self);
 
-                                    // display the list
-                                    self._container.innerHTML = mustache.render (
-                                        self._template,
-                                        {
-                                            "simulations": self._simulations
-                                        }
-                                    );
+                    }
+                );
 
-                                    // handle close button
-                                    self._container.getElementsByClassName ("close")[0].onclick = self.close.bind (self);
-                                    // handle changes
-                                    document.getElementById ("current_simulation").onchange = self.changeSimulation.bind (self);
-                                }
-                            );
-                        }
-                    );
                 return (this._container);
             }
 
@@ -141,9 +105,7 @@ define
             changeSimulation (event)
             {
                 var selection = event.target.value;
-                this._simulations.forEach (x => x.selected = false);
                 var new_current = this._simulations.filter (x => x.id === selection)[0];
-                new_current.selected = true;
                 if (this._legend_listener)
                     this._legend_listener (new_current);
             }

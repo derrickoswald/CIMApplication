@@ -122,47 +122,21 @@ define
                 if ((null != features) && (0 !== features.length))
                 {
                     let trafo = null;
-                    let boundaryswitch = null;
                     for (let i = 0; i < features.length; i++)
-                    {
                         if (features[i].layer.id === "areas")
-                            trafo = features[i].properties.name;
-                        if (features[i].layer.id === "edges")
-                            boundaryswitch = features[i].properties.mrid;
-                    }
-                    if (boundaryswitch)
-                    {
-                        // check if it's in memory
-                        const data = this._cimmap.get_data ();
-                        if (data)
-                        {
-                            const sw = data["Element"][boundaryswitch];
-                            if (sw)
-                            {
-                                // select the switch
-                                this._cimmap.select (boundaryswitch, [boundaryswitch]);
-                                // make the editor visible
-                                const editor = this._cimmap.get_editor ();
-                                if (!editor.visible ())
-                                {
-                                    this._cimmap.get_map ().addControl (editor);
-                                    editor.initialize ();
-                                }
-                            }
-                        }
-                    }
-                    else if (trafo)
-                    {
-                        // check if it's already loaded
-                        const loaded = this._cimmap.get_loaded ();
-                        const existing = loaded && loaded.files && loaded.files.includes (trafo);
-                        if (existing)
-                            // pass click up to map
-                            this._cimmap.default_mousedown_listener (event);
-                        else
-                            this.load_trafo (trafo);
-                    }
-                    else
+                            trafo = features[i].properties.mrid;
+                    // if (trafo)
+                    // {
+                    //     // check if it's already loaded
+                    //     const loaded = this._cimmap.get_loaded ();
+                    //     const existing = loaded && loaded.files && loaded.files.includes (trafo);
+                    //     if (existing)
+                    //         // pass click up to map
+                    //         this._cimmap.default_mousedown_listener (event);
+                    //     else
+                    //         this.load_trafo (trafo);
+                    // }
+                    // else
                         this._cimmap.default_mousedown_listener (event);
                 }
                 else
@@ -479,23 +453,37 @@ define
             }
 
             // fetch the event objects and color them
-            // colorElements (lookup)
-            // {
-            //     let uniques = {};
-            //     self._events.foreach (x => uniques[x.mrid] = Math.max (x.severity, uniques[x.mrid] ? uniques[x.mrid] : 0));
-            //     let mrids = [];
-            //     for (var mrid in uniques)
-            //         if (uniques.hasOwnProperty (mrid))
-            //             mrids.push (mrid);
-            //
-            // }
+            colorElements (polygon_lookup)
+            {
+                // get the list of non-trafo mrid severity
+                const uniques = {};
+                this._events.forEach (x => { if (!polygon_lookup[x.mrid]) uniques[x.mrid] = Math.max (x.severity, uniques[x.mrid] ? uniques[x.mrid] : 0); });
+                const recorders = this._simulation.recorders;
+                for (let i = 0; i < recorders.length; i++)
+                {
+                    const recorder = recorders[i];
+                    const severity = uniques[recorder.mrid];
+                    if (severity)
+                    {
+                        const polygon = polygon_lookup[recorder.transformer];
+                        if (polygon)
+                        {
+                            // ToDo: should do Math.max here
+                            const color = (severity === 1) ? "#ffa500" : "#ff0000";
+                            const current_color = polygon.properties.color;
+                            polygon.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
+                        }
+                    }
+                }
+                this._TheMap.getSource ("areas").setData (this._event_polygons);
+            }
 
             // color the polygons based on whether they have events or not
             checkForEvents ()
             {
                 // ToDo: can we take all events for a simulation rather than just 5000?
                 const self = this;
-                cimquery.queryPromise ({ sql: "select mrid, type, severity, TOUNIXTIMESTAMP(start_time), TOUNIXTIMESTAMP(end_time) from " + self._simulation.output_keyspace + ".simulation_event where simulation='" + self._simulation.id + "' limit 5000 allow filtering", cassandra: true })
+                cimquery.queryPromise ({ sql: `select mrid, type, severity, TOUNIXTIMESTAMP(start_time), TOUNIXTIMESTAMP(end_time) from ${ self._simulation.output_keyspace }.simulation_event where simulation='${ self._simulation.id }' limit 5000 allow filtering`, cassandra: true })
                     .then (
                         function (events)
                         {
@@ -510,9 +498,22 @@ define
                             let lookup = {};
                             self._event_polygons.features.forEach (x => lookup[x.properties.mrid] = x);
                             // now scoot through the events and label any polygons they refer to
-                            self._events.forEach (x => { if (lookup[x.mrid]) lookup[x.mrid].properties.color = (x.severity === 1) ? "0xffa500" : "0xff0000"; });
+                            self._events.forEach (
+                                x =>
+                                {
+                                    const polygon = lookup[x.mrid];
+                                    if (polygon)
+                                    {
+                                        // ToDo: should do Math.max here
+                                        const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
+                                        const current_color = polygon.properties.color;
+                                        polygon.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
+                                    }
+                                }
+                            );
                             self._TheMap.getSource ("areas").setData (self._event_polygons);
-                            // return (self.colorElements.call (self, lookup));
+                            // now dive into each node and edge
+                            return (self.colorElements.call (self, lookup));
                         }
                     );
             }
@@ -521,7 +522,7 @@ define
             {
                 this._simulation = simulation;
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select json mrid, type, geometry, properties from " + self._simulation.output_keyspace + ".geojson_polygons where simulation='" + self._simulation.id + "'", cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_polygons where simulation='${ self._simulation.id }'`, cassandra: true })
                     .then (data => self.setEventGeoJSON_Polygons.call (self, data))
                     .then (() =>
                         {
