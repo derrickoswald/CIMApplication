@@ -37,6 +37,7 @@ define
                 this._extents = { xmin: 0.0, ymin: 0.0, xmax: 0.0, ymax: 0.0 };
                 this._render_listener = null;
                 this.getLegend ().legend_change_listener (this.legend_changed.bind (this));
+                this._loading = null;
             }
 
             getName ()
@@ -151,7 +152,7 @@ define
                         // check if it's already loaded
                         const loaded = this._cimmap.get_loaded ();
                         const existing = loaded && loaded.files && loaded.files.includes (trafo);
-                        if (existing)
+                        if (existing || (this._loading == trafo))
                             // pass click up to map
                             this._cimmap.default_mousedown_listener (event);
                         else
@@ -272,6 +273,8 @@ define
 
             load_trafo (name)
             {
+                this._loading = name;
+                console.log ("load trafo " + name);
                 const self = this;
                 const promise = cimquery.queryPromise ({ sql: "select cim from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + name + "' allow filtering", cassandra: true })
                 .then (
@@ -330,11 +333,13 @@ define
                                                                     loaded.files.push (name);
                                                                     loaded.elements = loaded.elements + elements;
                                                                     self._cimmap.set_loaded (loaded);
+                                                                    self._loading = null;
                                                                 }
                                                                 else
                                                                 {
                                                                     self._cimmap.set_data (context.parsed, true);
                                                                     self._cimmap.set_loaded ({ files: [name], options: {}, elements: elements });
+                                                                    self._loading = null;
                                                                 }
                                                                 // set the color of EnergyConsumer based on whether there is data at the time retrieved when the polygon was loaded
                                                                 self.color_energy_consumers.call (self, name);

@@ -189,12 +189,12 @@ define
 
             getTitle ()
             {
-                return ("Diagram");
+                return ("Schematic");
             }
 
             getDescription ()
             {
-                return ("Show the diagram layout objects on the map.");
+                return ("Show the schematic layout objects on the map.");
             }
 
             getExtents ()
@@ -466,7 +466,6 @@ define
                     }
                 }
 
-
                 return ({ points: points, special_points: special_points, lines: lines, polygons: polygons });
             }
 
@@ -482,26 +481,26 @@ define
                 const diagram_object = data.DiagramObject;
                 for (let id in diagram_object)
                 {
-                    const obj = diagram_object[id];
-                    if (null != obj.DiagramObjectStyle)
+                    if (diagram_object.hasOwnProperty (id))
                     {
-                        const id = obj.IdentifiedObject;
-                        if (null != id)
+                        const obj = diagram_object[id];
+                        if (null != obj.DiagramObjectStyle)
                         {
-                            const element = data.Element[id];
-                            if (null != element)
+                            const id = obj.IdentifiedObject;
+                            if (null != id)
                             {
-                                if ("feeder_internally_fed_style" === obj.DiagramObjectStyle)
-                                    element.color = "rgb(139, 0, 0)";
-                                else if ("feeder_externally_feed_style" === obj.DiagramObjectStyle)
-                                    element.color = "rgb(255, 0, 255)";
-                                else
+                                const element = data.Element[id];
+                                if (null != element)
                                 {
-                                    const style = data.DiagramObjectStyle[obj.DiagramObjectStyle];
-                                    if (style)
+                                    if ("feeder_internally_fed_style" === obj.DiagramObjectStyle)
+                                        element.color = "rgb(139, 0, 0)";
+                                    else if ("feeder_externally_feed_style" === obj.DiagramObjectStyle)
+                                        element.color = "rgb(255, 0, 255)";
+                                    else
                                     {
-                                        const color_name = style.name; // e.g. yellowgreen
-                                        element.kolour = color_name;
+                                        const style = data.DiagramObjectStyle[obj.DiagramObjectStyle];
+                                        if (style)
+                                            element.kolour = style.name; // e.g. yellowgreen
                                     }
                                 }
                             }
@@ -530,7 +529,7 @@ define
                 else
                 {
                     const fc = { "type" : "FeatureCollection", "features" : [] };
-                    ret = { points: fc, lines: fc, polygons: fc };
+                    ret = { points: fc, special_points: fc, lines: fc, polygons: fc };
                 }
                 return (ret);
             }

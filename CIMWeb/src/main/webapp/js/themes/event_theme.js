@@ -314,7 +314,7 @@ define
                 map.addLayer (layers.label_layer ("labels", "labels", "point", "{name}", "#000000"));
 
                 const end = new Date ().getTime ();
-                console.log ("finished rendering project data (" + (Math.round (end - start) / 1000) + " seconds)");
+                console.log ("finished rendering event data (" + (Math.round (end - start) / 1000) + " seconds)");
 
                 if (this._render_listener)
                     this._render_listener ();
