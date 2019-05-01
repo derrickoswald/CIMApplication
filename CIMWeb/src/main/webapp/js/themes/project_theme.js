@@ -243,31 +243,34 @@ define
                 if (polygon)
                 {
                     const time = polygon.properties.time;
-                    const self = this;
-                    cimquery.queryPromise ({ sql: "select elements from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + transformer + "'", cassandra: true })
-                    .then (
-                        function (data)
-                        {
-                            const elements = data[0].elements;
-                            // make a list of EnergyConsumer
-                            const houses = [];
-                            for (let id in elements)
-                                if (elements.hasOwnProperty (id))
-                                    if (elements[id] === "EnergyConsumer")
-                                        houses.push(id);
-                            // now see if any of the houses has meter data at that time
-                            const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
-                            if (houses.length !== 0)
-                                cimquery.queryPromise ({ sql: "select mrid from cimapplication.measured_value where " + inclause + " and type='energy' and time=" + time + ";", cassandra: true })
-                                    .then (
-                                        function (data)
-                                        {
-                                            self._consumers_with_data[transformer] = data.map (x => x.mrid);
-                                            self._cimmap.make_map ();
-                                        }
-                                    );
-                        }
-                    );
+                    if (time)
+                    {
+                        const self = this;
+                        cimquery.queryPromise ({ sql: "select elements from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + transformer + "'", cassandra: true })
+                        .then (
+                            function (data)
+                            {
+                                const elements = data[0].elements;
+                                // make a list of EnergyConsumer
+                                const houses = [];
+                                for (let id in elements)
+                                    if (elements.hasOwnProperty (id))
+                                        if (elements[id] === "EnergyConsumer")
+                                            houses.push(id);
+                                // now see if any of the houses has meter data at that time
+                                const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
+                                if (houses.length !== 0)
+                                    cimquery.queryPromise ({ sql: "select mrid from cimapplication.measured_value where " + inclause + " and type='energy' and time=" + time + ";", cassandra: true })
+                                        .then (
+                                            function (data)
+                                            {
+                                                self._consumers_with_data[transformer] = data.map (x => x.mrid);
+                                                self._cimmap.make_map ();
+                                            }
+                                        );
+                            }
+                        );
+                    }
                 }
             }
 
