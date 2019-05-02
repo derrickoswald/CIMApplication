@@ -30,7 +30,7 @@ define
                 const text = document.createElement ("div");
                 text.id = "chart";
                 text.className = "card-body";
-                text.setAttribute ("style", "min-width: 600px; height: 400px; margin: 0 auto; position: relative;");
+                text.setAttribute ("style", "min-width: 1000px; height: 500px; margin: 0 auto; position: relative;");
                 this._container.appendChild (text);
 
                 // add choices dropdown placeholder
@@ -168,6 +168,10 @@ define
                 (
                     'chart',
                     {
+                        chart:
+                        {
+                            marginRight: 200
+                        },
 
                         title:
                         {
@@ -193,7 +197,8 @@ define
                             backgroundColor: '#FCFFC5',
                             borderColor: 'black',
                             borderWidth: 1,
-                            layout: 'vertical'
+                            layout: 'vertical',
+                            align: 'right'
                         }
                     }
                 );
