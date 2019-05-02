@@ -18,6 +18,8 @@ define
             constructor ()
             {
                 super ();
+                // ToDo: UI mechanism to choose input keyspace
+                this._input_keyspace = "cimapplication";
                 this._legend = new ProjectLegend (this);
                 this._project_points =
                 {
@@ -260,7 +262,7 @@ define
                                 // now see if any of the houses has meter data at that time
                                 const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
                                 if (houses.length !== 0)
-                                    cimquery.queryPromise ({ sql: `select mrid from ${ self._keyspace }.measured_value where ${ inclause } and type='energy' and time=${ time }`, cassandra: true })
+                                    cimquery.queryPromise ({ sql: `select mrid from ${ self._input_keyspace }.measured_value where ${ inclause } and type='energy' and time=${ time }`, cassandra: true })
                                         .then (
                                             function (data)
                                             {
@@ -608,7 +610,7 @@ define
                                             return (Promise.resolve ());
                                         else
                                             return (
-                                                cimquery.queryPromise ({ sql: `select TOUNIXTIMESTAMP(time) as time from ${ self._keyspace }.measured_value where ${ inclause } and type='energy' limit 1`, cassandra: true })
+                                                cimquery.queryPromise ({ sql: `select TOUNIXTIMESTAMP(time) as time from ${ self._input_keyspace }.measured_value where ${ inclause } and type='energy' limit 1`, cassandra: true })
                                                     .then (
                                                         function (data)
                                                         {
