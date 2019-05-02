@@ -271,7 +271,7 @@ define
                     chart.innerHTML = "<b>fetching data for " + feature + "</b>";
                 // find out what data we have, compose a { name: xxx, query: yyy } array
                 const queries = [];
-                this._simulations.forEach (
+                this._simulations.filter (x => this._selected_simulations.includes (x.id)).forEach (
                     simulation =>
                     {
                         const start = new Date (simulation.start_time).getTime ();

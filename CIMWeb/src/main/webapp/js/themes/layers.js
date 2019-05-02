@@ -190,6 +190,7 @@ define
                         "fill-opacity": 0.25,
                         "fill-color": color,
                         "fill-outline-color": edge_color,
+//                        "fill-pattern": "junction",
                         "fill-antialias": true
                     }
                 };

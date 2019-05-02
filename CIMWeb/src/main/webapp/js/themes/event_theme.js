@@ -125,7 +125,7 @@ define
                     for (let i = 0; i < features.length; i++)
                         if (features[i].layer.id === "areas")
                             trafo = features[i].properties.mrid;
-                    // if (trafo)
+                    if (trafo)
                     // {
                     //     // check if it's already loaded
                     //     const loaded = this._cimmap.get_loaded ();
@@ -134,9 +134,9 @@ define
                     //         // pass click up to map
                     //         this._cimmap.default_mousedown_listener (event);
                     //     else
-                    //         this.load_trafo (trafo);
+                             this.load_trafo (trafo);
                     // }
-                    // else
+                    else
                         this._cimmap.default_mousedown_listener (event);
                 }
                 else
@@ -534,6 +534,34 @@ define
                     .then (() => self.checkForEvents ());
 
                 return (promise);
+            }
+
+            setEventGeoJSON_Points (data)
+            {
+                // {"mrid": "ABG1066", "type": "Feature", "geometry": {"type": "Point", "coordinates": [8.76929328008, 47.0414525751]}, "properties": null}
+                const features = data.map ((raw) => JSON.parse (raw["[json]"]));
+
+                // move the mrid into the properties
+                features.forEach ((feature) => { if (!feature.properties) feature.properties = {}; feature.properties.mrid = feature.mrid; delete feature.mrid; });
+
+                // color them green until we get information about whether they have events or not
+                features.forEach ((feature) => feature.properties.color = "#00ff00");
+
+                // the polygons GeoJSON
+                this._event_points =
+                    {
+                        "type" : "FeatureCollection",
+                        "features" : features
+                    };
+            }
+
+            load_trafo (transformer)
+            {
+                const self = this;
+                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_points where simulation='${ self._simulation.id }' and transformer='${ transformer }' allow filtering`, cassandra: true })
+                    .then (data => self.setEventGeoJSON_Points.call (self, data))
+                    .then (() => self._TheMap.getSource ("nodes").setData (self._event_points))
+                    .then (() => self._cimmap.set_data (null))
             }
 
             setRenderListener (fn)

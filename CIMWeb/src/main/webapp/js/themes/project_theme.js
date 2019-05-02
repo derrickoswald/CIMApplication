@@ -246,7 +246,7 @@ define
                     if (time)
                     {
                         const self = this;
-                        cimquery.queryPromise ({ sql: "select elements from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + transformer + "'", cassandra: true })
+                        cimquery.queryPromise ({ sql: `select elements from ${ self._keyspace }.transformers where id='${ self._project }' and name='${ transformer }'`, cassandra: true })
                         .then (
                             function (data)
                             {
@@ -260,7 +260,7 @@ define
                                 // now see if any of the houses has meter data at that time
                                 const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
                                 if (houses.length !== 0)
-                                    cimquery.queryPromise ({ sql: "select mrid from cimapplication.measured_value where " + inclause + " and type='energy' and time=" + time + ";", cassandra: true })
+                                    cimquery.queryPromise ({ sql: `select mrid from ${ self._keyspace }.measured_value where ${ inclause } and type='energy' and time=${ time }`, cassandra: true })
                                         .then (
                                             function (data)
                                             {
@@ -279,7 +279,7 @@ define
                 this._loading = name;
                 console.log ("load trafo " + name);
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select cim from " + self._keyspace + ".transformers where id='" + self._project + "' and name='" + name + "' allow filtering", cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: `select cim from ${ self._keyspace }.transformers where id='${ self._project }' and name='${ name }' allow filtering`, cassandra: true })
                 .then (
                     function (data)
                     {
@@ -586,7 +586,7 @@ define
             checkForData ()
             {
                 const self = this;
-                cimquery.queryPromise ({ sql: "select name, elements from " + self._keyspace + ".transformers", cassandra: true })
+                cimquery.queryPromise ({ sql: `select name, elements from ${ self._keyspace }.transformers`, cassandra: true })
                     .then (
                         function (trafos)
                         {
@@ -608,7 +608,7 @@ define
                                             return (Promise.resolve ());
                                         else
                                             return (
-                                                cimquery.queryPromise ({ sql: "select TOUNIXTIMESTAMP(time) as time from cimapplication.measured_value where " + inclause + " and type='energy' limit 1;", cassandra: true })
+                                                cimquery.queryPromise ({ sql: `select TOUNIXTIMESTAMP(time) as time from ${ self._keyspace }.measured_value where ${ inclause } and type='energy' limit 1`, cassandra: true })
                                                     .then (
                                                         function (data)
                                                         {
@@ -643,7 +643,7 @@ define
                 this._project = id;
                 this._consumers_with_data = {};
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select json type, geometry, properties from " + keyspace + ".transformer_service_area where id='" + id + "'", cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: `select json type, geometry, properties from ${ keyspace }.transformer_service_area where id='${ id }'`, cassandra: true })
                     .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
                     .then (() =>
                         {
@@ -651,7 +651,7 @@ define
                             self._TheMap.getSource ("nodes").setData (self._project_points);
                         }
                     )
-                    .then (() => cimquery.queryPromise ({ sql: "select * from " + keyspace + ".boundary_switches where id='" + id + "'", cassandra: true }))
+                    .then (() => cimquery.queryPromise ({ sql: `select * from ${ keyspace }.boundary_switches where id='${ id }'`, cassandra: true }))
                     .then (data => self.setProjectGeoJSON_Lines.call (self, data))
                     .then (() => self._TheMap.getSource ("edges").setData (self._project_lines))
                     .then (() => self._cimmap.set_data (null))

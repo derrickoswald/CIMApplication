@@ -37,7 +37,7 @@ define
         }
 
         /**
-         * Retrieve simulation details from the given keyspace.
+         * Retrieve the simulations from the given keyspace.
          * @param keyspace the keyspace to query
          * @returns {Promise<[T]>}
          */
