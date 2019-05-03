@@ -89,6 +89,7 @@ define
                 }
                 if ((null != this._TheMap) && this._TheMap.getSource ("nodes"))
                 {
+                    this._TheMap.removeLayer ("nodes");
                     this._TheMap.removeLayer ("edges");
                     this._TheMap.removeLayer ("areas");
                     this._TheMap.removeLayer ("labels");
@@ -278,13 +279,16 @@ define
                     }
                 );
 
-                // yellow lines 3 pixels wide with a label
-                map.addLayer (layers.line_layer ("edges", "edges", "#ffff00"));
+                // energy consumers
+                map.addLayer (layers.full_circle_layer ("nodes", "nodes", { type: "identity", property: "color" }));
 
-                // blue with border
+                // cables
+                map.addLayer (layers.line_layer ("edges", "edges", { type: "identity", property: "color" }));
+
+                // transformer service areas
                 map.addLayer (layers.polygon_layer ("areas", "areas", { type: "identity", property: "color" }, "#000000"));
 
-                // label the polygons
+                // label the transformer service areas
                 map.addLayer (layers.label_layer ("labels", "labels", "point", "{name}", "#000000"));
 
                 const end = new Date ().getTime ();
@@ -479,7 +483,7 @@ define
             }
 
             // color the polygons based on whether they have events or not
-            checkForEvents ()
+            checkForTransformerEvents ()
             {
                 // ToDo: can we take all events for a simulation rather than just 5000?
                 const self = this;
@@ -531,7 +535,7 @@ define
                         }
                     )
                     .then (() => self._cimmap.set_data (null))
-                    .then (() => self.checkForEvents ());
+                    .then (() => self.checkForTransformerEvents.call (self));
 
                 return (promise);
             }
@@ -547,12 +551,79 @@ define
                 // color them green until we get information about whether they have events or not
                 features.forEach ((feature) => feature.properties.color = "#00ff00");
 
-                // the polygons GeoJSON
+                // the points GeoJSON
                 this._event_points =
                     {
                         "type" : "FeatureCollection",
                         "features" : features
                     };
+            }
+
+            setEventGeoJSON_Lines (data)
+            {
+                // {"mrid": "FLE1005", "type": "Feature", "geometry": {"type": "LineString", "coordinates": [[8.77861991238, 47.053758741], [8.77827516523, 47.0539704543], [8.77794293792, 47.0541760109], [8.77749911987, 47.0543045381], [8.77703878787, 47.0544391942], [8.77660127174, 47.0545667]]}, "properties": {"ratedCurrent": "205.0"}}
+                const features = data.map ((raw) => JSON.parse (raw["[json]"]));
+
+                // move the mrid into the properties
+                features.forEach ((feature) => { if (!feature.properties) feature.properties = {}; feature.properties.mrid = feature.mrid; delete feature.mrid; });
+
+                // color them green until we get information about whether they have events or not
+                features.forEach ((feature) => feature.properties.color = "#00ff00");
+
+                // the lines GeoJSON
+                this._event_lines =
+                    {
+                        "type" : "FeatureCollection",
+                        "features" : features
+                    };
+            }
+
+            // assume _events has already been loaded
+            checkForVoltageEvents ()
+            {
+                // if any events are voltage events mark them
+                let lookup = {};
+                this._event_points.features.forEach (x => lookup[x.properties.mrid] = x);
+                // now scoot through the events and label any nodes they refer to
+                this._events.forEach (
+                    x =>
+                    {
+                        const node = lookup[x.mrid];
+                        if (node)
+                        {
+                            // ToDo: should do Math.max here
+                            const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
+                            const current_color = node.properties.color;
+                            node.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
+                        }
+                    }
+                );
+                this._TheMap.getSource ("nodes").setData (this._event_points);
+
+            }
+
+            // assume _events has already been loaded
+            checkForCurrentEvents ()
+            {
+                // if any events are current events mark them
+                let lookup = {};
+                this._event_lines.features.forEach (x => lookup[x.properties.mrid] = x);
+                // now scoot through the events and label any nodes they refer to
+                this._events.forEach (
+                    x =>
+                    {
+                        const edge = lookup[x.mrid];
+                        if (edge)
+                        {
+                            // ToDo: should do Math.max here
+                            const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
+                            const current_color = edge.properties.color;
+                            edge.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
+                        }
+                    }
+                );
+                this._TheMap.getSource ("edges").setData (this._event_lines);
+
             }
 
             load_trafo (transformer)
@@ -562,6 +633,10 @@ define
                     .then (data => self.setEventGeoJSON_Points.call (self, data))
                     .then (() => self._TheMap.getSource ("nodes").setData (self._event_points))
                     .then (() => self._cimmap.set_data (null))
+                    .then (() => self.checkForVoltageEvents.call (self))
+                    .then (() => cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_lines where simulation='${ self._simulation.id }' and transformer='${ transformer }' allow filtering`, cassandra: true }))
+                    .then (data => self.setEventGeoJSON_Lines.call (self, data))
+                    .then (() => self.checkForCurrentEvents.call (self));
             }
 
             setRenderListener (fn)

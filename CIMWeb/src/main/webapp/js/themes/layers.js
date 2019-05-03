@@ -23,7 +23,6 @@ define
          * @param {Any[]} filter - optional filter to apply to the lines
          * @returns {Object} the layer
          * @function line_layer
-         * @memberOf module:layers
          */
         function line_layer (id, source, color, filter)
         {
@@ -50,14 +49,13 @@ define
         }
 
         /**
-         * Create a circle layer object.
+         * Create a circle layer object from zoom level 14 to 17.
          * @param {String} id - the layer id
          * @param {String} source - the data source
          * @param {String} color - the symbol color
          * @param {Any[]} filter - optional filter to apply to the points
          * @returns {Object} the layer
          * @function circle_layer
-         * @memberOf module:layers
          */
         function circle_layer (id, source, color, filter)
         {
@@ -93,7 +91,6 @@ define
          * @param hidelabels - if <code>true</code>
          * @returns {Object} the layer
          * @function symbol_layer
-         * @memberOf module:layers
          */
         function symbol_layer (id, source, color, filter, hidelabels)
         {
@@ -154,6 +151,15 @@ define
             return (ret);
         }
 
+        /**
+         * Create a circle layer object.
+         * @param {String} id - the layer id
+         * @param {String} source - the data source
+         * @param {String} color - the symbol color
+         * @param {Any[]} filter - optional filter to apply to the points
+         * @returns {Object} the layer
+         * @function circle_layer
+         */
         function full_circle_layer (id, source, color, filter)
         {
             var ret =
