@@ -286,7 +286,7 @@ define
                 map.addLayer (layers.line_layer ("edges", "edges", { type: "identity", property: "color" }));
 
                 // transformer service areas
-                map.addLayer (layers.polygon_layer ("areas", "areas", { type: "identity", property: "color" }, "#000000"));
+                map.addLayer (layers.polygon_layer ("areas", "areas", { type: "identity", property: "color" }, "#000000", null, { type: "identity", property: "pattern" }));
 
                 // label the transformer service areas
                 map.addLayer (layers.label_layer ("labels", "labels", "point", "{name}", "#000000"));
@@ -392,7 +392,7 @@ define
                 features.forEach ((feature) => { if (!feature.properties) feature.properties = {}; feature.properties.mrid = feature.mrid; delete feature.mrid; });
 
                 // color them green until we get information about whether they have events or not
-                features.forEach ((feature) => feature.properties.color = "#00ff00");
+                features.forEach ((feature) => feature.properties.pattern = "pat_0_0_0");
 
                 // the polygons GeoJSON
                 this._event_polygons =
@@ -456,34 +456,8 @@ define
                 this._extents = extents;
             }
 
-            // fetch the event objects and color them
-            colorElements (polygon_lookup)
-            {
-                // get the list of non-trafo mrid severity
-                const uniques = {};
-                this._events.forEach (x => { if (!polygon_lookup[x.mrid]) uniques[x.mrid] = Math.max (x.severity, uniques[x.mrid] ? uniques[x.mrid] : 0); });
-                const recorders = this._simulation.recorders;
-                for (let i = 0; i < recorders.length; i++)
-                {
-                    const recorder = recorders[i];
-                    const severity = uniques[recorder.mrid];
-                    if (severity)
-                    {
-                        const polygon = polygon_lookup[recorder.transformer];
-                        if (polygon)
-                        {
-                            // ToDo: should do Math.max here
-                            const color = (severity === 1) ? "#ffa500" : "#ff0000";
-                            const current_color = polygon.properties.color;
-                            polygon.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
-                        }
-                    }
-                }
-                this._TheMap.getSource ("areas").setData (this._event_polygons);
-            }
-
-            // color the polygons based on whether they have events or not
-            checkForTransformerEvents ()
+            // color the polygons based on whether they have events or not and their severity
+            checkForTransformerServiceAreaEvents ()
             {
                 // ToDo: can we take all events for a simulation rather than just 5000?
                 const self = this;
@@ -497,27 +471,34 @@ define
                             // HAS2596 | voltage subceeds 10.0% threshold |        2 | 2018-03-19 22:15:00.000000+0000 | 2018-03-19 22:30:00.000000+0000
                             self._events = events;
 
-                            // if any events are transformer events mark them directly,
-                            // first make a hash map of polygon features
-                            let lookup = {};
-                            self._event_polygons.features.forEach (x => lookup[x.properties.mrid] = x);
-                            // now scoot through the events and label any polygons they refer to
+                            // create the mapping table between mrid and transformer service area
+                            let mapping = {};
+                            self._simulation.recorders.forEach (x => mapping[x.mrid] = x.transformer);
+
+                            // now scoot through the events and generate the pattern discriminate for each transformer
+                            let patterns = {};
                             self._events.forEach (
                                 x =>
                                 {
-                                    const polygon = lookup[x.mrid];
-                                    if (polygon)
-                                    {
-                                        // ToDo: should do Math.max here
-                                        const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
-                                        const current_color = polygon.properties.color;
-                                        polygon.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
-                                    }
+                                    const trafo = mapping[x.mrid];
+                                    let discriminate = patterns[trafo];
+                                    if (!discriminate)
+                                        discriminate = patterns[trafo] = [0, 0, 0];
+                                    const index = x.type.startsWith ("power") ? 0 : x.type.startsWith ("voltage") ? 1 : 2;
+                                    discriminate[index] = Math.max (discriminate[index], x.severity);
                                 }
                             );
+
+                            self._event_polygons.features.forEach (
+                                x =>
+                                {
+                                    const discriminate = patterns[x.properties.mrid];
+                                    if (discriminate)
+                                        x.properties.pattern = "pat_" + discriminate.join ("_");
+                                }
+                            );
+
                             self._TheMap.getSource ("areas").setData (self._event_polygons);
-                            // now dive into each node and edge
-                            return (self.colorElements.call (self, lookup));
                         }
                     );
             }
@@ -535,7 +516,7 @@ define
                         }
                     )
                     .then (() => self._cimmap.set_data (null))
-                    .then (() => self.checkForTransformerEvents.call (self));
+                    .then (() => self.checkForTransformerServiceAreaEvents.call (self));
 
                 return (promise);
             }

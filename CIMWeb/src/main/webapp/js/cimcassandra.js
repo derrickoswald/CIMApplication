@@ -33,15 +33,16 @@ define
                             .then (recorders => sim.recorders = recorders, reason => { alert (reason); sim.recorders = []; })
                     ]
                 )
+                .then (() => sim)
             );
         }
 
         /**
-         * Retrieve the simulations from the given keyspace.
+         * Retrieve the simulations from the given keyspace with players and recorders.
          * @param keyspace the keyspace to query
          * @returns {Promise<[T]>}
          */
-        function getSimulations (keyspace)
+        function getSimulationsWithDetails (keyspace)
         {
             return (
                 cimquery.queryPromise ({ sql: `select * from ${keyspace}.simulation`, cassandra: true })
@@ -58,6 +59,16 @@ define
                         }
                     )
             );
+        }
+
+        /**
+         * Retrieve the simulations from the given keyspace.
+         * @param keyspace the keyspace to query
+         * @returns {Promise<[T]>}
+         */
+        function getSimulations (keyspace)
+        {
+            return (cimquery.queryPromise ({ sql: `select * from ${keyspace}.simulation`, cassandra: true }));
         }
 
         /**
@@ -82,6 +93,7 @@ define
         return (
             {
                 getSimulationDetails: getSimulationDetails,
+                getSimulationsWithDetails: getSimulationsWithDetails,
                 getSimulations: getSimulations,
                 getAllSimulations: getAllSimulations
             }

@@ -105,9 +105,9 @@ define
             changeSimulation (event)
             {
                 var selection = event.target.value;
-                var new_current = this._simulations.filter (x => x.id === selection)[0];
+                var simulation = this._simulations.filter (x => x.id === selection)[0];
                 if (this._legend_listener)
-                    this._legend_listener (new_current);
+                    cimcassandra.getSimulationDetails (simulation).then ((sim) => this._legend_listener (sim));
             }
 
             legend_change_listener (fn)
