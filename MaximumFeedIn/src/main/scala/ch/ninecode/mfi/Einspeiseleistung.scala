@@ -87,7 +87,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val steps = Math.round ((data.millis - experiment.t1.getTimeInMillis) / (experiment.interval * 1000))
             // subtract off the mandatory first zero step required by GridLAB-D
             val ok_steps = if (0 < steps) steps - 1 else 0
-            val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * ok_steps)
+            val increments = if (0 < ok_steps) ok_steps - 1 else 0
+            val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * increments)
             current.max match
             {
                 case None ⇒
@@ -278,7 +279,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val shuffle = experiments.map (x ⇒ (x, g.get (x.node))).filter (_._2.isDefined).map (x ⇒ (x._1, x._2.orNull))
             val ret = shuffle.map (x ⇒ (x._2.head._1.copy (house = x._1.house), x._2.map (y ⇒ (y._2, y._3, y._4)))) // need to grab the experiment from the node for this house
             ret.map (x ⇒ finder (x._1, x._2)).toList
-            // ToDo: actually, the step before the limit was exceeded is the maximum value
         }
         else
         {
@@ -418,21 +418,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                         val max = max_option.get
                         if (max.reason != "no limit" && max.max.isDefined)
                         {
-                            val max_val = max.max.get
-                            if (max_val > experiment.step)
-                            {
-                                to = max_val + step
-                                from = max_val - experiment.step
-                            }
-                            else
-                            {
-                                to = experiment.step
-                                from = 0
-                            }
+                            from = max.max.get
+                            to = from + experiment.step
                             val steps = experiment.window / experiment.interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
                             if (!(steps * step >= (to - from)))
                                 riser = math.ceil ((to - from) / steps / step) * step // limit as ceiling(minimum step size) in thousands
-
                         }
                     }
                     experiment.copy (from = from, to = to, step = riser)

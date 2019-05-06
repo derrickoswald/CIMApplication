@@ -271,7 +271,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 val max_precalc = resultset.getDouble (3)
                 assert (resultset.next, "expected pairs of results")
                 val max_loadflow = resultset.getDouble (3)
-                assert (Math.abs (max_precalc - max_loadflow) <= 1000.0, "compare precalc with loadflow")
+                assert (max_precalc - max_loadflow <= 1500.0, "compare precalc with loadflow")
                 records = records + 1
             }
             resultset.close ()
@@ -386,7 +386,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
             {
                 assert (resultset.getString (1) == "TX0001", "transformer name")
                 assert (resultset.getString (2) == "USR0001", "energy consumer name")
-                assert (resultset.getDouble (3) == 96000.0, "maximum")
+                assert (resultset.getDouble (3) == 95000.0, "maximum")
                 assert (resultset.getString (4) == "current limit", "reason")
                 assert (resultset.getString (5) == "CAB0001 > 134.0 Amps", "details")
                 records = records + 1
