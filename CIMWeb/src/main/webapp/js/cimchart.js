@@ -128,7 +128,7 @@ define
             initialize ()
             {
                 let self = this;
-                cimcassandra.getAllSimulations()
+                cimcassandra.getAllSimulationsWithDetails ()
                 .then (
                     (simulations) =>
                     {
@@ -417,7 +417,7 @@ define
             }
 
             /**
-             * Connect the selected object at user selected terminal synchronously.
+             * Display the selected object data.
              */
             selection_change (current_feature, current_selection)
             {

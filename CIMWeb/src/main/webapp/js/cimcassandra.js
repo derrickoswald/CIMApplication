@@ -90,12 +90,32 @@ define
             );
         }
 
+        /**
+         * Get the keyspaces with simulation data and their simulations plus the players and recorders.
+         */
+        function getAllSimulationsWithDetails ()
+        {
+            return (
+                cimquery.queryPromise ({ sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' allow filtering", cassandra: true })
+                    .then (
+                        keyspaces =>
+                        {
+                            return (
+                                Promise.all (keyspaces.map (keyspace => getSimulationsWithDetails (keyspace.keyspace_name)))
+                                    .then (simulations => simulations.flatMap (x => x))
+                            );
+                        }
+                    )
+            );
+        }
+
         return (
             {
                 getSimulationDetails: getSimulationDetails,
                 getSimulationsWithDetails: getSimulationsWithDetails,
                 getSimulations: getSimulations,
-                getAllSimulations: getAllSimulations
+                getAllSimulations: getAllSimulations,
+                getAllSimulationsWithDetails: getAllSimulationsWithDetails
             }
         );
     }

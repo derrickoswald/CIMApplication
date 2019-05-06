@@ -123,20 +123,16 @@ define
                 if ((null != features) && (0 !== features.length))
                 {
                     let trafo = null;
+                    let feature = null;
                     for (let i = 0; i < features.length; i++)
                         if (features[i].layer.id === "areas")
                             trafo = features[i].properties.mrid;
-                    if (trafo)
-                    // {
-                    //     // check if it's already loaded
-                    //     const loaded = this._cimmap.get_loaded ();
-                    //     const existing = loaded && loaded.files && loaded.files.includes (trafo);
-                    //     if (existing)
-                    //         // pass click up to map
-                    //         this._cimmap.default_mousedown_listener (event);
-                    //     else
-                             this.load_trafo (trafo);
-                    // }
+                        else if ((features[i].layer.id === "nodes") || (features[i].layer.id === "edges"))
+                            feature = features[i].properties.mrid;
+                    if (trafo && !this._loaded.includes (trafo))
+                        this.load_trafo (trafo);
+                    else if (feature)
+                        this._cimmap.select (feature, [feature]);
                     else
                         this._cimmap.default_mousedown_listener (event);
                 }
@@ -506,6 +502,8 @@ define
             setSimulation (simulation)
             {
                 this._simulation = simulation;
+                this._loaded = [];
+                this.clear ();
                 const self = this;
                 const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_polygons where simulation='${ self._simulation.id }'`, cassandra: true })
                     .then (data => self.setEventGeoJSON_Polygons.call (self, data))
@@ -610,6 +608,7 @@ define
             load_trafo (transformer)
             {
                 const self = this;
+                this._loaded.push (transformer);
                 const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_points where simulation='${ self._simulation.id }' and transformer='${ transformer }' allow filtering`, cassandra: true })
                     .then (data => self.setEventGeoJSON_Points.call (self, data))
                     .then (() => self._TheMap.getSource ("nodes").setData (self._event_points))
