@@ -457,14 +457,15 @@ define
             {
                 // ToDo: can we take all events for a simulation rather than just 5000?
                 const self = this;
-                cimquery.queryPromise ({ sql: `select mrid, type, severity, TOUNIXTIMESTAMP(start_time), TOUNIXTIMESTAMP(end_time) from ${ self._simulation.output_keyspace }.simulation_event where simulation='${ self._simulation.id }' limit 5000 allow filtering`, cassandra: true })
+                cimquery.queryPromise ({ sql: `select mrid, type, severity, TOUNIXTIMESTAMP(start_time) as start_time, TOUNIXTIMESTAMP(end_time) as end_time from ${ self._simulation.output_keyspace }.simulation_event where simulation='${ self._simulation.id }' limit 5000 allow filtering`, cassandra: true })
                     .then (
                         function (events)
                         {
-                            // mrid    | type                             | severity | start_time                      | end_time
-                            // ---------+----------------------------------+----------+---------------------------------+---------------------------------
-                            // HAS2596 | voltage subceeds 10.0% threshold |        2 | 2018-02-13 22:30:00.000000+0000 | 2018-02-13 22:45:00.000000+0000
-                            // HAS2596 | voltage subceeds 10.0% threshold |        2 | 2018-03-19 22:15:00.000000+0000 | 2018-03-19 22:30:00.000000+0000
+                            // mrid   | type                                                   | severity | start_time    | end_time
+                            //--------+--------------------------------------------------------+----------+---------------+---------------
+                            // HAS157 |                        voltage subceeds 6.0% threshold |        1 | 1514841300000 | 1514848500000
+                            // KLE237 | current exceeds 110% threshold for 900000 milliseconds |        2 | 1514841300000 | 1514848500000
+
                             self._events = events;
 
                             // create the mapping table between mrid and transformer service area

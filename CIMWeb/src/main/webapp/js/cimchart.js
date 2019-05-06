@@ -90,14 +90,13 @@ define
 
             changeSimulations (event)
             {
-                const keyspace = event.target.value;
+                const simulation = event.target.value;
                 const checked = event.target.checked;
-                const index = this._selected_simulations.indexOf (keyspace);
+                const index = this._selected_simulations.indexOf (simulation);
                 if (index > -1)
                     this._selected_simulations.splice (index, 1);
                 if (checked)
-                    this._selected_simulations.push (keyspace);
-//                this.draw ();
+                    this._selected_simulations.push (simulation);
             }
 
             chooseSimulations (div)
@@ -225,12 +224,12 @@ define
                     const cmp = compare_fn (el, ar[k]);
                     if (cmp > 0)
                         m = k + 1;
-                    else if(cmp < 0)
+                    else if (cmp < 0)
                         n = k - 1;
                     else
-                        return k;
+                        return (k);
                 }
-                return -m - 1;
+                return (-m - 1);
             }
 
             drawChartCursor (value)
@@ -255,6 +254,27 @@ define
                 }
                 else
                     this.deleteChartCursor ();
+            }
+
+            drawChartBackgroundRegion (start, end, color)
+            {
+                const chart = this._theChart;
+                const points = chart.series[0].points;
+                const min = points[0].x;
+                const max = points[points.length - 1].x;
+                if ((min <= start) && (max >= start) && (min <= end) && (max >= end))
+                {
+                    const left = this.binarySearch (points, start, (t, p) => t - p.x);
+                    const right = this.binarySearch (points, end, (t, p) => t - p.x);
+                    const p1 = (left < 0) ? points[Math.min (-(left + 1), points.length - 1)] : points[left];
+                    const p2 = (right < 0) ? points[Math.min (-(right + 1), points.length - 1)] : points[right];
+                    const x = chart.plotLeft + p1.plotX;
+                    const width = p2.plotX - p1.plotX;
+                    const region = chart.renderer.rect (x, chart.plotTop, width, chart.plotHeight).attr ({ 'fill': color, 'stroke': 'none', 'fill-opacity': 0.33333334}).add ();
+                    return (region);
+                }
+                else
+                    return (null);
             }
 
             clearChart (contents)
@@ -358,7 +378,8 @@ define
                             }
                         )
                     )
-                    .then (series => self.setChart.call (self, feature, series));
+                    .then (series => self.setChart.call (self, feature, series))
+                    .then (() => self.checkForEvents.call (self, feature));
                 }
                 else
                 {
@@ -414,6 +435,36 @@ define
                     else
                         this.clearChart ("<b>no data for " + feature + "</b>");
                 }
+            }
+
+            checkForEvents (feature)
+            {
+                const self = this;
+                if (self._theChart.regions)
+                {
+                    self._theChart.regions.forEach (region => region.destroy ());
+                    delete self._theChart.regions;
+                }
+                self._simulations.filter (x => self._selected_simulations.includes (x.id)).forEach (
+                    simulation =>
+                    {
+                        cimquery.queryPromise ({ sql: `select mrid, type, severity, TOUNIXTIMESTAMP(start_time) as start_time, TOUNIXTIMESTAMP(end_time) as end_time from ${ simulation.output_keyspace }.simulation_event where simulation='${ simulation.id }' and mrid = '${ feature }' limit 5000 allow filtering`, cassandra: true })
+                            .then (
+                                function (events)
+                                {
+                                    console.log (JSON.stringify (events, null, 4));
+                                    self._theChart.regions = [];
+                                    events.forEach (
+                                        event =>
+                                        {
+                                            const region = self.drawChartBackgroundRegion (event.start_time, event.end_time, event.severity === 2 ? "#ff0000" : "#ffa500");
+                                            self._theChart.regions.push (region);
+                                        }
+                                    );
+                                }
+                            );
+                    }
+                );
             }
 
             /**
