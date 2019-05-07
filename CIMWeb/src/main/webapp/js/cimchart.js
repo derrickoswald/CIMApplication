@@ -143,6 +143,27 @@ define
                 );
             }
 
+            /**
+             * Load new data depending on the selected min and max.
+             */
+            refetch (event)
+            {
+                if (this._selected_simulations && 0 < this._selected_simulations.length)
+                {
+                    this._theChart.showLoading ("Querying Cassandra...");
+                    const simulation = this._simulations[0];
+                    console.log ("from " + event.min + " to " + event.max);
+                    const self = this;
+                    cimquery.queryPromise ({sql: `select * from ${ simulation.output_keyspace }.simulation`, cassandra: true})
+                        .then (data =>
+                            {
+                                // chart.series[0].setData(data);
+                                self._theChart.hideLoading ();
+                            }
+                        );
+                }
+            }
+
             // series is an array of objects with at least { name: "XXX", data: [] }
             setChart (title, series)
             {
@@ -180,7 +201,11 @@ define
 
                         xAxis:
                         {
-                            minRange: 10800 * 1000 // 3 hours
+                            minRange: 10800 * 1000, // 3 hours
+                            events:
+                            {
+                                afterSetExtremes: this.refetch.bind (this)
+                            }
                         },
 
                         dataGrouping:
@@ -189,6 +214,11 @@ define
                         },
 
                         series: series,
+
+                        navigator:
+                        {
+                            adaptToUpdatedData: false
+                        },
 
                         legend:
                         {
@@ -427,7 +457,7 @@ define
                             .then (
                                 function (events)
                                 {
-                                    console.log (JSON.stringify (events, null, 4));
+                                    // console.log (JSON.stringify (events, null, 4));
                                     events.forEach (
                                         event =>
                                         {
@@ -441,7 +471,7 @@ define
                                                     const band = axis.addPlotBand (range);
                                                     const color = {
                                                         "fill": event.severity === 2 ? "#FF0000" : "#FFA500"
-                                                    }
+                                                    };
                                                     band.svgElem.css (color);
                                                 }
                                             );
