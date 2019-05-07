@@ -9,12 +9,40 @@ import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+abstract class Trigger (val `type`: String = "", val severity: Int = 0, val ratio: Double = 0.0, val duration: Int = 0) extends Serializable
+{
+    def comparator (nominal: Double): Double ⇒ Boolean
+    def message (millis: Int): String
+}
+
+case class HighTrigger (
+        override val `type`: String,
+        override val severity: Int,
+        override val ratio: Double,
+        override val duration: Int)
+    extends Trigger (`type`, severity, ratio, duration)
+{
+    def hi (threshold: Double)(value:Double): Boolean = value > threshold
+    def comparator (nominal: Double): Double ⇒ Boolean = hi (ratio * nominal)
+    def message (millis: Int): String = "%s exceeds %s%% threshold for %s milliseconds".format (`type`, ratio * 100.0, millis)
+}
+
+case class LowTrigger (
+        override val `type`: String,
+        override val severity: Int,
+        override val ratio: Double,
+        override val duration: Int)
+    extends Trigger (`type`, severity, ratio, duration)
+{
+    def lo (threshold: Double)(value:Double): Boolean = value < threshold
+    def comparator (nominal: Double): Double ⇒ Boolean = lo (ratio * nominal)
+    def message (millis: Int): String = "%s subceeds %s%% threshold for %s milliseconds".format (`type`, ratio * 100.0, millis)
+}
 
 /**
  * Find significant events in the simulation.
@@ -49,45 +77,45 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     //          simulation mrid   type  severity, start_time end_time
     type Event = (String, String, String, Int, Timestamp, Timestamp)
 
-    // 400V >±6%, >±10%
-    val THRESHOLD1 = 0.06
-    val THRESHOLD2 = 0.10
+    // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
+    val VOLTAGETHRESHOLD1 = HighTrigger ("voltage", 1, 1.06, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD2 =  LowTrigger ("voltage", 1, 0.94, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD3 = HighTrigger ("voltage", 2, 1.10, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD4 =  LowTrigger ("voltage", 2, 0.90, 15 * 60 * 1000)
 
-    case class Trigger (severity: Int, ratio: Double, duration: Int)
+    // current >75% and >14h within 24h = orange
+    // current >90% and >3h within 24h = red
+    // current >110% for 15 minutes or more = red
+    val CURRENTTHRESHOLD1 = HighTrigger ("current", 1, 0.75, 14 * 60 * 60 * 1000)
+    val CURRENTTHRESHOLD2 = HighTrigger ("current", 2, 0.90,  3 * 60 * 60 * 1000)
+    val CURRENTTHRESHOLD3 = HighTrigger ("current", 2, 1.10,      15 * 60 * 1000)
 
-    // current >75% and >14h within 24h
-    // current >90% and >3h within 24h
-    // current >110% for 15 minutes or more
+    // power >75% and >14h within 24h = orange
+    // power >90% and >3h within 24h = red
+    // power >110% for 15 minutes or more = red
+    val POWERTHRESHOLD1 = HighTrigger ("power", 1, 0.75, 14 * 60 * 60 * 1000)
+    val POWERTHRESHOLD2 = HighTrigger ("power", 2, 0.90,  3 * 60 * 60 * 1000)
+    val POWERTHRESHOLD3 = HighTrigger ("power", 2, 1.10,      15 * 60 * 1000)
 
-    val BOUNDARY1 = Trigger (1, 0.75, 14 * 60 * 60 * 1000)
-    val BOUNDARY2 = Trigger (2, 0.90,  3 * 60 * 60 * 1000)
-    val BOUNDARY3 = Trigger (2, 1.10,      15 * 60 * 1000)
-
-    // also the same for transformer apparent power
-    // power >75% and >14h within 24h
-    // power >90% and >3h within 24h
-    // power >110% for 15 minutes or more
-
-    class Checker (simulation: String, mrid: String, boundary: Trigger, limit: Double, typ: String)
+    class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double)
     {
         var ret: List[Event] = Nil
 
-        val threshold: Double = boundary.ratio * limit // test value
         var start = 0L                         // starting time
         var end = 0L                           // ending time
-        var timeout = 0                        // count-down
-        lazy val message: String = "%s exceeds %s%% threshold for %s milliseconds".format (typ, boundary.ratio * 100.0, boundary.duration)
+        var timeout: Int = Int.MaxValue        // count-down
+        val predicate: Double ⇒ Boolean = trigger.comparator (limit)
 
         def next (time: Long, period: Int, current: Double): Unit =
         {
-            if (current > threshold)
+            if (predicate (current))
             {
                 if (0L == start)
                 {
                     // start counting
                     start = time
                     end = time + period
-                    timeout = boundary.duration - period
+                    timeout = trigger.duration - period
                 }
                 else
                 {
@@ -101,34 +129,73 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                     {
                         // non consecutive periods
                         // emit an event if the duration has elapsed
-                        if (timeout < 0L)
-                            ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                        if (timeout <= 0L)
+                            ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
                         // start counting again
                         start = time
                         end = time + period
-                        timeout = boundary.duration - period
+                        timeout = trigger.duration - period
                     }
                 }
             }
             else
             {
                 // emit an event if the duration has elapsed
-                if (timeout < 0L)
-                    ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                if (timeout <= 0L)
+                    ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                start = 0L
+                timeout = Int.MaxValue
             }
         }
 
         def gimme: List[Event] =
         {
             // emit an event if the duration has elapsed
-            if (0L != start && timeout < 0L)
+            if (0L != start && timeout <= 0L)
             {
-                ret = (simulation, mrid, message, boundary.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
                 start = 0L // don't do it again
-                timeout = 0
+                timeout = Int.MaxValue
             }
             ret
         }
+    }
+
+    def check (simulation: String, thresholds: Array[_ <: Trigger]) (stuff: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
+    {
+        // all the mRID and threshold values are the same
+        val mrid = stuff.head._1
+        val threshold = stuff.head._5
+
+        // pare down the data and sort by time
+        val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
+
+        val checkers = thresholds.map (x ⇒ new Checker (simulation, mrid, x, threshold))
+        for (i ← values.indices)
+        {
+            val time = values(i)._1
+            val ltime = time.getTime
+            val period = values(i)._2
+            val voltage = values(i)._3
+            checkers.foreach (x ⇒ x.next (ltime, period, voltage))
+        }
+        checkers.flatMap (_.gimme)
+    }
+
+    def filterFor (thresholds: Array[_ <: Trigger], column: String, nominal: String): String =
+    {
+        var minratio = Double.MaxValue
+        var maxratio = Double.MinValue
+        thresholds.foreach
+        {
+            case h: HighTrigger ⇒ if (h.ratio < minratio) minratio = h.ratio
+            case l: LowTrigger ⇒ if (l.ratio > maxratio) maxratio = l.ratio
+        }
+        val filters = Array (
+            if (minratio != Double.MaxValue) Some ("%s > (%s * %s)".format (column, minratio, nominal)) else None,
+            if (maxratio != Double.MinValue) Some ("%s < (%s * %s)".format (column, maxratio, nominal)) else None)
+        // NOTE: Cassandra has no 'OR' clause capability because it is brain dead, so be aware that thresholds with both filters will fail
+        filters.flatten.mkString (" or ")
     }
 
     def save (access: SimulationCassandraAccess, events: RDD[Event]): Unit =
@@ -137,8 +204,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             SomeColumns ("simulation", "mrid", "type", "severity", "start_time", "end_time"))
     }
 
-    // voltage exceeds ±10%=red, voltage exceeds ±6%=orange
-    def voltageCheck (access: SimulationCassandraAccess, threshold1: Double = THRESHOLD1, threshold2: Double = THRESHOLD2): Unit =
+    def voltageCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
     {
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -150,7 +216,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
 
         val points = access.geojson_points
 
-        def nominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
+        def getNominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
 
         val voltages = simulated_voltages
             .withColumn ("voltage", magnitude [Double, Double].apply (simulated_voltages ("real_a"), simulated_voltages ("imag_a")))
@@ -159,54 +225,49 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                 points,
                 Seq ("mrid"))
         val nominalVoltages = voltages
-            .withColumn ("nominal", nominalVoltage [Map[String, String]].apply (voltages ("properties")))
+            .withColumn ("nominalVoltage", getNominalVoltage [Map[String, String]].apply (voltages ("properties")))
             .drop ("transformer", "properties")
             .persist (options.storage_level)
 
-        {
-            val voltage_over_threshold = nominalVoltages
-                .filter ("voltage > nominal * %s".format (1.0 + threshold1))
+        val mrid = nominalVoltages.schema.fieldIndex ("mrid")
+        val period = nominalVoltages.schema.fieldIndex ("period")
+        val time = nominalVoltages.schema.fieldIndex ("time")
+        val voltage = nominalVoltages.schema.fieldIndex ("voltage")
+        val nominalVoltage = nominalVoltages.schema.fieldIndex ("nominalVoltage")
 
-            val mrid = voltage_over_threshold.schema.fieldIndex ("mrid")
-            val period = voltage_over_threshold.schema.fieldIndex ("period")
-            val time = voltage_over_threshold.schema.fieldIndex ("time")
-            val volts = voltage_over_threshold.schema.fieldIndex ("voltage")
-            val nominal = voltage_over_threshold.schema.fieldIndex ("nominal")
-            val work = voltage_over_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts), row.getDouble (nominal))).cache
+        // two stages here, one for HighTrigger and one for LowTrigger
+        val highs = thresholds.flatMap (
+            {
+                case h: HighTrigger ⇒ Some (h)
+                case _: LowTrigger ⇒ None
+            }
+        )
+        val lows = thresholds.flatMap (
+            {
+                case _: HighTrigger ⇒ None
+                case l: LowTrigger ⇒ Some (l)
+            }
+        )
 
-            // save to Cassandra - split based on second threshold
-            val over1 = typ + " exceeds %s%% threshold".format (threshold1 * 100.0)
-            val overvoltage1: RDD[Event] = work.filter (v ⇒ v._5 < v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over1, 1, x._3, x._4))
-            save (access, overvoltage1)
-            val over2 = typ + " exceeds %s%% threshold".format (threshold2 * 100.0)
-            val overvoltage2: RDD[Event] = work.filter (v ⇒ v._5 >= v._6 * (1.0 + threshold2)).map (x ⇒ (x._1, x._2, over2, 2, x._3, x._4))
-            save (access, overvoltage2)
-            log.info ("""voltageCheck: overvoltage records saved to %s.simulation_event""".format (access.output_keyspace))
-        }
+        val highEvents = if (0 < highs.length)
+            nominalVoltages.filter (filterFor (highs, typ, "nominalVoltage"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (voltage), row.getDouble (nominalVoltage))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
 
-        {
-            val voltage_under_threshold = nominalVoltages
-                .filter ("voltage < nominal * %s".format (1.0 - threshold1))
+        val lowEvents = if (0 < lows.length)
+            nominalVoltages.filter (filterFor (lows, typ, "nominalVoltage"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (voltage), row.getDouble (nominalVoltage))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
 
-            val mrid = voltage_under_threshold.schema.fieldIndex ("mrid")
-            val period = voltage_under_threshold.schema.fieldIndex ("period")
-            val time = voltage_under_threshold.schema.fieldIndex ("time")
-            val volts = voltage_under_threshold.schema.fieldIndex ("voltage")
-            val nominal = voltage_under_threshold.schema.fieldIndex ("nominal")
-            val work = voltage_under_threshold.rdd.map (row ⇒ (access.simulation, row.getString (mrid), row.getTimestamp (time), new Timestamp (row.getTimestamp (time).getTime + row.getInt (period)), row.getDouble (volts), row.getDouble (nominal))).cache
-
-            // save to Cassandra - split based on second threshold
-            val under1 = typ + " subceeds %s%% threshold".format (threshold1 * 100.0)
-            val undervoltage1 = work.filter (v ⇒ v._5 > v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under1, 1, x._3, x._4))
-            save (access, undervoltage1)
-            val under2 = typ + " subceeds %s%% threshold".format (threshold2 * 100.0)
-            val undervoltage2 = work.filter (v ⇒ v._5 <= v._6 * (1.0 - threshold2)).map (x ⇒ (x._1, x._2, under2, 2, x._3, x._4))
-            save (access, undervoltage2)
-            log.info ("""voltageCheck: undervoltage records saved to %s.simulation_event""".format (access.output_keyspace))
-        }
+        save (access, highEvents.union (lowEvents))
+        log.info ("""voltageCheck: voltage deviation records saved to %s.simulation_event""".format (access.output_keyspace))
     }
 
-    def currentCheck (access: SimulationCassandraAccess, boundary1: Trigger = BOUNDARY1, boundary2: Trigger = BOUNDARY2, boundary3: Trigger = BOUNDARY3): Unit =
+    def currentCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
     {
         log.info ("Current events")
         val typ = "current"
@@ -231,49 +292,45 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             .drop ("transformer", "properties")
             .persist (options.storage_level)
 
-        val minratio = if (boundary1.ratio < boundary2.ratio) if (boundary1.ratio < boundary3.ratio) boundary1.ratio else boundary3.ratio else if (boundary2.ratio < boundary3.ratio) boundary2.ratio else boundary3.ratio
-        val interesting = ratedCables.filter ("current > (%s * ratedCurrent)".format (minratio))
+        val mrid = ratedCables.schema.fieldIndex ("mrid")
+        val period = ratedCables.schema.fieldIndex ("period")
+        val time = ratedCables.schema.fieldIndex ("time")
+        val current = ratedCables.schema.fieldIndex ("current")
+        val ratedCurrent = ratedCables.schema.fieldIndex ("ratedCurrent")
 
-        val mrid = interesting.schema.fieldIndex ("mrid")
-        val period = interesting.schema.fieldIndex ("period")
-        val time = interesting.schema.fieldIndex ("time")
-        val current = interesting.schema.fieldIndex ("current")
-        val ratedCurrent = interesting.schema.fieldIndex ("ratedCurrent")
-        val work = interesting.rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (current), row.getDouble (ratedCurrent))).persist (options.storage_level)
-
-        def checkCable (stuff: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
-        {
-            // all the mRID and currentLimit are the same
-            val mrid = stuff.head._1
-            val ratedCurrent = stuff.head._5
-
-            // pare down the data and sort by time
-            val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
-
-            val b1 = new Checker (access.simulation, mrid, boundary1, ratedCurrent, typ)
-            val b2 = new Checker (access.simulation, mrid, boundary2, ratedCurrent, typ)
-            val b3 = new Checker (access.simulation, mrid, boundary3, ratedCurrent, typ)
-            for (i ← values.indices)
+        // two stages here, one for HighTrigger and one for LowTrigger
+        val highs = thresholds.flatMap (
             {
-                val time = values(i)._1
-                val ltime = time.getTime
-                val period = values(i)._2
-                val current = values(i)._3
-                b1.next (ltime, period, current)
-                b2.next (ltime, period, current)
-                b3.next (ltime, period, current)
+                case h: HighTrigger ⇒ Some (h)
+                case _: LowTrigger ⇒ None
             }
+        )
+        val lows = thresholds.flatMap (
+            {
+                case _: HighTrigger ⇒ None
+                case l: LowTrigger ⇒ Some (l)
+            }
+        )
 
-            b1.gimme ::: b2.gimme ::: b3.gimme
-        }
+        val highEvents = if (0 < highs.length)
+            ratedCables.filter (filterFor (highs, typ, "ratedCurrent"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (current), row.getDouble (ratedCurrent))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
 
-        // group by mRID and check each cable three ways
-        val events: RDD[Event] = work.groupBy (_._1).values.flatMap (checkCable).persist (options.storage_level)
-        save (access, events)
+        val lowEvents = if (0 < lows.length)
+            ratedCables.filter (filterFor (lows, typ, "ratedCurrent"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (current), row.getDouble (ratedCurrent))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
+
+        save (access, highEvents.union (lowEvents))
         log.info ("""currentCheck: overcurrent records saved to %s.simulation_event""".format (access.output_keyspace))
     }
 
-    def powerCheck (access: SimulationCassandraAccess, boundary1: Trigger = BOUNDARY1, boundary2: Trigger = BOUNDARY2, boundary3: Trigger = BOUNDARY3): Unit =
+    def powerCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
     {
         log.info ("Power events")
         val typ = "power"
@@ -298,45 +355,41 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             .drop ("properties")
             .persist (options.storage_level)
 
-        val minratio = if (boundary1.ratio < boundary2.ratio) if (boundary1.ratio < boundary3.ratio) boundary1.ratio else boundary3.ratio else if (boundary2.ratio < boundary3.ratio) boundary2.ratio else boundary3.ratio
-        val interesting = ratedTrafos.filter ("power > (%s * ratedS)".format (minratio))
+        val mrid = ratedTrafos.schema.fieldIndex ("mrid")
+        val period = ratedTrafos.schema.fieldIndex ("period")
+        val time = ratedTrafos.schema.fieldIndex ("time")
+        val power = ratedTrafos.schema.fieldIndex ("power")
+        val ratedS = ratedTrafos.schema.fieldIndex ("ratedS")
 
-        val mrid = interesting.schema.fieldIndex ("mrid")
-        val period = interesting.schema.fieldIndex ("period")
-        val time = interesting.schema.fieldIndex ("time")
-        val power = interesting.schema.fieldIndex ("power")
-        val ratedS = interesting.schema.fieldIndex ("ratedS")
-        val work = interesting.rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
-
-        def checkTrafo (stuff: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
-        {
-            // all the mRID and ratedS are the same
-            val mrid = stuff.head._1
-            val ratedS = stuff.head._5
-
-            // pare down the data and sort by time
-            val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
-
-            val b1 = new Checker (access.simulation, mrid, boundary1, ratedS, typ)
-            val b2 = new Checker (access.simulation, mrid, boundary2, ratedS, typ)
-            val b3 = new Checker (access.simulation, mrid, boundary3, ratedS, typ)
-            for (i ← values.indices)
+        // two stages here, one for HighTrigger and one for LowTrigger
+        val highs = thresholds.flatMap (
             {
-                val time = values(i)._1
-                val ltime = time.getTime
-                val period = values(i)._2
-                val power = values(i)._3
-                b1.next (ltime, period, power)
-                b2.next (ltime, period, power)
-                b3.next (ltime, period, power)
+                case h: HighTrigger ⇒ Some (h)
+                case _: LowTrigger ⇒ None
             }
+        )
+        val lows = thresholds.flatMap (
+            {
+                case _: HighTrigger ⇒ None
+                case l: LowTrigger ⇒ Some (l)
+            }
+        )
 
-            b1.gimme ::: b2.gimme ::: b3.gimme
-        }
+        val highEvents = if (0 < highs.length)
+            ratedTrafos.filter (filterFor (highs, typ, "ratedS"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
 
-        // group by mRID and check each transformer three ways
-        val events: RDD[Event] = work.groupBy (_._1).values.flatMap (checkTrafo).persist (options.storage_level)
-        save (access, events)
+        val lowEvents = if (0 < lows.length)
+            ratedTrafos.filter (filterFor (lows, typ, "ratedS"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
+                .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
+        else
+            spark.sparkContext.emptyRDD[Event]
+
+        save (access, highEvents.union (lowEvents))
         log.info ("""powerCheck: overpower records saved to %s.simulation_event""".format (access.output_keyspace))
     }
 
@@ -382,9 +435,9 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                 case Some ((id, input, output)) ⇒
                     val access = SimulationCassandraAccess (spark, id, input, output, options.verbose, options.unittest)
                     log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
-                    voltageCheck (access)
-                    currentCheck (access)
-                    powerCheck (access)
+                    voltageCheck (access, Array (VOLTAGETHRESHOLD1, VOLTAGETHRESHOLD2, VOLTAGETHRESHOLD3, VOLTAGETHRESHOLD4))
+                    currentCheck (access, Array (CURRENTTHRESHOLD1, CURRENTTHRESHOLD2, CURRENTTHRESHOLD3))
+                    powerCheck (access, Array (POWERTHRESHOLD1, POWERTHRESHOLD2, POWERTHRESHOLD3))
                 case None ⇒
                     log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
             }
