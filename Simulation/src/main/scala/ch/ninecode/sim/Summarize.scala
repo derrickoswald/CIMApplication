@@ -58,7 +58,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Utilization: %d simulated current values to process""".format (simulated_current_values.count))
         show (simulated_current_values)
 
-        val lines = access.geojson_lines
+        val lines = access.geojson ("geojson_lines")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -362,7 +362,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Load Factor: %d simulation values to process""".format (simulated__power_values.count))
         show (simulated__power_values)
 
-        val trafos = access.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson ("geojson_polygons").drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -424,7 +424,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Coincidence Factor: %d simulation values to process""".format (simulated_power_values.count))
         show (simulated_power_values)
 
-        val trafos = access.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson ("geojson_polygons").drop ("properties").cache
 
         val simulated_value_trafos = simulated_power_values
             .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
@@ -446,7 +446,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         // now do the peaks for the energy consumers
 
         val _measured_value = access.raw_meter_values
-        val houses = access.geojson_points.drop ("properties").cache
+        val houses = access.geojson ("geojson_points").drop ("properties").cache
 
         def power[Type_x: TypeTag, Type_y: TypeTag, Type_z: TypeTag] = udf [Double, Double, Double, Int]((x: Double, y: Double, z: Int) => (60 * 60 * 1000) / z * Math.sqrt (x * x + y * y))
 
@@ -524,7 +524,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Responsibility Factor: %d simulation values to process""".format (simulated_power_values.count))
         show (simulated_power_values)
 
-        val trafos = access.geojson_polygons.drop ("properties").cache
+        val trafos = access.geojson ("geojson_polygons").drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -562,7 +562,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Responsibility Factor: %d measured values to process""".format (measured_value.count))
         show (measured_value)
 
-        val houses = access.geojson_points.drop ("properties").cache
+        val houses = access.geojson ("geojson_points").drop ("properties").cache
 
         val measured_value_and_trafo = measured_value
             .join (
@@ -626,7 +626,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_value.count))
         show (simulated_value)
 
-        val houses = access.geojson_points
+        val houses = access.geojson ("geojson_points")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
@@ -740,7 +740,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Losses: %d loss totals""".format (losses.count))
         show (losses)
 
-        val lines = access.geojson_lines.drop ("properties").cache
+        val lines = access.geojson ("geojson_lines").drop ("properties").cache
 
         val cables = losses
             .join (
@@ -752,7 +752,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
         logInfo ("""Losses: %d daily cable loss totals""".format (cables.count))
         show (cables)
 
-        val polygons = access.geojson_polygons.drop ("properties").cache
+        val polygons = access.geojson ("geojson_polygons").drop ("properties").cache
 
         val _trafos = losses
             .join (
@@ -821,7 +821,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
 
         val transformers = simulated_power_values
             .join (
-                access.geojson_polygons,
+                access.geojson ("geojson_polygons"),
                 Seq ("mrid"))
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))

@@ -544,6 +544,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
 
                     // save the results
+                    log.info ("""saving GridLAB-D simulation results""")
                     results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
                     log.info ("""saved GridLAB-D simulation results""")
 

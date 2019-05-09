@@ -14,30 +14,100 @@ import org.apache.spark.sql.functions.udf
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-abstract class Trigger (val `type`: String = "", val severity: Int = 0, val ratio: Double = 0.0, val duration: Int = 0) extends Serializable
+/**
+ * Event trigger.
+ *
+ * Base class that contains details about the condition that triggers an event.
+ *
+ * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
+ * @param severity The severity of the event.
+ * @param table The name of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
+ * @param ratio The ratio between the value and reference required to trigger the event.
+ * @param duration The continuous duration that the ratio must hold for the event to be registered. (mSec)
+ */
+abstract class Trigger (
+        val `type`: String,
+        val severity: Int,
+        val table: String,
+        val reference: String,
+        val default: Double,
+        val ratio: Double,
+        val duration: Int)
+    extends Serializable
 {
+    /**
+     * Required zero arg constructor for serializability.
+     */
+    def this () = this ("", 0, "", "", 0.0, 0.0, 0)
+
+    /**
+     * Comparison function generator.
+     * @param nominal The nominal value, e.g. ratedVoltage, ratedCurrent or ratedS
+     * @return A function that can determine if a value causes the trigger to fire.
+     */
     def comparator (nominal: Double): Double ⇒ Boolean
+
+    /**
+     * Message describing the event.
+     *
+     * @param millis The number of milliseconds the ratio has held for (according to the comparator).
+     * @return A suitable message for the <code>type</code> column of the simulation_event Cassandra table.
+     */
     def message (millis: Int): String
 }
 
+/**
+ * Over ratio event trigger.
+ *
+ * Triggers an event when the value exceeds a threshold.
+ *
+ * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
+ * @param severity The severity of the event.
+ * @param table The name of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
+ * @param ratio The ratio between the value and reference above which the event will be triggered.
+ * @param duration The continuous duration that the ratio must be exceeded for the event to be registered (mSec).
+ */
 case class HighTrigger (
         override val `type`: String,
         override val severity: Int,
+        override val table: String,
+        override val reference: String,
+        override val default: Double,
         override val ratio: Double,
         override val duration: Int)
-    extends Trigger (`type`, severity, ratio, duration)
+    extends Trigger (`type`, severity, table, reference, default, ratio, duration)
 {
     def hi (threshold: Double)(value:Double): Boolean = value > threshold
     def comparator (nominal: Double): Double ⇒ Boolean = hi (ratio * nominal)
     def message (millis: Int): String = "%s exceeds %s%% threshold for %s milliseconds".format (`type`, ratio * 100.0, millis)
 }
 
+/**
+ * Under ratio event trigger.
+ *
+ * Triggers an event when the value subceeds a threshold.
+ *
+ * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
+ * @param severity The severity of the event.
+ * @param table The name of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
+ * @param ratio The ratio between the value and reference below which the event will be triggered.
+ * @param duration The continuous duration that the ratio must be subceeded for the event to be registered (mSec).
+ */
 case class LowTrigger (
         override val `type`: String,
         override val severity: Int,
+        override val table: String,
+        override val reference: String,
+        override val default: Double,
         override val ratio: Double,
         override val duration: Int)
-    extends Trigger (`type`, severity, ratio, duration)
+    extends Trigger (`type`, severity, table, reference, default, ratio, duration)
 {
     def lo (threshold: Double)(value:Double): Boolean = value < threshold
     def comparator (nominal: Double): Double ⇒ Boolean = lo (ratio * nominal)
@@ -57,10 +127,6 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    def logInfo (msg: => String): Unit = if (log.isInfoEnabled && options.unittest) log.info (msg)
-
-    def show (dataframe: DataFrame, records: Int = 5): Unit = if (options.unittest) dataframe.show (records)
-
     // Measurements needed from GridLAB-D recorders:
     //   - PowerTransformer (N6) apparent power [Scheinleistung (S)] (VA)
     //   - PowerTransformer (N6) current [Strom (I)] (A)
@@ -78,24 +144,24 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
     type Event = (String, String, String, Int, Timestamp, Timestamp)
 
     // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
-    val VOLTAGETHRESHOLD1 = HighTrigger ("voltage", 1, 1.06, 15 * 60 * 1000)
-    val VOLTAGETHRESHOLD2 =  LowTrigger ("voltage", 1, 0.94, 15 * 60 * 1000)
-    val VOLTAGETHRESHOLD3 = HighTrigger ("voltage", 2, 1.10, 15 * 60 * 1000)
-    val VOLTAGETHRESHOLD4 =  LowTrigger ("voltage", 2, 0.90, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD1 = HighTrigger ("voltage", 1, "geojson_points", "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD2 =  LowTrigger ("voltage", 1, "geojson_points", "ratedVoltage", 400.0, 0.94, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD3 = HighTrigger ("voltage", 2, "geojson_points", "ratedVoltage", 400.0, 1.10, 15 * 60 * 1000)
+    val VOLTAGETHRESHOLD4 =  LowTrigger ("voltage", 2, "geojson_points", "ratedVoltage", 400.0, 0.90, 15 * 60 * 1000)
 
     // current >75% and >14h within 24h = orange
     // current >90% and >3h within 24h = red
     // current >110% for 15 minutes or more = red
-    val CURRENTTHRESHOLD1 = HighTrigger ("current", 1, 0.75, 14 * 60 * 60 * 1000)
-    val CURRENTTHRESHOLD2 = HighTrigger ("current", 2, 0.90,  3 * 60 * 60 * 1000)
-    val CURRENTTHRESHOLD3 = HighTrigger ("current", 2, 1.10,      15 * 60 * 1000)
+    val CURRENTTHRESHOLD1 = HighTrigger ("current", 1, "geojson_lines", "ratedCurrent", 100.0, 0.75, 14 * 60 * 60 * 1000)
+    val CURRENTTHRESHOLD2 = HighTrigger ("current", 2, "geojson_lines", "ratedCurrent", 100.0, 0.90,  3 * 60 * 60 * 1000)
+    val CURRENTTHRESHOLD3 = HighTrigger ("current", 2, "geojson_lines", "ratedCurrent", 100.0, 1.10,      15 * 60 * 1000)
 
     // power >75% and >14h within 24h = orange
     // power >90% and >3h within 24h = red
     // power >110% for 15 minutes or more = red
-    val POWERTHRESHOLD1 = HighTrigger ("power", 1, 0.75, 14 * 60 * 60 * 1000)
-    val POWERTHRESHOLD2 = HighTrigger ("power", 2, 0.90,  3 * 60 * 60 * 1000)
-    val POWERTHRESHOLD3 = HighTrigger ("power", 2, 1.10,      15 * 60 * 1000)
+    val POWERTHRESHOLD1 = HighTrigger ("power", 1, "geojson_polygons", "ratedS", 630.0, 0.75, 14 * 60 * 60 * 1000)
+    val POWERTHRESHOLD2 = HighTrigger ("power", 2, "geojson_polygons", "ratedS", 630.0, 0.90,  3 * 60 * 60 * 1000)
+    val POWERTHRESHOLD3 = HighTrigger ("power", 2, "geojson_polygons", "ratedS", 630.0, 1.10,      15 * 60 * 1000)
 
     class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double)
     {
@@ -144,6 +210,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
                 if (timeout <= 0L)
                     ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
                 start = 0L
+                end = 0L
                 timeout = Int.MaxValue
             }
         }
@@ -155,6 +222,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             {
                 ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
                 start = 0L // don't do it again
+                end = 0L
                 timeout = Int.MaxValue
             }
             ret
@@ -176,8 +244,8 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             val time = values(i)._1
             val ltime = time.getTime
             val period = values(i)._2
-            val voltage = values(i)._3
-            checkers.foreach (x ⇒ x.next (ltime, period, voltage))
+            val value = values(i)._3
+            checkers.foreach (x ⇒ x.next (ltime, period, value))
         }
         checkers.flatMap (_.gimme)
     }
@@ -198,105 +266,42 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
         filters.flatten.mkString (" or ")
     }
 
-    def save (access: SimulationCassandraAccess, events: RDD[Event]): Unit =
+    def save (events: RDD[Event]) (implicit access: SimulationCassandraAccess): Unit =
     {
         events.saveToCassandra (access.output_keyspace, "simulation_event",
             SomeColumns ("simulation", "mrid", "type", "severity", "start_time", "end_time"))
     }
 
-    def voltageCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
+    def checkFor (thresholds: Array[Trigger]) (implicit access: SimulationCassandraAccess) : Unit =
     {
+        // all the threshold types, geometry tables and reference are the same
+        val `type` = thresholds(0).`type`
+        val table = thresholds(0).table
+        val reference = thresholds(0).reference
+        val default = thresholds(0).default.toString
+
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def getReference[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse (reference, default).toDouble)
 
-        log.info ("Voltage events")
-        val typ = "voltage"
-        val simulated_voltages = access.raw_values (typ).persist (options.storage_level)
-        logInfo ("""Voltage quality: %d simulation voltages to process""".format (simulated_voltages.count))
-        show (simulated_voltages)
+        log.info ("""%s events""".format (`type`))
+        val simulated_values = access.raw_values (`type`).persist (options.storage_level)
+        val geometries = access.geojson (table)
 
-        val points = access.geojson_points
-
-        def getNominalVoltage[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("nominalVoltage", "400.0").toDouble)
-
-        val voltages = simulated_voltages
-            .withColumn ("voltage", magnitude [Double, Double].apply (simulated_voltages ("real_a"), simulated_voltages ("imag_a")))
+        val values = simulated_values
+            .withColumn ("value", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .join (
-                points,
+                geometries,
                 Seq ("mrid"))
-        val nominalVoltages = voltages
-            .withColumn ("nominalVoltage", getNominalVoltage [Map[String, String]].apply (voltages ("properties")))
+        val augmentedvalues = values
+            .withColumn ("reference", getReference [Map[String, String]].apply (values ("properties")))
             .drop ("transformer", "properties")
-            .persist (options.storage_level)
 
-        val mrid = nominalVoltages.schema.fieldIndex ("mrid")
-        val period = nominalVoltages.schema.fieldIndex ("period")
-        val time = nominalVoltages.schema.fieldIndex ("time")
-        val voltage = nominalVoltages.schema.fieldIndex ("voltage")
-        val nominalVoltage = nominalVoltages.schema.fieldIndex ("nominalVoltage")
-
-        // two stages here, one for HighTrigger and one for LowTrigger
-        val highs = thresholds.flatMap (
-            {
-                case h: HighTrigger ⇒ Some (h)
-                case _: LowTrigger ⇒ None
-            }
-        )
-        val lows = thresholds.flatMap (
-            {
-                case _: HighTrigger ⇒ None
-                case l: LowTrigger ⇒ Some (l)
-            }
-        )
-
-        val highEvents = if (0 < highs.length)
-            nominalVoltages.filter (filterFor (highs, typ, "nominalVoltage"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (voltage), row.getDouble (nominalVoltage))).persist (options.storage_level)
-                .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
-        else
-            spark.sparkContext.emptyRDD[Event]
-
-        val lowEvents = if (0 < lows.length)
-            nominalVoltages.filter (filterFor (lows, typ, "nominalVoltage"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (voltage), row.getDouble (nominalVoltage))).persist (options.storage_level)
-                .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
-        else
-            spark.sparkContext.emptyRDD[Event]
-
-        save (access, highEvents.union (lowEvents))
-        log.info ("""voltageCheck: voltage deviation records saved to %s.simulation_event""".format (access.output_keyspace))
-    }
-
-    def currentCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
-    {
-        log.info ("Current events")
-        val typ = "current"
-        val simulated_current_values = access.raw_values (typ).persist (options.storage_level)
-        logInfo ("""Current limit: %d simulated current values to process""".format (simulated_current_values.count))
-        show (simulated_current_values)
-
-        val lines = access.geojson_lines
-
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        def maxCurrent[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("ratedCurrent", "1.0").toDouble)
-
-        val cables = simulated_current_values
-            .withColumn ("current", magnitude [Double, Double].apply (simulated_current_values ("real_a"), simulated_current_values ("imag_a")))
-            .drop ("real_a", "imag_a")
-            .join (
-                lines,
-                Seq ("mrid"))
-        val ratedCables = cables
-            .withColumn ("ratedCurrent", maxCurrent [Map[String, String]].apply (cables ("properties")))
-            .drop ("transformer", "properties")
-            .persist (options.storage_level)
-
-        val mrid = ratedCables.schema.fieldIndex ("mrid")
-        val period = ratedCables.schema.fieldIndex ("period")
-        val time = ratedCables.schema.fieldIndex ("time")
-        val current = ratedCables.schema.fieldIndex ("current")
-        val ratedCurrent = ratedCables.schema.fieldIndex ("ratedCurrent")
+        val mrid = augmentedvalues.schema.fieldIndex ("mrid")
+        val period = augmentedvalues.schema.fieldIndex ("period")
+        val time = augmentedvalues.schema.fieldIndex ("time")
+        val value = augmentedvalues.schema.fieldIndex ("value")
+        val ref = augmentedvalues.schema.fieldIndex ("reference")
 
         // two stages here, one for HighTrigger and one for LowTrigger
         val highs = thresholds.flatMap (
@@ -313,84 +318,21 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
         )
 
         val highEvents = if (0 < highs.length)
-            ratedCables.filter (filterFor (highs, typ, "ratedCurrent"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (current), row.getDouble (ratedCurrent))).persist (options.storage_level)
+            augmentedvalues.filter (filterFor (highs, "value", "reference"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
         else
             spark.sparkContext.emptyRDD[Event]
 
         val lowEvents = if (0 < lows.length)
-            ratedCables.filter (filterFor (lows, typ, "ratedCurrent"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (current), row.getDouble (ratedCurrent))).persist (options.storage_level)
+            augmentedvalues.filter (filterFor (lows, "value", "reference"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
         else
             spark.sparkContext.emptyRDD[Event]
 
-        save (access, highEvents.union (lowEvents))
-        log.info ("""currentCheck: overcurrent records saved to %s.simulation_event""".format (access.output_keyspace))
-    }
-
-    def powerCheck (access: SimulationCassandraAccess, thresholds: Array[Trigger]): Unit =
-    {
-        log.info ("Power events")
-        val typ = "power"
-        val simulated_power_values = access.raw_values (typ).persist (options.storage_level)
-        logInfo ("""Power limit: %d simulated power values to process""".format (simulated_power_values.count))
-        show (simulated_power_values)
-
-        val polygons = access.geojson_polygons
-
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        def maxPower[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse ("ratedS", "1.0").toDouble)
-
-        val trafos = simulated_power_values
-            .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
-            .drop ("real_a", "imag_a")
-            .join (
-                polygons,
-                Seq ("mrid"))
-        val ratedTrafos = trafos
-            .withColumn ("ratedS", maxPower [Map[String, String]].apply (trafos ("properties")))
-            .drop ("properties")
-            .persist (options.storage_level)
-
-        val mrid = ratedTrafos.schema.fieldIndex ("mrid")
-        val period = ratedTrafos.schema.fieldIndex ("period")
-        val time = ratedTrafos.schema.fieldIndex ("time")
-        val power = ratedTrafos.schema.fieldIndex ("power")
-        val ratedS = ratedTrafos.schema.fieldIndex ("ratedS")
-
-        // two stages here, one for HighTrigger and one for LowTrigger
-        val highs = thresholds.flatMap (
-            {
-                case h: HighTrigger ⇒ Some (h)
-                case _: LowTrigger ⇒ None
-            }
-        )
-        val lows = thresholds.flatMap (
-            {
-                case _: HighTrigger ⇒ None
-                case l: LowTrigger ⇒ Some (l)
-            }
-        )
-
-        val highEvents = if (0 < highs.length)
-            ratedTrafos.filter (filterFor (highs, typ, "ratedS"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
-                .groupBy (_._1).values.flatMap (check (access.simulation, highs)).persist (options.storage_level)
-        else
-            spark.sparkContext.emptyRDD[Event]
-
-        val lowEvents = if (0 < lows.length)
-            ratedTrafos.filter (filterFor (lows, typ, "ratedS"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (power), row.getDouble (ratedS))).persist (options.storage_level)
-                .groupBy (_._1).values.flatMap (check (access.simulation, lows)).persist (options.storage_level)
-        else
-            spark.sparkContext.emptyRDD[Event]
-
-        save (access, highEvents.union (lowEvents))
-        log.info ("""powerCheck: overpower records saved to %s.simulation_event""".format (access.output_keyspace))
+        save (highEvents.union (lowEvents))
+        log.info ("""%s deviation events saved to %s.simulation_event""".format (`type`, access.output_keyspace))
     }
 
     def run (simulations: Seq[String]): Unit =
@@ -433,11 +375,12 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             found match
             {
                 case Some ((id, input, output)) ⇒
-                    val access = SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
+                    implicit val access: SimulationCassandraAccess =
+                        SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
                     log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
-                    voltageCheck (access, Array (VOLTAGETHRESHOLD1, VOLTAGETHRESHOLD2, VOLTAGETHRESHOLD3, VOLTAGETHRESHOLD4))
-                    currentCheck (access, Array (CURRENTTHRESHOLD1, CURRENTTHRESHOLD2, CURRENTTHRESHOLD3))
-                    powerCheck (access, Array (POWERTHRESHOLD1, POWERTHRESHOLD2, POWERTHRESHOLD3))
+                    checkFor (Array (VOLTAGETHRESHOLD1, VOLTAGETHRESHOLD2, VOLTAGETHRESHOLD3, VOLTAGETHRESHOLD4))
+                    checkFor (Array (CURRENTTHRESHOLD1, CURRENTTHRESHOLD2, CURRENTTHRESHOLD3))
+                    checkFor (Array (POWERTHRESHOLD1, POWERTHRESHOLD2, POWERTHRESHOLD3))
                 case None ⇒
                     log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
             }
