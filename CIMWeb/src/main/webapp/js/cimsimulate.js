@@ -620,9 +620,9 @@ truncate table cimapplication.summary_by_day;
         {
             var name = document.getElementById ("simulation_name").value;
             var description = document.getElementById ("simulation_description").value;
-            if (name != "")
+            if (name !== "")
                 TheSimulation.name = name;
-            if (description != "")
+            if (description !== "")
                 TheSimulation.description = description;
             TheSimulation.cim = document.getElementById ("cim_file").value;
             TheSimulation.keyspaces.input = document.getElementById ("input_keyspace").value;
@@ -631,7 +631,17 @@ truncate table cimapplication.summary_by_day;
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             TheSimulation.extras = query_extras ();
-            document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (TheSimulation) + "\n</pre>";
+            const text = jsonify (TheSimulation);
+
+            const a = document.createElement ("a");
+            a.setAttribute ("href", "data:application/json;base64," + btoa (text));
+            a.setAttribute ("download", TheSimulation.name + ".json");
+            a.setAttribute ("type", "application/json");
+            a.setAttribute ("style", "display: none;");
+            a.setAttribute ("target", "_blank");
+            document.body.appendChild (a);
+            a.click ();
+            document.body.removeChild (a);
         }
 
         /**
@@ -917,7 +927,7 @@ truncate table cimapplication.summary_by_day;
                               <button id="do_simulate" name="do_simulate" type="button" class="btn btn-primary">Simulate</button>
                             </div>
                             <div class="col form-group">
-                              <button id="do_json" name="do_json" type="button" class="btn btn-primary">Show JSON</button>
+                              <button id="do_json" name="do_json" type="button" class="btn btn-primary">Download JSON</button>
                             </div>
                         </div>
                         <div class="form-group">
