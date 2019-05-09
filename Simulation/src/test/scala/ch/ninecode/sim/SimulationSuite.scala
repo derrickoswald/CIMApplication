@@ -7,10 +7,6 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.PrintWriter
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
-import java.util
 import java.util.zip.ZipInputStream
 
 import ch.ninecode.cim.CIMClasses
@@ -18,7 +14,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 
-import scala.collection.JavaConverters._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.fixture.FunSuite
 
@@ -125,7 +120,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("SimulationSuite")
-        configuration.setMaster ("local[2]")
+        configuration.setMaster ("local[*]")
         configuration.set ("spark.driver.memory", "1g")
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.ui.port", "4041")
@@ -141,7 +136,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 
         // create the fixture
         val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
-        session.sparkContext.setLogLevel ("ERROR") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+        session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         try
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         finally
@@ -420,7 +415,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     )
             }
             val sep = System.getProperty ("file.separator")
-            Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--summarize", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
+            Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
             new File (FILE_DEPOT + json).delete
     }
 
@@ -690,7 +685,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                     )
             }
             val sep = System.getProperty ("file.separator")
-            Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--summarize", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
+            Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", json))
             new File (FILE_DEPOT + json).delete
     }
 

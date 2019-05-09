@@ -109,7 +109,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     def create_player_csv (file_prefix: String)(arg: (SimulationPlayer, Iterable[SimulationPlayerData])): Unit =
     {
         val player = arg._1
-        val data = if (arg._2.isEmpty) Array (SimulationPlayerData (player.mrid, player.`type`, 0L, 0.0, 0.0)) else arg._2.toArray.sortBy (_.time)
+        val data = if (arg._2.isEmpty) Array (SimulationPlayerData (null, player.mrid, player.`type`, 0L, 0.0, 0.0)) else arg._2.toArray.sortBy (_.time)
         val text = data.map (glm_format).mkString ("\n")
         write_player_csv (file_prefix + player.file, text)
     }
@@ -218,7 +218,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
         }
     }
 
-    def execute (args: (SimulationTrafoKreis, Iterable[(String, Iterable[SimulationPlayerData])])): Iterable[SimulationResult] =
+    def execute (args: (SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])): Iterable[SimulationResult] =
     {
         val trafo = args._1
         val data = args._2
@@ -227,7 +227,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
         write_glm (trafo, workdir)
 
         // match the players to the data
-        val players: Array[(SimulationPlayer, Iterable[SimulationPlayerData])] =
+        val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
         trafo.players.map (
             player ⇒
             {

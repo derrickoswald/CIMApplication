@@ -18,9 +18,9 @@ case class SimulationEdge
     cn1: String,
     cn2: String,
     rawedge: GLMEdge,
-    position: Array[(Double, Double)],
-    players: Array[SimulationPlayer] = null,
-    recorders: Array[SimulationRecorder] = null
+    position: Iterable[(Double, Double)],
+    players: Iterable[SimulationPlayer] = null,
+    recorders: Iterable[SimulationRecorder] = null
 ) extends GLMEdge
 
 

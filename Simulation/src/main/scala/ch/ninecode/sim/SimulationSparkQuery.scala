@@ -2,14 +2,17 @@ package ch.ninecode.sim
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false)
+case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLevel, verbose: Boolean = false)
 {
     if (verbose)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
+    val executors: Int = Math.max (2, session.sparkContext.getExecutorMemoryStatus.size - 1)
+    val partitions: Int = 4 * executors
 
     val keyfield: String = "island"
     val namefield: String = "name"
@@ -27,7 +30,7 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
     def executePlayerQuery (query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] =
     {
         log.info ("""executing "%s" as %s""".format (query.title, pack (query.query)))
-        val resultset = session.sql (query.query).cache
+        val resultset = session.sql (query.query)
         val island = resultset.schema.fieldIndex (keyfield)
         val name = resultset.schema.fieldIndex (namefield)
         val parent = resultset.schema.fieldIndex (parentfield)
@@ -45,13 +48,13 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
                     row.getString (`type`),
                     row.getString (property))
             }
-        )
+        ).coalesce (partitions).persist (storage_level).setName (query.title)
     }
 
     def executeRecorderQuery (query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] =
     {
         log.info ("""executing "%s" as %s""".format (query.title, pack (query.query)))
-        val resultset = session.sql (query.query).cache
+        val resultset = session.sql (query.query)
         val island = resultset.schema.fieldIndex (keyfield)
         val name = resultset.schema.fieldIndex (namefield)
         val mrid = resultset.schema.fieldIndex (mridfield)
@@ -73,6 +76,6 @@ case class SimulationSparkQuery (session: SparkSession, verbose: Boolean = false
                     row.getString (property),
                     row.getString (unit))
             }
-        )
+        ).coalesce (partitions).persist (storage_level).setName (query.title)
     }
 }

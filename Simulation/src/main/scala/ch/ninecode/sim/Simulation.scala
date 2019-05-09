@@ -94,6 +94,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     if (options.verbose)
     {
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger ("ch.ninecode.gl.TransformerServiceArea").setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger ("ch.ninecode.sim.SimulationSparkQuery").setLevel (org.apache.log4j.Level.INFO)
         LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
     }
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -290,7 +292,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def make_tasks (job: SimulationJob): RDD[SimulationTask] =
+    def make_tasks (job: SimulationJob, id: String): RDD[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
 
@@ -306,7 +308,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 get [TopologicalNode]
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).cache // (islandid, trafosetname)
+            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).persist (options.storage_level).setName (id + "_island_trafo") // (islandid, trafosetname)
         val numtrafos = islands_trafos.count
         log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
@@ -318,21 +320,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val islands_trafos: RDD[(island_id, identifier)] = tsa.getTransformerServiceAreas
             val trafos_islands: RDD[(identifier, island_id)] = islands_trafos.map (_.swap)
 
-            val q = SimulationSparkQuery (session, options.verbose)
+            val q = SimulationSparkQuery (session, options.storage_level, options.verbose)
 
             // query the players
-            val emptyPlayers = session.sparkContext.emptyRDD [(String, SimulationPlayerResult)]
-
-            def combinePlayers (acc: RDD[(String, SimulationPlayerResult)], query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] = acc.union (q.executePlayerQuery (query))
-
-            val playersets = job.players.foldLeft (emptyPlayers)(combinePlayers).groupByKey.flatMapValues (List (_)).cache
+            log.info ("""querying players""")
+            val playersets = session.sparkContext.union (job.players.map (query ⇒ q.executePlayerQuery (query))).groupByKey
 
             // query the recorders
-            val emptyRecorders = session.sparkContext.emptyRDD [(String, SimulationRecorderResult)]
-
-            def combineRecorders (acc: RDD[(String, SimulationRecorderResult)], query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] = acc.union (q.executeRecorderQuery (query))
-
-            val recordersets = job.recorders.foldLeft (emptyRecorders)(combineRecorders).groupByKey.flatMapValues (List (_)).cache
+            log.info ("""querying recorders""")
+            val recordersets = session.sparkContext.union (job.recorders.map (query ⇒ q.executeRecorderQuery (query))).groupByKey
 
             // get the starting and ending times
             val start = job.start_time
@@ -343,17 +339,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
             val island_helper = new Island (session, StorageLevel.fromString (options.storage)) // ToDo: fix this storage
             val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
-            val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).cache
+            val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey)
+                .persist (options.storage_level).setName (id + "_areas")
 
             // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
             val fuckedup_areas: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands)
                 .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
-            val rdd2: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult]))] = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._1._3, l._2._2))).cache // (island, (trafo, [nodes], [edges], [players]))
-            val rdd3: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = rdd2.join (recordersets).map (l ⇒ (l._2._1._1, l._1, l._2._1._2, l._2._1._3, l._2._1._4, l._2._2)).cache // (island, [nodes], [edges], [players], [recorders])
+            val rdd2: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult]))] = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._1._3, l._2._2))) // (island, (trafo, [nodes], [edges], [players]))
+            val rdd3: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = rdd2.join (recordersets).map (l ⇒ (l._2._1._1, l._1, l._2._1._2, l._2._1._3, l._2._1._4, l._2._2)) // (island, [nodes], [edges], [players], [recorders])
+            log.info ("""generating simulation tasks""")
             rdd3.map (l ⇒
             {
-                val players = l._5.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
-                val recorders = l._6.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis)).toArray
+                val players = l._5.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis))
+                val recorders = l._6.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis))
                 SimulationTask (
                     l._1, // trafo
                     l._2, // island
@@ -364,7 +362,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     players,
                     recorders)
             }
-            ).cache
+            ).persist (options.storage_level).setName (id + "_tasks")
         }
         else
         {
@@ -373,37 +371,33 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def subtract_offset[Type_x: TypeTag, Type_y: TypeTag]: UserDefinedFunction = udf[Long, Timestamp, Int]((x: Timestamp, y: Int) =>
-        x.getTime - y)
-
-    def meter_values (keyspace: String): DataFrame =
+    def query_cassandra (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[String])): RDD[SimulationPlayerData] =
     {
-        val raw_meter_values = spark
+        val date_format: SimpleDateFormat =
+        {
+            val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
+            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+            format
+        }
+
+        val transformer = players._1
+        val mrids = players._2
+        val inclause = mrids.mkString ("mrid in ('", "','", "')")
+        val where = "%s and type = '%s' and time >= '%s' and time < '%s'".format (inclause, `type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
+        spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
             .load
-            .drop ("real_b", "real_c", "imag_b", "imag_c") // ToDo: 3 phase
-        raw_meter_values
-            .withColumn ("start_time", subtract_offset[Timestamp, Int].apply (raw_meter_values ("time"), raw_meter_values ("period")))
-            .drop ("time")
-            .withColumnRenamed ("start_time", "time")
-            .cache
-    }
-
-    def fetch (keyspace: String, start_time: Calendar, finish_time: Calendar) : RDD[(House, Iterable[SimulationPlayerData])] =
-    {
-        meter_values (keyspace)
-            .filter ("time >= %s and time < %s".format (start_time.getTimeInMillis, finish_time.getTimeInMillis))
-            .select ("mrid", "time", "real_a", "imag_a", "period", "type")
+            .filter (where)
+            .select ("mrid", "time", "real_a", "imag_a", "period") // ToDo: 3 phase
             .rdd
             .map (
                 row ⇒
                 {
                     val mrid = row.getString (0)
-                    val time = row.getLong (1)
                     val period = row.getInt (4)
-                    val `type` = row.getString (5)
+                    val time = row.getTimestamp (1).getTime - period // start time
                     // ToDo: should also check units
                     val factor = `type` match
                     {
@@ -415,10 +409,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     val real = row.getDouble (2) * factor
                     val imag = row.getDouble (3) * factor
                     // ToDo: should we keep the period so we can tell if a measurement is missing?
-                    SimulationPlayerData (mrid, `type`, time, real, imag)
+                    SimulationPlayerData (transformer, mrid, `type`, time, real, imag)
                 }
             )
-            .groupBy (_.mrid)
     }
 
     def process (batch: Seq[SimulationJob]): Seq[String] =
@@ -494,11 +487,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         }
                     )
 
-                    val tasks = make_tasks (job)
-                    val numtasks: Long = tasks.count
+                    val tasks = make_tasks (job, id)
                     job.save (session, job.output_keyspace, id, tasks)
-                    log.info ("""%d task%s to do for simulation %s batch %d""".format (numtasks, if (1 == numtasks) "" else "s", id, batchno))
 
+                    log.info ("""matching tasks to topological islands""")
                     val simulations =
                         tasks.flatMap (
                             task ⇒
@@ -525,66 +517,35 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                         List ()
                                 }
                             }
-                        ).cache
-                    simulations.name = "simulations"
+                        ).persist (options.storage_level).setName (id + "_simulations")
                     val numsimulations = simulations.count.asInstanceOf [Int]
                     log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
 
-                    // spread the simulations over the cluster
-                    val exec = SimulationExecutors (session)
-                    val map = exec.getActiveWorkerHostSet
-                    val executors = map.keys.toArray
-                    log.info ("""executors: %s""".format (executors.mkString (", ")))
-
-                    val gridlabd = if (0 != executors.length)
-                    {
-                        val raw = simulations.zipWithIndex.map (x ⇒ (x._2, x._1)).partitionBy (new HashPartitioner (numsimulations)).map (_._2).cache
-                        raw.name = "raw"
-                        val raw_count = raw.count
-                        log.info ("""raw RDD has %d elements in %d partitions""".format (raw_count, raw.getNumPartitions))
-                        //                raw.partitions.foreach (
-                        //                    partition ⇒
-                        //                    {
-                        //                        val locations = raw.preferredLocations (partition)
-                        //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
-                        //                    }
-                        //                )
-                        raw.coalesce (executors.length, false, Some (SimulationCoalescer (executors))).cache
-                    }
-                    else
-                        simulations
-                    gridlabd.name = "gridlabd"
-                    val gridlabd_count = gridlabd.count
-                    log.info ("""gridlabd RDD has %d elements in %d partitions""".format (gridlabd_count, gridlabd.getNumPartitions))
-                    //                gridlabd.partitions.foreach (
-                    //                    partition ⇒
-                    //                    {
-                    //                        val locations = gridlabd.preferredLocations (partition)
-                    //                        log.info ("""partition %s (hash %s) has preferred location(s) %s""".format (partition.index, partition.hashCode, locations.mkString (", ")))
-                    //                    }
-                    //                )
-
-                    val geo = SimulationGeometry (session, job.output_keyspace)
-                    geo.storeGeometry (gridlabd)
                     log.info ("""storing GeoJSON data""")
+                    val geo = SimulationGeometry (session, job.output_keyspace)
+                    geo.storeGeometry (simulations)
 
-                    // read the data
-                    val data: RDD[(House, Iterable[SimulationPlayerData])] = fetch (job.input_keyspace, gridlabd.first.start_time, gridlabd.first.finish_time) // ToDo: make a simulation object for "global values"
-                    // get the trafokreis for each house
-                    val house_trafo: RDD[(House, Trafo)] = gridlabd.flatMap (x ⇒ x.players.map (y ⇒ (y.mrid, x.transformer.transformer_name)))
-                    // join the transformer name to the data
-                    val trafo_houses: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = house_trafo.join (data)
-                        .map (x ⇒ (x._2._1, (x._1, x._2._2)))
-                        .groupByKey
-                    val packages: RDD[(SimulationTrafoKreis, Iterable[(House, Iterable[SimulationPlayerData])])] = gridlabd.keyBy (_.transformer.transformer_name).join (trafo_houses).values
+                    log.info ("""querying measured values""")
+                    // determine which players for which transformers
+                    val trafo_house = simulations.flatMap (x ⇒ x.players.map (y ⇒ (x.transformer.transformer_name, y.mrid))).groupByKey.collect
 
-                    log.info ("""performing %d GridLAB-D simulation%s on the cluster""".format (gridlabd_count, if (gridlabd_count == 1) "" else "s"))
+                    // query Cassandra to make one RDD for each trafo
+                    val rdds: Array[RDD[SimulationPlayerData]] = trafo_house.map (query_cassandra (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+
+                    // build one giant RDD
+                    val measurements = session.sparkContext.union (rdds)
+
+                    // join to the simulation
+                    val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (measurements.groupBy (_.transformer)).values
+                        .mapValues (_.groupBy (_.mrid))
+
+                    log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
                     val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)
-                    val results = packages.flatMap (runner.execute).cache
+                    val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
 
                     // save the results
                     results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
-                    log.info ("""saved GridLAB-D simulation results on the cluster""")
+                    log.info ("""saved GridLAB-D simulation results""")
 
                     // clean up
                     session.sparkContext.getPersistentRDDs.foreach (

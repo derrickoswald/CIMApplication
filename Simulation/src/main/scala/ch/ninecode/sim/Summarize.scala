@@ -455,8 +455,6 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             .drop ("real_a", "imag_a")
             .withColumn ("date", _measured_value ("time").cast (DateType))
             .cache
-        logInfo ("""Coincidence Factor: %d measured values to process""".format (measured_value.count))
-        show (measured_value)
 
         val peaks_houses = measured_value
             .groupBy ("mrid", "date")
@@ -900,7 +898,7 @@ case class Summarize (spark: SparkSession, options: SimulationOptions)
             found match
             {
                 case Some ((id, input, output)) ⇒
-                    val access = SimulationCassandraAccess (spark, id, input, output, options.verbose, options.unittest)
+                    val access = SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
                     log.info ("""summarizing %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
                     utilization (access)
                     load_factor (access)

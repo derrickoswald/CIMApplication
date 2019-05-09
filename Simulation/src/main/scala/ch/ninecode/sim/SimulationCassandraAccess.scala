@@ -2,10 +2,11 @@ package ch.ninecode.sim
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-case class SimulationCassandraAccess (spark: SparkSession, simulation: String, input_keyspace: String, output_keyspace: String, verbose: Boolean = false, unittest: Boolean = false)
+case class SimulationCassandraAccess (spark: SparkSession, storage_level: StorageLevel, simulation: String, input_keyspace: String, output_keyspace: String, verbose: Boolean = false, unittest: Boolean = false)
 {
     if (verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -37,7 +38,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .load
                 .filter ("simulation = '%s'".format (simulation))
                 .drop ("simulation", "type", "geometry")
-                .cache
+                .persist (storage_level)
             logInfo ("""%d GeoJSON points to process""".format (points.count))
             show (points)
         }
@@ -55,7 +56,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .load
                 .filter ("simulation = '%s'".format (simulation))
                 .drop ("simulation", "type", "geometry")
-                .cache
+                .persist (storage_level)
             logInfo ("""%d GeoJSON lines to process""".format (lines.count))
             show (lines)
         }
@@ -73,7 +74,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .load
                 .filter ("simulation = '%s'".format (simulation))
                 .drop ("simulation", "type", "geometry")
-                .cache
+                .persist (storage_level)
             logInfo ("""%d GeoJSON polygons to process""".format (polygons.count))
             show (polygons)
         }
@@ -94,9 +95,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                     // push down partition key = (simulation, mrid, type, period)
                     .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
                     .drop ("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units")
-                    .cache
-                logInfo ("""%d simulated values to process""".format (values.count))
-                show (values)
+                    .persist (storage_level)
                 simulated_values = simulated_values + (`type` → values)
                 values
         }
@@ -113,9 +112,7 @@ case class SimulationCassandraAccess (spark: SparkSession, simulation: String, i
                 .load
                 .filter ("type = 'energy'")
                 .drop ("real_b", "real_c", "imag_b", "imag_c", "type", "units")
-                .cache
-            logInfo ("""%d measured values to process""".format (measured_values.count))
-            show (measured_values)
+                .persist (storage_level)
             measured_values
         }
         measured_values

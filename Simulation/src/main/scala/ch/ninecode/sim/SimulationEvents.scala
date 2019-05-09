@@ -433,7 +433,7 @@ case class SimulationEvents (spark: SparkSession, options: SimulationOptions)
             found match
             {
                 case Some ((id, input, output)) ⇒
-                    val access = SimulationCassandraAccess (spark, id, input, output, options.verbose, options.unittest)
+                    val access = SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
                     log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
                     voltageCheck (access, Array (VOLTAGETHRESHOLD1, VOLTAGETHRESHOLD2, VOLTAGETHRESHOLD3, VOLTAGETHRESHOLD4))
                     currentCheck (access, Array (CURRENTTHRESHOLD1, CURRENTTHRESHOLD2, CURRENTTHRESHOLD3))

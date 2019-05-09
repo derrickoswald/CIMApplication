@@ -3,11 +3,6 @@ package ch.ninecode.sim
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
-import scala.collection.JavaConversions._
-//import scala.collection.JavaConverters._
 
 import com.datastax.spark.connector._
 
@@ -75,7 +70,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (x._1._1, node.equipment, geometry, properties, x._1._2, "Feature")
                 }
             )
-        jsons.saveToCassandra (keyspace, "geojson_points")
+        jsons.saveToCassandra (keyspace, "geojson_points", SomeColumns ("simulation", "mrid", "geometry", "properties", "transformer", "type"))
     }
 
     def store_geojson_lines (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
@@ -103,7 +98,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (x._1._1, edge.rawedge.id, geometry, properties, x._1._2, "Feature")
                 }
             )
-        jsons.saveToCassandra (keyspace, "geojson_lines")
+        jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "geometry", "properties", "transformer", "type"))
     }
 
     def get_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
@@ -130,7 +125,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (trafo.simulation, trafo.transformer.transformer_name, geometry, properties, "Feature")
                 }
         )
-        jsons.saveToCassandra (keyspace, "geojson_polygons")
+        jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "geometry", "properties", "type"))
     }
 
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =

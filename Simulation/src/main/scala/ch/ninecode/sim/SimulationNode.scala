@@ -19,6 +19,6 @@ case class SimulationNode
     nominal_voltage: Double,
     equipment: String,
     position: (Double, Double) = null,
-    players: Array[SimulationPlayer] = null,
-    recorders: Array[SimulationRecorder] = null
+    players: Iterable[SimulationPlayer] = null,
+    recorders: Iterable[SimulationRecorder] = null
 ) extends GLMNode
