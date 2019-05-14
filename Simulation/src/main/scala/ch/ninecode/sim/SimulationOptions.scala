@@ -52,7 +52,7 @@ case class SimulationOptions
     workdir: String = "simulation/",
 
     /**
-     * Cacheing option.
+     * Caching option.
      */
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
 
@@ -62,14 +62,14 @@ case class SimulationOptions
     keep: Boolean = false,
 
     /**
-     * Summarize results.
+     * Only perform simulation.
      */
-    summarize: Boolean = false,
+    simulationonly: Boolean = false,
 
     /**
-     * Perform event checking.
+     * Only perform postprocessing.
      */
-    events: Boolean = false,
+    postprocessonly: Boolean = false,
 
     /**
      * Simulation JSON files.

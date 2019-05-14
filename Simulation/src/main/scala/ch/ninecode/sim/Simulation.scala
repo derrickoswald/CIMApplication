@@ -3,7 +3,6 @@ package ch.ninecode.sim
 import java.io.Closeable
 import java.io.StringReader
 import java.io.StringWriter
-import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Calendar
@@ -16,18 +15,13 @@ import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.HashPartitioner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -53,7 +47,6 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-
 
 /**
  * Execute simulations using GridLAB-D.
@@ -414,7 +407,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             )
     }
 
-    def process (batch: Seq[SimulationJob]): Seq[String] =
+    def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
         val storage = StorageLevel.fromString (options.storage)
 
@@ -565,12 +558,86 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         ids
     }
 
+    def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
+    {
+        val keyspaces = jobs.map (_.output_keyspace).distinct
+        val lookup = keyspaces.flatMap (
+            keyspace ⇒
+            {
+                spark
+                    .read
+                    .format ("org.apache.spark.sql.cassandra")
+                    .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
+                    .load
+                    .select ("id", "input_keyspace", "output_keyspace")
+                    .rdd
+                    .map (row ⇒ (row.getString (0), row.getString (1), row.getString (2)))
+                    .collect
+            }
+        )
+
+        for (simulation ← ids)
+        {
+            val found = lookup.find (_._1 == simulation)
+            found match
+            {
+                case Some ((id, input, output)) ⇒
+                    implicit val access: SimulationCassandraAccess =
+                        SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
+                    // ToDo: this isn't quite right, take the first job matching the output keyspace
+                    val batches = jobs.groupBy (_.output_keyspace)
+                    val job = batches (output).head
+                    job.postprocessors.foreach (
+                        processor ⇒
+                        {
+                            val runner = processor (session, options)
+                            runner.run (access)
+                        }
+                    )
+                case None ⇒
+                    log.error ("""simulation %s not found in keyspaces (%s)""".format (simulation, lookup.map (_._2).mkString (",")))
+            }
+        }
+
+    }
+
     def run (): Seq[String] =
     {
         val jobs = SimulationJob.getAll (options)
-        // organize by same RDF, options and output keyspace
-        val batches = jobs.groupBy (job ⇒ job.cim + job.optionString + job.output_keyspace).values
-        batches.flatMap (process).toSeq
+
+        // simulate
+        val ids = if (!options.postprocessonly)
+        {
+            // organize by same RDF, options and output keyspace
+            val batches = jobs.groupBy (job ⇒ job.cim + job.optionString + job.output_keyspace).values
+            batches.flatMap (simulate).toSeq
+        }
+        else
+        {
+            // get all simulations from the output keyspace(s)
+            val keyspaces = jobs.map (_.output_keyspace).distinct
+            log.info ("""using keyspace%s %s""".format (if (1 < keyspaces.length) "s" else "", keyspaces.mkString (",")))
+            keyspaces.flatMap (
+                keyspace ⇒
+                {
+                    spark
+                        .read
+                        .format ("org.apache.spark.sql.cassandra")
+                        .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
+                        .load
+                        .select ("id")
+                        .collect
+                        .map (_.getString (0))
+                }
+            )
+        }
+        log.info ("""simulation%s %s""".format (if (ids.size > 1) "s" else "", ids.mkString (",")))
+
+        // postprocess
+        if (!options.simulationonly)
+            postprocess (ids, jobs)
+
+        ids
     }
 }
 

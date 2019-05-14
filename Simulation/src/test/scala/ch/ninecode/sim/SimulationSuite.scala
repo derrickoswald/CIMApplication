@@ -409,6 +409,115 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |            "title": "nominalVoltage",
                           |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
                           |        }
+                          |    ],
+                          |    "postprocessing":
+                          |    [
+                          |        {
+                          |            "class": "event",
+                          |            "thresholds":
+                          |            [
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "voltage",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "low",
+                          |                    "type": "voltage",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "voltage",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 1.06,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "low",
+                          |                    "type": "voltage",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 0.94,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 10800000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 0.75,
+                          |                    "duration": 50400000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 10800000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 0.75,
+                          |                    "duration": 50400000
+                          |                }
+                          |            ]
+                          |        }
                           |    ]
                           |}
                           |""".stripMargin
@@ -678,6 +787,115 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        {
                           |            "title": "nominalVoltage",
                           |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+                          |        }
+                          |    ],
+                          |    "postprocessing":
+                          |    [
+                          |        {
+                          |            "class": "event",
+                          |            "thresholds":
+                          |            [
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "voltage",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "low",
+                          |                    "type": "voltage",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "voltage",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 1.06,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "low",
+                          |                    "type": "voltage",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_points",
+                          |                    "reference": "ratedVoltage",
+                          |                    "default": 400.0,
+                          |                    "ratio": 0.94,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 10800000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "current",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_lines",
+                          |                    "reference": "ratedCurrent",
+                          |                    "default": 100.0,
+                          |                    "ratio": 0.75,
+                          |                    "duration": 50400000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 1.10,
+                          |                    "duration": 900000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 2,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 0.90,
+                          |                    "duration": 10800000
+                          |                },
+                          |                {
+                          |                    "trigger": "high",
+                          |                    "type": "power",
+                          |                    "severity": 1,
+                          |                    "table": "geojson_polygons",
+                          |                    "reference": "ratedS",
+                          |                    "default": 630000,
+                          |                    "ratio": 0.75,
+                          |                    "duration": 50400000
+                          |                }
+                          |            ]
                           |        }
                           |    ]
                           |}

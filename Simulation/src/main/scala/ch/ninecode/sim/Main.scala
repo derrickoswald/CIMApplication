@@ -95,13 +95,13 @@ object Main
             action ((_, c) ⇒ c.copy (keep = true)).
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
-        opt [Unit]("summarize").
-            action ((_, c) ⇒ c.copy (summarize = true)).
-            text ("perform summary operations [%s]".format (default.summarize))
+        opt [Unit]("simulationonly").
+            action ((_, c) ⇒ c.copy (simulationonly = true)).
+            text ("perform simulation operations only [%s]".format (default.simulationonly))
 
-        opt [Unit]("events").
-            action ((_, c) ⇒ c.copy (events = true)).
-            text ("perform event detection operations [%s]".format (default.events))
+        opt [Unit]("postprocessonly").
+            action ((_, c) ⇒ c.copy (postprocessonly = true)).
+            text ("perform postprocessing operations only [%s]".format (default.postprocessonly))
 
         arg [String]("<JSON> <JSON>...").optional ().unbounded ().
             action ((x, c) ⇒
@@ -110,7 +110,9 @@ object Main
                 {
                     val sep = System.getProperty ("file.separator")
                     val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
-                    val text = scala.io.Source.fromFile (file, "UTF-8").mkString
+                    val source = scala.io.Source.fromFile (file, "UTF-8")
+                    val text = source.mkString
+                    source.close
                     c.copy (simulation = c.simulation :+ text)
                 }
                 catch
@@ -216,31 +218,10 @@ object Main
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    var to_summarize: Seq[String] = Seq()
                     if (options.simulation.nonEmpty)
-                    {
-                        val sim = Simulation (session, options)
-                        val runs = sim.run ()
-                        if (options.summarize || options.events)
-                            to_summarize = runs
-                        log.info ("""simulation%s %s""".format (if (runs.size > 1) "s" else "", runs.mkString (",")))
-                    }
-
-                    if (to_summarize.nonEmpty)
-                    {
-                        if (options.summarize)
-                        {
-                            val sum = Summarize (session, options)
-                            sum.run (to_summarize)
-                            log.info ("""summarized %s""".format (to_summarize.mkString (",")))
-                        }
-                        if (options.events)
-                        {
-                            val events = SimulationEvents (session, options)
-                            events.run (to_summarize)
-                            log.info ("""event detected %s""".format (to_summarize.mkString (",")))
-                        }
-                    }
+                        Simulation (session, options).run ()
+                    else
+                        log.error ("""no simulation JSON files specified""")
 
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")

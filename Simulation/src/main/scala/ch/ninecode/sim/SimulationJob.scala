@@ -158,7 +158,15 @@ case class SimulationJob
      * If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
      *     "ratedCurrent": "200.0"
      */
-    extras: Seq[SimulationExtraQuery]
+    extras: Seq[SimulationExtraQuery],
+
+    /**
+     * Operations to be performed after the simulation is complete.
+     *
+     * Each processor in the list handles one type of operation and each must parse its own JSON.
+     *
+     */
+    postprocessors: Seq[(SparkSession, SimulationOptions) ⇒ SimulationPostProcessor]
 )
 {
     def optionString: String = cimreaderoptions.map (kv ⇒ kv._1 + "=" + kv._2).mkString (",")
@@ -373,6 +381,32 @@ object SimulationJob
         extras.flatMap (parseExtra (name, _))
     }
 
+    def lookup (cls: String): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
+    {
+        cls match
+        {
+            case "event" ⇒ SimulationEvents.parser ()
+            case "coincidence_factor" ⇒ SimulationCoincidenceFactor.parser ()
+            case "load_factor" ⇒ SimulationLoadFactor.parser ()
+            case "responsibility_factor" ⇒ SimulationResponsibilityFactor.parser ()
+            case _ ⇒ throw new NotImplementedError ("""cls %s is not recognized as a post processor""".format (cls))
+        }
+    }
+
+    def parsePostProcess (name: String, post: JsonObject): (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
+    {
+        val cls = post.getString ("class", "")
+        val class_parser = lookup (cls)
+        class_parser (post)
+    }
+
+    def parsePostProcessing (name: String, json: JsonObject): Seq[(SparkSession, SimulationOptions) ⇒ SimulationPostProcessor] =
+    {
+        // ToDo: more robust checking
+        val post_processes: Seq[JsonObject] = json.getJsonArray ("postprocessing").getValuesAs (classOf [JsonObject]).asScala
+        post_processes.map (parsePostProcess (name, _))
+    }
+
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
     {
 
@@ -393,7 +427,8 @@ object SimulationJob
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
-            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, start, end, transformers, players, recorders, extras))
+            val postprocesses = parsePostProcessing (name, json)
+            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, start, end, transformers, players, recorders, extras, postprocesses))
         }
     }
 
