@@ -53,7 +53,7 @@ class Estimation extends RESTful
                 // the SparkContext configuration for spark.cassandra.connection.host, i.e.	"sandbox",
                 // so we do that in the EstimationFunction when we get a SparkSession,
                 // otherwise it defaults to localhost
-                val options = SimulationOptions (verbose = verbose, keep = keep, events = events, summarize = summarize, simulation = Seq (json))
+                val options = SimulationOptions (verbose = verbose, keep = keep, simulation = Seq (json))
                 val estimator = EstimationFunction (options)
                 input.asInstanceOf[map].put (CIMFunction.FUNCTION, estimator)
                 val interaction = connection.createInteraction

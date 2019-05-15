@@ -24,11 +24,6 @@ define
                 this._quality_factors =
                 [
                     {
-                        title: "Utilization (%)",
-                        id: "utilization",
-                        selected: true
-                    },
-                    {
                         title: "Load factor (0 &rarr; 1)",
                         id: "load_factor",
                         selected: false
@@ -46,16 +41,6 @@ define
                     {
                         title: "Responsibility factor (0 &rarr; 1)",
                         id: "responsibility_factor",
-                        selected: false
-                    },
-                    {
-                        title: "Voltage deviation (%)",
-                        id: "voltage_deviation",
-                        selected: false
-                    },
-                    {
-                        title: "Losses (Wh)",
-                        id: "losses",
                         selected: false
                     },
                     {

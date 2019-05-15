@@ -30,7 +30,7 @@ class RESTful ()
         {
             val specification: CIMConnectionSpec = factory.getDefaultConnectionSpec
             specification.getProperties.put ("spark.driver.memory", "1g")
-            specification.getProperties.put ("spark.executor.memory", "1g")
+            specification.getProperties.put ("spark.executor.memory", "2g")
             factory.getConnection (specification).asInstanceOf[CIMConnection]
         }
         else

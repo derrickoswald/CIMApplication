@@ -9,7 +9,6 @@ define
     /**
      * @summary Theme on simulation output.
      * @description Theme class for colorizing by simulation summaries like utilization, load factor, and deviation from nominal voltage.
-     * @name simulation_theme
      * @exports simulation_theme
      * @version 1.0
      */
@@ -99,17 +98,13 @@ define
                     this._LastValue = value;
                     if (this._TheChart)
                         this._TheChart.drawChartCursor (value);
-                    var date = new Date (value).toISOString ();
-                    var polygon_color = "#000000";
-                    var line_color = "#000000";
-                    var point_color = "#000000";
-                    var subtheme = this.getLegend ().currentQualityFactor ();
+                    const date = new Date (value).toISOString ();
+                    let polygon_color = "#000000";
+                    let line_color = "#000000";
+                    let point_color = "#000000";
+                    const subtheme = this.getLegend ().currentQualityFactor ();
                     switch (subtheme)
                     {
-                        case "utilization":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
-                            line_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0, 255, 0)"], [100.0, "RGB(255,0,0)"] ] };
-                            break;
                         case "load_factor":
                             polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0,255,0)"] ] };
                             break;
@@ -122,25 +117,16 @@ define
                         case "responsibility_factor":
                             point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100.0, "RGB(255,0,0)"] ] };
                             break;
-                        case "voltage_deviation":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"] ] };
-                            point_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [-3.0, "RGB(255,0,0)"], [0.0, "RGB(0,255,0)"], [3.0, "RGB(255,0,0)"] ] };
-                            break;
-                        case "losses":
-                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0,255,0)"], [100000.0, "RGB(255,0,0)"] ] };
-                            line_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(0, 255, 0)"], [1000.0, "RGB(255,0,0)"] ] };
-                            break;
                         case "measurements":
                             point_color = { type: "exponential", property: "T" + date.replace ("T", " "), stops: [ [0.0, "RGB(0,255,0)"], [3000.0, "RGB(255,0,0)"]] };
                             break;
                     }
 
-                    var current = this._TheMap.getPaintProperty ("polygons", "fill-color");
                     this._TheMap.setPaintProperty ("polygons", "fill-color", polygon_color);
-                    var has_lines = this._TheMap.getSource ("edges")._data.features.length > 0;
+                    const has_lines = this._TheMap.getSource ("edges")._data.features.length > 0;
                     if (has_lines)
                         this._TheMap.setPaintProperty ("lines", "line-color", line_color);
-                    var has_points = this._TheMap.getSource ("nodes")._data.features.length > 0;
+                    const has_points = this._TheMap.getSource ("nodes")._data.features.length > 0;
                     if (has_points)
                         this._TheMap.setPaintProperty ("points", "circle-color", point_color);
                 }
@@ -190,10 +176,10 @@ define
                 this._TheMap.getSource ("edges").setData (this._simulation_lines);
             }
 
-            load_points_and_lines (trafo)
+            load_points_and_lines ()
             {
-                var self = this;
-                var promise = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                const self = this;
+                const promise = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
                 .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
                 .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Points.call (self, data))
@@ -209,70 +195,34 @@ define
             // load trafokreis
             load_trafo (trafo)
             {
-                var self = this;
+                const self = this;
                 self._Trafo = trafo;
 
-                var subtheme = self.getLegend ().currentQualityFactor ();
+                const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
-                    case "utilization":
-                        this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day_by_transformer where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setUtilizationSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setUtilization_for_Lines.call (self, data))
-                            .then (() =>
-                                {
-                                    self._TheMap.getSource ("edges").setData (self._simulation_lines);
-                                }
-                            );
-                        break;
                     case "load_factor":
                         this.clear_points_and_lines ();
                         cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".load_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
-                            .then (data => self.setLoadFactor_for_Polygon.call (self, data))
+                            .then (data => self.setLoadFactor_for_Polygon.call (self, data));
                         break;
                     case "coincidence_factor":
                         this.clear_points_and_lines ();
                         cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
-                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, false, data))
+                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, false, data));
                         break;
                     case "diversity_factor":
                         this.clear_points_and_lines ();
                         cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
-                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, true, data))
+                            .then (data => self.setCoincidenceFactor_for_Polygon.call (self, true, data));
                         break;
                     case "responsibility_factor":
-                         this.load_points_and_lines (trafo)
+                         this.load_points_and_lines ()
                             .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".responsibility_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                             .then (data => self.setResponsibility_for_Points.call (self, data))
                             .then (() =>
                                 {
                                     self._TheMap.getSource ("nodes").setData (self._simulation_points);
-                                }
-                            );
-                        break;
-                    case "voltage_deviation":
-                         this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setDeviationSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setVoltageDeviation_for_Points.call (self, data))
-                            .then (() =>
-                                {
-                                    self._TheMap.getSource ("nodes").setData (self._simulation_points);
-                                }
-                            );
-                        break;
-                    case "losses":
-                         this.load_points_and_lines (trafo)
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_summary_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setLossesSummary_for_Polygon.call (self, data))
-                            .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_by_day where transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
-                            .then (data => self.setLosses_for_Lines.call (self, data))
-                            .then (() =>
-                                {
-                                    self._TheMap.getSource ("edges").setData (self._simulation_lines);
                                 }
                             );
                         break;
@@ -286,14 +236,10 @@ define
             // load cable data
             load_cable (cable)
             {
-                var self = this;
-                var subtheme = self.getLegend ().currentQualityFactor ();
+                const self = this;
+                const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
-                    case "utilization":
-                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization where period = 900000 and mrid ='" + cable + "' allow filtering", cassandra: true })
-                            .then (data => self.setCableUtilization.call (self, data));
-                        break;
                     case "load_factor":
                         break;
                     case "coincidence_factor":
@@ -301,12 +247,6 @@ define
                     case "diversity_factor":
                         break;
                     case "responsibility_factor":
-                        break;
-                    case "voltage_deviation":
-                        break;
-                    case "losses":
-                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_by_day where mrid ='" + cable + "' allow filtering", cassandra: true })
-                            .then (data => self.setCableLosses.call (self, data));
                         break;
                     case "measurements":
                         break;
@@ -316,12 +256,10 @@ define
             // load house data
             load_house (house)
             {
-                var self = this;
-                var subtheme = self.getLegend ().currentQualityFactor ();
+                const self = this;
+                const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
-                    case "utilization":
-                        break;
                     case "load_factor":
                         break;
                     case "coincidence_factor":
@@ -332,13 +270,6 @@ define
                         cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".responsibility_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseResponsibility.call (self, data));
                         break;
-                    case "voltage_deviation":
-                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_by_day where mrid ='" + house + "' allow filtering", cassandra: true })
-                            .then (data => self.setHouseVoltageDeviation.call (self, data));
-                        break;
-                    case "losses":
-                        alert (house);
-                        break;
                     case "measurements":
                         cimquery.queryPromise ({ sql: "select json * from " + self._simulation_json.input_keyspace + ".measured_value where mrid ='" + house + "' allow filtering", cassandra: true })
                             .then (data => self.setHouseMeasurement.call (self, data));
@@ -348,9 +279,9 @@ define
 
             click (x, y)
             {
-                var width = 4;
-                var height = 4;
-                var features = this._TheMap.queryRenderedFeatures
+                const width = 4;
+                const height = 4;
+                const features = this._TheMap.queryRenderedFeatures
                 (
                     [
                       [x - width / 2, y - height / 2],
@@ -358,25 +289,25 @@ define
                     ],
                     {}
                 );
-                if ((null != features) && (0 != features.length))
+                if ((null != features) && (0 !== features.length))
                 {
-                    var trafo = null;
-                    var cable = null;
-                    var house = null;
-                    for (var i = 0; i < features.length; i++)
-                        if (features[i].layer.id == "polygons")
+                    let trafo = null;
+                    let cable = null;
+                    let house = null;
+                    for (let i = 0; i < features.length; i++)
+                        if (features[i].layer.id === "polygons")
                             trafo = features[i].properties.mRID;
-                        else if (features[i].layer.id == "lines")
+                        else if (features[i].layer.id === "lines")
                         {
                             if (features[i].properties.mRID && features[i].properties.ratedCurrent)
                                 cable = features[i].properties.mRID;
                         }
-                        else if (features[i].layer.id == "points")
+                        else if (features[i].layer.id === "points")
                         {
                             if (features[i].properties.mRID && features[i].properties.nominalVoltage)
                                 house = features[i].properties.mRID;
                         }
-                    if (((null == this._Trafo) && (null != trafo)) || (trafo != this._Trafo) || (trafo && !cable && !house))
+                    if (((null == this._Trafo) && (null != trafo)) || (trafo !== this._Trafo) || (trafo && !cable && !house))
                         this.load_trafo (trafo);
                     else if (cable && !house)
                         this.load_cable (cable);
@@ -389,15 +320,15 @@ define
             mousedown_listener (event)
             {
                 // only do something if no key is pressed
-                var key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
+                const key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
                 if (!key)
                 {
-                    var buttons = event.originalEvent.buttons;
+                    const buttons = event.originalEvent.buttons;
                     //    0  : No button or un-initialized
                     //    1  : Primary button (usually left)
                     //    2  : Secondary button (usually right)
-                    var leftbutton = 0 != (buttons & 1);
-                    var rightbutton = 0 != (buttons & 2);
+                    const leftbutton = 0 !== (buttons & 1);
+                    const rightbutton = 0 !== (buttons & 2);
                     if (leftbutton)
                         this.click (event.point.x, event.point.y);
                 }
@@ -413,11 +344,11 @@ define
              */
             make_theme (cimmap, options)
             {
-                var start = new Date ().getTime ();
+                const start = new Date ().getTime ();
                 console.log ("rendering simulation data");
 
                 this._cimmap = cimmap;
-                var map = cimmap.get_map ();
+                const map = cimmap.get_map ();
                 this._TheMap = map; // to be able to remove it later
 
                 // update the map
@@ -452,15 +383,15 @@ define
                 );
 
                 // simple circle from 14 to 25
-                map.addLayer (layers.full_circle_layer ("points", "nodes", "#000000"))
+                map.addLayer (layers.full_circle_layer ("points", "nodes", "#000000"));
 
                 // lines 3 pixels wide
                 map.addLayer (layers.line_layer ("lines", "edges", "#000000"));
 
                 // blue with border
-                map.addLayer (layers.polygon_layer ("polygons", "areas", "#0000ff", "#000000"))
+                map.addLayer (layers.polygon_layer ("polygons", "areas", "#0000ff", "#000000"));
 
-                var end = new Date ().getTime ();
+                const end = new Date ().getTime ();
                 console.log ("finished rendering simulation data (" + (Math.round (end - start) / 1000) + " seconds)");
 
                 if (this._render_listener)
@@ -476,14 +407,14 @@ define
 
             fixup (raw)
             {
-                var feature = JSON.parse (raw["[json]"]);
+                const feature = JSON.parse (raw["[json]"]);
                 delete feature.simulation;
-                var mrid = feature.mrid;
+                const mrid = feature.mrid;
                 delete feature.mrid;
                 if (!feature.properties)
                     feature.properties = {};
                 feature.properties.mRID = mrid;
-                var transformer = feature.transformer;
+                const transformer = feature.transformer;
                 if (transformer)
                 {
                     feature.properties.transformer = transformer;
@@ -495,7 +426,7 @@ define
             setSimulationGeoJSON_Points (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "MUI200057", "geometry": {"type": "Point", "coordinates": [9.50617, 47.0154]}, "type": "Feature"}, ...
-                var features = data.map (this.fixup);
+                const features = data.map (this.fixup);
                 // the points GeoJSON
                 this._simulation_points =
                 {
@@ -507,7 +438,7 @@ define
             setSimulationGeoJSON_Lines (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "KLE2632", "geometry": {"type": "LineString", "coordinates": [[9.491, 47.0138], [9.491, 47.0138], [9.49105, 47.0139], [9.49109, 47.0139], [9.49107, 47.0139], [9.49108, 47.014]]}, "type": "Feature"}, ...
-                var features = data.map (this.fixup);
+                const features = data.map (this.fixup);
                 // the lines GeoJSON
                 this._simulation_lines =
                 {
@@ -518,127 +449,22 @@ define
 
             stripTs (object) // remove old data
             {
-                var ts = [];
-                for (var x in object.properties)
-                    if (x.startsWith ("T2"))
-                        ts.push (x);
+                const ts = [];
+                for (let x in object.properties)
+                    if (object.properties.hasOwnProperty (x))
+                        if (x.startsWith ("T2"))
+                            ts.push (x);
                 ts.forEach (x => delete object.properties[x]);
                 return (object);
             }
 
-            setUtilizationSummary_for_Polygons (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var utilization = JSON.parse (row["[json]"]);
-                        //    {
-                        //        avg: 10.277724814899273
-                        //        date: "2017-07-17"
-                        //        max: 66.69010587510391
-                        //        min: 0
-                        //        transformer: "TRA2755"
-                        //    }
-                        var polygon = index[utilization.mrid];
-                        if (polygon)
-                        {
-                            polygon = polygon.properties;
-                            var date = utilization.date;
-                            var item = "T" + date;
-                            polygon[item] = utilization.max_utilization;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_polygons.features.forEach (
-                    polygon =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (polygon.properties[x]))
-                                polygon.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setUtilizationSummary_for_Polygon (data)
-            {
-                var transformer = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var utilization = JSON.parse (row["[json]"]);
-                        transformer = utilization.mrid;
-                        return ([(new Date (utilization.date)).getTime (), utilization.max_utilization]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]);
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Utilization (%)", [{ name: transformer, data: values}])
-            }
-
-            setUtilization_for_Lines (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = this.stripTs (line));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var utilization = JSON.parse (row["[json]"]);
-                        var line = index[utilization.mrid];
-                        if (line)
-                        {
-                            var date = utilization.date;
-                            var item = "T" + date;
-                            line.properties[item] = utilization.max_utilization;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_lines.features.forEach (
-                    line =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (line.properties[x]))
-                                line.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setCableUtilization (data)
-            {
-                var cable = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var utilization = JSON.parse (row["[json]"]);
-                        cable = utilization.mrid;
-                        return ([(new Date (utilization.time)).getTime (), utilization.utilization]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (cable + " Cable Utilization (%)", [{ name: cable, data: values}])
-            }
-
             setHouseResponsibility (data)
             {
-                var house = "";
-                var values = data.map (
+                let house = "";
+                const values = data.map (
                     row =>
                     {
-                        var responsibility = JSON.parse (row["[json]"]);
+                        const responsibility = JSON.parse (row["[json]"]);
                         house = responsibility.mrid;
                         return ([(new Date (responsibility.time)).getTime (), responsibility.responsibility]);
                     }
@@ -651,35 +477,16 @@ define
                 this._TheChart.setChart (house + " Responsibility (0 → 1)", [{ name: house, data: values}])
             }
 
-            setHouseVoltageDeviation (data)
-            {
-                var house = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var deviation = JSON.parse (row["[json]"]);
-                        house = deviation.mrid;
-                        return ([(new Date (deviation.date)).getTime (), deviation.deviation]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (house + " Voltage Deviation (%)", [{ name: house, data: values}])
-            }
-
             setHouseMeasurement (data)
             {
-                var house = "";
-                var values = data.map (
+                let house = "";
+                const values = data.map (
                     row =>
                     {
-                        var measurement = JSON.parse (row["[json]"]);
+                        const measurement = JSON.parse (row["[json]"]);
                         house = measurement.mrid;
-                        var real = measurement.real_a;
-                        var imag = measurement.imag_a;
+                        const real = measurement.real_a;
+                        const imag = measurement.imag_a;
                         return ([(new Date (measurement.time)).getTime (), Math.sqrt (real * real + imag * imag)]);
                     }
                 )
@@ -693,20 +500,20 @@ define
 
             setLoadFactor_for_Polygons (data)
             {
-                var index = {};
-                var self = this;
+                const index = {};
+                const self = this;
                 this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
-                var default_data = {};
+                const default_data = {};
                 data.forEach (
                     row =>
                     {
-                        var load_factor = JSON.parse (row["[json]"]);
-                        var polygon = index[load_factor.mrid];
+                        const load_factor = JSON.parse (row["[json]"]);
+                        let polygon = index[load_factor.mrid];
                         if (polygon)
                         {
                             polygon = polygon.properties;
-                            var date = load_factor.date;
-                            var item = "T" + date;
+                            const date = load_factor.date;
+                            const item = "T" + date;
                             polygon[item] = load_factor.load_factor;
                             default_data[item] = 0.0;
                         }
@@ -715,7 +522,7 @@ define
                 this._simulation_polygons.features.forEach (
                     polygon =>
                     {
-                        for (var x in default_data)
+                        for (let x in default_data)
                             if ("undefined" == typeof (polygon.properties[x]))
                                 polygon.properties[x] = default_data[x];
                     }
@@ -724,11 +531,11 @@ define
 
             setLoadFactor_for_Polygon (data)
             {
-                var transformer = "";
-                var values = data.map (
+                let transformer = "";
+                const values = data.map (
                     row =>
                     {
-                        var load_factor = JSON.parse (row["[json]"]);
+                        const load_factor = JSON.parse (row["[json]"]);
                         transformer = load_factor.mrid;
                         return ([(new Date (load_factor.date)).getTime (), load_factor.load_factor]);
                     }
@@ -743,21 +550,21 @@ define
 
             setCoincidenceFactor_for_Polygons (invert, data)
             {
-                var index = {};
-                var self = this;
+                const index = {};
+                const self = this;
                 this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
-                var default_data = {};
+                const default_data = {};
                 data.forEach (
                     row =>
                     {
-                        var coincidence_factor = JSON.parse (row["[json]"]);
-                        var polygon = index[coincidence_factor.mrid];
+                        const coincidence_factor = JSON.parse (row["[json]"]);
+                        let polygon = index[coincidence_factor.mrid];
                         if (polygon)
                         {
                             polygon = polygon.properties;
-                            var date = coincidence_factor.date;
-                            var item = "T" + date;
-                            var factor = coincidence_factor.coincidence_factor;
+                            const date = coincidence_factor.date;
+                            const item = "T" + date;
+                            const factor = coincidence_factor.coincidence_factor;
                             polygon[item] = invert ? 1.0 / factor : factor;
                             default_data[item] = 0.0;
                         }
@@ -766,7 +573,7 @@ define
                 this._simulation_polygons.features.forEach (
                     polygon =>
                     {
-                        for (var x in default_data)
+                        for (let x in default_data)
                             if ("undefined" == typeof (polygon.properties[x]))
                                 polygon.properties[x] = default_data[x];
                     }
@@ -775,13 +582,13 @@ define
 
             setCoincidenceFactor_for_Polygon (invert, data)
             {
-                var transformer = "";
-                var values = data.map (
+                let transformer = "";
+                const values = data.map (
                     row =>
                     {
-                        var coincidence_factor = JSON.parse (row["[json]"]);
+                        const coincidence_factor = JSON.parse (row["[json]"]);
                         transformer = coincidence_factor.mrid;
-                        var factor = coincidence_factor.coincidence_factor;
+                        const factor = coincidence_factor.coincidence_factor;
                         return ([(new Date (coincidence_factor.date)).getTime (), invert ? 1.0 / factor : factor]);
                     }
                 )
@@ -795,19 +602,18 @@ define
 
             setResponsibility_for_Points (data)
             {
-                var index = {};
-                var self = this;
+                const index = {};
                 this._simulation_points.features.forEach (point => index[point.properties.mRID] = this.stripTs (point));
-                var default_data = {};
+                const default_data = {};
                 data.forEach (
                     row =>
                     {
-                        var responsibility = JSON.parse (row["[json]"]);
-                        var point = index[responsibility.mrid];
+                        const responsibility = JSON.parse (row["[json]"]);
+                        const point = index[responsibility.mrid];
                         if (point)
                         {
-                            var time = responsibility.time;
-                            var item = "T" + time.substring (0, time.indexOf (" "));
+                            const time = responsibility.time;
+                            const item = "T" + time.substring (0, time.indexOf (" "));
                             point.properties[item] = responsibility.responsibility;
                             default_data[item] = 0.0;
                         }
@@ -816,196 +622,17 @@ define
                 this._simulation_points.features.forEach (
                     point =>
                     {
-                        for (var x in default_data)
+                        for (let x in default_data)
                             if ("undefined" == typeof (point.properties[x]))
                                 point.properties[x] = default_data[x];
                     }
                 );
-            }
-
-            setDeviationSummary_for_Polygons (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var deviation = JSON.parse (row["[json]"]);
-                        var polygon = index[deviation.mrid];
-                        if (polygon)
-                        {
-                            polygon = polygon.properties;
-                            var date = deviation.date;
-                            var item = "T" + date;
-                            polygon[item] = deviation.deviation;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_polygons.features.forEach (
-                    polygon =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (polygon.properties[x]))
-                                polygon.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setDeviationSummary_for_Polygon (data)
-            {
-                var transformer = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var deviation = JSON.parse (row["[json]"]);
-                        transformer = deviation.mrid;
-                        return ([(new Date (deviation.date)).getTime (), deviation.deviation]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]);
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Voltage Deviation (%)", [{ name: transformer, data: values}])
-            }
-
-            setVoltageDeviation_for_Points (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_points.features.forEach (point => index[point.properties.mRID] = this.stripTs (point));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var deviation = JSON.parse (row["[json]"]);
-                        var point = index[deviation.mrid];
-                        if (point)
-                        {
-                            var date = deviation.date;
-                            var item = "T" + date;
-                            point.properties[item] = deviation.deviation;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_points.features.forEach (
-                    point =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (point.properties[x]))
-                                point.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setLosses_for_Polygons (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_polygons.features.forEach (polygon => index[polygon.properties.mRID] = self.stripTs (polygon));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var losses = JSON.parse (row["[json]"]);
-                        var polygon = index[losses.mrid];
-                        if (polygon)
-                        {
-                            polygon = polygon.properties;
-                            var date = losses.date;
-                            var item = "T" + date;
-                            polygon[item] = losses.losses;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_polygons.features.forEach (
-                    polygon =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (polygon.properties[x]))
-                                polygon.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setLossesSummary_for_Polygon (data)
-            {
-                var transformer = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var losses = JSON.parse (row["[json]"]);
-                        transformer = losses.mrid;
-                        return ([(new Date (losses.date)).getTime (), losses.losses]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]);
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart ("Transformer Area Losses (Wh)", [{ name: transformer, data: values}])
-            }
-
-            setLosses_for_Lines (data)
-            {
-                var index = {};
-                var self = this;
-                this._simulation_lines.features.forEach (line => index[line.properties.mRID] = this.stripTs (line));
-                var default_data = {};
-                data.forEach (
-                    row =>
-                    {
-                        var losses = JSON.parse (row["[json]"]);
-                        var line = index[losses.mrid];
-                        if (line)
-                        {
-                            var date = losses.date;
-                            var item = "T" + date;
-                            line.properties[item] = losses.losses;
-                            default_data[item] = 0.0;
-                        }
-                    }
-                );
-                this._simulation_points.features.forEach (
-                    point =>
-                    {
-                        for (var x in default_data)
-                            if ("undefined" == typeof (point.properties[x]))
-                                point.properties[x] = default_data[x];
-                    }
-                );
-            }
-
-            setCableLosses (data)
-            {
-                var cable = "";
-                var values = data.map (
-                    row =>
-                    {
-                        var losses = JSON.parse (row["[json]"]);
-                        cable = losses.mrid;
-                        return ([(new Date (losses.date)).getTime (), losses.losses]);
-                    }
-                )
-                .sort ((a, b) => a[0] - b[0]); // If compareFunction(a, b) is less than 0, sort a to an index lower than b, i.e. a comes first.
-                if (!this._TheChart)
-                    this._TheChart = new CIMChart (this._cimmap);
-                if (!this._TheChart.visible ())
-                    this._TheMap.addControl (this._TheChart);
-                this._TheChart.setChart (cable + " Cable Losses (Wh)", [{ name: cable, data: values}])
             }
 
             setSimulationGeoJSON_Polygons (data)
             {
                 // [ {"simulation": "e780ca29-1e69-4748-959a-79461707100d", "mrid": "TRA3215", "geometry": {"type": "Polygon", "coordinates": [[[9.50617, 47.0154], [9.50617, 47.0154]]]}, "type": "Feature"}, ...
-                var features = data.map (this.fixup);
+                const features = data.map (this.fixup);
                 //    {
                 //        geometry: { type: "Polygon", coordinates: […] }
                 //        properties: { mRID: "TRA2755" }
@@ -1027,7 +654,7 @@ define
                     "type" : "FeatureCollection",
                     "features" : []
                 };
-                var extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
+                const extents = { xmin: Number.MAX_VALUE, ymin: Number.MAX_VALUE, xmax: -Number.MAX_VALUE, ymax: -Number.MAX_VALUE };
                 features.forEach (
                     polygon =>
                     {
@@ -1037,8 +664,8 @@ define
                                 perimeter.forEach (
                                     point =>
                                     {
-                                        var x = point[0];
-                                        var y = point[1];
+                                        const x = point[0];
+                                        const y = point[1];
                                         if (x < extents.xmin)
                                             extents.xmin = x;
                                         if (x > extents.xmax)
@@ -1072,7 +699,7 @@ define
                 //        transformers: [ "TRA2755", "TRA2769" ]
                 //    }
                 this._simulation = this._simulation_json.id;
-                var times =
+                const times =
                     {
                         start: new Date (this._simulation_json.start_time).getTime (),
                         end: new Date (this._simulation_json.end_time).getTime ()
@@ -1083,38 +710,26 @@ define
             // query the summary results and apply the values to each polygon
             setupPolygons ()
             {
-                var ret;
-                var self = this;
-                var subtheme = self.getLegend ().currentQualityFactor ();
+                let ret;
+                const self = this;
+                const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
-                    case "utilization":
-                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".utilization_summary_by_day_by_transformer", cassandra: true })
-                            .then (data => self.setUtilizationSummary_for_Polygons.call (self, data));
-                        break;
                     case "load_factor":
                         ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".load_factor_by_day", cassandra: true })
-                            .then (data => self.setLoadFactor_for_Polygons.call (self, data))
+                            .then (data => self.setLoadFactor_for_Polygons.call (self, data));
                         break;
                     case "coincidence_factor":
                         ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day", cassandra: true })
-                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, false, data))
+                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, false, data));
                         break;
                     case "diversity_factor":
                         ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".coincidence_factor_by_day", cassandra: true })
-                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, true, data))
+                            .then (data => self.setCoincidenceFactor_for_Polygons.call (self, true, data));
                         break;
                     case "responsibility_factor":
                         self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
                         ret = Promise.resolve ();
-                        break;
-                    case "voltage_deviation":
-                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".voltage_deviation_summary_by_day", cassandra: true })
-                            .then (data => self.setDeviationSummary_for_Polygons.call (self, data));
-                        break;
-                    case "losses":
-                        ret = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".losses_summary_by_day", cassandra: true })
-                            .then (data => self.setLosses_for_Polygons.call (self, data))
                         break;
                     case "measurements":
                         self._simulation_polygons.features.forEach (polygon => self.stripTs (polygon));
@@ -1134,8 +749,8 @@ define
             {
                 this._keyspace = keyspace;
                 this._simulation = id;
-                var self = this;
-                var promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".simulation where id='" + id + "'", cassandra: true })
+                const self = this;
+                const promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".simulation where id='" + id + "'", cassandra: true })
                 .then (data => self.setSimulationJSON.call (self, data))
                 // query the polygons
                 .then (() => cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
@@ -1152,4 +767,4 @@ define
 
         return (SimulationTheme);
     }
-)
+);
