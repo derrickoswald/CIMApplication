@@ -36,20 +36,18 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         log.info ("Load Factor")
-        val typ = "power"
-        val simulated__power_values = access.raw_values (typ) // ToDo: how to pick the transformer power values if another recorder asks for power
-            .cache
-
-        val trafos = access.geojson ("geojson_polygons").drop ("properties").cache
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
+        val typ = "power"
+        val simulated__power_values = access.raw_values (typ).drop ("period") // ToDo: how to pick the transformer power values if another recorder asks for power
+        val trafos = access.geojson ("geojson_polygons").drop ("properties")
+
         val simulated_value_trafos = simulated__power_values
-            .drop ("period")
-            .withColumn ("date", simulated__power_values ("time").cast (DateType))
-            .drop ("time")
             .withColumn ("power", magnitude [Double, Double].apply (simulated__power_values ("real_a"), simulated__power_values ("imag_a")))
             .drop ("real_a", "imag_a")
+            .withColumn ("date", simulated__power_values ("time").cast (DateType))
+            .drop ("time")
             .join (
                 trafos,
                 Seq ("mrid"))
@@ -75,6 +73,8 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
         work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
         log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (access.output_keyspace))
+        simulated__power_values.unpersist (false)
+        trafos.unpersist (false)
     }
 }
 

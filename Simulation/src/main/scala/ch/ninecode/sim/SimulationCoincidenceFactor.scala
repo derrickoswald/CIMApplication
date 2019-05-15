@@ -64,6 +64,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             .withColumn ("power", magnitude [Double, Double].apply (simulated_value_consumers ("real_a"), simulated_value_consumers ("imag_a")))
             .drop ("real_a", "imag_a")
             .withColumn ("date", simulated_value_consumers ("time").cast (DateType))
+            .drop ("time")
 
         val peak_consumers = simulated_consumer_power
             .groupBy ("mrid", "date")

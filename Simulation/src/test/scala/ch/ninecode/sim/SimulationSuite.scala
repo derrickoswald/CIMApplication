@@ -517,6 +517,36 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "duration": 50400000
                           |                }
                           |            ]
+                          |        },
+                          |        {
+                          |            "class": "coincidence_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "class": "load_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "class": "responsibility_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
                           |        }
                           |    ]
                           |}
@@ -894,6 +924,36 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "default": 630000,
                           |                    "ratio": 0.75,
                           |                    "duration": 50400000
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "class": "coincidence_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "class": "load_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
+                          |                }
+                          |            ]
+                          |        },
+                          |        {
+                          |            "class": "responsibility_factor",
+                          |            "aggregates":
+                          |            [
+                          |                {
+                          |                    "intervals": 96,
+                          |                    "ttl": null
                           |                }
                           |            ]
                           |        }
