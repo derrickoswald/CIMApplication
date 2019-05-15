@@ -45,13 +45,18 @@ case class SimulationTrafoKreis
             raw ⇒
             {
                 val node = raw.asInstanceOf [SimulationNode]
+                val my_players = players.filter (_.parent == raw.id)
+                // for power recorders of nodes with players, it has to be attached to the player, not the node
+                // the query has been altered to make the parent name for these nodes have the form <mrid>_load_object
+                val my_player_objects = my_players.map (_.name + "_object").toArray
+                val my_recorders = recorders.filter (x ⇒ x.parent == raw.id || my_player_objects.contains (x.parent))
                 SimulationNode (
                     node.id,
                     node.nominal_voltage,
                     node.equipment,
                     node.position,
-                    players.filter (_.parent == raw.id),
-                    recorders.filter (_.parent == raw.id)
+                    my_players,
+                    my_recorders
                 )
             }
         )

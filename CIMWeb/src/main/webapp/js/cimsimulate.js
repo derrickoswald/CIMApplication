@@ -35,13 +35,13 @@ truncate table cimapplication.summary_by_day;
     function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme, moment, DateRangePicker)
     {
         // The Cassandra keyspace where measurement data is read from for player files
-        var input_keyspace = "cimapplication";
+        let input_keyspace = "cimapplication";
 
         // The Cassandra keyspace where simulation results are stored - recorder files, summaries, simulations
-        var output_keyspace = "cimapplication";
+        let output_keyspace = "cimapplication";
 
         // The simulation details.
-        var TheSimulation =
+        let TheSimulation =
             {
                 name: "DemoData",
                 description: "simulation with demo data",
@@ -128,11 +128,11 @@ truncate table cimapplication.summary_by_day;
         //        ]
         //    }
 
-        var TransformerChooser;
+        let TransformerChooser;
 
         // User specified player object queries
-        var PlayerChooser;
-        var PlayerChoices = [
+        let PlayerChooser;
+        const PlayerChoices = [
             {
                 "title": "Measured power for all house services",
                 "query":
@@ -160,8 +160,8 @@ truncate table cimapplication.summary_by_day;
         // User specified recorder object queries
         // see http://gridlabd.me.uvic.ca/wiki/index.php/Power_Flow_User_Guide#Node_Parameters
         // see http://gridlabd.me.uvic.ca/wiki/index.php/Power_Flow_User_Guide#Link_Parameters
-        var RecorderChooser;
-        var RecorderChoices = [
+        let RecorderChooser;
+        const RecorderChoices = [
             {
                 "title": "All transformer output power",
                 "query":
@@ -411,7 +411,7 @@ truncate table cimapplication.summary_by_day;
                     select
                         concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
                         c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        n.IdentifiedObject.mRID parent,
+                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,
                         'power' type,
                         'power' property,
                         'VA' unit,
@@ -547,8 +547,8 @@ truncate table cimapplication.summary_by_day;
         ];
 
         // User specified extra queries - to attach rdf data to JSON objects
-        var ExtraChooser;
-        var ExtraChoices = [
+        let ExtraChooser;
+        const ExtraChoices = [
             {
                 "title": "ratedCurrent",
                 "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
@@ -588,21 +588,21 @@ truncate table cimapplication.summary_by_day;
 
         function collect_it_all ()
         {
-            var items = RecorderChooser.context.items.filter (item => item.value != "");
+            let items = RecorderChooser.context.items.filter (item => item.value !== "");
             RecorderChoices.forEach (
                 choice =>
                     {
-                        if (!items.find (item => choice.title == item.value))
+                        if (!items.find (item => choice.title === item.value))
                             items.push ({ value: choice.title });
                     }
                 );
             RecorderChooser.context.items = items;
             RecorderChooser.render ();
-            items = ExtraChooser.context.items.filter (item => item.value != "");
+            items = ExtraChooser.context.items.filter (item => item.value !== "");
             ExtraChoices.forEach (
                 choice =>
                     {
-                        if (!items.find (item => choice.title == item.value))
+                        if (!items.find (item => choice.title === item.value))
                             items.push ({ value: choice.title });
                     }
                 );
@@ -614,12 +614,11 @@ truncate table cimapplication.summary_by_day;
          * @summary Set up the simulation JSON.
          * @description Build the JSON file from user input.
          * @function do_json
-         * @memberOf module:cimsimulate
          */
         function do_json ()
         {
-            var name = document.getElementById ("simulation_name").value;
-            var description = document.getElementById ("simulation_description").value;
+            const name = document.getElementById ("simulation_name").value;
+            const description = document.getElementById ("simulation_description").value;
             if (name !== "")
                 TheSimulation.name = name;
             if (description !== "")
@@ -631,11 +630,15 @@ truncate table cimapplication.summary_by_day;
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             TheSimulation.extras = query_extras ();
-            const text = jsonify (TheSimulation);
+            return (TheSimulation);
+        }
 
+        function download_json ()
+        {
+            const json = do_json ();
             const a = document.createElement ("a");
-            a.setAttribute ("href", "data:application/json;base64," + btoa (text));
-            a.setAttribute ("download", TheSimulation.name + ".json");
+            a.setAttribute ("href", "data:application/json;base64," + btoa (jsonify (json)));
+            a.setAttribute ("download", json.name + ".json");
             a.setAttribute ("type", "application/json");
             a.setAttribute ("style", "display: none;");
             a.setAttribute ("target", "_blank");
@@ -649,45 +652,39 @@ truncate table cimapplication.summary_by_day;
          * @description Execute gridlabd for the simulation parameters provided by the user.
          * Typical command line call: wget --output-document=simulation.log --post-file=sak.json "http://localhost:9080/cimweb/cim/estimation;verbose=true;keep=true"
          * @function do_simulate
-         * @memberOf module:cimsimulate
          */
         function do_simulate ()
         {
-            do_json ();
-            if ("" == TheSimulation.cim)
+            const json = do_json ();
+            if ("" === json.cim)
             {
                 alert ("A CIM file must be specified");
                 return;
             }
-            var verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
-            var keep = document.getElementById ("keep").checked ? ";keep=true" : "";
-            var events = document.getElementById ("events").checked ? ";events=true" : "";
-            var summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
+            const verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
+            const keep = document.getElementById ("keep").checked ? ";keep=true" : "";
+            const events = document.getElementById ("events").checked ? ";events=true" : "";
+            const summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
-            var to_map = document.getElementById ("to_map").checked;
+            const to_map = document.getElementById ("to_map").checked;
             if (to_map)
                 window.location.hash = "map";
 
-            var url;
-            var xmlhttp;
-
-            url = util.home () + "cim/estimation" + verbose + keep + events + summarize;
-            xmlhttp = util.createCORSRequest ("POST", url);
+            const url = util.home () + "cim/estimation" + verbose + keep + events + summarize;
+            const xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status === "OK")
                         {
-                            var simulation_id = resp.result.simulations[0];
+                            const simulation_id = resp.result.simulations[0];
                             document.getElementById ("results").innerHTML = "";
                             if (to_map)
                             {
-                                var theme = new SimulationTheme ();
+                                const theme = new SimulationTheme ();
                                 theme.setSimulation (output_keyspace, simulation_id).then (
                                     function ()
                                     {
@@ -706,7 +703,7 @@ truncate table cimapplication.summary_by_day;
                                 ).then (
                                     function (resultset)
                                     {
-                                        var json = JSON.parse (resultset[0]["[json]"]);
+                                        const json = JSON.parse (resultset[0]["[json]"]);
                                         document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
                                     }
                                 );
@@ -718,15 +715,15 @@ truncate table cimapplication.summary_by_day;
                         alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
             };
 
-            xmlhttp.send (JSON.stringify (TheSimulation, null, 4));
+            xmlhttp.send (jsonify (json));
         }
 
         function do_show ()
         {
-            var simulation_id = document.getElementById ("simulation_id").value;
+            const simulation_id = document.getElementById ("simulation_id").value;
             if (document.getElementById ("to_map").checked)
             {
-                var theme = new SimulationTheme ();
+                const theme = new SimulationTheme ();
                 theme.setSimulation (output_keyspace, simulation_id).then (
                     function ()
                     {
@@ -748,7 +745,7 @@ truncate table cimapplication.summary_by_day;
                 ).then (
                     function (resultset)
                     {
-                        var json = JSON.parse (resultset[0]["[json]"]);
+                        const json = JSON.parse (resultset[0]["[json]"]);
                         document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
                         TheSimulation = json;
                         formFill (resultset);
@@ -763,21 +760,21 @@ truncate table cimapplication.summary_by_day;
 
         function query_transformers ()
         {
-            var ret = TransformerChooser.context.items.map (item => item.value).filter (x => "" != x);
+            const ret = TransformerChooser.context.items.map (item => item.value).filter (x => "" !== x);
             return (ret);
         }
 
         function query_players ()
         {
-            var ret = [];
+            const ret = [];
             PlayerChooser.context.items.forEach (
                 function (item)
                 {
                     if ("" !== item.value)
                     {
                         // look it up in the pre-defined choices
-                        var selected = PlayerChoices.filter (x => x.title == item.value);
-                        if (0 != selected.length)
+                        const selected = PlayerChoices.filter (x => x.title === item.value);
+                        if (0 !== selected.length)
                             ret.push (JSON.parse (JSON.stringify (selected[0])));
                         else
                             ret.push (JSON.parse (item.value)); // assume raw JSON
@@ -789,15 +786,15 @@ truncate table cimapplication.summary_by_day;
 
         function query_recorders ()
         {
-            var ret = [];
+            const ret = [];
             RecorderChooser.context.items.forEach (
                 function (item)
                 {
                     if ("" !== item.value)
                     {
                         // look it up in the pre-defined choices
-                        var selected = RecorderChoices.filter (x => x.title == item.value);
-                        if (0 != selected.length)
+                        const selected = RecorderChoices.filter (x => x.title === item.value);
+                        if (0 !== selected.length)
                             ret.push (JSON.parse (JSON.stringify (selected[0])));
                         else
                             ret.push (JSON.parse (item.value)); // assume raw JSON
@@ -808,15 +805,15 @@ truncate table cimapplication.summary_by_day;
 
         function query_extras ()
         {
-            var ret = [];
+            const ret = [];
             ExtraChooser.context.items.forEach (
                 function (item)
                 {
                     if ("" !== item.value)
                     {
                         // look it up in the pre-defined choices
-                        var selected = ExtraChoices.filter (x => x.title == item.value);
-                        if (0 != selected.length)
+                        const selected = ExtraChoices.filter (x => x.title === item.value);
+                        if (0 !== selected.length)
                             ret.push (JSON.parse (JSON.stringify (selected[0])));
                         else
                             ret.push (JSON.parse (item.value)); // assume raw JSON
@@ -827,7 +824,7 @@ truncate table cimapplication.summary_by_day;
 
         function formFill ()
         {
-            var simulate_template =
+            const simulate_template =
                 `
                 <div class="container">
                   <div class="row justify-content-center">
@@ -838,12 +835,12 @@ truncate table cimapplication.summary_by_day;
                         <div class="form-row">
                           <div class="col form-group">
                             <label for="simulation_name">Name</label>
-                            <input  id="simulation_name" type="text" class="form-control"aria-describedby="nameHelp" placeholder="Enter a name for the simulation" value="{{name}}">
+                            <input  id="simulation_name" type="text" class="form-control" aria-describedby="nameHelp" placeholder="Enter a name for the simulation" value="{{name}}">
                             <small id="nameHelp" class="form-text text-muted">Enter a unique name for the simulation - used as a file name for the details.</small>
                           </div>
                           <div class="col form-group">
                             <label for="simulation_description">Description</label>
-                            <input id="simulation_description" type="text" class="form-control"aria-describedby="descriptionHelp" placeholder="Enter a description for the simulation" value="{{description}}">
+                            <input id="simulation_description" type="text" class="form-control" aria-describedby="descriptionHelp" placeholder="Enter a description for the simulation" value="{{description}}">
                             <small id="descriptionHelp" class="form-text text-muted">Enter a user facing description for the simulation - used for drop down choice title.</small>
                           </div>
                         </div>
@@ -856,18 +853,18 @@ truncate table cimapplication.summary_by_day;
                         <div class="form-row">
                           <div class="col form-group">
                             <label for="input_keyspace">Cassandra input keyspace</label>
-                            <input id="input_keyspace" type="text" class="form-control"aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                            <input id="input_keyspace" type="text" class="form-control" aria-describedby="outputKeyspaceHelp" value="cimapplication">
                             <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for input (table <em>measured_value</em>).</small>
                           </div>
                           <div class="col form-group">
                             <label for="output_keyspace">Cassandra output keyspace</label>
-                            <input id="output_keyspace" type="text" class="form-control"aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                            <input id="output_keyspace" type="text" class="form-control" aria-describedby="outputKeyspaceHelp" value="cimapplication">
                             <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for output (table <em>simulated_value</em> and others).</small>
                           </div>
                         </div>
                         <div class="form-group">
                           <label for="simulation_timerange">Time range</label>
-                          <input id="simulation_timerange" type="text" class="form-control"aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="">
+                          <input id="simulation_timerange" type="text" class="form-control" aria-describedby="timerangeHelp" placeholder="Enter a time range for the simulation" value="">
                           <small id="timerangeHelp" class="form-text text-muted">Enter the simulation start and end date/time.</small>
                         </div>
                         <div id="transformers" class="form-group">
@@ -947,7 +944,7 @@ truncate table cimapplication.summary_by_day;
                 </div>
                 `;
 
-            var text = mustache.render
+            document.getElementById ("simulate").innerHTML = mustache.render
             (
                 simulate_template,
                 {
@@ -955,14 +952,13 @@ truncate table cimapplication.summary_by_day;
                     description: getDescription
                 }
             );
-            document.getElementById ("simulate").innerHTML = text;
             document.getElementById ("input_keyspace").onchange = set_input_keyspace;
             document.getElementById ("output_keyspace").onchange = set_output_keyspace;
 
             // see https://wireddots.com/products/datetimepicker
-            var start = new Date (TheSimulation.interval.start);
-            var end = new Date (TheSimulation.interval.end);
-            var dater = new DateRangePicker (
+            const start = new Date (TheSimulation.interval.start);
+            const end = new Date (TheSimulation.interval.end);
+            new DateRangePicker (
                 "#simulation_timerange",
                 {
                     timePicker: true,
@@ -981,7 +977,7 @@ truncate table cimapplication.summary_by_day;
             );
             if (null == TransformerChooser)
             {
-                var help =
+                const help =
                     `
                     <small id="transformers_help" class="form-text text-muted">
                         The transformers to process - if none are provided, all are processed.
@@ -992,7 +988,7 @@ truncate table cimapplication.summary_by_day;
             TransformerChooser.render ();
             if (null == PlayerChooser)
             {
-                var help =
+                const help =
                     `
                     <small id="players_help" class="form-text text-muted">
                         The queries to use to pick player (load) elements.
@@ -1003,7 +999,7 @@ truncate table cimapplication.summary_by_day;
             PlayerChooser.render ();
             if (null == RecorderChooser)
             {
-                var help =
+                const help =
                     `
                     <small id="recorders_help" class="form-text text-muted">
                         The queries to use to pick recorder elements.
@@ -1014,7 +1010,7 @@ truncate table cimapplication.summary_by_day;
             RecorderChooser.render ();
             if (null == ExtraChooser)
             {
-                var help =
+                const help =
                     `
                     <small id="extra_help" class="form-text text-muted">
                         The queries to add data to the generated JSON objects.
@@ -1026,26 +1022,25 @@ truncate table cimapplication.summary_by_day;
 
             document.getElementById ("collect_it_all").onclick = collect_it_all;
             document.getElementById ("do_simulate").onclick = do_simulate;
-            document.getElementById ("do_json").onclick = do_json;
+            document.getElementById ("do_json").onclick = download_json;
             document.getElementById ("show_simulation").onclick = do_show;
         }
 
         function render_prior_simulations (resultset)
         {
-            var template =
+            const template =
             `
             {{#simulations}}
               <option value="{{id}}">{{name}}</option>
             {{/simulations}}
             `;
-            var text = mustache.render
+            document.getElementById ("simulation_id").innerHTML = mustache.render
             (
                 template,
                 {
                     simulations: resultset.map (row => JSON.parse (row["[json]"]))
                 }
             );
-            document.getElementById ("simulation_id").innerHTML = text;
         }
 
         function render ()
@@ -1086,23 +1081,22 @@ truncate table cimapplication.summary_by_day;
                 cimfiles.fetch ("\\").then (
                     function (response)
                     {
-                        if (response.status == "OK")
+                        if (response.status === "OK")
                         {
                             response.result.files = response.result.files.filter (
                                 x =>
                                 {
-                                    var name = x.path.toLowerCase ();
+                                    const name = x.path.toLowerCase ();
                                     return (name.endsWith (".rdf") || name.endsWith (".xml"));
                                 }
                             );
-                            var file_template =
+                            const file_template =
                                 `
                                 {{#files}}
                                     <option value="{{root}}{{path}}">{{path}}</option>
                                 {{/files}}
                                 `;
-                            var text = mustache.render (file_template, response.result);
-                            document.getElementById ("cim_file").innerHTML = text;
+                            document.getElementById ("cim_file").innerHTML = mustache.render (file_template, response.result);
                         }
                         else
                             alert (response.message);
@@ -1111,7 +1105,7 @@ truncate table cimapplication.summary_by_day;
             );
         }
 
-        function setDateRange (start, end, label)
+        function setDateRange (start, end)
         {
             TheSimulation.interval =
             {
@@ -1131,11 +1125,11 @@ truncate table cimapplication.summary_by_day;
                 ).then (
                     function (resultset)
                     {
-                        if (0 == resultset.length)
+                        if (0 === resultset.length)
                             return (start);
                         else
                         {
-                            var time = new Date (resultset[0].time);
+                            const time = new Date (resultset[0].time);
                             return (
                                 cimquery.queryPromise (
                                     {
@@ -1145,10 +1139,10 @@ truncate table cimapplication.summary_by_day;
                                 ).then (
                                     function (resultset)
                                     {
-                                        if ((0 == resultset.length) || (null == resultset[0].lo))
+                                        if ((0 === resultset.length) || (null == resultset[0]["lo"]))
                                             return (time);
                                         else
-                                            return (getEarliestDate (new Date (resultset[0].lo)));
+                                            return (getEarliestDate (new Date (resultset[0]["lo"])));
                                     }
                                 )
                             );
@@ -1169,11 +1163,11 @@ truncate table cimapplication.summary_by_day;
                 ).then (
                     function (resultset)
                     {
-                        if (0 == resultset.length)
+                        if (0 === resultset.length)
                             return (end);
                         else
                         {
-                            var time = new Date (resultset[0].time);
+                            const time = new Date (resultset[0].time);
                             return (
                                 cimquery.queryPromise (
                                     {
@@ -1183,10 +1177,10 @@ truncate table cimapplication.summary_by_day;
                                 ).then (
                                     function (resultset)
                                     {
-                                        if ((0 == resultset.length) || (null == resultset[0].hi))
+                                        if ((0 === resultset.length) || (null == resultset[0]["hi"]))
                                             return (time);
                                         else
-                                            return (getLatestDate (new Date (resultset[0].hi)));
+                                            return (getLatestDate (new Date (resultset[0]["hi"])));
                                     }
                                 )
                             );
@@ -1211,18 +1205,18 @@ truncate table cimapplication.summary_by_day;
                 ).then (
                     function (resultset)
                     {
-                        if (0 == resultset.length)
+                        if (0 === resultset.length)
                             alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", input_keyspace));
                         else
                         {
-                            var time = new Date (resultset[0].time);
+                            const time = new Date (resultset[0].time);
                             Promise.all ([getEarliestDate (time), getLatestDate (time)]).then (
                                 function (minmax)
                                 {
-                                    var start = minmax[0];
-                                    var end = minmax[1];
+                                    const start = minmax[0];
+                                    const end = minmax[1];
                                     setDateRange (start, end);
-                                    var dater = new DateRangePicker (
+                                    new DateRangePicker (
                                         "#simulation_timerange",
                                         {
                                             timePicker: true,
@@ -1256,17 +1250,10 @@ truncate table cimapplication.summary_by_day;
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
          * @function initialize
-         * @memberOf module:cimsimulate
          */
         function initialize ()
         {
             render ();
-        }
-
-// placeholders until Export is fixed:
-        function getStations (callback)
-        {
-            callback ([]);
         }
 
         function getSimulations (station, callback)
@@ -1277,9 +1264,8 @@ truncate table cimapplication.summary_by_day;
         return (
             {
                 initialize: initialize,
-                getStations: getStations,
                 getSimulations: getSimulations
             }
         );
     }
-)
+);

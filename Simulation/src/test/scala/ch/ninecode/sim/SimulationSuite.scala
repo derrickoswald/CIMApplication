@@ -327,7 +327,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All EnergyConsumer output power",
-                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -706,7 +706,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All EnergyConsumer output power",
-                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
