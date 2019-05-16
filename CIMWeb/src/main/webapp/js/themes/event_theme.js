@@ -572,7 +572,7 @@ define
                         if (node)
                         {
                             // ToDo: should do Math.max here
-                            const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
+                            const color = (x.severity === 1) ? "#ff0000" : "#ffa500";
                             const current_color = node.properties.color;
                             node.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
                         }
@@ -596,7 +596,7 @@ define
                         if (edge)
                         {
                             // ToDo: should do Math.max here
-                            const color = (x.severity === 1) ? "#ffa500" : "#ff0000";
+                            const color = (x.severity === 1) ? "#ff0000" : "#ffa500";
                             const current_color = edge.properties.color;
                             edge.properties.color = (current_color && (current_color === "#ff0000")) ? current_color : color;
                         }

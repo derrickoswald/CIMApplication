@@ -82,19 +82,23 @@ create table if not exists cimapplication.simulation_event (
     simulation text,
     mrid text,
     type text,
-    severity int,
     start_time timestamp,
     end_time timestamp,
-    primary key ((simulation, mrid, type), end_time)
-) with clustering order by (end_time asc) and comment = '
+    ratio double,
+    severity int,
+    message text,
+    primary key ((simulation, mrid, type), start_time)
+) with clustering order by (start_time asc) and comment = '
 Simulation events.
 These are events of interest from a post-analysis of the simulated values.
     simulation - the simulation run identifier, UUID
     mrid       - the unique CIM mRID for the element with this event
-    type       - the type of event, e.g. voltage threshold exceeded, or current threshold exceeded
-    severity   - the weight (1 = orange, 2 = red) of the event
+    type       - the type of event, e.g. voltage, current, power
     start_time - the event start time in GMT
     end_time   - the event end time in GMT
+    ratio      - the threshold ratio
+    severity   - the weight of the event (1 = most severe = red, 2 = less severe = orange)
+    message    - a human readable message describing the event
 ';
 
 create table if not exists cimapplication.simulation (

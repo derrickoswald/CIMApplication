@@ -150,17 +150,17 @@ define
             {
                 if (this._selected_simulations && 0 < this._selected_simulations.length)
                 {
-                    this._theChart.showLoading ("Querying Cassandra...");
-                    const simulation = this._simulations[0];
-                    console.log ("from " + event.min + " to " + event.max);
-                    const self = this;
-                    cimquery.queryPromise ({sql: `select * from ${ simulation.output_keyspace }.simulation`, cassandra: true})
-                        .then (data =>
-                            {
-                                // chart.series[0].setData(data);
-                                self._theChart.hideLoading ();
-                            }
-                        );
+                    // this._theChart.showLoading ("Querying Cassandra...");
+                    // const simulation = this._simulations[0];
+                    // console.log ("from " + event.min + " to " + event.max);
+                    // const self = this;
+                    // cimquery.queryPromise ({sql: `select * from ${ simulation.output_keyspace }.simulation`, cassandra: true})
+                    //     .then (data =>
+                    //         {
+                    //             // chart.series[0].setData(data);
+                    //             self._theChart.hideLoading ();
+                    //         }
+                    //     );
                 }
             }
 
@@ -329,12 +329,12 @@ define
                             {
                                 if (recorder.mrid === feature)
                                 {
-                                    let biggest = -1;
+                                    let smallest = Number.MAX_VALUE;
                                     for (let interval in recorder.aggregations)
                                         if (recorder.aggregations.hasOwnProperty (interval))
-                                            if (interval > biggest)
-                                                biggest = interval;
-                                    const period = (recorder.interval * 1000) * biggest;
+                                            if (interval < smallest)
+                                                smallest = interval;
+                                    const period = (recorder.interval * 1000) * smallest;
                                     queries.push (
                                         {
                                             name: simulation.name + " " + recorder.type + " (" + recorder.unit + ")",
@@ -470,7 +470,7 @@ define
                                                 {
                                                     const band = axis.addPlotBand (range);
                                                     const color = {
-                                                        "fill": event.severity === 2 ? "#FF0000" : "#FFA500"
+                                                        "fill": event.severity === 1 ? "#FF0000" : "#FFA500"
                                                     };
                                                     band.svgElem.css (color);
                                                 }

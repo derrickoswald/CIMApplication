@@ -34,8 +34,8 @@ import com.datastax.spark.connector.writer.WriteConf
 trait Evented
 {
     // database schema
-    //          simulation mrid   type  severity, start_time end_time
-    type Event = (String, String, String, Int, Timestamp, Timestamp)
+    //          simulation mrid   type    start_time end_time,  ratio,  severity, message
+    type Event = (String, String, String, Timestamp, Timestamp, Double, Int, String)
 }
 
 /**
@@ -179,7 +179,7 @@ class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double
                     // non consecutive periods
                     // emit an event if the duration has elapsed
                     if (timeout <= 0L)
-                        ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                        ret = (simulation, mrid, trigger.`type`, new Timestamp (start), new Timestamp (end), trigger.ratio, trigger.severity, trigger.message (trigger.duration - timeout)) :: ret
                     // start counting again
                     start = time
                     end = time + period
@@ -191,7 +191,7 @@ class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double
         {
             // emit an event if the duration has elapsed
             if (timeout <= 0L)
-                ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
+                ret = (simulation, mrid, trigger.`type`, new Timestamp (start), new Timestamp (end), trigger.ratio, trigger.severity, trigger.message (trigger.duration - timeout)) :: ret
             start = 0L
             end = 0L
             timeout = Int.MaxValue
@@ -203,7 +203,7 @@ class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double
         // emit an event if the duration has elapsed
         if (0L != start && timeout <= 0L)
         {
-            ret = (simulation, mrid, trigger.message (trigger.duration - timeout), trigger.severity, new Timestamp (start), new Timestamp (end)) :: ret
+            ret = (simulation, mrid, trigger.`type`, new Timestamp (start), new Timestamp (end), trigger.ratio, trigger.severity, trigger.message (trigger.duration - timeout)) :: ret
             start = 0L // don't do it again
             end = 0L
             timeout = Int.MaxValue
@@ -217,8 +217,8 @@ class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double
  *
  * Needed this class to get around the 'not serializable' exception if the code is directly in SimulationEvents.
  *
- * @param spark
- * @param storage_level
+ * @param spark The Spark session
+ * @param storage_level The storage level for persist
  */
 case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     extends Evented
@@ -274,7 +274,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     {
         if (!isEmpty (events))
         {
-            val columns = SomeColumns ("simulation", "mrid", "type", "severity", "start_time", "end_time")
+            val columns = SomeColumns ("simulation", "mrid", "type", "start_time", "end_time", "ratio", "severity", "message")
             val configuration = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
             events.saveToCassandra (access.output_keyspace, "simulation_event", columns, configuration)
         }

@@ -2952,7 +2952,7 @@
         "visible": true,
         "sdf": true
     },
-    "distribution_box": {
+    "connector": {
         "x": 192,
         "y": 758,
         "width": 192,
@@ -2961,7 +2961,7 @@
         "visible": true,
         "sdf": true
     },
-    "connector": {
+    "distribution_box": {
         "x": 384,
         "y": 758,
         "width": 192,
@@ -2979,7 +2979,7 @@
         "visible": true,
         "sdf": true
     },
-    "fuse": {
+    "feeder": {
         "x": 768,
         "y": 758,
         "width": 192,
@@ -2988,7 +2988,7 @@
         "visible": true,
         "sdf": true
     },
-    "feeder": {
+    "fuse": {
         "x": 0,
         "y": 950,
         "width": 192,

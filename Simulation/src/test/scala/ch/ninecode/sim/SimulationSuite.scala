@@ -419,7 +419,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "voltage",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -429,7 +429,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "low",
                           |                    "type": "voltage",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -439,7 +439,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "voltage",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -449,7 +449,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "low",
                           |                    "type": "voltage",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -459,7 +459,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -469,7 +469,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -479,7 +479,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -489,7 +489,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
@@ -499,7 +499,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
@@ -509,7 +509,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
@@ -828,7 +828,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "voltage",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -838,7 +838,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "low",
                           |                    "type": "voltage",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -848,7 +848,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "voltage",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -858,7 +858,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "low",
                           |                    "type": "voltage",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
@@ -868,7 +868,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -878,7 +878,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -888,7 +888,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "current",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
@@ -898,7 +898,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
@@ -908,7 +908,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 2,
+                          |                    "severity": 1,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
@@ -918,7 +918,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                {
                           |                    "trigger": "high",
                           |                    "type": "power",
-                          |                    "severity": 1,
+                          |                    "severity": 2,
                           |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
