@@ -279,8 +279,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 val id_cn_1 = x._1.head._1.head._2.TopologicalNode
                 val id_cn_2 = x._1.head._1.tail.head._2.TopologicalNode
-                val raw = GLMEdge.toGLMEdge (x._1.map (_._2), id_cn_1, id_cn_2)
-                (x._1.head._1.head._1, SimulationEdge (x._1.head._2.id, id_cn_1, id_cn_2, raw, toCoordinates (x._2), null, null))
+                val elements = x._1.map (_._2).toArray.sortWith (_.id < _.id)
+                val raw = GLMEdge.toGLMEdge (elements, id_cn_1, id_cn_2)
+                (x._1.head._1.head._1, SimulationEdge (elements(0).id, id_cn_1, id_cn_2, raw, toCoordinates (x._2), null, null))
             }
         )
     }
