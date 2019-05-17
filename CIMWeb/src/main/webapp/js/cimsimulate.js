@@ -551,6 +551,10 @@ truncate table cimapplication.responsibility_by_day;
             {
                 "title": "nominalVoltage",
                 "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+            },
+            {
+                "title": "substation",
+                "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.name value from PowerTransformer p, Substation s, (select b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, b.Substation substation from Bay b union select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid and c.substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID"
             }
         ];
 
