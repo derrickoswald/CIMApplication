@@ -183,30 +183,33 @@ create type if not exists cimapplication.polygon_data (type text, coordinates li
 create table if not exists cimapplication.geojson_points (
     simulation text,
     mrid text,
+    coordinate_system text,
     transformer text,
     type text,
     geometry frozen<cimapplication.point_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid)
+    primary key (simulation, mrid, coordinate_system)
 ) with comment = 'GeoJSON for simulated point elements';
 
 create table if not exists cimapplication.geojson_lines (
     simulation text,
     mrid text,
+    coordinate_system text,
     transformer text,
     type text,
     geometry frozen<cimapplication.line_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid)
+    primary key (simulation, mrid, coordinate_system)
 ) with comment = 'GeoJSON for simulated line elements';
 
 create table if not exists cimapplication.geojson_polygons (
     simulation text,
     mrid text,
+    coordinate_system text,
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid)
+    primary key (simulation, mrid, coordinate_system)
 ) with comment = 'GeoJSON for simulated polygon elements';
 
 create table if not exists cimapplication.key_value (

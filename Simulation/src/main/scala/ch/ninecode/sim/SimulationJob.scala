@@ -14,10 +14,10 @@ import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
 import com.datastax.spark.connector._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -238,13 +238,33 @@ object SimulationJob
         }
     }
 
+    def storage_level_tostring (level: StorageLevel): String =
+    {
+        level match
+        {
+            case StorageLevel.NONE ⇒ "NONE"
+            case StorageLevel.DISK_ONLY ⇒ "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 ⇒ "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY ⇒ "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 ⇒ "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER ⇒ "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 ⇒ "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK ⇒ "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 ⇒ "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER ⇒ "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 ⇒ "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP ⇒ "OFF_HEAP"
+            case _ ⇒ ""
+        }
+    }
+
     def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String, String] =
     {
         // ToDo: more robust checking
         val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala
         val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
         map ("path") = cim // add path to support multiple files
-        map ("StorageLevel") = options.storage // add storage option from command line
+        map ("StorageLevel") = storage_level_tostring (options.storage_level) // add storage option from command line
         map.toMap
     }
 

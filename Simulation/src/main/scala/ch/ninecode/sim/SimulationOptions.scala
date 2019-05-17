@@ -32,11 +32,6 @@ case class SimulationOptions
     host: String = "localhost",
 
     /**
-     * Storage level for RDD serialization.
-     */
-    storage: String = "MEMORY_AND_DISK_SER",
-
-    /**
      * Logging level.
      */
     log_level: LogLevels = LogLevels.OFF,
@@ -52,7 +47,7 @@ case class SimulationOptions
     workdir: String = "simulation/",
 
     /**
-     * Caching option.
+     * Storage level for RDD serialization.
      */
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
 

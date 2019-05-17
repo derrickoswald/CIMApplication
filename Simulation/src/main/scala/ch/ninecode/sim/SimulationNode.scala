@@ -9,7 +9,8 @@ import ch.ninecode.gl.Graphable
  * @param id              TopologicalNode mRID.
  * @param nominal_voltage Node voltage (V).
  * @param equipment       ConductingEquipment mRID.
- * @param position        The (x,y) coordinates of the PositionPoint of the ConductingEquipment, or <code>null</code> if none.
+ * @param world_position  The (x,y) coordinates of the PositionPoint of the ConductingEquipment in world coordinates, or <code>null</code> if none.
+ * @param schematic_position The (x,y) coordinates of the PositionPoint of the ConductingEquipment in schematic coordinates, or <code>null</code> if none.
  * @param players         Players attached to this node - if any.
  * @param recorders       Recorders attached to this node - if any.
  */
@@ -18,7 +19,8 @@ case class SimulationNode
     id: String,
     nominal_voltage: Double,
     equipment: String,
-    position: (Double, Double) = null,
+    world_position: (Double, Double),
+    schematic_position: (Double, Double),
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
 ) extends GLMNode

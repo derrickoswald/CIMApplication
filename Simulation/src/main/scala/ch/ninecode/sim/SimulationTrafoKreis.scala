@@ -54,7 +54,8 @@ case class SimulationTrafoKreis
                     node.id,
                     node.nominal_voltage,
                     node.equipment,
-                    node.position,
+                    node.world_position,
+                    node.schematic_position,
                     my_players,
                     my_recorders
                 )
@@ -75,7 +76,8 @@ case class SimulationTrafoKreis
                     edge.cn1,
                     edge.cn2,
                     edge.rawedge,
-                    edge.position,
+                    edge.world_position,
+                    edge.schematic_position,
                     these_players,
                     these_recorders
                 )

@@ -72,10 +72,6 @@ object Main
             action ((x, c) ⇒ c.copy (host = x)).
             text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
-        opt [String]("storage").
-            action ((x, c) ⇒ c.copy (storage = x)).
-            text ("storage level for RDD serialization [%s]".format (default.storage))
-
         opt [LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
