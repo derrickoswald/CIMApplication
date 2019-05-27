@@ -1,10 +1,12 @@
 package ch.ninecode.sim
 
 import ch.ninecode.gl.GLMNode
+import com.datastax.driver.core.ConsistencyLevel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.writer.WriteConf
 
 case class SimulationGeometry (session: SparkSession, keyspace: String)
 {
@@ -84,7 +86,11 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (world :: schematic :: Nil).flatten
                 }
             )
-        jsons.saveToCassandra (keyspace, "geojson_points", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"))
+        val cc = WriteConf.fromSparkConf (session.sparkContext.getConf)
+        val dd = cc.copy (consistencyLevel = ConsistencyLevel.ANY)
+        val ee = dd.copy (parallelismLevel = 1)
+        val j2 = jsons.repartition (1)
+        j2.saveToCassandra (keyspace, "geojson_points", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), ee)
     }
 
     def store_geojson_lines (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
@@ -125,7 +131,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (world :: schematic :: Nil).flatten
                 }
             )
-        jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"))
+        jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
     def get_world_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
@@ -200,7 +206,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     (world :: schematic :: Nil).flatten
                 }
         )
-        jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "type"))
+        jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =

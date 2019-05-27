@@ -85,8 +85,12 @@ case class IngestOptions
     datafiles: Seq[String] = Seq (),
 
     /**
-     * cassandra keyspace
+     * Cassandra keyspace
      */
-    keyspace: String = "cimapplication"
+    keyspace: String = "cimapplication",
 
+    /**
+     * Cassandra keyspace replication factor.
+     */
+    replication: Int = 2
 )

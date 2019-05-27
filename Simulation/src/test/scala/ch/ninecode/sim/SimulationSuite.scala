@@ -177,8 +177,9 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        "end": "2018-02-01T00:00:00.000+0100"
                           |    },
                           |    "keyspaces": {
-                          |        "input": "cimapplication",
-                          |        "output": "test"
+                          |        "input": true,
+                          |        "output": "test",
+                          |        "replication": 2
                           |    },
                           |    "players": [
                           |        {
@@ -588,6 +589,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |    "keyspaces": {
                           |        "input": "cimapplication",
                           |        "output": "test"
+                          |        "replication": 2
                           |    },
                           |    "players": [
                           |        {
@@ -980,5 +982,12 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //        spark ⇒
 //            val summarize = Summarize (spark, SimulationOptions (verbose = true, unittest = true, summarize = true))
 //            summarize.run (Array("bf34b237-c798-485d-90ba-9a990d570f7c"))
+//    }
+
+//    test ("Ganged")
+//    {
+//        session ⇒
+//            val sep = System.getProperty ("file.separator")
+//            Main.main (Array ("--unittest", "--master", "local[*]", "--verbose", "--keep", "--host", "localhost", "--workdir", new java.io.File (".").getCanonicalPath + sep + "data/", "data/tra161_tra162.json"))
 //    }
 }

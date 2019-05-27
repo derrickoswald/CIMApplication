@@ -15,6 +15,7 @@ import javax.json.JsonValue
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import com.datastax.spark.connector._
+import javax.json.JsonNumber
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -66,6 +67,14 @@ case class SimulationJob
      * operations are performed additional tables with appropriate schema are expected.
      */
     output_keyspace: String,
+
+    /**
+     * The Cassandra keyspace replication.
+     *
+     * The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
+     * <em>used only if the <code>output_keyspace</code> is created.</em>
+     */
+    replication: Int,
 
     /**
      * The starting time of the simulation.
@@ -179,6 +188,7 @@ case class SimulationJob
      */
     def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
     {
+        val current_time = Calendar.getInstance
         val json = session.sparkContext.parallelize (Seq (
             (
                 id,
@@ -186,6 +196,7 @@ case class SimulationJob
                 description,
                 cim,
                 cimreaderoptions,
+                current_time,
                 start_time,
                 end_time,
                 input_keyspace,
@@ -193,7 +204,7 @@ case class SimulationJob
                 transformers
             )
         ))
-        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
+        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "run_time", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
 
         val players =
             tasks.flatMap (
@@ -260,38 +271,73 @@ object SimulationJob
 
     def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String, String] =
     {
-        // ToDo: more robust checking
-        val readeroptions: mutable.Map[String, JsonValue] = json.getJsonObject ("cimreaderoptions").asScala
-        val map = readeroptions.map (x ⇒ (x._1, x._2.toString))
-        map ("path") = cim // add path to support multiple files
-        map ("StorageLevel") = storage_level_tostring (options.storage_level) // add storage option from command line
-        map.toMap
+        val MEMBERNAME = "cimreaderoptions"
+        val map = Map[String,String](
+            "path" → cim, // add path to support multiple files
+            "StorageLevel" → storage_level_tostring (options.storage_level) // add storage option from command line
+        )
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            {
+                val readeroptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
+                val opt = readeroptions.map (x ⇒ (x._1, x._2.toString))
+                map ++ opt
+            }
+            else
+            {
+                log.warn ("""JSON member "%s" is not a JSON object (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
+                map
+            }
+        }
+        else
+        {
+            log.warn ("""JSON member "%s" not found""".format (MEMBERNAME))
+            map
+        }
     }
 
-    def parseKeyspaces (json: JsonObject): (String, String) =
+    def parseKeyspaces (json: JsonObject): (String, String, Int) =
     {
-        // ToDo: more robust checking
-        val keyspaces: mutable.Map[String, JsonValue] = json.getJsonObject ("keyspaces").asScala
+        val MEMBERNAME = "keyspaces"
         var input: String = "cimapplication"
         var output: String = "cimapplication"
-        keyspaces.foreach (
-            x ⇒
+        var replication = 2
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            if (value.getValueType == JsonValue.ValueType.OBJECT)
             {
-                val s = x._2.asInstanceOf [JsonString].getString
-                if ("input" == x._1)
-                    input = s
-                else if ("output" == x._1)
-                    output = s
+                val keyspaces: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
+                keyspaces.foreach
+                {
+                    case ("input", v: JsonString) ⇒ input = v.getString
+                    case ("output", v: JsonString) ⇒ output = v.getString
+                    case ("replication", v: JsonNumber) ⇒ replication = v.intValue
+                    case (k: String, v: JsonValue) ⇒ log.warn ("""unexpected JSON member or type: %s["%s"] of type "%s"""".format (MEMBERNAME, k, v.getValueType.toString))
+                }
             }
-        )
-        (input, output)
+            else
+                log.warn ("""JSON member "%s" is not a JSON object (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
+        }
+        else
+            log.warn ("""JSON member "%s" not found, using defaults""".format (MEMBERNAME))
+
+        (input, output, replication)
     }
 
     def parseInterval (json: JsonObject): (Calendar, Calendar) =
     {
+        val MEMBERNAME = "interval"
         val calendar: Calendar = Calendar.getInstance ()
         calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
         calendar.setTimeInMillis (0L)
+        var start: Calendar = calendar
+        var end: Calendar = calendar
+
         val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         iso_date_format.setCalendar (calendar)
         def iso_parse (s: String): Calendar =
@@ -301,20 +347,25 @@ object SimulationJob
             ret
         }
 
-        // ToDo: more robust checking
-        val interval: mutable.Map[String, JsonValue] = json.getJsonObject ("interval").asScala
-        var start: Calendar = calendar
-        var end: Calendar = calendar
-        interval.foreach (
-            x ⇒
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            if (value.getValueType == JsonValue.ValueType.OBJECT)
             {
-                val d = iso_parse (x._2.asInstanceOf [JsonString].getString)
-                if ("start" == x._1)
-                    start = d
-                else if ("end" == x._1)
-                    end = d
+                val interval: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
+                interval.foreach
+                {
+                    case ("start", v: JsonString) ⇒ start = iso_parse (v.getString)
+                    case ("end", v: JsonString) ⇒ end = iso_parse (v.getString)
+                    case (k: String, v: JsonValue) ⇒ log.warn ("""unexpected JSON member or type: %s["%s"] of type "%s"""".format (MEMBERNAME, k, v.getValueType.toString))
+                }
             }
-        )
+            else
+                log.warn ("""JSON member "%s" is not a JSON object (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
+        }
+        else
+            log.warn ("""JSON member "%s" not found, using defaults""".format (MEMBERNAME))
+
         (start, end)
     }
 
@@ -423,8 +474,13 @@ object SimulationJob
     def parsePostProcessing (name: String, json: JsonObject): Seq[(SparkSession, SimulationOptions) ⇒ SimulationPostProcessor] =
     {
         // ToDo: more robust checking
-        val post_processes: Seq[JsonObject] = json.getJsonArray ("postprocessing").getValuesAs (classOf [JsonObject]).asScala
-        post_processes.map (parsePostProcess (name, _))
+        if (json.containsKey ("postprocessing"))
+        {
+            val post_processes: Seq[JsonObject] = json.getJsonArray ("postprocessing").getValuesAs (classOf [JsonObject]).asScala
+            post_processes.map (parsePostProcess (name, _))
+        }
+        else
+            Seq()
     }
 
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
@@ -441,14 +497,14 @@ object SimulationJob
         else
         {
             val cimreaderoptions = parseCIMReaderOptions (options, cim, json)
-            val (read, write) = parseKeyspaces (json)
+            val (read, write, replication) = parseKeyspaces (json)
             val (start, end) = parseInterval (json)
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
             val postprocesses = parsePostProcessing (name, json)
-            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, start, end, transformers, players, recorders, extras, postprocesses))
+            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, replication, start, end, transformers, players, recorders, extras, postprocesses))
         }
     }
 

@@ -134,7 +134,11 @@ object Main
 
         opt [String]("keyspace").
             action ((x, c) ⇒ c.copy (keyspace = x)).
-            text ("keyspace which will be used in cassandra [%s]".format (default.keyspace))
+            text ("target Cassandra keyspace [%s]".format (default.keyspace))
+
+        opt [Int]("replication").
+            action ((x, c) ⇒ c.copy (replication = x)).
+            text ("keyspace replication if the Cassandra keyspace needs creation [%s]".format (default.replication))
 
         opt [Formats.Value]("format").
             action ((x, c) ⇒ c.copy (format = x)).

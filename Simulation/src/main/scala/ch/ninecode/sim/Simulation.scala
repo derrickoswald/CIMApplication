@@ -453,7 +453,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 val id = java.util.UUID.randomUUID.toString
                 log.info ("""starting simulation %s""".format (id))
 
-                val schema = Schema (session, job.output_keyspace, options)
+                val schema = Schema (session, job.output_keyspace, job.replication, options.verbose)
                 if (schema.make)
                 {
                     // perform the extra queries and insert into the key_value table

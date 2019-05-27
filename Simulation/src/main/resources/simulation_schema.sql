@@ -107,6 +107,7 @@ create table if not exists cimapplication.simulation (
     description text,
     cim text,
     cimreaderoptions map<text,text>,
+    run_time timestamp,
     start_time timestamp,
     end_time timestamp,
     input_keyspace text,
@@ -121,6 +122,7 @@ Describes each run of the Simulate code.
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation
     cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
+    run_time - the time at which the simulation was executed
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT
     input_keyspace - the Cassandra keyspace for measurement data
