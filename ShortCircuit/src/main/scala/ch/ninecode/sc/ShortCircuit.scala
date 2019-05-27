@@ -452,7 +452,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             (false, network)
     }
 
-    def reduce (branches: Iterable[SimpleBranch]): Iterable[Branch] =
+    def reduce (branches: Iterable[SimpleBranch], trafo_node: String): Iterable[Branch] =
     {
         // step by step reduce the network to a single branch through series and parallel reductions
         var done = false
@@ -467,6 +467,19 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 val (modified, net) = reduce_parallel (network)
                 network = net
                 done = !modified
+                // check that all branches start from the transformer
+                if (done)
+                    if (!network.forall (_.from == trafo_node))
+                    {
+                        val max = network.map (_.current).max
+                        val significant = max * 0.01 // 1% of the maximum current
+                        val filtered = network.filter (_.current > significant)
+                        if (filtered.size < network.size)
+                        {
+                            done = false
+                            network = filtered
+                        }
+                    }
             }
         }
         while (!done)
@@ -536,9 +549,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                                 Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
                                             val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                                             if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, None, z))
+                                                List (SimpleBranch (x.cn1, x.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
                                             else
-                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, None, z))
+                                                List (SimpleBranch (x.cn2, x.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
                                         }
                                     case _ ⇒
                                         // e.g. transformer: TransformerEdge which never happens since the transformer is not included in the edges list
@@ -572,7 +585,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             family = family.filter (no_stubs (family, trafokreis.transformer.node1, experiment.mrid))
         }
         while (count != family.size)
-        val branches = reduce (family)
+        val branches = reduce (family, trafokreis.transformer.node1)
         val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
 
         // compute the impedance from start to end
@@ -583,7 +596,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 (tx.secondary_impedance, null)
             else
             {
-                log.error ("""invalid branch network from %s to %s\n%s""".format (branch.from, experiment.mrid, branches.map (_.asString).mkString ("\n")))
+                log.error (
+                    """invalid branch network from %s to %s
+                      |%s""".stripMargin.format (trafokreis.transformer.node1, experiment.mrid, branches.map (_.asString).mkString ("\n")))
                 val zero = Impedanzen (0.0, 0.0, 0.0, 0.0)
                 (zero, null)
             }

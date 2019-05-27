@@ -64,17 +64,18 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def add_in_series (that: Branch): Branch =
     {
+        val i = Math.max (current, that.current)
         if (to == that.from)
-            Branch (from, that.to, current, this.seq ++ that.seq)
+            Branch (from, that.to, i, this.seq ++ that.seq)
         else
             if (from == that.to)
-                Branch (that.from, to, current, that.seq ++ this.seq)
+                Branch (that.from, to, i, that.seq ++ this.seq)
             else
                 if (to == that.to)
-                    Branch (from, that.from, current, this.seq ++ that.seq.reverse)
+                    Branch (from, that.from, i, this.seq ++ that.seq.reverse)
                 else
                     if (from == that.from)
-                        Branch (that.to, to, current, that.seq.reverse ++ this.seq)
+                        Branch (that.to, to, i, that.seq.reverse ++ this.seq)
                     else
                         throw new IllegalArgumentException ("branches are not in series (%s, %s)".format (this, that))
     }
@@ -106,13 +107,13 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String, rating: Option[Double] = None,
      z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
-    override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s%s)""".format (
+    override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s %s)""".format (
         from,
         to,
         current,
         mRID,
         if (rating.isDefined) "@%s".format (rating.get) else "",
-        if (null != name) name.substring (0, 3) else "")
+        if (null != name) name else "")
 
     def asString: String = "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
