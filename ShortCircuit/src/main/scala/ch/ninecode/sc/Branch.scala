@@ -243,6 +243,69 @@ case class ParallelBranch (override val from: String, override val to: String, o
     def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((branch, z) ⇒ branch.z.parallel (z))
 }
 
+/**
+ * A group of elements too complex to reduce to a combination of series and parallel branches.
+ *
+ * @param from     the 'from' node
+ * @param to       the 'to' node
+ * @param current  the current through this branch in the GridLAB-D experiment
+ * @param basket   the branches in no particular order
+ */
+case class ComplexBranch (override val from: String, override val to: String, override val current: Double, basket: Array[Branch]) extends Branch (from, to, current)
+{
+    override def toString: String = """ComplexBranch ("%s" ⇒ "%s" %sA %s)""".format (from, to, current, basket.map (_.toString).mkString ("[", ",", "]"))
+
+    def asString: String = basket.map (_.asString).mkString ("{", ",", "}")
+
+    def asFuse: String = basket.map (_.asFuse).mkString ("{", ",", "}")
+
+    def asId: String = basket.map (_.asId).mkString ("{", ",", "}")
+
+    def seq: Seq[ComplexBranch] = Seq (this)
+
+    def iter: Iterable[Branch] = basket
+
+    def lastFuses: Iterable[Branch] =
+    {
+        justFuses match { case Some (fuses) ⇒ Seq(fuses) case None ⇒ Seq() }
+    }
+
+    def justFuses: Option[Branch] =
+    {
+        val fuses = basket.flatMap (_.justFuses)
+        if ((fuses.length == 1) && fuses.head.isInstanceOf [SimpleBranch])
+        {
+            val branch = fuses.head.asInstanceOf [SimpleBranch]
+            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
+        }
+        else
+            if (fuses.nonEmpty)
+                Some (ComplexBranch (this.from, this.to, this.current, fuses))
+            else
+                None
+    }
+
+
+    def reverse: Branch = ComplexBranch (to, from, current, basket.map (_.reverse))
+
+    def ratios: Iterable[(Double, Branch)] =
+    {
+        basket.map (x ⇒ (x.current / current, x))
+    }
+
+    /**
+     * NOTE: this is totally wrong. It just puts a lower bound on the actual impedance.
+     * @return a fake impedance value
+     */
+    def z: Impedanzen =
+    {
+        val start = ParallelBranch (from, to, 0.0, basket.filter (_.from == from))
+        val middle = ParallelBranch (from, to, 0.0, basket.filter (x ⇒ x.from != from && x.to != to))
+        val end = ParallelBranch (from, to, 0.0, basket.filter (_.to == to))
+        start.z + middle.z + end.z
+    }
+}
+
 object Branch
 {
     def apply (from: String, to: String, current: Double, mRID: String, name: String, rating: Option[Double]) = SimpleBranch (from, to, current, mRID, name, rating)
@@ -250,5 +313,7 @@ object Branch
     def apply (from: String, to: String, current: Double, series: Seq[Branch]) = SeriesBranch (from, to, current, series)
 
     def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]) = ParallelBranch (from, to, current, parallel)
+
+    def apply (from: String, to: String, current: Double, basket: Array[Branch]) = ComplexBranch (from, to, current, basket)
 }
 

@@ -597,10 +597,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             else
             {
                 log.error (
-                    """invalid branch network from %s to %s
+                    """complex branch network from %s to %s
                       |%s""".stripMargin.format (trafokreis.transformer.node1, experiment.mrid, branches.map (_.asString).mkString ("\n")))
-                val zero = Impedanzen (0.0, 0.0, 0.0, 0.0)
-                (zero, null)
+                // get the total current to the energy consumer
+                val directs = branches.filter (experiment.mrid == _.to)
+                val sum = directs.map (_.current).sum
+                // generate a fake impedance
+                val complex = ComplexBranch (trafokreis.transformer.node1, experiment.mrid, sum, branches.toArray)
+                val z = complex.z + tx.secondary_impedance
+                (z, complex.justFuses.orNull)
             }
         }
         else
