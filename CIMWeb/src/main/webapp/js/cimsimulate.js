@@ -625,6 +625,156 @@ truncate table cimapplication.responsibility_by_day;
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
             TheSimulation.extras = query_extras ();
+            TheSimulation.postprocessing = [];
+            if (document.getElementById ("events").checked)
+                TheSimulation.postprocessing.push (
+                    {
+                        "class": "event",
+                        "thresholds":
+                            [
+                                {
+                                    "trigger": "high",
+                                    "type": "voltage",
+                                    "severity": 1,
+                                    "table": "geojson_points",
+                                    "reference": "ratedVoltage",
+                                    "default": 400.0,
+                                    "ratio": 1.10,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "low",
+                                    "type": "voltage",
+                                    "severity": 1,
+                                    "table": "geojson_points",
+                                    "reference": "ratedVoltage",
+                                    "default": 400.0,
+                                    "ratio": 0.90,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "voltage",
+                                    "severity": 2,
+                                    "table": "geojson_points",
+                                    "reference": "ratedVoltage",
+                                    "default": 400.0,
+                                    "ratio": 1.06,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "low",
+                                    "type": "voltage",
+                                    "severity": 2,
+                                    "table": "geojson_points",
+                                    "reference": "ratedVoltage",
+                                    "default": 400.0,
+                                    "ratio": 0.94,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "current",
+                                    "severity": 1,
+                                    "table": "geojson_lines",
+                                    "reference": "ratedCurrent",
+                                    "default": 100.0,
+                                    "ratio": 1.10,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "current",
+                                    "severity": 1,
+                                    "table": "geojson_lines",
+                                    "reference": "ratedCurrent",
+                                    "default": 100.0,
+                                    "ratio": 0.90,
+                                    "duration": 10800000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "current",
+                                    "severity": 2,
+                                    "table": "geojson_lines",
+                                    "reference": "ratedCurrent",
+                                    "default": 100.0,
+                                    "ratio": 0.75,
+                                    "duration": 50400000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "power",
+                                    "severity": 1,
+                                    "table": "geojson_polygons",
+                                    "reference": "ratedS",
+                                    "default": 630000,
+                                    "ratio": 1.10,
+                                    "duration": 900000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "power",
+                                    "severity": 1,
+                                    "table": "geojson_polygons",
+                                    "reference": "ratedS",
+                                    "default": 630000,
+                                    "ratio": 0.90,
+                                    "duration": 10800000
+                                },
+                                {
+                                    "trigger": "high",
+                                    "type": "power",
+                                    "severity": 2,
+                                    "table": "geojson_polygons",
+                                    "reference": "ratedS",
+                                    "default": 630000,
+                                    "ratio": 0.75,
+                                    "duration": 50400000
+                                }
+                            ]
+                    }
+                );
+            if (document.getElementById ("summarize").checked)
+            {
+                TheSimulation.postprocessing.push (
+                    {
+                        "class": "coincidence_factor",
+                        "aggregates":
+                            [
+                                {
+                                    "intervals": 96,
+                                    "ttl": null
+                                }
+                            ]
+                    }
+                );
+                TheSimulation.postprocessing.push (
+                    {
+                        "class": "load_factor",
+                        "aggregates":
+                            [
+                                {
+                                    "intervals": 96,
+                                    "ttl": null
+                                }
+                            ]
+                    }
+                );
+                TheSimulation.postprocessing.push (
+                    {
+                        "class": "responsibility_factor",
+                        "aggregates":
+                            [
+                                {
+                                    "intervals": 96,
+                                    "ttl": null
+                                }
+                            ]
+                    }
+                );
+            }
+
             return (TheSimulation);
         }
 
@@ -658,14 +808,12 @@ truncate table cimapplication.responsibility_by_day;
             }
             const verbose = document.getElementById ("verbose").checked ? ";verbose=true" : "";
             const keep = document.getElementById ("keep").checked ? ";keep=true" : "";
-            const events = document.getElementById ("events").checked ? ";events=true" : "";
-            const summarize = document.getElementById ("summarize").checked ? ";summarize=true" : "";
             // flip to the map while simulating
             const to_map = document.getElementById ("to_map").checked;
             if (to_map)
                 window.location.hash = "map";
 
-            const url = util.home () + "cim/estimation" + verbose + keep + events + summarize;
+            const url = util.home () + "cim/estimation" + verbose + keep;
             const xmlhttp = util.createCORSRequest ("POST", url);
             xmlhttp.onreadystatechange = function ()
             {

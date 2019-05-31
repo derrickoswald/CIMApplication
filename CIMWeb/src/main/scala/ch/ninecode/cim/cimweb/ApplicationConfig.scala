@@ -35,9 +35,7 @@ class ApplicationConfig extends Application
             classOf[FileOperations],
             classOf[LoadFile],
             classOf[Query],
-            classOf[Export],
             classOf[View],
-            classOf[EnergyConsumer],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
             classOf[Estimation]))

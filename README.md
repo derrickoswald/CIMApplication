@@ -15,7 +15,7 @@ CIM files which are a standard interchange format based on IEC standards 61968 &
 (see [CIM users group](http://cimug.ucaiug.org/default.aspx) for additional details)
 to access Spark Resilient Distributed Dataset (RDD) for each CIM class.
 
-It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data applications running on Hadoop.
+It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data electric distribution applications running on Hadoop.
 
 # Video
 
@@ -74,16 +74,13 @@ RESTful services provided by the CIMWeb .war file.
 Endpoint | Verb | Parameters | Description|
 ------------ | ------------- | ------------- | -------------|
 /cimweb/cim/ping | GET | optional debug | Simple response to check for proper deployment. The optional boolean debug matrix parameter will return the current set of environment variables on the server.|
-/cimweb/cim/pong | GET | optional debug | Response to check for proper connection. The optional boolean debug matrix parameter will return the current set of environment variables on the server and metadata from the connection.|
+/cimweb/cim/pong | GET | optional debug | Response to check for proper Spark connection. The optional boolean debug matrix parameter will return the current set of environment variables on the server and metadata from the connection.|
 /cimweb/cim/file | GET | optional path | Returns the contents of the directory (if path ends with /) or the contents of the file from HDFS.|
 /cimweb/cim/file | PUT | path zip | Stores the byte contents at the path on HDFS. The optional boolean zip matrix parameter unzips a single file from the zip and stores it's contents on HDFS at the given path|
 /cimweb/cim/file | DELETE | path |Removes the file or directory at the path on HDFS.|
 /cimweb/cim/load | GET | path | Reads the contents of the HDFS file (.rdf) into Spark via the CIMReader.|
-/cimweb/cim/export | GET | island | Returns the RDF of the given TopologicalIsland and related elements.|
-/cimweb/cim/export | PUT | target | Stores the RDF of the TopologicalIsland specified by the contents (text island name) at the target path on HDFS.|
-/cimweb/cim/query | GET | sql cassandra table_name cassandra_table_name| Performs SQL query against the loaded CIM data, or against Cassandra if cassandra=true. Returns a JSON array of records retrieved. Optionally store results in supplied table names.|
-/cimweb/cim/gridlab | GET | simulation | Returns the GridLAB-D Model file (.glm) for the given simulation file (JSON).|
-/cimweb/cim/gridlab | POST | simulation | Executes gridlabd for the model specified by the glm property in the given simulation file (JSON).|
+/cimweb/cim/query | GET | sql cassandra table_name cassandra_table_name| Performs SQL query against the loaded CIM data, or against Cassandra if cassandra=true. Returns a JSON array of records retrieved. Optionally store results in supplied table name.|
+/cimweb/cim/estimation | POST | simulation | Executes gridlabd for the model specified by the cim property in the given simulation file (JSON).|
 /cimweb/cim/view | GET | about xmin ymin, xmax, ymax, reduceLines, maxLines, dougPeuk dougPeukFactor, resolution | Return (simplified) RDF for features within the bounding box from the CIM loaded into Spark.|
 /cimweb/cim/short_circuit | GET | optional transformer | Returns the short circuit data for the house connections attached to the transformer, or all transfromers if none was specified.|
 /cimweb/cim/spatial/nearest | GET | optional lat lon n | Finds the n nearest house connections to the given wgs84 lat,long.|

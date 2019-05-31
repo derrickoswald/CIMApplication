@@ -184,35 +184,64 @@ create type if not exists cimapplication.polygon_data (type text, coordinates li
 
 create table if not exists cimapplication.geojson_points (
     simulation text,
-    mrid text,
     coordinate_system text,
+    mrid text,
     transformer text,
     type text,
     geometry frozen<cimapplication.point_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid, coordinate_system)
-) with comment = 'GeoJSON for simulated point elements';
+    primary key ((simulation, coordinate_system), mrid)
+) with comment = '
+GeoJSON for simulated point elements.
+Describes each point object in the simulation, excluding transformers.
+    simulation        - the simulation run identifier, UUID
+    coordinate_system - the coordinate system for the point
+    mrid              - the cim mRID of the element
+    transformer       - the mRID/name of the associated transformer service area
+    type              - always "Feature" per the GeoJSON specification
+    geometry          - the type ("Point") and point coordinates
+    properties        - the attributes for this element from the extra queries
+';
 
 create table if not exists cimapplication.geojson_lines (
     simulation text,
-    mrid text,
     coordinate_system text,
+    mrid text,
     transformer text,
     type text,
     geometry frozen<cimapplication.line_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid, coordinate_system)
-) with comment = 'GeoJSON for simulated line elements';
+    primary key ((simulation, coordinate_system), mrid)
+) with comment = '
+GeoJSON for simulated line elements.
+Describes each linear object in the simulation.
+    simulation        - the simulation run identifier, UUID
+    coordinate_system - the coordinate system for the line
+    mrid              - the cim mRID of the element
+    transformer       - the mRID/name of the associated transformer service area
+    type              - always "Feature" per the GeoJSON specification
+    geometry          - the type ("LineString") and line coordinates
+    properties        - the attributes for this element from the extra queries
+';
 
 create table if not exists cimapplication.geojson_polygons (
     simulation text,
-    mrid text,
     coordinate_system text,
+    mrid text,
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key (simulation, mrid, coordinate_system)
-) with comment = 'GeoJSON for simulated polygon elements';
+    primary key ((simulation, coordinate_system), mrid)
+) with comment = '
+GeoJSON for simulated polygon elements.
+Describes each polygonal object in the simulation.
+    simulation        - the simulation run identifier, UUID
+    coordinate_system - the coordinate system for the line
+    mrid              - the cim mRID of the element
+    type              - always "Feature" per the GeoJSON specification
+    geometry          - the type ("Polygon") and polygon coordinates
+    properties        - the attributes for this element from the extra queries
+';
 
 create table if not exists cimapplication.key_value (
     simulation text,
@@ -220,7 +249,14 @@ create table if not exists cimapplication.key_value (
     key text,
     value text,
     primary key (simulation, query, key)
-) with comment = 'Key-value pairs for extra data';
+) with comment = '
+Key-value pairs for extra data.
+Extra query results.
+    simulation - the simulation run identifier, UUID
+    query      - the name of the query from the simulation JSON
+    key        - the key as returned by the query
+    value      - the value as returned by the query
+';
 
 create table if not exists cimapplication.load_factor_by_day (
    mrid text,
