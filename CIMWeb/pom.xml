@@ -20,7 +20,6 @@
         <version.plugin.war>3.1.0</version.plugin.war>
 
         <!-- test dependencies versions -->
-        <version.dependency.tomee>7.1.0</version.dependency.tomee>
         <version.dependency.arquillian>1.1.13.Final</version.dependency.arquillian>
         <tomee.classifier>plus</tomee.classifier>
 

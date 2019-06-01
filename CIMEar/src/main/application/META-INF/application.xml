@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <application
-    xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns="http://xmlns.jcp.org/xml/ns/javaee"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/application_6.xsd"
-    version="6">
+    xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/application8.xsd"
+    version="8">
 
     <description>Application to access CIM files via Apache Spark</description>
 
@@ -20,14 +20,18 @@
         <connector>CIMConnector.rar</connector>
     </module>
 
-    <!-- This is only available in J2EE7 -->
-    <!-- connection-factory>
+    <!--
+    Despite TomEE saying it is J2EE8 compatible, it does not understand Java EE 8 Deployment Descriptors.
+    See issue: https://issues.apache.org/jira/projects/TOMEE/issues/TOMEE-2306?filter=allopenissues
+    and email thread: http://tomee-openejb.979440.n4.nabble.com/New-Java-EE-Schemas-for-Java-EE-Deployment-Descriptors-td4685709.html
+    <connection-factory>
         <description>Connection factory for Spark connection using CIMConnector</description>
         <name>java:app/eis/SparkConnectionFactory</name>
         <interface-name>ch.ninecode.cim.connector.CIMConnectionFactory</interface-name>
         <resource-adapter>CIMConnector</resource-adapter>
         <min-pool-size>2</min-pool-size>
         <transaction-support>NoTransaction</transaction-support>
-    </connection-factory-->
+    </connection-factory>
+    -->
 
 </application>

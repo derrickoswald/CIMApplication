@@ -1,23 +1,19 @@
 package ch.ninecode.cim.cimweb
 
-//import javax.resource.ConnectionFactoryDefinition;
-//import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
-import javax.ws.rs.ApplicationPath
-import javax.ws.rs.core.Application
 import java.util
 
-// This is only available in J2EE7:
+import javax.resource.ConnectionFactoryDefinition
+import javax.resource.spi.TransactionSupport.TransactionSupportLevel
+import javax.ws.rs.ApplicationPath
+import javax.ws.rs.core.Application
 
-//@ConnectionFactoryDefinition
-//(
-//    description = "Connection factory for Spark connection using CIMConnector",
-//    name = "java:app/eis/SparkConnectionFactory",
-//    resourceAdapter = "CIMConnector", // reference CIMConnector.rar in application.xml
-//    interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
-//    transactionSupport = TransactionSupportLevel.NoTransaction
-//)
-//
-
+@ConnectionFactoryDefinition (
+    description = "Connection factory for Spark connection using CIMConnector",
+    name = "java:app/eis/SparkConnectionFactory",
+    resourceAdapter = "CIMConnector", // reference CIMConnector.rar in application.xml
+    interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
+    transactionSupport = TransactionSupportLevel.NoTransaction
+)
 @ApplicationPath ("cim/")
 class ApplicationConfig extends Application
 {
@@ -41,4 +37,3 @@ class ApplicationConfig extends Application
             classOf[Estimation]))
     }
 }
-

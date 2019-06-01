@@ -16,12 +16,6 @@
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/SmartMeter</url>
 
-    <properties>
-
-        <version.dependency.glassfish>1.1.2</version.dependency.glassfish>
-
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -69,7 +63,7 @@
         <dependency>
             <groupId>org.glassfish</groupId>
             <artifactId>javax.json</artifactId>
-            <version>${version.dependency.glassfish}</version>
+            <version>${version.dependency.json}</version>
             <scope>provided</scope>
         </dependency>
 

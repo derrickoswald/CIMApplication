@@ -16,7 +16,7 @@
     <properties>
 
         <!-- plugins versions -->
-        <version.ear.plugin>2.6</version.ear.plugin>
+        <version.ear.plugin>3.0.1</version.ear.plugin>
 
     </properties>
 
