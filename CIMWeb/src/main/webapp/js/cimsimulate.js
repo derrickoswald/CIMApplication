@@ -1,12 +1,11 @@
 /**
  * @fileOverview Simulate with gridlabd.
- * @name cimsimulate
  * @author Derrick Oswald
  * @version 1.0
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "chooser", "themes/simulation_theme", "moment", "daterangepicker"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "cimapp", "chooser", "themes/simulation_theme", "moment", "daterangepicker"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
@@ -19,24 +18,21 @@ truncate table cimapplication.key_value;
 truncate table cimapplication.load_factor_by_day;
 truncate table cimapplication.coincidence_factor_by_day;
 truncate table cimapplication.responsibility_by_day;
-     * @name cimsimulate
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, Chooser, SimulationTheme, moment, DateRangePicker)
+    function (mustache, util, cimfiles, cimmap, cimquery, cim, cimapp, Chooser, SimulationTheme, moment, DateRangePicker)
     {
-        // The Cassandra keyspace where measurement data is read from for player files
-        let input_keyspace = "cimapplication";
-
-        // The Cassandra keyspace where simulation results are stored - recorder files, summaries, simulations
-        let output_keyspace = "cimapplication";
-
         // The simulation details.
         let TheSimulation =
             {
+                // the name of the simulation and this JSON file
                 name: "DemoData",
+                // textual description suitable for GUI display
                 description: "simulation with demo data",
+                // CIM RDF file, e.g. hdfs://sandbox:8020/some.rdf
                 cim: "hdfs://sandbox:8020/DemoData.rdf",
+                // CIM read options
                 cimreaderoptions: {
                     "ch.ninecode.cim.do_about": false,
                     "ch.ninecode.cim.do_normalize": false,
@@ -47,42 +43,29 @@ truncate table cimapplication.responsibility_by_day;
                     "ch.ninecode.cim.do_topo": false,
                     "ch.ninecode.cim.split_maxsize": 67108864
                 },
+                // time range over which to simulate
                 interval: {
                     "start": "2017-07-18T00:00:00.000+0100",
                     "end": "2017-07-19T00:00:00.000+0100"
                 },
+                // Cassandra keyspaces
                 keyspaces: {
+                    // the Cassandra keyspace where measurement data is read from for player files
                     "input": "cimapplication",
-                    "output": "cimapplication"
+                    // the Cassandra keyspace where simulation results are stored - recorder files, summaries, simulations
+                    "output": "cimapplication",
+                    // the replication factor - in the case that the schema will be created
+                    "replication": 2
                 },
+                // player queries, with title and query SQL
                 players: [],
+                // recorder queries, with title, query SQL, interval and aggregations
                 recorders: [],
+                // transformer mRID (or ganged name)
                 transformers: [],
+                // extra data queries for GeoJSON tables
                 extras: []
             };
-        // provisional schema:
-        //    {
-        //        "name": <the name of the simulation and this JSON file>,
-        //        "description": <textual description suitable for GUI display>,
-        //        "cim": <CIM RDF file, e.g. hdfs://sandbox:8020/some.rdf>,
-        //        "cimreaderoptions": {
-        //            "ch.ninecode.cim.do_about": false,
-        //            "ch.ninecode.cim.do_normalize": false,
-        //            "ch.ninecode.cim.do_deduplication": false,
-        //            "ch.ninecode.cim.make_edges": false,
-        //            "ch.ninecode.cim.do_join": false,
-        //            "ch.ninecode.cim.do_topo_islands": false,
-        //            "ch.ninecode.cim.do_topo": false,
-        //            "ch.ninecode.cim.split_maxsize": 67108864
-        //        },
-        //        "interval": {
-        //            "start": "2017-07-18T00:00:00.000+0100",
-        //            "end": "2017-07-19T00:00:00.000+0100"
-        //        },
-        //        keyspaces: {
-        //            "input": "cimapplication",
-        //            "output": "cimapplication"
-        //        },
         //        "transformers": [
         //            "TRA2755"
         //        ],
@@ -115,6 +98,12 @@ truncate table cimapplication.responsibility_by_day;
         //                        "ttl": null
         //                    }
         //                ]
+        //            }
+        //        ],
+        //        "extras": [
+        //            {
+        //                "title": "nominalVoltage",
+        //                "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
         //            }
         //        ]
         //    }
@@ -560,13 +549,13 @@ truncate table cimapplication.responsibility_by_day;
 
         function set_input_keyspace (event)
         {
-            input_keyspace = event.target.value;
+            TheSimulation.keyspaces.input = event.target.value;
             getDateRange ();
         }
 
         function set_output_keyspace (event)
         {
-            output_keyspace = event.target.value;
+            TheSimulation.keyspaces.output = event.target.value;
             getSimulationNames ();
         }
 
@@ -828,7 +817,7 @@ truncate table cimapplication.responsibility_by_day;
                             if (to_map)
                             {
                                 const theme = new SimulationTheme ();
-                                theme.setSimulation (output_keyspace, simulation_id).then (
+                                theme.setSimulation (TheSimulation.keyspaces.output, simulation_id).then (
                                     function ()
                                     {
                                         cimmap.get_themer ().removeTheme (theme);
@@ -841,7 +830,7 @@ truncate table cimapplication.responsibility_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select json * from " + output_keyspace + ".simulation where id='" + simulation_id + "'"
+                                        sql: "select json * from " + TheSimulation.keyspaces.output + ".simulation where id='" + simulation_id + "'"
                                     }
                                 ).then (
                                     function (resultset)
@@ -867,7 +856,7 @@ truncate table cimapplication.responsibility_by_day;
             if (document.getElementById ("to_map").checked)
             {
                 const theme = new SimulationTheme ();
-                theme.setSimulation (output_keyspace, simulation_id).then (
+                theme.setSimulation (TheSimulation.keyspaces.output, simulation_id).then (
                     function ()
                     {
                         cimmap.get_themer ().removeTheme (theme);
@@ -883,7 +872,7 @@ truncate table cimapplication.responsibility_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select json * from " + output_keyspace + ".simulation where id='" + simulation_id + "'"
+                        sql: "select json * from " + TheSimulation.keyspaces.output + ".simulation where id='" + simulation_id + "'"
                     }
                 ).then (
                     function (resultset)
@@ -1199,7 +1188,7 @@ truncate table cimapplication.responsibility_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", output_keyspace)
+                        sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", TheSimulation.keyspaces.output)
                     }
                 ).then (
                     function (resultset)
@@ -1209,7 +1198,7 @@ truncate table cimapplication.responsibility_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", output_keyspace)
+                                        sql: "select JSON id, name, description, cim, cimreaderoptions, start_time, end_time, transformers from cimapplication.simulation".replace ("cimapplication", TheSimulation.keyspaces.output)
                                     }
                                 ).then (render_prior_simulations)
                             );
@@ -1263,7 +1252,7 @@ truncate table cimapplication.responsibility_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where time < " + start.getTime () + " limit 1 allow filtering"
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where time < " + start.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
                     function (resultset)
@@ -1277,7 +1266,7 @@ truncate table cimapplication.responsibility_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
+                                        sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
                                     function (resultset)
@@ -1301,7 +1290,7 @@ truncate table cimapplication.responsibility_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where time > " + end.getTime () + " limit 1 allow filtering"
+                        sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where time > " + end.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
                     function (resultset)
@@ -1315,7 +1304,7 @@ truncate table cimapplication.responsibility_by_day;
                                 cimquery.queryPromise (
                                     {
                                         cassandra: true,
-                                        sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
+                                        sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
                                     function (resultset)
@@ -1343,13 +1332,13 @@ truncate table cimapplication.responsibility_by_day;
                 cimquery.queryPromise (
                     {
                         cassandra: true,
-                        sql: "select time from cimapplication.measured_value".replace ("cimapplication", input_keyspace) + " limit 1"
+                        sql: "select time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " limit 1"
                     }
                 ).then (
                     function (resultset)
                     {
                         if (0 === resultset.length)
-                            alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", input_keyspace));
+                            alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", TheSimulation.keyspaces.input));
                         else
                         {
                             const time = new Date (resultset[0].time);
@@ -1389,6 +1378,25 @@ truncate table cimapplication.responsibility_by_day;
             );
         }
 
+        function setReplication ()
+        {
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        // as a heuristic set the replication factor to 1 if local and 2 otherwise (sandbox)
+                        cimapp.pong (false).then (
+                            function (result)
+                            {
+                                TheSimulation.keyspaces.replication = ("local[*]" === result.spark_instance.spark_master) ? 1 : 2;
+                                resolve ();
+                            }
+                        );
+                    }
+                )
+            );
+        }
+
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
@@ -1396,7 +1404,7 @@ truncate table cimapplication.responsibility_by_day;
          */
         function initialize ()
         {
-            render ();
+            setReplication ().then (render);
         }
 
         function getSimulations (station, callback)

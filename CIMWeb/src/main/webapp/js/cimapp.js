@@ -8,95 +8,86 @@ define
     /**
      * @summary Application utilities.
      * @description Performs application checks.
-     * @name cimapp
      * @exports cimapp
      * @version 1.0
      */
     function (util, cimmap, cim, cimfiles)
     {
         // the base name of the currently loaded file
-        var TheCurrentName = null;
+        let TheCurrentName = null;
 
         // the rdf:about text for saving
-        var TheCurrentAbout = null;
+        let TheCurrentAbout = null;
 
         // the md:description text for saving
-        var TheCurrentDescription = null;
+        let TheCurrentDescription = null;
 
         /**
          * @summary Connect to the server to see if it's alive.
          * @description Invoke the server-side ping function.
-         * @param {function} fn Optional function to handle the received data, signature fn (result)
-         * @function ping
-         * @memberOf module:cimapp
+         * @param debug add the 'debug' matrix parameter to request if <code>true</code>
+         * @return a promise that resolves to the the received data, signature fn (result), or rejects with the failed result or the error message
          */
-        function ping (fn)
+        function ping (debug)
         {
-            var url;
-            var xmlhttp;
-
-            url = util.home () + "cim/ping;debug=true";
-            xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                var resp;
-                var msg;
-                var reason;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+            return (
+                new Promise (
+                    function (resolve, reject)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
-                            if (fn)
-                                fn (resp.result)
-                            else
-                                alert (resp.result);
-                        else
-                            alert (resp);
+                        const url = util.home () + "cim/ping" + ((debug) ? ";debug=true" : "");
+                        const xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+                                {
+                                    const resp = JSON.parse (xmlhttp.responseText);
+                                    if ("OK" === resp.status)
+                                        resolve (resp.result);
+                                    else
+                                        reject (resp);
+                                }
+                                else
+                                    reject ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                        };
+                        xmlhttp.send ();
                     }
-                    else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-            xmlhttp.send ();
+                )
+            );
         }
 
         /**
          * @summary Connect to the server to see if it's alive and connected to Spark.
          * @description Invoke the server-side pong function.
-         * @param {function} fn Optional function to handle the received data, signature fn (result)
-         * @function pong
-         * @memberOf module:cimapp
+         * @param debug add the 'debug' matrix parameter to request if <code>true</code>
+         * @return a promise that resolves to the the received data, signature fn (result), or rejects with the failed result or the error message
          */
-        function pong (fn)
+        function pong (debug)
         {
-            var url;
-            var xmlhttp;
-
-            url = util.home () + "cim/pong;debug=true";
-            xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                var resp;
-                var msg;
-                var reason;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+            return (
+                new Promise (
+                    function (resolve, reject)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
-                            if (fn)
-                                fn (resp.result)
-                            else
-                                alert (resp.result);
-                        else
-                            alert (resp);
+                        const url = util.home () + "cim/pong" + ((debug) ? ";debug=true" : "");
+                        const xmlhttp = util.createCORSRequest ("GET", url);
+                        xmlhttp.onreadystatechange = function ()
+                        {
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+                                {
+                                    const resp = JSON.parse (xmlhttp.responseText);
+                                    if ("OK" === resp.status)
+                                        resolve (resp.result);
+                                    else
+                                        reject (resp);
+                                }
+                                else
+                                    reject ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
+                        };
+                        xmlhttp.send ();
                     }
-                    else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-            xmlhttp.send ();
+                )
+            );
         }
 
         /**
@@ -107,15 +98,15 @@ define
          */
         function initialize ()
         {
-            pong (
+            pong (true).then (
                 function (result)
                 {
-                    if (result.properties["SparkConnectionFactory.ServerName"] != "localhost")
+                    if ("localhost" !== result.properties["SparkConnectionFactory.ServerName"])
                     {
-                        var namenode = result.environment.NAMENODE;
-                        var ui = result.spark_instance.spark_application_ui_url;
-                        document.getElementById ("spark_master").setAttribute ("href", "http://" + namenode + ":8080")
-                        document.getElementById ("spark_job").setAttribute ("href", ui)
+                        const namenode = result.environment.NAMENODE;
+                        const ui = result.spark_instance.spark_application_ui_url;
+                        document.getElementById ("spark_master").setAttribute ("href", "http://" + namenode + ":8080");
+                        document.getElementById ("spark_job").setAttribute ("href", ui);
                         document.getElementById ("hadoop_hdfs").setAttribute ("href", "http://" + namenode + ":50070")
                     }
                     else
@@ -126,16 +117,16 @@ define
 
         function root_name (filename)
         {
-            var ret;
+            let ret = filename;
+
             if (filename.startsWith ("hdfs://"))
             {
-                var s = filename.substring ("hdfs://".length);
+                const s = filename.substring ("hdfs://".length);
                 ret = s.substring (s.indexOf ("/"));
                 if (ret.endsWith (".rdf"))
                     ret = ret.substring (0, ret.length - 4);
             }
-            else
-                ret = filename;
+
             return (ret);
         }
 
@@ -155,32 +146,30 @@ define
             TheCurrentName = document.getElementById ("save_name").value;
             TheCurrentAbout = document.getElementById ("rdf_about").value;
             TheCurrentDescription = document.getElementById ("md_description").value;
-            var loaded = cimmap.get_loaded ();
+            const loaded = cimmap.get_loaded ();
             if (!TheCurrentName && loaded)
                 TheCurrentName = root_name (loaded.files[0]);
-            var name = TheCurrentName || "save";
-            var full_model = document.getElementById ("full_model").checked;
-            var difference_model = document.getElementById ("difference_model").checked;
-            var only_new = document.getElementById ("only_new").checked;
-            var suffix = "";
+            let name = TheCurrentName || "save";
+            const difference_model = document.getElementById ("difference_model").checked;
+            const only_new = document.getElementById ("only_new").checked;
+            let suffix = "";
             if (difference_model)
                 suffix = "_diff";
             else if (only_new)
                 suffix = "_new";
-            var name = TheCurrentName + suffix;
-            var about = TheCurrentAbout;
-            var description = TheCurrentDescription;
+            name = name + suffix;
+            const about = TheCurrentAbout;
+            const description = TheCurrentDescription;
 
-            var pending =
+            const pending =
                 (null == cimmap.get_data ()) ? Promise.resolve ("no data") :
                     new Promise (
                         function (resolve, reject)
                         {
-                            var file = name + (difference_model ? "_diff" : "") + ".zip"
-                            var begin = new Date ().getTime ();
+                            const begin = new Date ().getTime ();
                             console.log ("starting xml creation");
-                            var text = cim.write_xml (cimmap.get_data ().Element, difference_model, only_new, about, description);
-                            var start = new Date ().getTime ();
+                            const text = cim.write_xml (cimmap.get_data ().Element, difference_model, only_new, about, description);
+                            const start = new Date ().getTime ();
                             console.log ("finished xml creation (" + (Math.round (start - begin) / 1000) + " seconds)");
                             console.log ("starting zip");
                             require (
@@ -198,7 +187,7 @@ define
                                                     writer.close (
                                                         function (blob) // blob contains the zip file as a Blob object
                                                         {
-                                                            var end = new Date ().getTime ();
+                                                            const end = new Date ().getTime ();
                                                             console.log ("finished zip (" + (Math.round (end - start) / 1000) + " seconds)");
                                                             console.log ("starting upload");
                                                             cimfiles.put (name + ".zip;unzip=true", blob).then (
