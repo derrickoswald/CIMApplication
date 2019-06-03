@@ -26,6 +26,7 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
+import org.apache.spark.graphx.VertexRDD
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
 {
@@ -58,7 +59,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val min_ir = math.min (triplet.srcAttr.min_ir, ir)
                     val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
                     val problem = if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.srcAttr.problem
-                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, null, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.dstId.toString, message.asString))
                     Iterator ((triplet.dstId, message))
@@ -70,7 +71,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val min_ir = math.min (triplet.dstAttr.min_ir, ir)
                     val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
                     val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
-                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
+                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, null, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
                     Iterator ((triplet.srcId, message))
@@ -114,7 +115,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
         // create the initial Graph with PowerFeedingNode vertices
         def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
-            PowerFeedingNode (v.id, null, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
+            PowerFeedingNode (v.id, null, null, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
 
         val pregraph = initial.outerJoinVertices (feeders.keyBy (_.node))(add_feeder)
 
@@ -127,7 +128,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin))(starting_map).persist (storage_level)
 
         // run Pregel
-        val default_message = PowerFeedingNode (null, null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
+        val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
         graph.pregel [PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,
@@ -150,12 +151,29 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val z_summe = math.sqrt (3) * z + trafo_z
         val threshold = options.voltage_threshold / 100.0
 
+        def get_heuristic_p_max (edge: PreEdge): Double =
+        {
+
+            val (dist_km, z, ir) = line_details (edge)
+            val current = math.sqrt (3) * ir * (v + z_summe.modulus * ir)
+            val sum_z = (z * dist_km).modulus
+            val voltage = node.nominal_voltage * (1 + options.voltage_threshold / 100) * (node.nominal_voltage * options.voltage_threshold / 100) / sum_z
+            Math.min(current, voltage)
+        }
+
         val solver = SmaxSolver (threshold, options.cosphi)
         val p_max_u = solver.solve (v, z_summe).modulus
         val p_max_i = math.sqrt (3) * min_ir * (v + z_summe.modulus * min_ir)
+
         val (p_max, reason, details) =
             if (null != node.problem)
-                (trafo_ratedS, node.problem, null)
+            {
+                val p_max_heuristic = node.conn_edge.map (get_heuristic_p_max).sum
+                if (p_max_heuristic < trafo_ratedS)
+                    (p_max_heuristic, "heuristic limit", "limitation of last cable(s)")
+                else
+                    (trafo_ratedS, node.problem, null)
+            }
             else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
                 (trafo_ratedS, "transformer limit", "assuming no EEA")
             else if (p_max_u < p_max_i)
@@ -226,13 +244,28 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val graph = trace (initial, transformers.map (trafo_mapping), feeders)
 
         // raw nodes
-        val nodes = graph.vertices.values.filter (_.source_obj != null)
+        val nodes: VertexRDD[PowerFeedingNode] = graph.vertices.filter (_._2.source_obj != null)
+        // get all edges per node
+        val src_edges = graph.edges.map (e ⇒ (e.srcId, e.attr))
+        val dst_edges = graph.edges.map (e ⇒ (e.dstId, e.attr))
+        val union_edges = src_edges.union (dst_edges).groupByKey ()
+        // get connected edge per node
+        val grouped_nodes = nodes.leftOuterJoin (union_edges).values
+        val nodes_with_edge = grouped_nodes.map (n ⇒
+        {
+            n._2 match
+            {
+                case Some (it) ⇒ n._1.copy (conn_edge = it.toArray)
+                case None ⇒ n._1
+            }
+        })
+
         // find which ones detected they were in a non-radial network
-        val nonradial = nodes.filter (_.hasNonRadial)
+        val nonradial = nodes.values.filter (_.hasNonRadial)
         // transformers with non-radial networks
         val bad_tx = nonradial.map (_.source_obj).distinct.collect
         // replace problem message in the nodes in those trafokreise (this overwrites any other problems so it's not perfect):
-        val new_nodes = nodes.map (x => if (bad_tx.contains (x.source_obj)) x.copy (problem = "non-radial network") else x)
+        val new_nodes = nodes_with_edge.map (x => if (bad_tx.contains (x.source_obj)) x.copy (problem = "non-radial network") else x)
         // then get the threshold:
         val house_nodes = get_threshold_per_has (new_nodes, options)
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values

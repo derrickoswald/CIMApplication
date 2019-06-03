@@ -2,12 +2,14 @@ package ch.ninecode.mfi
 
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.PreEdge
 
 /**
  * Vertex data for the precalculation Pregel algorithm.
  *
  * @param id              Node mRID.
  * @param prev_node       The previos node in the tracing
+ * @param conn_edge       The connected edges
  * @param nominal_voltage Nominal voltage.
  * @param source_obj      Feeding transformer.
  * @param feeder          Source connection from substation.
@@ -19,6 +21,7 @@ case class PowerFeedingNode
 (
     id: String,
     prev_node: String,
+    conn_edge: Array[PreEdge],
     nominal_voltage: Double,
     source_obj: StartingTrafo,
     feeder: Feeder,

@@ -570,7 +570,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else
-            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network"))
+            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit"))
 
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
