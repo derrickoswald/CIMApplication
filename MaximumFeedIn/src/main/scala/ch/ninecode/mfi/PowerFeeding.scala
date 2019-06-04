@@ -154,11 +154,14 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         def get_heuristic_p_max (edge: PreEdge): Double =
         {
 
-            val (dist_km, z, ir) = line_details (edge)
-            val current = math.sqrt (3) * ir * (v + z_summe.modulus * ir)
-            val sum_z = (z * dist_km).modulus
-            val voltage = node.nominal_voltage * (1 + options.voltage_threshold / 100) * (node.nominal_voltage * options.voltage_threshold / 100) / sum_z
-            Math.min(current, voltage)
+            val (dist_km, z_cable_per_km, ratedCurrent) = line_details (edge)
+            val z_cable = (z_cable_per_km * dist_km).modulus
+            val v_cable = z_cable * ratedCurrent
+            val p_max_current = math.sqrt (3) * ratedCurrent * (v + v_cable)
+            val limit = options.voltage_threshold / 100.0
+            val i_cable = (v * limit) / z_cable
+            val p_max_voltage = (v * (1.0 + limit)) * i_cable
+            Math.min (p_max_current, p_max_voltage)
         }
 
         val solver = SmaxSolver (threshold, options.cosphi)
