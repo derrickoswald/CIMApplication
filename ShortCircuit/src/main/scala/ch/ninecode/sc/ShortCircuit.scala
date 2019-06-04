@@ -452,7 +452,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             (false, network)
     }
 
-    def reduce (branches: Iterable[SimpleBranch], trafo_node: String): Iterable[Branch] =
+    def reduce (branches: Iterable[SimpleBranch], trafo_node: String, mrid: String): Iterable[Branch] =
     {
         // step by step reduce the network to a single branch through series and parallel reductions
         var done = false
@@ -473,7 +473,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     {
                         val max = network.map (_.current).max
                         val significant = max * 0.01 // 1% of the maximum current
-                        val filtered = network.filter (_.current > significant)
+                        val filtered = network.filter (x ⇒
+                            (x.current > significant)
+                            || (x.from == trafo_node)
+                            || (x.to == trafo_node)
+                            || (x.from == mrid)
+                            || (x.to == mrid))
                         if (filtered.size < network.size)
                         {
                             done = false
@@ -585,7 +590,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             family = family.filter (no_stubs (family, trafokreis.transformer.node1, experiment.mrid))
         }
         while (count != family.size)
-        val branches = reduce (family, trafokreis.transformer.node1)
+        val branches = reduce (family, trafokreis.transformer.node1, experiment.mrid)
         val branch = branches.find (branch ⇒ (experiment.mrid == branch.to) && (trafokreis.transformer.node1 == branch.from)).orNull
 
         // compute the impedance from start to end

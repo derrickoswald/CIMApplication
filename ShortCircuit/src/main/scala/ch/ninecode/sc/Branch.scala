@@ -299,10 +299,14 @@ case class ComplexBranch (override val from: String, override val to: String, ov
      */
     def z: Impedanzen =
     {
-        val start = ParallelBranch (from, to, 0.0, basket.filter (_.from == from))
-        val middle = ParallelBranch (from, to, 0.0, basket.filter (x ⇒ x.from != from && x.to != to))
-        val end = ParallelBranch (from, to, 0.0, basket.filter (_.to == to))
-        start.z + middle.z + end.z
+        var impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
+        val start_branches = basket.filter (_.from == from)
+        if (0 != start_branches.length) impedance = impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z
+        val middle_branches = basket.filter (x ⇒ x.from != from && x.to != to)
+        if (0 != middle_branches.length) impedance = impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z
+        val end_branches = basket.filter (_.to == to)
+        if (0 != end_branches.length) impedance = impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z
+        impedance
     }
 }
 
