@@ -83,7 +83,7 @@ class BranchImpedanceSuite extends FunSuite
         val y = branch.lastFuses
         val w = y.map (_.asFuse).mkString (",")
         // fake z
-        val z = Impedanzen (Complex ("0.03116704+0.01120796j"), Complex ("0.12406259+0.04185622j"), Complex ("0.03439122+0.01120796j"), Complex ("0.13689665+0.04185622j"))
+        val z = Impedanzen (Complex ("0.03116704+0.01120796j"), Complex ("0.12406259+0.04185622j"), Complex ("0.21073073+0.07010604j"), Complex ("0.84021245+0.26969719j"))
         assert (branch.z.toString == z.toString)
     }
 }

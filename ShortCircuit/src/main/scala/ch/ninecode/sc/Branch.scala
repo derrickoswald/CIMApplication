@@ -294,19 +294,23 @@ case class ComplexBranch (override val from: String, override val to: String, ov
     }
 
     /**
-     * NOTE: this is totally wrong. It just puts a lower bound on the actual impedance.
+     * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
      * @return a fake impedance value
      */
     def z: Impedanzen =
     {
-        var impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
+        // compute the lowest impedance as three parallel branch circuits (this will be used for the low temperature values)
+        var low_impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
         val start_branches = basket.filter (_.from == from)
-        if (0 != start_branches.length) impedance = impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z
+        if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z
         val middle_branches = basket.filter (x ⇒ x.from != from && x.to != to)
-        if (0 != middle_branches.length) impedance = impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z
+        if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z
         val end_branches = basket.filter (_.to == to)
-        if (0 != end_branches.length) impedance = impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z
-        impedance
+        if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z
+        // compute the highest impedance as series branches (this will be used for the high temperature values)
+        var high_impedance = SeriesBranch (from, to, 0.0, basket).z
+        // take the worst case from both
+        Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
     }
 }
 
