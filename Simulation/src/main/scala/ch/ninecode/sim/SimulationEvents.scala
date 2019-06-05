@@ -45,8 +45,7 @@ trait Evented
  *
  * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
  * @param severity The severity of the event.
- * @param table The name of the geojson_XXX Cassandra table.
- * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the query in the <code>key_value</code> Cassandra table.
  * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
  * @param ratio The ratio between the value and reference required to trigger the event.
  * @param duration The continuous duration that the ratio must hold for the event to be registered. (mSec)
@@ -54,7 +53,6 @@ trait Evented
 abstract class Trigger (
         val `type`: String,
         val severity: Int,
-        val table: String,
         val reference: String,
         val default: Double,
         val ratio: Double,
@@ -64,7 +62,7 @@ abstract class Trigger (
     /**
      * Required zero arg constructor for serializability.
      */
-    def this () = this ("", 0, "", "", 0.0, 0.0, 0)
+    def this () = this ("", 0, "", 0.0, 0.0, 0)
 
     /**
      * Comparison function generator.
@@ -89,7 +87,6 @@ abstract class Trigger (
  *
  * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
  * @param severity The severity of the event.
- * @param table The name of the geojson_XXX Cassandra table.
  * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
  * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
  * @param ratio The ratio between the value and reference above which the event will be triggered.
@@ -98,12 +95,11 @@ abstract class Trigger (
 case class HighTrigger (
         override val `type`: String,
         override val severity: Int,
-        override val table: String,
         override val reference: String,
         override val default: Double,
         override val ratio: Double,
         override val duration: Int)
-    extends Trigger (`type`, severity, table, reference, default, ratio, duration)
+    extends Trigger (`type`, severity, reference, default, ratio, duration)
 {
     def hi (threshold: Double)(value:Double): Boolean = value > threshold
     def comparator (nominal: Double): Double ⇒ Boolean = hi (ratio * nominal)
@@ -117,7 +113,6 @@ case class HighTrigger (
  *
  * @param `type` The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
  * @param severity The severity of the event.
- * @param table The name of the geojson_XXX Cassandra table.
  * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
  * @param default The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
  * @param ratio The ratio between the value and reference below which the event will be triggered.
@@ -126,12 +121,11 @@ case class HighTrigger (
 case class LowTrigger (
         override val `type`: String,
         override val severity: Int,
-        override val table: String,
         override val reference: String,
         override val default: Double,
         override val ratio: Double,
         override val duration: Int)
-    extends Trigger (`type`, severity, table, reference, default, ratio, duration)
+    extends Trigger (`type`, severity, reference, default, ratio, duration)
 {
     def lo (threshold: Double)(value:Double): Boolean = value < threshold
     def comparator (nominal: Double): Double ⇒ Boolean = lo (ratio * nominal)
@@ -146,7 +140,7 @@ case class LowTrigger (
  * @param trigger the description of the trigger for an event
  * @param limit the threshold value for the trigger
  */
-class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double) extends Evented
+case class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double) extends Evented
 {
     var ret: List[Event] = Nil
 
@@ -213,7 +207,7 @@ class Checker (simulation: String, mrid: String, trigger: Trigger, limit: Double
 }
 
 /**
- * Woker bee for the SimulationEvents class.
+ * Worker bee for the SimulationEvents class.
  *
  * Needed this class to get around the 'not serializable' exception if the code is directly in SimulationEvents.
  *
@@ -246,16 +240,15 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val threshold = stuff.head._5
 
         // pare down the data and sort by time
-        val values = stuff.map (x ⇒ (x._2, x._3, x._4)).toArray.sortWith (_._1.getTime < _._1.getTime)
+        val values = stuff.map (x ⇒ (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
 
-        val checkers = thresholds.map (x ⇒ new Checker (simulation, mrid, x, threshold))
+        val checkers = thresholds.map (x ⇒ Checker (simulation, mrid, x, threshold))
         for (i ← values.indices)
         {
             val time = values(i)._1
-            val ltime = time.getTime
             val period = values(i)._2
             val value = values(i)._3
-            checkers.foreach (x ⇒ x.next (ltime, period, value))
+            checkers.foreach (x ⇒ x.next (time, period, value))
         }
         checkers.flatMap (_.gimme)
     }
@@ -284,7 +277,6 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     {
         // all the threshold types, geometry tables, reference and default are the same
         val `type` = thresholds.head.`type`
-        val table = thresholds.head.table
         val reference = thresholds.head.reference
         val default = thresholds.head.default.toString
 
@@ -292,15 +284,15 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         def getReference[Type_x: TypeTag] = udf [Double, Map[String, String]]((map: Map[String, String]) => map.getOrElse (reference, default).toDouble)
 
         val simulated_values = access.raw_values (`type`)
-        val geometries = access.geojson (table)
+        val keyvalues = access.key_value (reference)
 
         val values = simulated_values
             .withColumn ("value", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
             .drop ("real_a", "imag_a")
             .join (
-                geometries
-                    .withColumn ("reference", getReference [Map[String, String]].apply (geometries ("properties")))
-                    .drop ("properties"),
+                keyvalues
+                    .withColumn ("reference", keyvalues.col ("value").cast ("double"))
+                    .drop ("value"),
                 Seq ("mrid"))
 
         // values.printSchema ()
@@ -344,7 +336,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
             save (highEvents.union (lowEvents))
         }
-        geometries.unpersist (false)
+        keyvalues.unpersist (false)
         simulated_values.unpersist (false)
     }
 }
@@ -367,7 +359,7 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         // organize the triggers by type, table, reference and default
-        val sets = triggers.groupBy (trigger ⇒ (trigger.`type`, trigger.table, trigger.reference, trigger.default)).values.toArray
+        val sets = triggers.groupBy (trigger ⇒ (trigger.`type`, trigger.reference, trigger.default)).values.toArray
         log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
 
         for (i ← sets.indices)
@@ -388,24 +380,24 @@ object SimulationEvents extends SimulationPostProcessorParser
 {
     val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger] (
         // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
-        HighTrigger ("voltage", 1, "geojson_points", "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000),
-         LowTrigger ("voltage", 1, "geojson_points", "ratedVoltage", 400.0, 0.94, 15 * 60 * 1000),
-        HighTrigger ("voltage", 2, "geojson_points", "ratedVoltage", 400.0, 1.10, 15 * 60 * 1000),
-         LowTrigger ("voltage", 2, "geojson_points", "ratedVoltage", 400.0, 0.90, 15 * 60 * 1000),
+        HighTrigger ("voltage", 1, "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000),
+         LowTrigger ("voltage", 1, "ratedVoltage", 400.0, 0.94, 15 * 60 * 1000),
+        HighTrigger ("voltage", 2, "ratedVoltage", 400.0, 1.10, 15 * 60 * 1000),
+         LowTrigger ("voltage", 2, "ratedVoltage", 400.0, 0.90, 15 * 60 * 1000),
 
         // current >75% and >14h within 24h = orange
         // current >90% and >3h within 24h = red
         // current >110% for 15 minutes or more = red
-        HighTrigger ("current", 1, "geojson_lines", "ratedCurrent", 100.0, 0.75, 14 * 60 * 60 * 1000),
-        HighTrigger ("current", 2, "geojson_lines", "ratedCurrent", 100.0, 0.90,  3 * 60 * 60 * 1000),
-        HighTrigger ("current", 2, "geojson_lines", "ratedCurrent", 100.0, 1.10,      15 * 60 * 1000),
+        HighTrigger ("current", 1, "ratedCurrent", 100.0, 0.75, 14 * 60 * 60 * 1000),
+        HighTrigger ("current", 2, "ratedCurrent", 100.0, 0.90,  3 * 60 * 60 * 1000),
+        HighTrigger ("current", 2, "ratedCurrent", 100.0, 1.10,      15 * 60 * 1000),
 
         // power >75% and >14h within 24h = orange
         // power >90% and >3h within 24h = red
         // power >110% for 15 minutes or more = red
-        HighTrigger ("power", 1, "geojson_polygons", "ratedS", 630.0, 0.75, 14 * 60 * 60 * 1000),
-        HighTrigger ("power", 2, "geojson_polygons", "ratedS", 630.0, 0.90,  3 * 60 * 60 * 1000),
-        HighTrigger ("power", 2, "geojson_polygons", "ratedS", 630.0, 1.10,      15 * 60 * 1000)
+        HighTrigger ("power", 1, "ratedS", 630.0, 0.75, 14 * 60 * 60 * 1000),
+        HighTrigger ("power", 2, "ratedS", 630.0, 0.90,  3 * 60 * 60 * 1000),
+        HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
     )
 
 
@@ -436,8 +428,8 @@ object SimulationEvents extends SimulationPostProcessorParser
                             val duration = threshold.getInt ("duration", 900000)
                             trigger match
                             {
-                                case "high" ⇒ HighTrigger (`type`, severity, table, reference, default, ratio, duration)
-                                case "low" ⇒ LowTrigger (`type`, severity, table, reference, default, ratio, duration)
+                                case "high" ⇒ HighTrigger (`type`, severity, reference, default, ratio, duration)
+                                case "low" ⇒ LowTrigger (`type`, severity, reference, default, ratio, duration)
                                 case _ ⇒ null
                             }
                         }

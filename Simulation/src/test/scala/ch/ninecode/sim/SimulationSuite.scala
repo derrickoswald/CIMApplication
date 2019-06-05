@@ -13,7 +13,7 @@ import ch.ninecode.cim.CIMClasses
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
-
+import org.apache.spark.storage.StorageLevel
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.fixture.FunSuite
 
@@ -421,7 +421,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "voltage",
                           |                    "severity": 1,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 1.10,
@@ -431,7 +430,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "low",
                           |                    "type": "voltage",
                           |                    "severity": 1,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 0.90,
@@ -441,7 +439,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "voltage",
                           |                    "severity": 2,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 1.06,
@@ -451,7 +448,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "low",
                           |                    "type": "voltage",
                           |                    "severity": 2,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 0.94,
@@ -461,7 +457,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 1,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 1.10,
@@ -471,7 +466,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 1,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 0.90,
@@ -481,7 +475,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 2,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 0.75,
@@ -491,7 +484,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 1,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 1.10,
@@ -501,7 +493,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 1,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 0.90,
@@ -511,7 +502,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 2,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 0.75,
@@ -831,7 +821,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "voltage",
                           |                    "severity": 1,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 1.10,
@@ -841,7 +830,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "low",
                           |                    "type": "voltage",
                           |                    "severity": 1,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 0.90,
@@ -851,7 +839,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "voltage",
                           |                    "severity": 2,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 1.06,
@@ -861,7 +848,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "low",
                           |                    "type": "voltage",
                           |                    "severity": 2,
-                          |                    "table": "geojson_points",
                           |                    "reference": "ratedVoltage",
                           |                    "default": 400.0,
                           |                    "ratio": 0.94,
@@ -871,7 +857,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 1,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 1.10,
@@ -881,7 +866,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 1,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 0.90,
@@ -891,7 +875,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "current",
                           |                    "severity": 2,
-                          |                    "table": "geojson_lines",
                           |                    "reference": "ratedCurrent",
                           |                    "default": 100.0,
                           |                    "ratio": 0.75,
@@ -901,7 +884,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 1,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 1.10,
@@ -911,7 +893,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 1,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 0.90,
@@ -921,7 +902,6 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |                    "trigger": "high",
                           |                    "type": "power",
                           |                    "severity": 2,
-                          |                    "table": "geojson_polygons",
                           |                    "reference": "ratedS",
                           |                    "default": 630000,
                           |                    "ratio": 0.75,
@@ -972,9 +952,31 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //    test ("events")
 //    {
 //        spark ⇒
-//            val options = SimulationOptions (verbose = true, events = true)
-//            val check = SimulationEvents (spark, options)
-//            check.run (Array("c1ece739-5ba0-4eb6-a3ba-a28f48da2af5"))
+//            val options = SimulationOptions (verbose = true)
+//            val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger] (
+//                // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
+//                HighTrigger ("voltage", 1, "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000),
+//                LowTrigger ("voltage", 1, "ratedVoltage", 400.0, 0.94, 15 * 60 * 1000),
+//                HighTrigger ("voltage", 2, "ratedVoltage", 400.0, 1.10, 15 * 60 * 1000),
+//                LowTrigger ("voltage", 2, "ratedVoltage", 400.0, 0.90, 15 * 60 * 1000),
+//
+//                // current >75% and >14h within 24h = orange
+//                // current >90% and >3h within 24h = red
+//                // current >110% for 15 minutes or more = red
+//                HighTrigger ("current", 1, "ratedCurrent", 100.0, 0.75, 14 * 60 * 60 * 1000),
+//                HighTrigger ("current", 2, "ratedCurrent", 100.0, 0.90,  3 * 60 * 60 * 1000),
+//                HighTrigger ("current", 2, "ratedCurrent", 100.0, 1.10,      15 * 60 * 1000),
+//
+//                // power >75% and >14h within 24h = orange
+//                // power >90% and >3h within 24h = red
+//                // power >110% for 15 minutes or more = red
+//                HighTrigger ("power", 1, "ratedS", 630.0, 0.75, 14 * 60 * 60 * 1000),
+//                HighTrigger ("power", 2, "ratedS", 630.0, 0.90,  3 * 60 * 60 * 1000),
+//                HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
+//            )
+//            val check = SimulationEvents (STANDARD_TRIGGERS) (spark, options)
+//            val access = SimulationCassandraAccess  (spark, StorageLevel.MEMORY_AND_DISK_SER, "c4171b8e-4795-435d-9cfe-ea28ad71f91b", "baseline", "baseline", true, true)
+//            check.run (access)
 //    }
 
 //    test ("power")

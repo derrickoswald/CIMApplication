@@ -15,6 +15,7 @@ truncate table cimapplication.geojson_points;
 truncate table cimapplication.geojson_lines;
 truncate table cimapplication.geojson_polygons;
 truncate table cimapplication.key_value;
+truncate table cimapplication.simulation_event;
 truncate table cimapplication.load_factor_by_day;
 truncate table cimapplication.coincidence_factor_by_day;
 truncate table cimapplication.responsibility_by_day;
@@ -625,7 +626,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "voltage",
                                     "severity": 1,
-                                    "table": "geojson_points",
                                     "reference": "ratedVoltage",
                                     "default": 400.0,
                                     "ratio": 1.10,
@@ -635,7 +635,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "low",
                                     "type": "voltage",
                                     "severity": 1,
-                                    "table": "geojson_points",
                                     "reference": "ratedVoltage",
                                     "default": 400.0,
                                     "ratio": 0.90,
@@ -645,7 +644,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "voltage",
                                     "severity": 2,
-                                    "table": "geojson_points",
                                     "reference": "ratedVoltage",
                                     "default": 400.0,
                                     "ratio": 1.06,
@@ -655,7 +653,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "low",
                                     "type": "voltage",
                                     "severity": 2,
-                                    "table": "geojson_points",
                                     "reference": "ratedVoltage",
                                     "default": 400.0,
                                     "ratio": 0.94,
@@ -665,7 +662,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "current",
                                     "severity": 1,
-                                    "table": "geojson_lines",
                                     "reference": "ratedCurrent",
                                     "default": 100.0,
                                     "ratio": 1.10,
@@ -675,7 +671,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "current",
                                     "severity": 1,
-                                    "table": "geojson_lines",
                                     "reference": "ratedCurrent",
                                     "default": 100.0,
                                     "ratio": 0.90,
@@ -685,7 +680,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "current",
                                     "severity": 2,
-                                    "table": "geojson_lines",
                                     "reference": "ratedCurrent",
                                     "default": 100.0,
                                     "ratio": 0.75,
@@ -695,7 +689,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "power",
                                     "severity": 1,
-                                    "table": "geojson_polygons",
                                     "reference": "ratedS",
                                     "default": 630000,
                                     "ratio": 1.10,
@@ -705,7 +698,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "power",
                                     "severity": 1,
-                                    "table": "geojson_polygons",
                                     "reference": "ratedS",
                                     "default": 630000,
                                     "ratio": 0.90,
@@ -715,7 +707,6 @@ truncate table cimapplication.responsibility_by_day;
                                     "trigger": "high",
                                     "type": "power",
                                     "severity": 2,
-                                    "table": "geojson_polygons",
                                     "reference": "ratedS",
                                     "default": 630000,
                                     "ratio": 0.75,
@@ -1407,15 +1398,9 @@ truncate table cimapplication.responsibility_by_day;
             setReplication ().then (render);
         }
 
-        function getSimulations (station, callback)
-        {
-            callback ([]);
-        }
-
         return (
             {
-                initialize: initialize,
-                getSimulations: getSimulations
+                initialize: initialize
             }
         );
     }

@@ -15,15 +15,35 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
     val PERIOD: Int = 900000
     def getPeriod: Int = PERIOD
 
-    def geojson (table: String): DataFrame =
+    /**
+     * Get a DataFrame of the key-value pairs.
+     *
+     * @param query The name of the extra query to fetch values for.
+     * @return A DataFrame with columns mrid and value (both are String) for the given query.
+     */
+    def key_value (query: String): DataFrame =
+    {
+        val keyvalue = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "key_value", "keyspace" -> output_keyspace))
+            .load
+            .filter ("simulation = '%s' and query='%s'".format (simulation, query))
+            .drop ("simulation", "query")
+            .withColumnRenamed ("key", "mrid")
+            .persist (storage_level)
+        keyvalue
+    }
+
+    def geojson (table: String, coordinate_system: String = "wgs84"): DataFrame =
     {
         val geojson = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> table, "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s'".format (simulation))
-            .drop ("simulation", "type", "geometry")
+            .filter ("simulation = '%s' and coordinate_system='%s'".format (simulation, coordinate_system))
+            .drop ("simulation", "coordinate_system", "type", "geometry")
             .persist (storage_level)
         geojson
     }
