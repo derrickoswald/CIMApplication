@@ -144,7 +144,7 @@ truncate table cimapplication.responsibility_by_day;
         let RecorderChooser;
         const RecorderChoices = [
             {
-                "title": "All transformer output power",
+                "title": "All PowerTransformer output power",
                 "query":
                     `
                     select
@@ -185,7 +185,7 @@ truncate table cimapplication.responsibility_by_day;
                 ]
             },
             {
-                "title": "All transformer output currents",
+                "title": "All PowerTransformer output currents",
                 "query":
                     `
                     select
@@ -226,7 +226,7 @@ truncate table cimapplication.responsibility_by_day;
                 ]
             },
             {
-                "title": "All transformer power losses",
+                "title": "All PowerTransformer power losses",
                 "query":
                     `
                     select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
@@ -426,7 +426,7 @@ truncate table cimapplication.responsibility_by_day;
                 ]
             },
             {
-                "title": "All cable currents",
+                "title": "All ACLineSegment currents",
                 "query":
                     `
                     select
@@ -476,7 +476,7 @@ truncate table cimapplication.responsibility_by_day;
                 ]
             },
             {
-                "title": "All cable losses",
+                "title": "All ACLineSegment losses",
                 "query":
                     `
                     select
@@ -544,7 +544,7 @@ truncate table cimapplication.responsibility_by_day;
             },
             {
                 "title": "substation",
-                "query": "select p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.name value from PowerTransformer p, Substation s, (select b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, b.Substation substation from Bay b union select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid and c.substation = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID"
+                "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, first_value (c.substation) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, (select b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, b.Substation substation from Bay b union select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
             }
         ];
 
