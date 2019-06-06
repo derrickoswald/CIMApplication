@@ -167,6 +167,7 @@ object FData
                 case sim: SimpleBranch ⇒ sim.rating.getOrElse (Double.MinValue) <= 0.0
                 case ser: SeriesBranch ⇒ ser.lastFuses.exists (lastFuseHasMissingValues)
                 case par: ParallelBranch ⇒ par.parallel.exists (lastFuseHasMissingValues)
+                case com: ComplexBranch ⇒ com.basket.exists(lastFuseHasMissingValues)
             }
             missing
         }
