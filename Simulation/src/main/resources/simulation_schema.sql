@@ -253,15 +253,15 @@ create table if not exists cimapplication.geojson_transformers (
     properties frozen<map<text,text>>,
     primary key ((simulation, coordinate_system), mrid)
 ) with comment = '
-GeoJSON for simulated point elements.
-Describes each point object in the simulation, excluding transformers.
+GeoJSON for transformers.
+Describes each transformer (set) in the simulation.
     simulation        - the simulation run identifier, UUID
     coordinate_system - the coordinate system for the point
-    mrid              - the cim mRID of the element
-    transformer       - the mRID/name of the associated transformer service area
+    mrid              - the name of the transformer service area
+    transformers      - the set of mRID/names of the transformers servicing this area
     type              - always "Feature" per the GeoJSON specification
     geometry          - the type ("Point") and point coordinates
-    properties        - the attributes for this element from the extra queries
+    properties        - the attributes for this transformer (set) from the extra queries
 ';
 
 create table if not exists cimapplication.key_value (
