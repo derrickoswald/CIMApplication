@@ -1,15 +1,23 @@
 package ch.ninecode.sim
 
-import ch.ninecode.gl.GLMNode
-import com.datastax.driver.core.ConsistencyLevel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
 
-case class SimulationGeometry (session: SparkSession, keyspace: String)
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model._
+
+case class SimulationGeometry (session: SparkSession, keyspace: String) extends CIMRDD
 {
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+
     // the Id is a concatenation of simulation and mRID: "simulation_mrid"
     type Id = String
     type Key = String
@@ -184,7 +192,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     val world_points = get_world_points (trafo).toList
                     val world = if (world_points.nonEmpty)
                     {
-                        val hull = Hull.scan (world_points.toList).map (p ⇒ List (p._1, p._2))
+                        val hull = Hull.scan (world_points).map (p ⇒ List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
                         val properties = x._2.orNull
@@ -195,7 +203,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
                     val schematic_points = get_schematic_points (trafo).toList
                     val schematic = if (schematic_points.nonEmpty)
                     {
-                        val hull = Hull.scan (schematic_points.toList).map (p ⇒ List (p._1, p._2))
+                        val hull = Hull.scan (schematic_points).map (p ⇒ List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
                         val properties = x._2.orNull
@@ -209,11 +217,91 @@ case class SimulationGeometry (session: SparkSession, keyspace: String)
         jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
+    def store_geojson_transformers (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
+    {
+        // get the few thousand transformer names with transformer id(s) and location
+        val transformers = trafos.flatMap (trafo ⇒ trafo.transformer.transformers.map (
+            x ⇒ (trafo.name, x.transformer.id, x.transformer.ConductingEquipment.Equipment.PowerSystemResource.Location)))
+        // get the world positions
+        val location_trafo = transformers.map (x ⇒ (x._3, x._1)).collectAsMap
+        val world_positions: RDD[(String, (Double, Double))] = get [PositionPoint].flatMap (
+            point ⇒
+            {
+                val location = point.Location
+                if (location_trafo.contains (location))
+                {
+                    val trafo = location_trafo(location)
+                    val x = point.xPosition.toDouble
+                    val y = point.yPosition.toDouble
+                    Some (trafo, (x, y))
+                }
+                else
+                    None
+            }
+        )
+        val transformer_trafo = transformers.map (x ⇒ (x._2, x._1)).collectAsMap
+        val diagram_trafo = getOrElse[DiagramObject].flatMap (
+            obj ⇒
+            {
+                val id = obj.IdentifiedObject_attr
+                if (transformer_trafo.contains (id))
+                {
+                    val trafo = transformer_trafo(id)
+                    Some (obj.id, trafo)
+                }
+                else
+                    None
+            }
+        ).collectAsMap
+        val schematic_points: RDD[(String, (Double, Double))] = getOrElse[DiagramObjectPoint].flatMap (
+            point ⇒
+            {
+                val obj = point.DiagramObject
+                if (diagram_trafo.contains (obj))
+                {
+                    val trafo = diagram_trafo(obj)
+                    val x = point.xPosition.toDouble
+                    val y = point.yPosition.toDouble
+                    Some (trafo, (x, y))
+                }
+                else
+                    None
+            }
+        )
+        def make_trafo (stuff: ((SimulationTrafoKreis, Option[KeyValueList]), Option[((Double, Double), Option[(Double, Double)])])):
+            List[(Simulation, String, Value, Set[Transformer], String, (Value, List[Double]), KeyValueList)] =
+        {
+            stuff._2 match
+            {
+                case Some (x) ⇒
+                    val trafo = stuff._1._1
+                    val geometry = ("Point", List (x._1._1, x._1._2))
+                    val properties = stuff._1._2.orNull
+                    val trafos = trafo.transformer.transformers.map (_.transformer.id).toSet
+                    val one = (trafo.simulation, "wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry, properties)
+                    val two = x._2 match
+                    {
+                        case Some (coords) ⇒
+                            val geometry2 = ("Point", List (coords._1, coords._2))
+                            Some (trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, properties)
+                        case None ⇒
+                            None
+                    }
+                    (Some(one) :: two :: Nil).flatten
+                case None ⇒ List()
+            }
+        }
+        val with_properties = trafos.keyBy (trafo ⇒ trafo.simulation + "_" + trafo.transformer.transformer_name).leftOuterJoin (extra).values
+        val jsons = with_properties.keyBy (_._1.name).leftOuterJoin (world_positions.leftOuterJoin (schematic_points)).values.flatMap (make_trafo)
+        jsons.saveToCassandra (keyspace, "geojson_transformers", SomeColumns ("simulation", "coordinate_system", "mrid", "transformers", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+    }
+
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =
     {
         val extra = query_extra
         store_geojson_points (trafos, extra)
         store_geojson_lines (trafos, extra)
         store_geojson_polygons (trafos, extra)
+        store_geojson_transformers (trafos, extra)
     }
 }
