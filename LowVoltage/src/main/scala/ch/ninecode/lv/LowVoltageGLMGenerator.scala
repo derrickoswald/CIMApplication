@@ -52,6 +52,7 @@ class LowVoltageGLMGenerator
                 PowerFeedingNode (
                     trafokreis.transformers.node0,
                     null,
+                    null,
                     trafokreis.transformers.v0,
                     null,
                     null,

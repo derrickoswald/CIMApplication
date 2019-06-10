@@ -182,10 +182,8 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
-        if (-1 != session.sparkContext.master.indexOf ("sandbox")) // are we in development
-            elements.explain
-        else
-            log.info (elements.count () + " elements")
+        val count = elements.count ()
+        log.info (count + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
