@@ -46,7 +46,8 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
                     row.getString (parent),
                     row.getString (mrid),
                     row.getString (`type`),
-                    row.getString (property))
+                    row.getString (property),
+                    query.transform)
             }
         ).coalesce (partitions).persist (storage_level).setName (query.title)
     }

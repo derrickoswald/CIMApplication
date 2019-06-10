@@ -24,9 +24,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
+
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
@@ -203,7 +205,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 file,
                 player.mrid,
                 begin,
-                end)
+                end,
+                player.transform)
         )
     }
 
@@ -371,7 +374,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def query_cassandra (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[String])): RDD[SimulationPlayerData] =
+    def query_cassandra (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
     {
         val date_format: SimpleDateFormat =
         {
@@ -381,8 +384,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
 
         val transformer = players._1
-        val mrids = players._2
-        val inclause = mrids.mkString ("mrid in ('", "','", "')")
+        val mrids_transforms: Iterable[(String, String)] = players._2
+        val transform_map: Map[String, String] = mrids_transforms.toMap
+        val inclause = mrids_transforms.map (_._1).mkString ("mrid in ('", "','", "')")
         val where = "%s and type = '%s' and time >= '%s' and time < '%s'".format (inclause, `type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
         spark
             .read
@@ -408,8 +412,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     }
                     val real = row.getDouble (2) * factor
                     val imag = row.getDouble (3) * factor
-                    // ToDo: should we keep the period so we can tell if a measurement is missing?
-                    SimulationPlayerData (transformer, mrid, `type`, time, real, imag)
+                    val program = MeasurementTransform.compile (transform_map(mrid))
+                    val (re, im) = program.transform (real, imag)
+                    // ToDo: should we keep the period so we can tell if a value is missing?
+                    SimulationPlayerData (transformer, mrid, `type`, time, re, im)
                 }
             )
     }
@@ -519,32 +525,35 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     val numsimulations = simulations.count.asInstanceOf [Int]
                     log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
 
-                    log.info ("""storing GeoJSON data""")
-                    val geo = SimulationGeometry (session, job.output_keyspace)
-                    geo.storeGeometry (simulations)
+                    if (0 != numsimulations)
+                    {
+                        log.info ("""storing GeoJSON data""")
+                        val geo = SimulationGeometry (session, job.output_keyspace)
+                        geo.storeGeometry (simulations)
 
-                    log.info ("""querying measured values""")
-                    // determine which players for which transformers
-                    val trafo_house = simulations.flatMap (x ⇒ x.players.map (y ⇒ (x.transformer.transformer_name, y.mrid))).groupByKey.collect
+                        log.info ("""querying measured values""")
+                        // determine which players for which transformers
+                        val trafo_house = simulations.flatMap (x ⇒ x.players.map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
 
-                    // query Cassandra to make one RDD for each trafo
-                    val rdds: Array[RDD[SimulationPlayerData]] = trafo_house.map (query_cassandra (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                        // query Cassandra to make one RDD for each trafo
+                        val rdds: Array[RDD[SimulationPlayerData]] = trafo_house.map (query_cassandra (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
 
-                    // build one giant RDD
-                    val measurements = session.sparkContext.union (rdds)
+                        // build one giant RDD
+                        val measurements = session.sparkContext.union (rdds)
 
-                    // join to the simulation
-                    val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (measurements.groupBy (_.transformer)).values
-                        .mapValues (_.groupBy (_.mrid))
+                        // join to the simulation
+                        val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (measurements.groupBy (_.transformer)).values
+                            .mapValues (_.groupBy (_.mrid))
 
-                    log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
-                    val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)
-                    val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
+                        log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
+                        val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)
+                        val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
 
-                    // save the results
-                    log.info ("""saving GridLAB-D simulation results""")
-                    results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
-                    log.info ("""saved GridLAB-D simulation results""")
+                        // save the results
+                        log.info ("""saving GridLAB-D simulation results""")
+                        results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
+                        log.info ("""saved GridLAB-D simulation results""")
+                    }
 
                     // clean up
                     session.sparkContext.getPersistentRDDs.foreach (

@@ -39,5 +39,10 @@ case class SimulationPlayerResult
     /**
      * Property value from the Spark query.
      */
-    property: String
+    property: String,
+
+    /**
+     * Transformation to apply to the measurements
+     */
+    transform: String
 )

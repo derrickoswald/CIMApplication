@@ -1,6 +1,5 @@
 /**
  * @fileOverview Query CIM data in Spark memory.
- * @name cimquery
  * @author Derrick Oswald
  * @version 1.0
  */
@@ -9,7 +8,6 @@ define
     ["util", "mustache", "cim", "cimmap"],
     /**
      * @summary Functions to query CIM data in memory.
-     * @name cimquery
      * @exports cimquery
      * @version 1.0
      */
@@ -18,22 +16,22 @@ define
         /**
          * The current query.
          */
-        var TheQuery;
+        let TheQuery;
 
         /**
          * The current view name for the results.
          */
-        var TheTable;
+        let TheTable;
 
         /**
          * The Cassandra table for the results.
          */
-        var TheCassandraTable;
+        let TheCassandraTable;
 
         /**
          * Direct queries to Cassandra.
          */
-        var QueryCassandra = false;
+        let QueryCassandra = false;
 
         /**
          * @summary perform query.
@@ -45,25 +43,22 @@ define
          * @param {function} fn - the callback function with the data
          * @param {function} error - the error callback function with an error string if possible
          * @function query
-         * @memberOf module:cimquery
          */
         function query (sql, cassandra, table_name, cassandra_table_name, fn, error)
         {
             error = error || function (s) { alert (s); };
-            var target = (cassandra) ? "cassandra=true&": "";
-            var table = ("" != table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
-            var cassandra_table = ("" != cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
-            var url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (sql);
-            var xmlhttp = util.createCORSRequest ("GET", url);
+            const target = (cassandra) ? "cassandra=true&": "";
+            const table = ("" !== table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
+            const cassandra_table = ("" !== cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
+            const url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (sql);
+            const xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status === "OK")
                             fn (resp.result);
                         else
                             error (resp.message);
@@ -80,17 +75,17 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
-                        var target = (options.cassandra) ? "cassandra=true&": "";
-                        var table = (options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
-                        var cassandra_table = (options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
-                        var url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
-                        var xmlhttp = util.createCORSRequest ("GET", url);
+                        const target = (options.cassandra) ? "cassandra=true&": "";
+                        const table = (options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
+                        const cassandra_table = (options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
+                        const url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
+                        const xmlhttp = util.createCORSRequest ("GET", url);
                         xmlhttp.onload = function ()
                         {
                             if (xmlhttp.status >= 200 && xmlhttp.status < 300)
                             {
-                                var resp = JSON.parse (xmlhttp.responseText);
-                                if (resp.status == "OK")
+                                const resp = JSON.parse (xmlhttp.responseText);
+                                if (resp.status === "OK")
                                     resolve (resp.result);
                                 else
                                     reject (resp.message);
@@ -121,9 +116,9 @@ define
         function create_from (proto)
         {
             proto.EditDisposition = "new";
-            var dummy_data = {};
-            var cls = cim.class_map (proto);
-            var obj = new cls (proto, dummy_data);
+            const dummy_data = {};
+            const cls = cim.class_map (proto);
+            let obj = new cls (proto, dummy_data);
             if (dummy_data.IdentifiedObject)
                 proto.mRID = proto.id;
             obj = new cls (proto, cimmap.get_data ());
@@ -134,26 +129,25 @@ define
          * @description Perform an SQL query on loaded CIM data.
          * @param {object} event - optional, the click event
          * @function do_query
-         * @memberOf module:cimquery
          */
         function do_query (event)
         {
-            var sql = document.getElementById ("sql").value;
-            if (sql != "")
+            const sql = document.getElementById ("sql").value;
+            if (sql !== "")
             {
                 TheQuery = sql;
                 TheTable = document.getElementById ("table_name").value;
                 TheCassandraTable = document.getElementById ("cassandra_table_name").value;
                 QueryCassandra = document.getElementById ("query_cassandra").checked;
-                var class_name = document.getElementById ("create_class_name").value;
+                const class_name = document.getElementById ("create_class_name").value;
                 function fn (data)
                 {
                     document.getElementById ("results_table").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>";
-                    if (class_name != "")
+                    if (class_name !== "")
                     {
-                        for (var i = 0; i < data.length; i++)
+                        for (let i = 0; i < data.length; i++)
                         {
-                            var proto = data[i];
+                            const proto = data[i];
                             proto.cls = class_name;
                             if (!proto.id)
                                 proto.id = class_name + (~~(1e6 * Math.random ())).toString ();
@@ -169,12 +163,11 @@ define
          * @summary Render the query page.
          * @description Uses mustache to create HTML DOM elements that comprise the query form.
          * @function initialize
-         * @memberOf module:cimquery
          */
         function initialize ()
         {
             document.getElementById ("query").innerHTML = "";
-            var query_template =
+            const query_template =
                 `
                 <div class="container">
                   <div class="row justify-content-center">
@@ -183,7 +176,7 @@ define
                         <div class="form-group">
                           <label for="sql">SQL query</label>
                           <textarea id="sql" class="form-control" aria-describedby="sqlHelp" name="sql" rows="8" placeholder="select * from ACLineSegment" style="width: 80%">{{sql}}</textarea>
-                          <small id="sqlHelp" class="form-text text-muted">A Spark SQL query against the <a href="https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.package" target="_blank">CIMReader schema</a>.</small>
+                          <small id="sqlHelp" class="form-text text-muted">A Spark SQL query against the <a href="https://derrickoswald.github.io/CIMSpark" target="_blank">CIMReader schema</a>.</small>
                         </div>
                         <div class="form-group row">
                           <div class="col-sm-2 col-form-label">Cassandra</div>
@@ -226,14 +219,14 @@ define
                 </div>
                 `;
 
-            var cls_map = cim.classes ();
-            var classes = [];
-            for (var property in cls_map)
+            const cls_map = cim.classes ();
+            const classes = [];
+            for (let property in cls_map)
                 if (cls_map.hasOwnProperty (property))
                     classes.push (property);
             classes.sort ();
             classes.unshift ("");
-            var text = mustache.render
+            document.getElementById ("query").innerHTML = mustache.render
             (
                 query_template,
                 {
@@ -244,7 +237,6 @@ define
                     classes: classes
                 }
             );
-            document.getElementById ("query").innerHTML = text;
             document.getElementById ("do_query").onclick = do_query;
         }
 
@@ -256,4 +248,4 @@ define
             }
         );
     }
-)
+);

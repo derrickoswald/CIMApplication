@@ -8,19 +8,23 @@ import java.util.TimeZone
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
+import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import com.datastax.spark.connector._
-import javax.json.JsonNumber
+import scala.reflect.runtime
+import scala.tools.reflect.ToolBox
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import com.datastax.spark.connector._
+
 
 case class SimulationJob
 (
@@ -379,24 +383,64 @@ object SimulationJob
         ret
     }
 
-    def parsePlayer (name: String, player: JsonObject): List[SimulationPlayerQuery] =
-    {
-        val title = player.getString ("title", "")
-        val query = player.getString ("query", null)
-        if (null == query)
-        {
-            log.error (""""%s" does not specify an RDF query for player "%s""".format (name, title))
-            List ()
-        }
-        else
-            List (SimulationPlayerQuery (title, query))
-    }
-
     def parsePlayers (name: String, json: JsonObject): Seq[SimulationPlayerQuery] =
     {
-        // ToDo: more robust checking
-        val players: Seq[JsonObject] = json.getJsonArray ("players").getValuesAs (classOf [JsonObject]).asScala
-        players.flatMap (parsePlayer (name, _))
+        val MEMBERNAME = "players"
+        var ret: Seq[SimulationPlayerQuery] = Array[SimulationPlayerQuery] ()
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            if (value.getValueType == JsonValue.ValueType.ARRAY)
+            {
+                var title = "*unnamed player*"
+                var query = null.asInstanceOf[String]
+                var transform = null.asInstanceOf[String]
+                for (player <- value.asInstanceOf[JsonArray].asScala)
+                    if (player.getValueType == JsonValue.ValueType.OBJECT)
+                    {
+                        player.asInstanceOf[JsonObject].asScala.foreach
+                        {
+                            case ("title", v: JsonString) ⇒ title = v.getString
+                            case ("query", v: JsonString) ⇒ query = v.getString
+                            case ("transform", v: JsonString) ⇒
+                                try
+                                {
+                                    val toolbox: ToolBox[runtime.universe.type] = scala.reflect.runtime.currentMirror.mkToolBox()
+                                    val program = v.getString
+                                    val tree: toolbox.u.Tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; " + program)
+                                    val compiledCode: () ⇒ Any = toolbox.compile (tree)
+                                    val tx = compiledCode ().asInstanceOf[MeasurementTransform]
+                                    // try it
+                                    val p = tx.transform (1.0, 2.0)
+                                    transform = program
+                                }
+                                catch
+                                {
+                                    case exception: Throwable ⇒ log.warn ("""reverting to identity MeasurementTransform because JSON member "%s" title: "%s" threw an exception: '%s'"""".format (MEMBERNAME, title, exception.getLocalizedMessage))
+                                }
+                            case (k: String, v: JsonValue) ⇒ log.warn ("""unexpected JSON member or type: %s["%s"] of type "%s"""".format (MEMBERNAME, k, v.getValueType.toString))
+                        }
+                        if (null == query)
+                            log.error (""""%s" does not specify an RDF query for player "%s""".format (name, title))
+                        else
+                            ret = ret :+ SimulationPlayerQuery (title, query, transform)
+                    }
+
+            }
+            else
+            {
+                log.warn ("""JSON member "%s" is not a JSON array (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
+                ret
+            }
+        }
+        else
+        {
+            log.warn ("""JSON member "%s" not found""".format (MEMBERNAME))
+            ret
+        }
+
+        ret
     }
 
     def parseAggregation (aggregations: JsonObject): List[SimulationAggregate] =
@@ -483,9 +527,9 @@ object SimulationJob
             Seq()
     }
 
+
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
     {
-
         val name = json.getString ("name", "")
         val description = json.getString ("description", "")
         val cim = json.getString ("cim", null)

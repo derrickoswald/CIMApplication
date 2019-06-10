@@ -41,5 +41,10 @@ case class SimulationPlayer
     /**
      * Ending time as unix epoch for client side filtering.
      */
-    end: Long
+    end: Long,
+
+    /**
+     * Transformation to apply to the measurements
+     */
+    transform: String
 )

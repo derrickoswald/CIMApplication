@@ -135,6 +135,75 @@ truncate table cimapplication.responsibility_by_day;
                         c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `
+            },
+            {
+                "title": "110% of measured power for all house services",
+                "query":
+                    `
+                    select
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        'energy' type,
+                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        t.TopologicalNode parent,
+                        'constant_power' property,
+                        'Watt' unit,
+                        n.TopologicalIsland island
+                    from
+                        EnergyConsumer c,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val input = Complex (real, imag); val output = input * 1.1; (output.re, output.im) } }"
+            },
+            {
+                "title": "Measured power at power factor 0.9 for all house services",
+                "query":
+                    `
+                    select
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        'energy' type,
+                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        t.TopologicalNode parent,
+                        'constant_power' property,
+                        'Watt' unit,
+                        n.TopologicalIsland island
+                    from
+                        EnergyConsumer c,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val cosphi = Complex (0.9, Math.sqrt (1.0 - 0.9 * 0.9)); val input = Complex (real, imag); val output = input * cosphi; (output.re, output.im) } }"
+            },
+            {
+                "title": "Measured power at random cosϕ between 75° and 90° for all house services",
+                "query":
+                    `
+                    select
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        'energy' type,
+                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        t.TopologicalNode parent,
+                        'constant_power' property,
+                        'Watt' unit,
+                        n.TopologicalIsland island
+                    from
+                        EnergyConsumer c,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val angle = (Math.random () * (90.0 - 75.0) + 75.0) * Math.PI / 180.0; cosphi = Complex (Math.cos (angle), Math.sin (angle)); val input = Complex (real, imag); val output = input * cosphi; (output.re, output.im) } }"
             }
         ];
 

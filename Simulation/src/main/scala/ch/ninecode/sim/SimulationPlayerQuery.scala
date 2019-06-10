@@ -11,5 +11,11 @@ case class SimulationPlayerQuery
      * The Spark query to determine what nodes or edges are played.
      * Must return mrid, name, parent, type, property, unit and island.
      */
-    query: String
+    query: String,
+
+    /**
+     * The transformation from meter data (from Cassandra) to the value to be applied during simulation.
+     * Code that can be compiled to an instance of type MeasurementTransform.
+     */
+    transform: String
 )
