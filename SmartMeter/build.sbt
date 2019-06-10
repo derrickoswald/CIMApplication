@@ -2,7 +2,7 @@ lazy val root = (project in file(".")).
   settings(
     name := "SmartMeter",
     version := "SNAPSHOT",
-    scalaVersion := "2.11.8"
+    scalaVersion := "2.11.12"
   )
 
 libraryDependencies += "ch.ninecode.cim" % "cimreader_2.11" % "2.3.2-3.4.0"
