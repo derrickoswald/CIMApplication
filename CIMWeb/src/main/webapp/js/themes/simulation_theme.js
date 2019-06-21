@@ -179,9 +179,9 @@ define
             load_points_and_lines ()
             {
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_lines where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_lines where simulation='" + self._simulation + "' and coordinate_system='wgs84' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true })
                 .then (data => self.setSimulationGeoJSON_Lines.call (self, data))
-                .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_points where simulation='" + self._simulation + "' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".geojson_points where simulation='" + self._simulation + "' and coordinate_system='wgs84' and transformer ='" + self._Trafo + "' allow filtering", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Points.call (self, data))
                 .then (() =>
                     {
@@ -753,7 +753,7 @@ define
                 const promise = cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".simulation where id='" + id + "'", cassandra: true })
                 .then (data => self.setSimulationJSON.call (self, data))
                 // query the polygons
-                .then (() => cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".geojson_polygons where simulation='" + this._simulation + "'", cassandra: true }))
+                .then (() => cimquery.queryPromise ({ sql: "select json * from " + keyspace + ".geojson_polygons where simulation='" + this._simulation + "' and coordinate_system='wgs84'", cassandra: true }))
                 .then (data => self.setSimulationGeoJSON_Polygons.call (self, data))
                 .then (self.setupPolygons.bind (self));
                 return (promise);
