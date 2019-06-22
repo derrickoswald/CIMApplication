@@ -153,10 +153,10 @@ define
                     this._TheMap.removeSource ("edges");
                     this._TheMap.removeSource ("areas");
                 }
-                if (this._TheMap)
+                if (this._mousedown_listener)
                 {
-                    this._TheMap.off ("mousedown", this._mousedown_listener);
-                    this._cimmap.add_listeners ();
+                    this._cimmap.pop_listeners ();
+                    delete this._mousedown_listener;
                 }
             }
 
@@ -400,9 +400,8 @@ define
                 // set the current filter
                 this.legend_changed (new Date (this.getLegend ().getTimes ().start));
 
-                this._cimmap.remove_listeners ();
                 this._mousedown_listener = this.mousedown_listener.bind (this);
-                this._TheMap.on ("mousedown", this._mousedown_listener);
+                this.cimmmap.push_listeners ({ "mousedown": this._mousedown_listener });
             }
 
             fixup (raw)

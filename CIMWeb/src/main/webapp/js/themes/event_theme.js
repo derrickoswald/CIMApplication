@@ -98,10 +98,10 @@ define
                     this._TheMap.removeSource ("areas");
                     this._TheMap.removeSource ("labels");
                 }
-                if (this._TheMap)
+                if (this._mousedown_listener)
                 {
-                    this._TheMap.off ("mousedown", this._mousedown_listener);
-                    this._cimmap.add_listeners ();
+                    this._cimmap.pop_listeners ();
+                    delete this._mousedown_listener;
                 }
                 super.remove_theme ();
             }
@@ -120,6 +120,12 @@ define
                     ],
                     {}
                 );
+                function defer_mousedown (event)
+                {
+                    const listeners = this._cimmap.peek_listeners ();
+                    if (listeners["mousedown"])
+                        listeners["mousedown"] (event);
+                }
                 if ((null != features) && (0 !== features.length))
                 {
                     let trafo = null;
@@ -134,10 +140,10 @@ define
                     else if (feature)
                         this._cimmap.select (feature, [feature]);
                     else
-                        this._cimmap.default_mousedown_listener (event);
+                        defer_mousedown.call (this, event);
                 }
                 else
-                    this._cimmap.default_mousedown_listener (event);
+                    defer_mousedown.call (this, event);
             }
 
             // handle mouse click
@@ -293,9 +299,8 @@ define
                 if (this._render_listener)
                     this._render_listener ();
 
-                this._cimmap.remove_listeners ();
                 this._mousedown_listener = this.mousedown_listener.bind (this);
-                this._TheMap.on ("mousedown", this._mousedown_listener);
+                this._cimmap.push_listeners ({ "mousedown": this._mousedown_listener });
             }
 
             setProjectGeoJSON_Lines (data)

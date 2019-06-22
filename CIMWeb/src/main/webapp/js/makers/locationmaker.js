@@ -16,11 +16,10 @@ define
     {
         class LocationMaker
         {
-            constructor (cimmap, cimedit, digitizer)
+            constructor (cimmap, cimedit)
             {
                 this._cimmap = cimmap;
                 this._cimedit = cimedit;
-                this._digitizer = digitizer;
                 this._nominatim = new Nominatim (this._cimmap);
             }
 

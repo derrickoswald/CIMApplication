@@ -537,7 +537,7 @@ define
                     this._TheMap.removeControl (this._TheChart);
                     delete this._TheChart;
                 }
-                if ((null != this._TheMap) && this._TheMap.getSource ("cim points"))
+                if (this._TheMap && this._TheMap.getSource ("cim points"))
                 {
                     this._TheMap.removeLayer ("lines");
                     this._TheMap.removeLayer ("lines_highlight");
@@ -551,30 +551,7 @@ define
                     this._TheMap.removeSource ("cim lines");
                     this._TheMap.removeSource ("cim polygons");
                 }
-                if (this._TheMap)
-                {
-                    this._TheMap.off ("mousedown", this._mousedown_listener);
-                    this._cimmap.add_listeners ();
-                }
                 super.remove_theme ();
-            }
-
-            // handle mouse click
-            mousedown_listener (event)
-            {
-                // only do something if no key is pressed
-                const key = event.originalEvent.ctrlKey || event.originalEvent.shiftKey || event.originalEvent.altKey || event.originalEvent.metaKey;
-                if (!key)
-                {
-                    const buttons = event.originalEvent.buttons;
-                    //    0  : No button or un-initialized
-                    //    1  : Primary button (usually left)
-                    //    2  : Secondary button (usually right)
-                    const leftbutton = 0 !== (buttons & 1);
-                    const rightbutton = 0 !== (buttons & 2);
-                    if (leftbutton)
-                        this._cimmap.default_mousedown_listener (event);
-                }
             }
 
             clear ()
@@ -667,10 +644,6 @@ define
 
                 if (this._render_listener)
                     this._render_listener ();
-
-                this._cimmap.remove_listeners ();
-                this._mousedown_listener = this.mousedown_listener.bind (this);
-                this._TheMap.on ("mousedown", this._mousedown_listener);
             }
 
             setRenderListener (fn)
