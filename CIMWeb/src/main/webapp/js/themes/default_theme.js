@@ -563,16 +563,18 @@ define
                     }
                 );
 
+                const not_deleted = ["any", ["!", ["has", "EditDisposition"]], ["!=", ["get", "EditDisposition"], "delete"]];
+
                 // lines 3 pixels wide
-                map.addLayer (layers.line_layer ("lines", "cim lines", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
+                map.addLayer (layers.line_layer ("lines", "cim lines", { type: "identity", property: "color" }, not_deleted));
                 map.addLayer (layers.line_layer ("lines_highlight", "cim lines", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
                 // simple circles
-                map.addLayer (layers.full_circle_layer ("circle", "cim points", { type: "identity", property: "color" }, ["!has", "EditDisposition"]));
+                map.addLayer (layers.full_circle_layer ("circle", "cim points", { type: "identity", property: "color" }, not_deleted));
                 map.addLayer (layers.full_circle_layer ("circle_highlight", "cim points", "rgb(255, 255, 0)", ["==", "mRID", ""]));
 
                 // symbol icon from 17 and deeper
-                map.addLayer (layers.symbol_layer ("symbol", "cim special points", { type: "identity", property: "color" }, ["!has", "EditDisposition"], true));
+                map.addLayer (layers.symbol_layer ("symbol", "cim special points", { type: "identity", property: "color" }, not_deleted, true));
                 map.addLayer (layers.symbol_layer ("symbol_highlight", "cim special points", "rgb(255, 255, 0)", ["==", "mRID", ""], true));
 
                 // set the current filter

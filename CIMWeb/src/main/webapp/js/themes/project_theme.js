@@ -75,8 +75,6 @@ define
 
             /**
              * Remove layers and sources from the map.
-             * @function remove_theme
-             * @memberOf module:default_theme
              */
             remove_theme ()
             {
@@ -217,33 +215,17 @@ define
              * For subclasses to override stylization information.
              * @param {Object} data - the hash table object of CIM classes by class name
              * @param {Object} options - options for processing
-             * @function process_spatial_objects_again
-             * @memberOf module:default_theme
              */
             process_spatial_objects_again (data, options)
             {
-                const consumers = data.EnergyConsumer;
-                if (consumers)
-                {
-                    // all black
-                    for (let id in consumers)
-                        if (consumers.hasOwnProperty (id))
-                            consumers[id].color = "#0000000";
-                    // except for the ones that have data
-                    for (let trafo in this._consumers_with_data)
-                        if (this._consumers_with_data.hasOwnProperty (trafo))
-                        {
-                            const consumerlist = this._consumers_with_data[trafo];
-                            consumerlist.forEach (
-                                mrid =>
-                                {
-                                    const consumer = consumers[mrid];
-                                    if (consumer)
-                                        consumer.color = "#00ff00";
-                                }
-                            );
-                        }
-                }
+                super.process_spatial_objects_again (data, options);
+
+                // all black, except for the ones that have data
+                const with_data = {};
+                for (let trafo in this._consumers_with_data)
+                    if (this._consumers_with_data.hasOwnProperty (trafo))
+                        this._consumers_with_data[trafo].forEach (mrid => with_data[mrid] = 1);
+                this._cimmap.forAll ("EnergyConsumer", consumer => consumer.color = (with_data[consumer.id] ? "#00ff00" : "#000000"));
             }
 
             color_energy_consumers (transformer)
@@ -377,7 +359,6 @@ define
              * @param {Object} cimmap - the CIM map object
              * @param {Object} options - object with rendering options, e.g.
              *   show_internal_features flag - render internal features
-             * @function make_theme
              */
             make_theme (cimmap, options)
             {

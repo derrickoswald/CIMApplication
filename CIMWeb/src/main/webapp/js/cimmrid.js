@@ -23,19 +23,33 @@ define
                 this._cimmap = cimmap;
                 this._default_digits = 4;
                 this._patterns =
+                // {
+                //     "ACLineSegment":    "CAB",
+                //     "Breaker":          "BRK",
+                //     "BusbarSection":    "BUS",
+                //     // use parent as template: "ConnectivityNode": "NOD",
+                //     "Connector":        "CN",
+                //     "EnergyConsumer":   "USR",
+                //     "Fuse":             "FUS",
+                //     "Junction":         "JCN",
+                //     "Switch":           "SW",
+                //     "Substation":       "STA",
+                //     // use parent as template: "Terminal":         "TER",
+                //     "PowerTransformer": "TX"
+                // };
                 {
-                    "ACLineSegment":    "CAB",
+                    "ACLineSegment":    "KLE",
                     "Breaker":          "BRK",
-                    "BusbarSection":    "BUS",
+                    "BusbarSection":    "SAM",
                     // use parent as template: "ConnectivityNode": "NOD",
-                    "Connector":        "CN",
-                    "EnergyConsumer":   "USR",
-                    "Fuse":             "FUS",
-                    "Junction":         "JCN",
-                    "Switch":           "SW",
+                    "Connector":        "ABG",
+                    "EnergyConsumer":   "HAS",
+// can't use a pattern                    "Fuse":             "SIG",
+                    "Junction":         "MUF",
+                    "Switch":           "TEI",
                     "Substation":       "STA",
                     // use parent as template: "Terminal":         "TER",
-                    "PowerTransformer": "TX"
+                    "PowerTransformer": "TRA"
                 };
             }
 
