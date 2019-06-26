@@ -20,27 +20,27 @@ define
             {
                 this._theme = theme;
                 this._template =
-                    `
-                    <div class="card">
-                      <div class="card-body" style="min-width:200px;">
-                        <h5 class="card-title">
-                          <span class="info_title">Legend</span>
-                          <button class="close" type="button" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                          </button>
-                        </h5>
-                        <h6 class="card-subtitle mb-2">
-                          <select id="current_simulation" class="form-control custom-select">
-                            {{#simulations}}
-                            <option value="{{id}}"{{#selected}} selected{{/selected}}>{{{name}}}</option>
-                            {{/simulations}}
-                          </select>
-                        </h6>
-                        <div class="card-footer">
-                        </div>
-                      </div>
-                    </div>
-                    `;
+`
+<div class="card">
+    <div class="card-body" style="min-width:200px;">
+        <h5 class="card-title">
+            <span class="info_title">Legend</span>
+            <button class="close" type="button" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </h5>
+        <h6 class="card-subtitle mb-2">
+            <select id="current_simulation" class="form-control custom-select">
+{{#simulations}}
+                <option value="{{id}}"{{#selected}} selected{{/selected}}>{{{name}}}</option>
+{{/simulations}}
+            </select>
+        </h6>
+        <div class="card-footer">
+        </div>
+    </div>
+</div>
+`;
             }
 
             onAdd (map)
@@ -82,12 +82,11 @@ define
             onRemove ()
             {
                 this._container.parentNode.removeChild (this._container);
-                delete this._slider;
                 delete this._container;
                 delete this._map;
             }
 
-            close (event)
+            close ()
             {
                 this._map.removeControl (this);
             }
@@ -104,8 +103,8 @@ define
 
             changeSimulation (event)
             {
-                var selection = event.target.value;
-                var simulation = this._simulations.filter (x => x.id === selection)[0];
+                const selection = event.target.value;
+                const simulation = this._simulations.filter (x => x.id === selection)[0];
                 if (this._legend_listener)
                     cimcassandra.getSimulationDetails (simulation).then ((sim) => this._legend_listener (sim));
             }
@@ -122,4 +121,4 @@ define
 
         return (EventLegend);
     }
-)
+);

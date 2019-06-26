@@ -9,7 +9,6 @@ define
     /**
      * @summary Project legend control.
      * @description UI element for the project legend.
-     * @name project_legend
      * @exports project_legend
      * @version 1.0
      */
@@ -51,9 +50,9 @@ define
                 this._container.className = "mapboxgl-ctrl";
                 // refresh _projects
                 this._projects = [];
-                var self = this;
+                const self = this;
                 // get the keyspaces with export data
-                var promise = cimquery.queryPromise ({ sql: "select keyspace_name from system_schema.tables where table_name = 'export' allow filtering", cassandra: true })
+                cimquery.queryPromise ({ sql: "select keyspace_name from system_schema.tables where table_name = 'export' allow filtering", cassandra: true })
                     .then (
                         function (data)
                         {
@@ -70,7 +69,7 @@ define
                                                         runs.map (
                                                             function (run)
                                                             {
-                                                                var json = JSON.parse (run["[json]"]);
+                                                                const json = JSON.parse (run["[json]"]);
                                                                 json.keyspace = keyspace.keyspace_name;
                                                                 self._projects.push (json);
                                                             }
@@ -93,8 +92,8 @@ define
                                             // 60a05bf2-cc3c-4ef6-b4de-fa95b5645639 | hdfs://sandbox:8020/sak_cim_export_stripe_2.rdf | 361012447 | 2019-03-28 09:29:01.144000+0000 | 2019-03-28 11:15:17.130000+0000
                                             project.selected = false;
                                             project.title = project.filename;
-                                            var index = project.title.lastIndexOf ("/");
-                                            if (-1 != index)
+                                            const index = project.title.lastIndexOf ("/");
+                                            if (-1 !== index)
                                                 project.title = project.title.substring (index + 1);
                                         }
                                     );
@@ -128,12 +127,11 @@ define
             onRemove ()
             {
                 this._container.parentNode.removeChild (this._container);
-                delete this._slider;
                 delete this._container;
                 delete this._map;
             }
 
-            close (event)
+            close ()
             {
                 this._map.removeControl (this);
             }
@@ -150,9 +148,9 @@ define
 
             changeProject (event)
             {
-                var selection = event.target.value;
+                const selection = event.target.value;
                 this._projects.forEach (x => x.selected = false);
-                var new_current = this._projects.filter (x => x.id == selection)[0];
+                const new_current = this._projects.filter (x => x.id === selection)[0];
                 new_current.selected = true;
                 if (this._legend_listener)
                     this._legend_listener (new_current);
@@ -170,4 +168,4 @@ define
 
         return (ProjectLegend);
     }
-)
+);

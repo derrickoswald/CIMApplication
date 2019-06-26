@@ -525,10 +525,10 @@ define
 
             setTime (date)
             {
-                var seconds = date.getSeconds ();
-                var minutes = date.getMinutes ();
-                var hours = date.getHours ();
-                var pm = hours >= 12;
+                const seconds = date.getSeconds ();
+                let minutes = date.getMinutes ();
+                let hours = date.getHours ();
+                const pm = hours >= 12;
                 minutes = (minutes * 60) + seconds;
                 hours = (hours > 12) ? hours - 12 : hours;
                 hours = (hours * 3600) + minutes;
@@ -541,4 +541,4 @@ define
 
         return (Clock);
     }
-)
+);

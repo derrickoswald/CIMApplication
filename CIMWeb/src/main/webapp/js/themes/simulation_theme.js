@@ -328,7 +328,6 @@ define
                     //    1  : Primary button (usually left)
                     //    2  : Secondary button (usually right)
                     const leftbutton = 0 !== (buttons & 1);
-                    const rightbutton = 0 !== (buttons & 2);
                     if (leftbutton)
                         this.click (event.point.x, event.point.y);
                 }
@@ -401,7 +400,7 @@ define
                 this.legend_changed (new Date (this.getLegend ().getTimes ().start));
 
                 this._mousedown_listener = this.mousedown_listener.bind (this);
-                this.cimmmap.push_listeners ({ "mousedown": this._mousedown_listener });
+                this._cimmmap.push_listeners ({ "mousedown": this._mousedown_listener });
             }
 
             fixup (raw)
@@ -522,7 +521,7 @@ define
                     polygon =>
                     {
                         for (let x in default_data)
-                            if ("undefined" == typeof (polygon.properties[x]))
+                            if (default_data.hasOwnProperty (x) && "undefined" == typeof (polygon.properties[x]))
                                 polygon.properties[x] = default_data[x];
                     }
                 );
@@ -573,7 +572,7 @@ define
                     polygon =>
                     {
                         for (let x in default_data)
-                            if ("undefined" == typeof (polygon.properties[x]))
+                            if (default_data.hasOwnProperty (x) && "undefined" == typeof (polygon.properties[x]))
                                 polygon.properties[x] = default_data[x];
                     }
                 );
@@ -622,7 +621,7 @@ define
                     point =>
                     {
                         for (let x in default_data)
-                            if ("undefined" == typeof (point.properties[x]))
+                            if (default_data.hasOwnProperty (x) && "undefined" == typeof (point.properties[x]))
                                 point.properties[x] = default_data[x];
                     }
                 );

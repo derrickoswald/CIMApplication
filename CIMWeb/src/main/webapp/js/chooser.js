@@ -10,7 +10,6 @@ define
     /**
      * @summary UI component to allow multiple text values.
      * @version 1.0
-     * @name chooser
      * @exports chooser
      */
     function (mustache)
@@ -24,7 +23,6 @@ define
          * (if not supplied, null or an empty array, the input field is a plain text input with no dropdown)
          * @param {string} help_markup markup to add as help text
          * @class
-         * @memberOf module:chooser
          */
         class Chooser
         {
@@ -35,21 +33,18 @@ define
                  * The DIV with this id is filled with the chooser from the template.
                  * This is also used as an id pattern for this input set,
                  * suffixed with the index value to create unique element ids for input elements.
-                 * @memberOf chooser.Chooser#
                  */
                 this.list_name = target_list;
 
                 /**
                  * Label for this input group.
                  * I18N
-                 * @memberOf Chooser#
                  */
                 this.input_label = label;
 
                 /**
                  * Placeholder text for each input element.
                  * I18N
-                 * @memberOf Chooser#
                  */
                 this.prompt = placeholder;
 
@@ -57,38 +52,32 @@ define
                  * List of user entered data.
                  * Each element is an object with property 'value' as the user chosen string.
                  * At lifecycle end, objects with empty strings need to be removed by the caller.
-                 * @memberOf Chooser#
                  */
                 this.items = [];
 
                 /**
                  * List of predefined values made available in the drop-down list.
                  * Each entry is a string.
-                 * @memberOf Chooser#
                  */
                 this.values = choices;
 
                 /**
                  * Help text
-                 * @memberOf Chooser#
                  */
                 this.help = help_markup;
 
                 /**
                  * DOM element attribute name that stores the index value of the input group.
-                 * @memberOf Chooser#
                  */
                 this.data_source = "data_source";
 
                 /**
                  * DOM element attribute name that stores the id of the input element.
-                 * @memberOf Chooser#
                  */
                 this.data_target = "data_target";
 
                 /**
                  * Mustache template to generate the list item DOM elements.
-                 * @memberOf Chooser#
                  */
                 this.template =
                     `
@@ -124,16 +113,15 @@ define
 
                 /**
                  * Context for mustache rendering.
-                 * @memberOf Chooser#
                  */
-                var temp = this.context =
+                const temp = this.context =
                 {
                     items: this.items, // list of user entered values
                     values: this.values, // list of pre-composed values for the drop-down list
-                    hasvalues: (("undefined" != typeof (this.values)) && (null != this.values) && (0 != this.values.length)), // boolean to turn on values processing
+                    hasvalues: (("undefined" != typeof (this.values)) && (null != this.values) && (0 !== this.values.length)), // boolean to turn on values processing
                     first: function ()
                     {
-                        return (0 == temp.items.indexOf (this));
+                        return (0 === temp.items.indexOf (this));
                     },
                     glyph: function ()
                     {
@@ -145,7 +133,7 @@ define
                     },
                     last: function ()
                     {
-                        return (temp.items.length - 1 == temp.items.indexOf (this));
+                        return (temp.items.length - 1 === temp.items.indexOf (this));
                     },
                     help: this.help
                 };
@@ -154,13 +142,11 @@ define
             /**
              * Event handler for user pressing Enter in an input field.
              * @param {object} event keypress event from the input element
-             * @function enter
-             * @memberOf module:chooser.Chooser.prototype
              */
             enter (event)
             {
-                var keycode = (event.keyCode ? event.keyCode : event.which);
-                if (keycode == '13')
+                const keycode = (event.keyCode ? event.keyCode : event.which);
+                if (keycode === '13')
                 {
                     this.changed (event);
                     this.add (null);
@@ -170,35 +156,25 @@ define
             /**
              * Event handler for user entering a value by key entry.
              * @param {object} event change event from the input element
-             * @function changed
-             * @memberOf module:chooser.Chooser.prototype
              */
             changed (event)
             {
-                var index;
-
-                index = Number (event.target.getAttribute (this.data_source));
+                const index = Number (event.target.getAttribute (this.data_source));
                 this.context.items[index].value = event.target.value;
             };
 
             /**
              * Event handler for drop-down list item selected.
              * @param {object} event click event from the link list item
-             * @function clicked
-             * @memberOf module:chooser.Chooser.prototype
              */
             clicked (event)
             {
-                var link;
-                var value;
-                var target;
-                var index;
-
                 // stop the normal link action
                 event.preventDefault ();
 
-                link = event.target;
-                value = link.innerHTML;
+                let link = event.target;
+                const value = link.innerHTML;
+                let target;
                 while (link && (null === (target = link.getAttribute (this.data_target))))
                     link = link.parentElement;
 
@@ -207,7 +183,7 @@ define
                 target.value = value;
 
                 // update the value list
-                index = Number (target.getAttribute (this.data_source));
+                const index = Number (target.getAttribute (this.data_source));
                 this.context.items[index].value = value;
 
                 return (true);
@@ -216,24 +192,17 @@ define
             /**
              * Set the focus to the given input item.
              * @param {number} index The index (data_source attribute value) of the item to focus on
-             * @function focus
-             * @memberOf module:chooser.Chooser.prototype
              */
             focus (index)
             {
-                var list;
-                var inputs;
-
-                list = document.getElementById (this.list_name);
-                inputs = list.getElementsByTagName ("input");
+                const list = document.getElementById (this.list_name);
+                const inputs = list.getElementsByTagName ("input");
                 inputs[index].focus ();
             };
 
             /**
              * Event handler for clicking the plus icon.
              * @param {object} event click event from the input group addon item
-             * @function add
-             * @memberOf module:chooser.Chooser.prototype
              */
             add (event)
             {
@@ -250,16 +219,12 @@ define
             /**
              * Event handler for clicking the minus icon.
              * @param {object} event click event from the input group addon item
-             * @function remove
-             * @memberOf module:chooser.Chooser.prototype
              */
             remove (event)
             {
-                var link;
-                var index;
-
                 // get the index
-                link = event.target;
+                let link = event.target;
+                let index;
                 while (link && (null === (index = link.getAttribute (this.data_source))))
                     link = link.parentElement;
 
@@ -275,50 +240,38 @@ define
 
             /**
              * Render the chooser field set.
-             * @function render
-             * @memberOf module:chooser.Chooser.prototype
              */
             render ()
             {
-                var list;
-                var change;
-                var keypress;
-                var inputs;
-                var click;
-                var links;
-                var added;
-                var removed;
-                var spans;
-
                 // ensure there is at least one item to render
                 if (0 === this.context.items.length)
                     this.context.items.push ({ value: "" });
 
                 // re-render and inject the new elements into the DOM
-                list = document.getElementById (this.list_name);
+                let list = document.getElementById (this.list_name);
                 list.innerHTML = mustache.render (this.template, this.context);
 
                 // handle edit events
-                change = this.changed.bind (this);
-                keypress = this.enter.bind (this);
-                inputs = list.getElementsByTagName ("input");
-                for (var i = 0; i < inputs.length; i++)
+                const change = this.changed.bind (this);
+                const keypress = this.enter.bind (this);
+                const inputs = list.getElementsByTagName ("input");
+                for (let i = 0; i < inputs.length; i++)
                 {
                     inputs[i].addEventListener ("change", change);
                     inputs[i].addEventListener ("keypress", keypress);
                 }
 
                 // handle drop down chosen events
-                click = this.clicked.bind (this);
-                links = list.getElementsByTagName ("a");
-                for (var j = 0; j < links.length; j++)
+                const click = this.clicked.bind (this);
+                const links = list.getElementsByTagName ("a");
+                for (let j = 0; j < links.length; j++)
                     links[j].addEventListener ("click", click);
 
                 // handle add and remove events on the input group addon button
-                added = this.add.bind (this);
-                removed = this.remove.bind (this);
-                spans = list.getElementsByTagName ("span");
-                for (var k = 0; k < spans.length; k++)
+                const added = this.add.bind (this);
+                const removed = this.remove.bind (this);
+                const spans = list.getElementsByTagName ("span");
+                for (let k = 0; k < spans.length; k++)
                     if (spans[k].classList.contains ("input-group-addon"))
                         spans[k].addEventListener ("click", (this.items.length - 1 === Number (spans[k].getAttribute (this.data_source))) ? added : removed);
             };

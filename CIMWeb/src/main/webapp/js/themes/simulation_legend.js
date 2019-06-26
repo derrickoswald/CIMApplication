@@ -9,7 +9,6 @@ define
     /**
      * @summary Simulation legend control.
      * @description UI element for the simulation legend.
-     * @name simulation_legend
      * @exports simulation_legend
      * @version 1.0
      */
@@ -49,7 +48,6 @@ define
                         selected: false
                     }
                 ];
-                this._quality_factor = "utilization";
                 this._template =
                     `
                     <div class="card">
@@ -88,7 +86,7 @@ define
                 this._map = map;
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
-                var self = this;
+                const self = this;
                 this._container.innerHTML = mustache.render (
                     this._template,
                     {
@@ -109,7 +107,7 @@ define
                 delete this._map;
             }
 
-            close (event)
+            close ()
             {
                 this._map.removeControl (this);
             }
@@ -127,7 +125,7 @@ define
             play ()
             {
                 return (
-                    `
+`
 <svg
      xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:cc="http://creativecommons.org/ns#"
@@ -162,14 +160,14 @@ define
              style="fill:#00ff00;fill-opacity:1;stroke:#00ff00;stroke-width:0.9829067;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
     </g>
 </svg>
-                    `
+`
                 );
             }
 
             pause ()
             {
                 return (
-                    `
+`
 <svg
      xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:cc="http://creativecommons.org/ns#"
@@ -207,7 +205,7 @@ define
              style="fill:#ff0000;fill-opacity:1;stroke:#ff0000;stroke-width:0.86234593;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
     </g>
 </svg>
-                    `
+`
                 );
             }
 
@@ -218,9 +216,9 @@ define
 
             changeQualityFactor (event)
             {
-                var selection = event.target.value;
+                const selection = event.target.value;
                 this._quality_factors.forEach (x => x.selected = false);
-                this._quality_factors.filter (x => x.id == selection)[0].selected = true;
+                this._quality_factors.filter (x => x.id === selection)[0].selected = true;
                 if (this._legend_listener)
                     this._legend_listener (selection);
             }
@@ -238,7 +236,7 @@ define
                         max: this._times.end,
                         formatter: function (value)
                         {
-                            var t = new Date (value);
+                            const t = new Date (value);
                             return (t.toTimeString ().substring (0, 8));
                         },
                         value: this._times.start
@@ -246,12 +244,12 @@ define
                 );
                 this._slider.on ("change", this.legend_change.bind (this));
 
-                var calendar = document.getElementById ("simulation_date");
+                const calendar = document.getElementById ("simulation_date");
                 if (calendar)
                 {
-                    var start = new Date (this._times.start).toISOString ();
+                    let start = new Date (this._times.start).toISOString ();
                     start = start.substring (start.indexOf ("T"));
-                    var end = new Date (this._times.end).toISOString ();
+                    let end = new Date (this._times.end).toISOString ();
                     end = start.substring (end.indexOf ("T"));
                     calendar.setAttribute ("min", start);
                     calendar.setAttribute ("max", end);
@@ -259,8 +257,8 @@ define
 
 //                           <span><input id="simulation_date" type="text" value=""/></span>
 
-//                var start = new Date (this._times.start);
-//                var end = new Date (this._times.end);
+//                const start = new Date (this._times.start);
+//                const end = new Date (this._times.end);
 //                this._daterange = new DateRangePicker (
 //                    "#simulation_date",
 //                    {
@@ -288,11 +286,11 @@ define
 
             legend_change (obj)
             {
-                var value = new Date (obj.newValue);
+                const value = new Date (obj.newValue);
                 this._clock.setTime (value);
-                var date = value.toISOString ();
+                let date = value.toISOString ();
                 date = date.substring (0, date.indexOf ("T"));
-                var calendar = document.getElementById ("simulation_date");
+                let calendar = document.getElementById ("simulation_date");
                 calendar.value = date;
                 if (this._legend_listener)
                     this._legend_listener (obj.newValue);
@@ -306,12 +304,12 @@ define
             setTimes (times) // { start: start, end: end }
             {
                 this._times = times;
-                var calendar = document.getElementById ("simulation_date");
+                const calendar = document.getElementById ("simulation_date");
                 if (calendar)
                 {
-                    var start = new Date (this._times.start).toISOString ();
+                    let start = new Date (this._times.start).toISOString ();
                     start = start.substring (start.indexOf ("T"));
-                    var end = new Date (this._times.end).toISOString ();
+                    let end = new Date (this._times.end).toISOString ();
                     end = start.substring (end.indexOf ("T"));
                     calendar.setAttribute ("min", start);
                     calendar.setAttribute ("max", end);
@@ -325,7 +323,7 @@ define
 
             advance ()
             {
-                var now = this._slider.getValue ();
+                let now = this._slider.getValue ();
                 now += 1000 * 60 * 60 * 24; // one day in milliseconds
                 if (now > this._times.end)
                     this.play_pause ();
@@ -351,4 +349,4 @@ define
 
         return (SimulationLegend);
     }
-)
+);

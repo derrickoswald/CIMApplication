@@ -72,25 +72,25 @@ define
         //    ...
         //    ]
         //}
-        var TheAnalysis;
+        let TheAnalysis;
 
         function derive_work_dir (file)
         {
-            var ret = "/simulation/";
+            let ret = "/simulation/";
             try
             {
-                var url = new URL (file);
-                var protocol = url.protocol;
+                let url = new URL (file);
+                const protocol = url.protocol;
                 switch (protocol)
                 {
                     case "hdfs:":
                         url = new URL (file.replace ("hdfs:", "http:"));
-                        var last = url.pathname.lastIndexOf ("/", file.length - 1);
-                        ret = protocol + "//" + url.host + ((last != -1) ? url.pathname.substring (0, last) : "") + ret;
+                        const last1 = url.pathname.lastIndexOf ("/", file.length - 1);
+                        ret = protocol + "//" + url.host + ((last1 !== -1) ? url.pathname.substring (0, last1) : "") + ret;
                         break;
                     case "file:":
-                        var last = url.pathname.lastIndexOf ("/", file.length - 1);
-                        ret = protocol + "//" + ((last != -1) ? url.pathname.substring (0, last) : "") + ret;
+                        const last2 = url.pathname.lastIndexOf ("/", file.length - 1);
+                        ret = protocol + "//" + ((last2 !== -1) ? url.pathname.substring (0, last2) : "") + ret;
                         break;
                 }
             }
@@ -113,11 +113,8 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
-                        var url;
-                        var xmlhttp;
-
                         // ToDo: validation
-                        var options = {
+                        const options = {
                             verbose: true,
                             description: "cim analyze",
                             default_short_circuit_power_max: Number (document.getElementById ("network_power_max").value),
@@ -146,8 +143,8 @@ define
                             trafos: "",
                             workdir: derive_work_dir (cimmap.get_loaded ().files[0])
                         };
-                        var pf = document.getElementById ("motor_power_factor").value;
-                        if (("" == pf) || isNaN (Number (pf)))
+                        const pf = document.getElementById ("motor_power_factor").value;
+                        if (("" === pf) || isNaN (Number (pf)))
                         {
                             options.worstcasepf = true;
                             options.cosphi = null;
@@ -157,17 +154,17 @@ define
                             options.worstcasepf = false;
                             options.cosphi = Number (pf)
                         }
-                        url = util.home () + "cim/short_circuit";
-                        xmlhttp = util.createCORSRequest ("POST", url);
+                        const url = util.home () + "cim/short_circuit";
+                        const xmlhttp = util.createCORSRequest ("POST", url);
                         xmlhttp.onreadystatechange = function ()
                         {
-                            if (4 == xmlhttp.readyState)
-                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                                 {
                                     try
                                     {
-                                        var resp = JSON.parse (xmlhttp.responseText);
-                                        if (resp.status == "OK")
+                                        const resp = JSON.parse (xmlhttp.responseText);
+                                        if (resp.status === "OK")
                                             resolve (resp.result);
                                         else
                                             reject (resp.message);
@@ -195,7 +192,7 @@ define
          */
         function do_analysis (event)
         {
-            var info = cimmap.get_loaded ();
+            const info = cimmap.get_loaded ();
             if (null != info)
             {
                 if (!info.options["ch.ninecode.cim.do_topo"])
@@ -203,7 +200,7 @@ define
 
                 function successCallback (data)
                 {
-                    document.getElementById ("analysis_results").innerHTML = "<pre>\n" + JSON.stringify (data, null, 4) + "</pre>";
+                    document.getElementById ("analysis_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
                 }
 
                 function failureCallback (message)
@@ -217,7 +214,6 @@ define
                 alert ("no CIM file is loaded");
         }
 
-
         /**
          * @summary Execute short circuit calculation.
          * @description Perform a short circuit calculation on loaded CIM data.
@@ -229,8 +225,8 @@ define
         {
             function successCallback (data)
             {
-                TheAnalysis = data
-                var theme = new AnalysisTheme (TheAnalysis.records);
+                TheAnalysis = data;
+                const theme = new AnalysisTheme (TheAnalysis.records);
                 cimmap.get_themer ().removeTheme (theme);
                 cimmap.get_themer ().addTheme (theme);
                 alert ("successfully sent results to the map");
@@ -253,146 +249,146 @@ define
         function initialize ()
         {
             document.getElementById ("analysis").innerHTML = "";
-            var analysis_template =
-                "<div class='container'>\n" +
-                "  <div class='row justify-content-center'>\n" +
-                "    <div class='col-12' style='margin-top: 40px;'>\n" +
-                "      <form id='analysis_form' role='form' style='width: 100%'>\n" +
-                "        <h4>Short Circuit</h4>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_power_max'>Network power max</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <input id='network_power_max' class='form-control' type='text' name='network_power_max' aria-describedby='network_power_maxHelp' value='200.0e6'>\n" +
-                "            <small id='network_power_maxHelp' class='form-text text-muted'>Default maximum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_resistance_max'>Network resistance max</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='network_resistance_max' class='form-control' type='text' name='network_resistance_max' aria-describedby='network_resistance_maxHelp' value='0.437785783'>\n" +
-                "            <small id='network_resistance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_reactance_max'>Network reactance max</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='network_reactance_max' class='form-control' type='text' name='network_reactance_max' aria-describedby='network_reactance_maxHelp' value='-1.202806555'>\n" +
-                "            <small id='network_reactance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_power_min'>Network power min</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <input id='network_power_min' class='form-control' type='text' name='network_power_min' aria-describedby='network_power_minHelp' value='100.0e6'>\n" +
-                "            <small id='network_power_minHelp' class='form-text text-muted'>Default minimum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_resistance_min'>Network resistance min</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='network_resistance_min' class='form-control' type='text' name='network_resistance_min' aria-describedby='network_resistance_minHelp' value='0.437785783'>\n" +
-                "            <small id='network_resistance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-2 col-form-label' for='network_reactance_min'>Network reactance min</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='network_reactance_min' class='form-control' type='text' name='network_reactance_min' aria-describedby='network_reactance_minHelp' value='-1.202806555'>\n" +
-                "            <small id='network_reactance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='transformer_power'>Transformer power</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <input id='transformer_power' class='form-control' type='text' name='transformer_power' aria-describedby='transformer_powerHelp' value='630000'>\n" +
-                "            <small id='transformer_powerHelp' class='form-text text-muted'>Default transformer rated power, to be used if it wasn't specified for a transformer (VA).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='transformer_resistance'>Transformer resistance</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='transformer_resistance' class='form-control' type='text' name='transformer_resistance' aria-describedby='transformer_resistanceHelp' value='0.005899999998374999'>\n" +
-                "            <small id='transformer_resistanceHelp' class='form-text text-muted'>Default transformer characteristic resistance, to be used if it wasn't specified for a transformer (Ω).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-2 col-form-label' for='transformer_reactance'>Transformer reactance</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='transformer_reactance' class='form-control' type='text' name='transformer_reactance' aria-describedby='transformer_reactanceHelp' value='0.039562482211875'>\n" +
-                "            <small id='transformer_reactanceHelp' class='form-text text-muted'>Default transformer characteristic reactance, to be used if it wasn't specified for a transformer (Ω).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='tbase'>Base temperature</label>\n" +
-                "          <div class='col-sm-2'>\n" +
-                "            <input id='tbase' class='form-control' type='text' name='tbase' aria-describedby='tbaseHelp' value='20.0'>\n" +
-                "            <small id='tbaseHelp' class='form-text text-muted'>Base temperature used in the CIM file (°C).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-1 col-form-label' for='tlow'>T<sub>Low</sub></label>\n" +
-                "          <div class='col-sm-3'>\n" +
-                "            <input id='tlow' class='form-control' type='text' name='tlow' aria-describedby='tlowHelp' value='60.0'>\n" +
-                "            <small id='tlowHelp' class='form-text text-muted'>Low temperature (minimum impedances, maximum fault level) for calculations used for rating equipment (°C).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-1 col-form-label' for='thigh'>T<sub>High</sub></label>\n" +
-                "          <div class='col-sm-3'>\n" +
-                "            <input id='thigh' class='form-control' type='text' name='thigh' aria-describedby='thighHelp' value='90.0'>\n" +
-                "            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum impedances, minimum fault level) for calculations used for protections settings (°C).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='cmax'>C<sub>max</sub></label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='cmax' class='form-control' type='text' name='cmax' aria-describedby='cmaxHelp' value='1.0'>\n" +
-                "            <small id='cmaxHelp' class='form-text text-muted'>Voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless).</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-2 col-form-label' for='cmin'>C<sub>min</sub></label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='cmin' class='form-control' type='text' name='cmin' aria-describedby='cminHelp' value='0.9'>\n" +
-                "            <small id='cminHelp' class='form-text text-muted'>Voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <h4>Maximum Starting Current</h4>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='motor_power_factor'>Motor power factor</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <input id='motor_power_factor' class='form-control' type='text' name='motor_power_factor' aria-describedby='motor_power_factorHelp' value=''>\n" +
-                "            <small id='motor_power_factorHelp' class='form-text text-muted'>Power factor of motor load at startup, e.g cos(60°)=0.5, if not specified worst-case is assumed (dimensionless).</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <h4>Fuse Check</h4>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='fuse_table'>Fuse table</label>\n" +
-                "          <div class='col-sm-10'>\n" +
-                "            <select id='fuse_table' class='form-control custom-select' name='fuse_table' aria-describedby='fuse_tableHelp'>\n" +
-                "                <option value='1' selected>Customer 1</option>\n" +
-                "                <option value='2'>Customer 2</option>\n" +
-                "            </select>\n" +
-                "            <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>k</sub>:fuse rating breakpoint table, e.g. Customer 1: 105&#8594;40A, 140&#8594;50A &#8230; or Customer 2: 120&#8594;40A, 160&#8594;50A &#8230;.</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <h4>Other</h4>\n" +
-                "        <div class='form-group row'>\n" +
-                "          <label class='col-sm-2 col-form-label' for='messagemax'>Message list limit</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='messagemax' class='form-control' type='text' name='messagemax' aria-describedby='messagemaxHelp' value='5'>\n" +
-                "            <small id='messagemaxHelp' class='form-text text-muted'>Specify the maximum number of error/warning messages collected per node.</small>\n" +
-                "          </div>\n" +
-                "          <label class='col-sm-2 col-form-label' for='batchsize'>Commit batch size</label>\n" +
-                "          <div class='col-sm-4'>\n" +
-                "            <input id='batchsize' class='form-control' type='text' name='batchsize' aria-describedby='batchsizeHelp' value='10000'>\n" +
-                "            <small id='batchsizeHelp' class='form-text text-muted'>Specify the maximum batch size of records to store in the result database.</small>\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        <div class='form-group'>\n" +
-                "          <button id='do_analysis' type='button' class='btn btn-primary'>Execute</button>\n" +
-                "          <button id='analysis_to_map' name='analysis_to_map' type='button' class='btn btn-primary'>Send to map</button>\n" +
-                "        </div>\n" +
-                "      </form>\n" +
-                "      <div id='analysis_results'>\n" +
-                "      </div>\n" +
-                "    </div>\n" +
-                "  </div>\n" +
-                "</div>\n";
+            const analysis_template =
+`
+<div class='container'>
+  <div class='row justify-content-center'>
+    <div class='col-12' style='margin-top: 40px;'>
+      <form id='analysis_form' role='form' style='width: 100%'>
+        <h4>Short Circuit</h4>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='network_power_max'>Network power max</label>
+          <div class='col-sm-10'>
+            <input id='network_power_max' class='form-control' type='text' name='network_power_max' aria-describedby='network_power_maxHelp' value='200.0e6'>
+            <small id='network_power_maxHelp' class='form-text text-muted'>Default maximum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='network_resistance_max'>Network resistance max</label>
+          <div class='col-sm-4'>
+            <input id='network_resistance_max' class='form-control' type='text' name='network_resistance_max' aria-describedby='network_resistance_maxHelp' value='0.437785783'>
+            <small id='network_resistance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>
+          </div>
+          <label class='col-sm-2 col-form-label' for='network_reactance_max'>Network reactance max</label>
+          <div class='col-sm-4'>
+            <input id='network_reactance_max' class='form-control' type='text' name='network_reactance_max' aria-describedby='network_reactance_maxHelp' value='-1.202806555'>
+            <small id='network_reactance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='network_power_min'>Network power min</label>
+          <div class='col-sm-10'>
+            <input id='network_power_min' class='form-control' type='text' name='network_power_min' aria-describedby='network_power_minHelp' value='100.0e6'>
+            <small id='network_power_minHelp' class='form-text text-muted'>Default minimum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='network_resistance_min'>Network resistance min</label>
+          <div class='col-sm-4'>
+            <input id='network_resistance_min' class='form-control' type='text' name='network_resistance_min' aria-describedby='network_resistance_minHelp' value='0.437785783'>
+            <small id='network_resistance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>
+          </div>
+          <label class='col-sm-2 col-form-label' for='network_reactance_min'>Network reactance min</label>
+          <div class='col-sm-4'>
+            <input id='network_reactance_min' class='form-control' type='text' name='network_reactance_min' aria-describedby='network_reactance_minHelp' value='-1.202806555'>
+            <small id='network_reactance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='transformer_power'>Transformer power</label>
+          <div class='col-sm-10'>
+            <input id='transformer_power' class='form-control' type='text' name='transformer_power' aria-describedby='transformer_powerHelp' value='630000'>
+            <small id='transformer_powerHelp' class='form-text text-muted'>Default transformer rated power, to be used if it wasn't specified for a transformer (VA).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='transformer_resistance'>Transformer resistance</label>
+          <div class='col-sm-4'>
+            <input id='transformer_resistance' class='form-control' type='text' name='transformer_resistance' aria-describedby='transformer_resistanceHelp' value='0.005899999998374999'>
+            <small id='transformer_resistanceHelp' class='form-text text-muted'>Default transformer characteristic resistance, to be used if it wasn't specified for a transformer (Ω).</small>
+          </div>
+          <label class='col-sm-2 col-form-label' for='transformer_reactance'>Transformer reactance</label>
+          <div class='col-sm-4'>
+            <input id='transformer_reactance' class='form-control' type='text' name='transformer_reactance' aria-describedby='transformer_reactanceHelp' value='0.039562482211875'>
+            <small id='transformer_reactanceHelp' class='form-text text-muted'>Default transformer characteristic reactance, to be used if it wasn't specified for a transformer (Ω).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='tbase'>Base temperature</label>
+          <div class='col-sm-2'>
+            <input id='tbase' class='form-control' type='text' name='tbase' aria-describedby='tbaseHelp' value='20.0'>
+            <small id='tbaseHelp' class='form-text text-muted'>Base temperature used in the CIM file (°C).</small>
+          </div>
+          <label class='col-sm-1 col-form-label' for='tlow'>T<sub>Low</sub></label>
+          <div class='col-sm-3'>
+            <input id='tlow' class='form-control' type='text' name='tlow' aria-describedby='tlowHelp' value='60.0'>
+            <small id='tlowHelp' class='form-text text-muted'>Low temperature (minimum impedances, maximum fault level) for calculations used for rating equipment (°C).</small>
+          </div>
+          <label class='col-sm-1 col-form-label' for='thigh'>T<sub>High</sub></label>
+          <div class='col-sm-3'>
+            <input id='thigh' class='form-control' type='text' name='thigh' aria-describedby='thighHelp' value='90.0'>
+            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum impedances, minimum fault level) for calculations used for protections settings (°C).</small>
+          </div>
+        </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='cmax'>C<sub>max</sub></label>
+          <div class='col-sm-4'>
+            <input id='cmax' class='form-control' type='text' name='cmax' aria-describedby='cmaxHelp' value='1.0'>
+            <small id='cmaxHelp' class='form-text text-muted'>Voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless).</small>
+          </div>
+          <label class='col-sm-2 col-form-label' for='cmin'>C<sub>min</sub></label>
+          <div class='col-sm-4'>
+            <input id='cmin' class='form-control' type='text' name='cmin' aria-describedby='cminHelp' value='0.9'>
+            <small id='cminHelp' class='form-text text-muted'>Voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless).</small>
+          </div>
+        </div>
+        <h4>Maximum Starting Current</h4>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='motor_power_factor'>Motor power factor</label>
+          <div class='col-sm-10'>
+            <input id='motor_power_factor' class='form-control' type='text' name='motor_power_factor' aria-describedby='motor_power_factorHelp' value=''>
+            <small id='motor_power_factorHelp' class='form-text text-muted'>Power factor of motor load at startup, e.g cos(60°)=0.5, if not specified worst-case is assumed (dimensionless).</small>
+          </div>
+        </div>
+        <h4>Fuse Check</h4>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='fuse_table'>Fuse table</label>
+          <div class='col-sm-10'>
+            <select id='fuse_table' class='form-control custom-select' name='fuse_table' aria-describedby='fuse_tableHelp'>
+                <option value='1' selected>Customer 1</option>
+                <option value='2'>Customer 2</option>
+            </select>
+            <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>k</sub>:fuse rating breakpoint table, e.g. Customer 1: 105&#8594;40A, 140&#8594;50A &#8230; or Customer 2: 120&#8594;40A, 160&#8594;50A &#8230;.</small>
+          </div>
+        </div>
+        <h4>Other</h4>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='messagemax'>Message list limit</label>
+          <div class='col-sm-4'>
+            <input id='messagemax' class='form-control' type='text' name='messagemax' aria-describedby='messagemaxHelp' value='5'>
+            <small id='messagemaxHelp' class='form-text text-muted'>Specify the maximum number of error/warning messages collected per node.</small>
+          </div>
+          <label class='col-sm-2 col-form-label' for='batchsize'>Commit batch size</label>
+          <div class='col-sm-4'>
+            <input id='batchsize' class='form-control' type='text' name='batchsize' aria-describedby='batchsizeHelp' value='10000'>
+            <small id='batchsizeHelp' class='form-text text-muted'>Specify the maximum batch size of records to store in the result database.</small>
+          </div>
+        </div>
+        <div class='form-group'>
+          <button id='do_analysis' type='button' class='btn btn-primary'>Execute</button>
+          <button id='analysis_to_map' name='analysis_to_map' type='button' class='btn btn-primary'>Send to map</button>
+        </div>
+      </form>
+      <div id='analysis_results'>
+      </div>
+    </div>
+  </div>
+</div>
+`;
 
-            var text = mustache.render (analysis_template);
-            document.getElementById ("analysis").innerHTML = text;
+            document.getElementById ("analysis").innerHTML = mustache.render (analysis_template);
             document.getElementById ("do_analysis").onclick = do_analysis;
             document.getElementById ("analysis_to_map").onclick = to_map;
-
         }
 
         return (
@@ -401,4 +397,4 @@ define
             }
         );
     }
-)
+);
