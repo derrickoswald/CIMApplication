@@ -5,16 +5,26 @@
 
 define
 (
-    ["../mustache", "./diagram", "./project_legend", "./layers", "../cimquery", "../cim"],
+    ["../mustache", "./diagram", "./project_legend", "./layers", "../cimquery", "../cim", "../cimproject"],
     /**
      * @summary Theme of projects.
      * @exports project_theme
      * @version 1.0
      */
-    function (mustache, DiagramTheme, ProjectLegend, layers, cimquery, cim)
+    function (mustache, DiagramTheme, ProjectLegend, layers, cimquery, cim, CIMProject)
     {
         class ProjectTheme extends DiagramTheme
         {
+            static getInfoBox ()
+            {
+                return (ProjectTheme.InfoBox);
+            }
+
+            static setInfoBox (box)
+            {
+                ProjectTheme.InfoBox = box;
+            }
+
             constructor ()
             {
                 super ();
@@ -69,8 +79,6 @@ define
 
             legend_changed (value)
             {
-                if (value)
-                    this.setProject (value.keyspace, value.id);
             }
 
             /**
@@ -420,6 +428,19 @@ define
 
                 this._mousedown_listener = this.mousedown_listener.bind (this);
                 this._cimmap.push_listeners ({ "mousedown": this._mousedown_listener });
+
+                // add the project info box
+                if (!ProjectTheme.getInfoBox ())
+                {
+                    ProjectTheme.setInfoBox (new CIMProject (this._cimmap, this));
+                    this._cimmap.get_map ().addControl (ProjectTheme.getInfoBox ());
+                    ProjectTheme.getInfoBox ().initialize ();
+                }
+                else if (!ProjectTheme.getInfoBox ().visible ())
+                {
+                    this._cimmap.get_map ().addControl (ProjectTheme.getInfoBox ());
+                    ProjectTheme.getInfoBox ().initialize ();
+                }
             }
 
             setProjectGeoJSON_Lines (data)

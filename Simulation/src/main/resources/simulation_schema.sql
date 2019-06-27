@@ -78,6 +78,35 @@ These are values obtained from load-flow simulations or other analysis software.
     units  - the units for the simulated value
 ';
 
+create table if not exists cimapplication.synthesized_value (
+    synthesis text,
+    type text,
+    period int,
+    time timestamp,
+    real_a double,
+    imag_a double,
+    real_b double,
+    imag_b double,
+    real_c double,
+    imag_c double,
+    units text,
+    primary key ((synthesis, type, period), time)
+    ) with clustering order by (time asc) and comment = '
+Sythesized values.
+These are synthesized values from synthetic load-profile software or machine learning algorithms generalizing real data.
+    synthesis - the synthetic data set name
+    type   - the type of value, e.g. energy, power, voltage, current
+    time   - the time at which the synthesized value was generated in GMT
+    period - the time period of the synthesized value in milliseconds
+    real_a - the real component of the phase A (or R) value
+    imag_a - the imaginary component of the phase A (or R) value
+    real_b - the real component of the phase B (or S) value
+    imag_b - the imaginary component of the phase A (or S) value
+    real_c - the real component of the phase C (or T) value
+    imag_c - the imaginary component of the phase C (or T) value
+    units  - the units for the synthesized value
+';
+
 create table if not exists cimapplication.simulation_event (
     simulation text,
     mrid text,

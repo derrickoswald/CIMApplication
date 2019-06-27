@@ -241,7 +241,7 @@ define
         }
 
         /**
-         * @summary Render the shor circuit page.
+         * @summary Render the short circuit page.
          * @description Uses mustache to create HTML DOM elements that display the short circuit options.
          * @function initialize
          * @memberOf module:cimanalysis
