@@ -115,7 +115,7 @@ truncate table cimapplication.responsibility_by_day;
         let PlayerChooser;
         const PlayerChoices = [
             {
-                "title": "Measured power for all house services",
+                "title": "Measured power for all PSRType_HouseService house services",
                 "query":
                     `
                     select
@@ -204,6 +204,31 @@ truncate table cimapplication.responsibility_by_day;
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `,
                 "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val angle = (Math.random () * (90.0 - 75.0) + 75.0) * Math.PI / 180.0; cosphi = Complex (Math.cos (angle), Math.sin (angle)); val input = Complex (real, imag); val output = input * cosphi; (output.re, output.im) } }"
+            },
+            {
+                "title": "Synthesized power for all PSRType_newHouseService house services",
+                "query":
+                    `
+                    select
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        l.LoadDynamics.IdentifiedObject.name synthesis,
+                        'energy' type,
+                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        t.TopologicalNode parent,
+                        'constant_power' property,
+                        'Watt' unit,
+                        n.TopologicalIsland island
+                    from
+                        EnergyConsumer c,
+                        LoadUserDefined l,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_newHouseService' and
+                        c.LoadDynamics = l.LoadDynamics.IdentifiedObject.mRID and
+                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `
             }
         ];
 

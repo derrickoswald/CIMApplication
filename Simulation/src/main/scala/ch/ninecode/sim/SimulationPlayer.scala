@@ -29,7 +29,7 @@ case class SimulationPlayer
     file: String = null,
 
     /**
-     * The mrid used to fetch the player data from the measured data.
+     * The mrid used to fetch the player data from the measured data, or mrid to attach to synthesized data.
      */
     mrid: String = null,
 
@@ -44,7 +44,12 @@ case class SimulationPlayer
     end: Long,
 
     /**
-     * Transformation to apply to the measurements
+     * Transformation to apply to the measurements.
      */
-    transform: String
+    transform: String,
+
+    /**
+     * Primary key in synthesized_value table.
+     */
+    synthesis: String
 )

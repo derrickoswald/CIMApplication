@@ -9,7 +9,7 @@ case class SimulationPlayerQuery
 
     /**
      * The Spark query to determine what nodes or edges are played.
-     * Must return mrid, name, parent, type, property, unit and island.
+     * Must return mrid, name, parent, type, property, unit and island, and possibly synthesis if querying synthesized_value.
      */
     query: String,
 

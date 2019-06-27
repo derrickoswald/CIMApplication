@@ -15,6 +15,7 @@ import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
 
+import scala.collection.immutable
 import scala.collection.JavaConverters._
 
 import org.apache.log4j.LogManager
@@ -206,7 +207,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 player.mrid,
                 begin,
                 end,
-                player.transform)
+                player.transform,
+                player.synthesis)
         )
     }
 
@@ -374,7 +376,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def query_cassandra (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
+    def query_measured_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
     {
         val date_format: SimpleDateFormat =
         {
@@ -418,6 +420,66 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     SimulationPlayerData (transformer, mrid, `type`, time, re, im)
                 }
             )
+    }
+
+    def query_synthesized_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String, String)])): RDD[SimulationPlayerData] =
+    {
+        val date_format: SimpleDateFormat =
+        {
+            val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
+            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+            format
+        }
+
+        val transformer = players._1
+        val mrids_syntheses_transforms: Iterable[(String, String, String)] = players._2
+        val transform_map: Map[String, String] = mrids_syntheses_transforms.map (x ⇒ (x._1, x._3)).toMap
+        // group by synthesis
+        val queries: Map[String, Iterable[String]] = mrids_syntheses_transforms.map (x ⇒ (x._2, x._1)).groupBy (_._1).mapValues (x ⇒ x.map (y ⇒ y._2))
+        val where = " and type = '%s' and time >= '%s' and time < '%s'".format (`type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
+        def f (pair: (String, Iterable[(String, String)])): Int = 0
+        val results: immutable.Iterable[RDD[SimulationPlayerData]] = queries.map (
+            (pair: (String, Iterable[String])) ⇒
+            {
+                val (synthesis, mrids) = pair
+                val rows: RDD[SimulationPlayerData] = spark
+                    .read
+                    .format ("org.apache.spark.sql.cassandra")
+                    .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
+                    .load
+                    .filter ("synthesis = '%s'".format (synthesis) + where)
+                    .select ("time", "real_a", "imag_a", "period") // ToDo: 3 phase
+                    .rdd
+                    .flatMap (
+                        row ⇒
+                        {
+                            val period = row.getInt (3)
+                            val time = row.getTimestamp (0).getTime - period // start time
+                            // ToDo: should also check units
+                            val factor = `type` match
+                            {
+                                case "energy" ⇒
+                                    (60.0 * 60.0 * 1000.0) / period
+                                case _ ⇒
+                                    1.0
+                            }
+                            val real = row.getDouble (1) * factor
+                            val imag = row.getDouble (2) * factor
+                            mrids.map (
+                                mrid ⇒
+                                {
+                                    val program = MeasurementTransform.compile (transform_map(mrid))
+                                    val (re, im) = program.transform (real, imag)
+                                    // ToDo: should we keep the period so we can tell if a value is missing?
+                                    SimulationPlayerData (transformer, mrid, `type`, time, re, im)
+                                }
+                            )
+                        }
+                    )
+                rows
+            }
+        )
+        session.sparkContext.union (results.toArray)
     }
 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
@@ -531,18 +593,31 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         val geo = SimulationGeometry (session, job.output_keyspace)
                         geo.storeGeometry (simulations)
 
-                        log.info ("""querying measured values""")
                         // determine which players for which transformers
-                        val trafo_house = simulations.flatMap (x ⇒ x.players.map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
-
-                        // query Cassandra to make one RDD for each trafo
-                        val rdds: Array[RDD[SimulationPlayerData]] = trafo_house.map (query_cassandra (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                        val trafo_house1 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis == null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
+                        val measured_rdds: Array[RDD[SimulationPlayerData]] = if (0 != trafo_house1.length)
+                        {
+                            // query Cassandra to make one RDD for each trafo
+                            log.info ("""querying measured values""")
+                            trafo_house1.map (query_measured_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                        }
+                        else
+                            Array ()
+                        val trafo_house2 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis != null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.synthesis, y.transform)))).groupByKey.collect
+                        val synthesized_rdds: Array[RDD[SimulationPlayerData]] = if (0 != trafo_house2.length)
+                        {
+                            // query Cassandra to make one RDD for each trafo
+                            log.info ("""querying synthesized values""")
+                            trafo_house2.map (query_synthesized_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                        }
+                        else
+                            Array ()
 
                         // build one giant RDD
-                        val measurements = session.sparkContext.union (rdds)
+                        val timeseries = session.sparkContext.union (measured_rdds ++ synthesized_rdds)
 
                         // join to the simulation
-                        val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (measurements.groupBy (_.transformer)).values
+                        val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (timeseries.groupBy (_.transformer)).values
                             .mapValues (_.groupBy (_.mrid))
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
