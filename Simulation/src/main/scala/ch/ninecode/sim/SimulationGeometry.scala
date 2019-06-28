@@ -296,6 +296,36 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         jsons.saveToCassandra (keyspace, "geojson_transformers", SomeColumns ("simulation", "coordinate_system", "mrid", "transformers", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
+    def store_geojson_stations (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
+    {
+        val stations = getOrElse[Substation].keyBy (_.id)
+        val stations_with_geometry = stations.join (getOrElse[DiagramObject]
+            .keyBy (_.IdentifiedObject_attr))
+            .map (x ⇒ (x._2._2.id, x._2._1))
+            .leftOuterJoin (getOrElse[DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey)
+            .values
+        val simulations = trafos.map (_.simulation).distinct.collect
+        val stations_with_geometry_and_properties = stations_with_geometry
+            .flatMap (x ⇒ simulations.map (y ⇒ (y + "_" + x._1.id, x)))
+            .leftOuterJoin (extra).map (x ⇒ (x._1, x._2._1._1, x._2._1._2, x._2._2))
+        val jsons = stations_with_geometry_and_properties.flatMap (
+            x ⇒
+            {
+                val points = x._3
+                points match
+                {
+                    case Some (coords) ⇒
+                        val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y ⇒ List (y.xPosition, y.yPosition)))
+                        val geometry = ("Polygon", coordinates)
+                        val properties = x._4.orNull
+                        Some (x._1, "pseudo_wgs84", x._2.id, "Feature", geometry, properties)
+                    case None ⇒ None
+                }
+            }
+        )
+        jsons.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+    }
+
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =
     {
         val extra = query_extra
@@ -303,5 +333,6 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         store_geojson_lines (trafos, extra)
         store_geojson_polygons (trafos, extra)
         store_geojson_transformers (trafos, extra)
+        store_geojson_stations (trafos, extra)
     }
 }
