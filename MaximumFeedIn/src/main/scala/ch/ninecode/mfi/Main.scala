@@ -261,12 +261,12 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/MaximumFeedIn-2.11-2.4.3-2.5.0-jar-with-dependencies.jar):
      * mvn package
      * Invoke (on the cluster) with:
-     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.3-2.5.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
      * or on AWS:
-     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MaximumFeedIn-2.11-2.3.1-2.4.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
+     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/MaximumFeedIn-2.11-2.4.3-2.5.0-jar-with-dependencies.jar hdfs://hmaster:9000/data/filename.rdf
      */
     def main (args: Array[String])
     {

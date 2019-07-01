@@ -6,7 +6,7 @@
     <parent>
         <artifactId>CIMApplication</artifactId>
         <groupId>ch.ninecode.cim</groupId>
-        <version>2.11-2.3.2-2.4.0</version>
+        <version>2.11-2.4.3-2.5.0</version>
     </parent>
     <artifactId>OneOfN</artifactId>
     <groupId>ch.ninecode.on</groupId>

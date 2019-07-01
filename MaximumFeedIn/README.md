@@ -116,14 +116,14 @@ The program is submitted to the cluster with the [spark-submit command](https://
 Of the many arguments to spark-submit, the crucial one to execute the MaximumFeedIn program is the correct full path to the `.jar` file.
 A bit of help text is available if you use the `--help` switch:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.3.2-2.4.0-jar-with-dependencies.jar --help
-MaximumFeedIn 2.11-2.3.2-2.4.0
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.3-2.5.0-jar-with-dependencies.jar --help
+MaximumFeedIn 2.11-2.4.3-2.5.0
 Usage: MaximumFeedIn [otions] [<CIM> <CIM> ...]
 
 Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
 
   --help                   prints this usage text
-  --version                Scala: 2.11, Spark: 2.3.2, MaximumFeedIn: 2.4.0
+  --version                Scala: 2.11, Spark: 2.4.3, MaximumFeedIn: 2.5.0
   --quiet                  suppress informational messages [false]
   --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
   --opts k1=v1,k2=v2       Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]

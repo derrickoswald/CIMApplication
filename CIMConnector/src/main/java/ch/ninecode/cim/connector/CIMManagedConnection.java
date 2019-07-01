@@ -28,11 +28,11 @@ import ch.ninecode.cim.Schema;
 /**
  * Connection to Apache Spark (http://spark.apache.org).
  * Assumes access to maven packages like:
- * org.apache.spark:spark-core_2.11-2.3.0
- * org.apache.spark:spark-sql_2.11-2.3.0
- * org.apache.spark:spark-hive-thriftserver_2.11-2.3.0
- * org.apache.spark:spark-graphx_2.11-2.3.0
- * org.apache.spark:spark-yarn_2.11-2.3.0
+ * org.apache.spark:spark-core_2.11-2.4.3
+ * org.apache.spark:spark-sql_2.11-2.4.3
+ * org.apache.spark:spark-hive-thriftserver_2.11-2.4.3
+ * org.apache.spark:spark-graphx_2.11-2.4.3
+ * org.apache.spark:spark-yarn_2.11-2.4.3
  *
  */
 public class CIMManagedConnection implements ManagedConnection, DissociatableManagedConnection
@@ -118,7 +118,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.3.2-3.4.0.jar)
+        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.4.3-3.6.0.jar)
         return (jarForObject (new DefaultSource ()));
     }
 
@@ -126,7 +126,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.3.2-3.4.0.jar)
+        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.4.3-3.6.0.jar)
         return (jarForObject (new Schema (null, "", false)));
     }
 
@@ -257,8 +257,8 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
             // here are some options I tried for Yarn access master set to "yarn-client" that didn't work
     //      configuration.setMaster ("yarn-client"); // assumes a resource manager is specified in yarn-site.xml, e.g. sandbox:8032
-    //      configuration.setSparkHome ("/home/derrick/spark/spark-2.3.0-bin-hadoop2.7/"); // ("/usr/local/spark")
-    //      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark/spark-2.3.0-bin-hadoop2.7/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
+    //      configuration.setSparkHome ("/home/derrick/spark/spark-2.4.3-bin-hadoop2.7/"); // ("/usr/local/spark")
+    //      configuration.setExecutorEnv ("YARN_CONF_DIR", "/home/derrick/spark/spark-2.4.3-bin-hadoop2.7/conf"); // ("YARN_CONF_DIR", "/usr/local/hadoop/etc/hadoop")
 
             // register CIMReader classes
             configuration.registerKryoClasses (CIMClasses.list ());
