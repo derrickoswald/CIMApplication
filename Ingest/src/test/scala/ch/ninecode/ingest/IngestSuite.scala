@@ -25,12 +25,43 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     val LPEX_FILE1 = "lpex1.txt"
     val LPEX_FILE2 = "lpex2.txt"
 
+    /**
+     * Add to the process environment.
+     *
+     * @see https://stackoverflow.com/questions/318239/how-do-i-set-environment-variables-from-java
+     * @param newenv The list of key value pairs to add.
+     */
+    protected def setEnv (newenv: java.util.HashMap[String, String]): Unit =
+    {
+        try
+        {
+            val env: util.Map[String, String] = System.getenv
+            for (cl <- Class.forName ("java.util.Collections").getDeclaredClasses)
+            {
+                if ("java.util.Collections$UnmodifiableMap" == cl.getName)
+                {
+                    val field = cl.getDeclaredField ("m")
+                    field.setAccessible (true)
+                    val obj = field.get (env)
+                    val map = obj.asInstanceOf [java.util.Map[String, String]]
+                    map.putAll (newenv)
+                }
+            }
+        }
+        catch
+        {
+            case e: Exception =>
+                e.printStackTrace ()
+        }
+    }
+
     def setHadoopConfigurationDirectory (path: String): Unit =
     {
         if (null == System.getenv ("HADOOP_CONF_DIR"))
         {
             val newenv = new java.util.HashMap[String, String]()
             newenv.put ("HADOOP_CONF_DIR", path)
+            setEnv (newenv)
         }
     }
 
@@ -91,7 +122,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             var read = -1
             while (
             {
-                read = zip.read (bytesIn);
+                read = zip.read (bytesIn)
                 read != -1
             })
                 bos.write (bytesIn, 0, read)
@@ -111,8 +142,9 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         }
     }
 
-    override def beforeAll ()
+    override def beforeAll (): Unit =
     {
+        setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.6/etc/hadoop")
     }
 
     test ("Help")

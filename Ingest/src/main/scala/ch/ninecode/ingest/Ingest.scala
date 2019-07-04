@@ -130,7 +130,12 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def sum (a: Reading, b: Reading): Reading =
     {
-        Reading (a.mRID, a.time, a.period, (for (i <- 0 until 96) yield a.values (i) + b.values (i)).toArray)
+        val values: Array[Double] = new Array[Double] (math.max(a.values.length, b.values.length))
+        for (i ← a.values.indices)
+            values(i) = a.values(i)
+        for (i ← b.values.indices)
+            values(i) = values(i) + b.values(i)
+        Reading (a.mRID, a.time, a.period, values)
     }
 
     /**
@@ -140,32 +145,23 @@ case class Ingest (session: SparkSession, options: IngestOptions)
      * @param reading the reading from the csv
      * @return the list of time series records
      */
-    def to_timeseries (reading: Reading): IndexedSeq[(String, String, String, String, Double, Double, String)] =
+    def to_timeseries (reading: Reading): IndexedSeq[(String, String, Long, Int, Double, Double, String)] =
     {
         // Note: reading.period is in seconds and we need milliseconds for Cassandra
+        val period = 1000 * reading.period
 
         // reading.time thinks it's in GMT but it's not
         // so use the timezone to convert it to GMT
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-
-        def inrange (i: Int): Boolean =
+        val measurement_time = new Date (timestamp.getTime).getTime
+        for
         {
-            val offset = (reading.period * i) * 1000
-            val measurement_time = new Date (timestamp.getTime + offset).getTime
-            (measurement_time >= options.mintime) && (measurement_time < options.maxtime)
+            i <- reading.values.indices
+            time = measurement_time + period * i
+            if (time >= options.mintime) && (time < options.maxtime)
         }
-
-        for (
-            i <- 0 until 96
-            if inrange (i)
-        )
-            yield
-                {
-                    val offset = (reading.period * i) * 1000
-                    val measurement_time = new Date (timestamp.getTime + offset)
-                    val time = ZuluTimestampFormat.format (measurement_time)
-                    (reading.mRID, "energy", time, (reading.period * 1000).toString, 1000.0 * reading.values (i), 0.0, "Wh")
-                }
+        yield
+            (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
     }
 
     // build a file system configuration, including core-site.xml
