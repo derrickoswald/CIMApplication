@@ -617,8 +617,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         val timeseries = session.sparkContext.union (measured_rdds ++ synthesized_rdds)
 
                         // join to the simulation
-                        val packages: RDD[(SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])] = simulations.keyBy (_.transformer.transformer_name).join (timeseries.groupBy (_.transformer)).values
-                            .mapValues (_.groupBy (_.mrid))
+                        val packages = simulations.keyBy (_.transformer.transformer_name)
+                            .leftOuterJoin (timeseries.groupBy (_.transformer)).values
+                            .mapValues (_.getOrElse (List()).groupBy (_.mrid))
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
                         val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)

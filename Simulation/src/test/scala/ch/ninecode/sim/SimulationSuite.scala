@@ -283,7 +283,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All BusbarSection output power",
-                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'measured_power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -583,7 +583,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |    },
                           |    "keyspaces": {
                           |        "input": "cimapplication",
-                          |        "output": "test"
+                          |        "output": "test",
                           |        "replication": 2
                           |    },
                           |    "players": [
@@ -687,7 +687,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |        },
                           |        {
                           |            "title": "All BusbarSection output power",
-                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                          |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'power' type,    'measured_power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {

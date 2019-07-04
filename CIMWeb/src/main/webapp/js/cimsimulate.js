@@ -408,7 +408,7 @@ truncate table cimapplication.responsibility_by_day;
                         b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         n.IdentifiedObject.mRID parent,
                         'power' type,
-                        'power' property,
+                        'measured_power' property,
                         'VA' unit,
                         n.TopologicalIsland island
                     from

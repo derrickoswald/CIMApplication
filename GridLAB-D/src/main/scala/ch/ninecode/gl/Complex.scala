@@ -133,7 +133,8 @@ object Complex
     // constants
     lazy val j = Complex (0, 1)
 
-    lazy val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)[ij]?""")
+
+    lazy val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-<])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)([ijd°])?""")
 
     // factory methods
     def apply (re: Double): Complex = new Complex (re)
@@ -172,9 +173,16 @@ object Complex
             val re = matcher.group (1)
             val real = java.lang.Double.parseDouble (re)
             val sign = matcher.group (2)
+            val negative = if ((null != sign) && (sign == "-")) -1.0 else 1.0
             val im = matcher.group (3)
-            val imaginary = java.lang.Double.parseDouble (im)
-            Complex (real, imaginary * (if (sign == "-") -1.0 else 1.0))
+            val imaginary = if ((null != im) && ("" != im)) java.lang.Double.parseDouble (im) else 0.0
+            val part2 = imaginary * negative
+            val suffix = matcher.group (4)
+            val polar = ((null != sign) && sign.startsWith ("<")) || ((null != suffix) && (suffix.startsWith ("d") || suffix.startsWith ("°")))
+            if (!polar)
+                Complex (real, part2)
+            else
+                fromPolar (real, part2, true)
         }
         else
             Complex (0.0) // ToDo: warning
