@@ -74,4 +74,17 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .persist (storage_level)
         values
     }
+
+    def players (`type`: String): DataFrame =
+    {
+        val values = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulation_player", "keyspace" -> output_keyspace))
+            .load
+            .filter ("simulation = '%s' and type = '%s'".format (simulation, `type`))
+            .drop ("simulation", "type")
+            .persist (storage_level)
+        values
+    }
 }

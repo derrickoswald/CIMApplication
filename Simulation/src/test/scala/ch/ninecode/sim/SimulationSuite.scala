@@ -14,8 +14,8 @@ import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.fixture.FunSuite
+
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.sim.Main.jarForClass
 
 class SimulationSuite extends FunSuite with BeforeAndAfterAll
 {
@@ -987,14 +987,27 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //            val access = SimulationCassandraAccess  (spark, StorageLevel.MEMORY_AND_DISK_SER, "c4171b8e-4795-435d-9cfe-ea28ad71f91b", "baseline", "baseline", true, true)
 //            check.run (access)
 //    }
-
-//    test ("power")
+//
+//    test ("coincidence_factor")
 //    {
 //        spark ⇒
-//            val summarize = Summarize (spark, SimulationOptions (verbose = true, unittest = true, summarize = true))
-//            summarize.run (Array("bf34b237-c798-485d-90ba-9a990d570f7c"))
+//            val access = SimulationCassandraAccess  (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, "81e914ea-28b5-46e2-9259-8ce6ce84b5c2", "cimapplication", "test", true, true)
+//            val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
+//            val options = SimulationOptions (verbose = true, unittest = true)
+//            val coincidence = SimulationCoincidenceFactor(IGNORED_AGGREGATES) (spark, options)
+//            coincidence.run (access)
 //    }
-
+//
+//    test ("load_factor")
+//    {
+//        spark ⇒
+//            val access = SimulationCassandraAccess  (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, "81e914ea-28b5-46e2-9259-8ce6ce84b5c2", "cimapplication", "test", true, true)
+//            val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
+//            val options = SimulationOptions (verbose = true, unittest = true)
+//            val coincidence = SimulationLoadFactor(IGNORED_AGGREGATES) (spark, options)
+//            coincidence.run (access)
+//    }
+//
 //    test ("Ganged")
 //    {
 //        session ⇒

@@ -41,14 +41,22 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
         val typ = "power"
-        val simulated_power_values = access.raw_values (typ).drop ("period")
-        val trafos = access.geojson ("geojson_polygons").drop ("properties")
-        val houses = access.geojson ("geojson_points").drop ("properties")
+        val simulated_power_values = access.raw_values (typ)
+        val power_values = simulated_power_values
+            .drop ("period")
 
-        val simulated_power_values_conditioned = simulated_power_values
-            .withColumn ("magnitude", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+        val players = access.players ("energy")
+        val trafo_loads = players
+            .drop ("name", "property")
+        val trafos = trafo_loads
+            .drop ("mrid")
+            .distinct
+            .withColumnRenamed ("transformer", "mrid")
+
+        val simulated_power_values_conditioned = power_values
+            .withColumn ("magnitude", magnitude [Double, Double].apply (power_values ("real_a"), power_values ("imag_a")))
             .drop ("real_a", "imag_a")
-            .withColumn ("date", simulated_power_values ("time").cast (DateType))
+            .withColumn ("date", power_values ("time").cast (DateType))
 
         // get the system peaks at each trafo for each day
 
@@ -71,7 +79,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
 
         val simulated_value_houses = simulated_power_values_conditioned
             .join (
-                houses,
+                trafo_loads,
                 Seq ("mrid"))
 
         val house_max_per_day = simulated_value_houses
@@ -112,8 +120,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
             SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
         log.info ("""Responsibility Factor: responsibility records saved to %s.responsibility_by_day""".format (access.output_keyspace))
         simulated_power_values.unpersist (false)
-        trafos.unpersist (false)
-        houses.unpersist (false)
+        players.unpersist (false)
     }
 }
 

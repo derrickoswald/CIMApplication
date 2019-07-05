@@ -37,14 +37,25 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
-        val typ = "power"
-        val simulated_power_values = access.raw_values (typ).drop ("period")
-        val trafos = access.geojson ("geojson_polygons").drop ("properties")
 
-        val simulated_value_trafos = simulated_power_values
-            .withColumn ("power", magnitude [Double, Double].apply (simulated_power_values ("real_a"), simulated_power_values ("imag_a")))
+        val typ = "power"
+        val simulated_power_values = access.raw_values (typ)
+        val power_values = simulated_power_values
+            .drop ("period")
+
+        val players = access.players ("energy")
+        val trafo_loads = players
+            .drop ("name", "property")
+        val trafos = trafo_loads
+            .drop ("mrid")
+            .distinct
+            .withColumnRenamed ("transformer", "mrid")
+
+        val simulated_value_trafos = power_values
+            .withColumn ("power", magnitude [Double, Double].apply (power_values ("real_a"), power_values ("imag_a")))
             .drop ("real_a", "imag_a")
-            .withColumn ("date", simulated_power_values ("time").cast (DateType))
+            .withColumn ("date", power_values ("time").cast (DateType))
+            .drop ("time")
             .join (
                 trafos,
                 Seq ("mrid"))
@@ -57,13 +68,14 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         // now do the peaks for the energy consumers
 
-        val simulated_value_consumers = access.raw_values (typ).drop ("period")
-        val houses = access.geojson ("geojson_points").drop ("properties")
+        val simulated_value_consumers = access.raw_values (typ)
+        val consumer_values = simulated_value_consumers
+            .drop ("period")
 
-        val simulated_consumer_power = simulated_value_consumers
-            .withColumn ("power", magnitude [Double, Double].apply (simulated_value_consumers ("real_a"), simulated_value_consumers ("imag_a")))
+        val simulated_consumer_power = consumer_values
+            .withColumn ("power", magnitude [Double, Double].apply (consumer_values ("real_a"), consumer_values ("imag_a")))
             .drop ("real_a", "imag_a")
-            .withColumn ("date", simulated_value_consumers ("time").cast (DateType))
+            .withColumn ("date", consumer_values ("time").cast (DateType))
             .drop ("time")
 
         val peak_consumers = simulated_consumer_power
@@ -73,7 +85,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         val peak_houses = peak_consumers
             .join (
-                houses,
+                trafo_loads,
                 Seq ("mrid"))
 
         // sum up the individual peaks for each transformer and date combination
@@ -105,10 +117,9 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
         work.saveToCassandra (access.output_keyspace, "coincidence_factor_by_day",
             SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
         log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (access.output_keyspace))
+        players.unpersist (false)
         simulated_power_values.unpersist (false)
-        trafos.unpersist (false)
         simulated_value_consumers.unpersist (false)
-        houses.unpersist (false)
     }
 }
 
