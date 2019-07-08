@@ -63,7 +63,6 @@ case class SwitchEdge
             current_limit %sA;""".format (current)
         else
             ""
-
         """
           |        object %s
           |        {

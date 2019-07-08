@@ -105,9 +105,11 @@ case class TransformerEdge
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
         val config = configurationName
         val (total_impedance, default) = transformer.total_impedance_per_unit
+        val comment =  transformer.transformers.map (trafo ⇒
+            "            // %s".format (trafo.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """%s
           |        object transformer_configuration
-          |        {
+          |        {%s
           |            name "%s";
           |            connect_type %s;
           |            install_type PADMOUNT;
@@ -119,6 +121,7 @@ case class TransformerEdge
           |        };
           |""".stripMargin.format (
             if (default) "\n#warning WARNING: using default impedance for " + config else "",
+            comment,
             config,
             "WYE_WYE", // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
             transformer.power_rating / 1000.0,

@@ -185,9 +185,11 @@ case class LineEdge
         val dia = diag.toString () + " Ohm/km"
         val off = offd.toString () + " Ohm/km"
         val warning = if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else ""
+        val comment =  lines.map (line ⇒
+            "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """
           |%s        object line_configuration
-          |        {
+          |        {%s
           |            name "%s";
           |            z11 %s;
           |            z12 %s;
@@ -199,7 +201,7 @@ case class LineEdge
           |            z32 %s;
           |            z33 %s;
           |        };
-          |""".stripMargin.format (warning, config, dia, off, off, off, dia, off, off, off, dia)
+          |""".stripMargin.format (warning, comment, config, dia, off, off, off, dia, off, off, off, dia)
     }
 
 
