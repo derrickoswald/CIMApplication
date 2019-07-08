@@ -16,11 +16,11 @@ case class LineEdge
     /**
      * Return the name of the (possibly parallel) line.
      *
-     * Uses the lowest alphabetic name of the ACLineSegments that make up this line.
+     * Uses the concatenation of the alphabetically sorted names of the ACLineSegments that make up this line.
      *
      * @return The ID of the edge (the mRID of the electrical element).
      */
-    def id: String = lines.map (_.id).toArray.sortWith (_ < _)(0)
+    def id: String = lines.map (_.id).toArray.sortWith (_ < _).mkString ("_")
 
     /**
      * Emit a overhead or underground line.

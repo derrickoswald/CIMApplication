@@ -5,7 +5,6 @@ import ch.ninecode.gl.GLMEdge
 /**
  * Edge data.
  *
- * @param id        ConductingEquipment MRID.
  * @param cn1       Terminal 1 ConnectivityNode or TopologicalNode MRID.
  * @param cn2       Terminal 2 ConnectivityNode or TopologicalNode MRID.
  * @param world_position The array of (x,y) coordinates of the PositionPoints of the ConductingEquipment in world coordinates, or <code>null</code> if none.
@@ -15,7 +14,6 @@ import ch.ninecode.gl.GLMEdge
  */
 case class SimulationEdge
 (
-    id: String,
     cn1: String,
     cn2: String,
     rawedge: GLMEdge,
@@ -24,5 +22,7 @@ case class SimulationEdge
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
 ) extends GLMEdge
-
+{
+    def id: String = rawedge.id
+}
 

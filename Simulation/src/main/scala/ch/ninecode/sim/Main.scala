@@ -39,6 +39,20 @@ object Main
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+        s =>
+        {
+            var ret = Map [String, String]()
+            val ss = s.split (",")
+            for (p <- ss)
+            {
+                val kv = p.split ("=")
+                ret = ret + ((kv (0), kv (1)))
+            }
+            ret
+        }
+    )
+
     var do_exit = true
 
     val parser: OptionParser[SimulationOptions] = new scopt.OptionParser[SimulationOptions](APPLICATION_NAME)
@@ -67,6 +81,10 @@ object Main
         opt [String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
+
+        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+            action ((x, c) => c.copy (options = c.options ++ x)).
+            text ("Spark options [%s]".format (default.options.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
         opt [String]("host").valueName ("<cassandra>").
             action ((x, c) ⇒ c.copy (host = x)).

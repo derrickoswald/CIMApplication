@@ -319,46 +319,46 @@ truncate table cimapplication.responsibility_by_day;
                     }
                 ]
             },
-            // {
-            //     "title": "All PowerTransformer power losses",
-            //     "query":
-            //         `
-            //         select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-            //             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-            //             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
-            //             'losses' type,
-            //             'power_losses' property,
-            //             'VA' unit,
-            //             n.TopologicalIsland island
-            //         from
-            //             PowerTransformer p,
-            //             Terminal t,
-            //             TopologicalNode n
-            //         where
-            //             t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-            //             t.ACDCTerminal.sequenceNumber > 1 and
-            //             t.TopologicalNode = n.IdentifiedObject.mRID
-            //         `,
-            //     "interval": 900,
-            //     "aggregations": [
-            //         {
-            //             "intervals": 1,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 4,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 12,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 96,
-            //             "ttl": null
-            //         }
-            //     ]
-            // },
+            {
+                "title": "All PowerTransformer power losses",
+                "query":
+                    `
+                    select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        'losses' type,
+                        'power_losses' property,
+                        'VA' unit,
+                        n.TopologicalIsland island
+                    from
+                        PowerTransformer p,
+                        Terminal t,
+                        TopologicalNode n
+                    where
+                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ACDCTerminal.sequenceNumber > 1 and
+                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
             {
                 "title": "All BusbarSection node voltages",
                 "query":
@@ -524,30 +524,100 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
-                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        concat (name_island.name, '_current_recorder') name,
+                        name_island.name mrid,
+                        name_island.name parent,
                         'current' type,
                         'current_in' property,
                         'Amperes' unit,
-                        n.TopologicalIsland island
+                        name_island.island
                     from
-                        ACLineSegment a,
-                        Terminal t1,
-                        Terminal t2,
-                        TopologicalNode n
-                    where
-                        (
-                            t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                            t1.ACDCTerminal.sequenceNumber = 1 and
-                            t1.TopologicalNode != n.IdentifiedObject.mRID
-                        )
-                        and
-                        (
-                            t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                            t2.ACDCTerminal.sequenceNumber = 2 and
-                            t2.TopologicalNode = n.IdentifiedObject.mRID
-                        )
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (wires.mrid))) name,
+                            first_value (wires.island) island
+                        from
+                            (
+                                select distinct
+                                    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes,
+                                    n.TopologicalIsland island
+                                from
+                                    ACLineSegment a,
+                                    Terminal t1,
+                                    Terminal t2,
+                                    TopologicalNode n
+                                where
+                                    t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t1.TopologicalNode != t2.TopologicalNode and
+                                    t1.TopologicalNode = n.IdentifiedObject.mRID
+                            )
+                            wires
+                        group by
+                            nodes
+                    )
+                    name_island
+                    `,
+                "interval": 900,
+                "aggregations": [
+                    {
+                        "intervals": 1,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 4,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 12,
+                        "ttl": null
+                    },
+                    {
+                        "intervals": 96,
+                        "ttl": null
+                    }
+                ]
+            },
+            {
+                "title": "All ACLineSegment losses",
+                "query":
+                    `
+                    select
+                        concat (name_island.name, '_losses_recorder') name,
+                        name_island.name mrid,
+                        name_island.name parent,
+                        'losses' type,
+                        'power_losses' property,
+                        'Wh' unit,
+                        name_island.island
+                    from
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (wires.mrid))) name,
+                            first_value (wires.island) island
+                        from
+                            (
+                                select distinct
+                                    a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes,
+                                    n.TopologicalIsland island
+                                from
+                                    ACLineSegment a,
+                                    Terminal t1,
+                                    Terminal t2,
+                                    TopologicalNode n
+                                where
+                                    t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t1.TopologicalNode != t2.TopologicalNode and
+                                    t1.TopologicalNode = n.IdentifiedObject.mRID
+                            )
+                            wires
+                        group by
+                            nodes
+                    )
+                    name_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -569,56 +639,6 @@ truncate table cimapplication.responsibility_by_day;
                     }
                 ]
             }
-            // {
-            //     "title": "All ACLineSegment losses",
-            //     "query":
-            //         `
-            //         select
-            //             concat (a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-            //             a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-            //             a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
-            //             'losses' type,
-            //             'power_losses' property,
-            //             'Wh' unit,
-            //             n.TopologicalIsland island
-            //         from
-            //             ACLineSegment a,
-            //             Terminal t1,
-            //             Terminal t2,
-            //             TopologicalNode n
-            //         where
-            //             (
-            //                 t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-            //                 t1.ACDCTerminal.sequenceNumber = 1 and
-            //                 t1.TopologicalNode != n.IdentifiedObject.mRID
-            //             )
-            //             and
-            //             (
-            //                 t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-            //                 t2.ACDCTerminal.sequenceNumber = 2 and
-            //                 t2.TopologicalNode = n.IdentifiedObject.mRID
-            //             )
-            //         `,
-            //     "interval": 900,
-            //     "aggregations": [
-            //         {
-            //             "intervals": 1,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 4,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 12,
-            //             "ttl": null
-            //         },
-            //         {
-            //             "intervals": 96,
-            //             "ttl": null
-            //         }
-            //     ]
-            // }
         ];
 
         // User specified extra queries - to attach rdf data to JSON objects

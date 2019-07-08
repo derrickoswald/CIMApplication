@@ -24,7 +24,6 @@ trait GLMNode extends Graphable with Serializable
     /**
      * Return the .glm text for the node.
      *
-     * @param one_phase If <code>true</code>, emit a single phase node, otherwise emit a three phase node.
      * @return The string value to be included in the .glm file for this node.
      */
     def emit (generator: GLMGenerator): String =
@@ -47,9 +46,8 @@ object GLMNode
      *   - Island trace results
      *   - multi-island trace results
      *
-     * @param elements
-     * @param id
-     * @param cn2
+     * @param elements The CIM elements that are associated with this node.
+     * @param id The unique id of the node.
      * @return a type of node
      */
     def toGLMNode (elements: Iterable[Element], id: String, nominal_voltage: Double): GLMNode =

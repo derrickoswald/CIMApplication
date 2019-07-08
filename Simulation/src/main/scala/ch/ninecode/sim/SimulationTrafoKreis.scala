@@ -69,10 +69,9 @@ case class SimulationTrafoKreis
             {
                 val edge: SimulationEdge = raw.asInstanceOf [SimulationEdge]
                 val id = edge.id
-                var these_recorders = recorders.filter (_.parent == id) // keep only recorders for primary edge
+                var these_recorders = recorders.filter (_.parent == id)
                 var these_players = players.filter (_.parent == id)
                 SimulationEdge (
-                    edge.id,
                     edge.cn1,
                     edge.cn2,
                     edge.rawedge,
