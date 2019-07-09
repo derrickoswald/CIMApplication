@@ -22,6 +22,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     type StationmRID = String
     type TargetmRID = String
     type DiagrammRID =String
+    type NodemRID = String
+    type EquipmentmRID = String
+    type IslandmRID = String
     // the Id is a concatenation of simulation and mRID: "simulation_mrid"
     type Id = String
     type Key = String
@@ -303,11 +306,24 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
     def store_geojson_stations (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
     {
-        // all transformers are in the same station, right?
-        val stations: RDD[(StationmRID, (Simulation, Transformer))] = trafos.map (x ⇒ (x.transformer.transformers(0).station.id, (x.simulation, x.transformer.transformer_name)))
+        // get a map of islands to Simulation & Transformer
+        val transformers: RDD[(NodemRID, (Simulation, Transformer))] = trafos.map (kreis ⇒ (kreis.transformer.node1, (kreis.simulation, kreis.transformer.transformer_name)))
+        val nodes_islands: RDD[(NodemRID, IslandmRID)] = getOrElse[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland))
+        val islands_transformers: RDD[(IslandmRID, (Simulation, Transformer))] = nodes_islands.join (transformers).values
+
+        // get a map of equipment containers and islands
+        val terminals = getOrElse [Terminal]
+        val psrtypes = Array ("PSRType_Substation", "PSRType_TransformerStation", "PSRType_DistributionBox")
+        val containers: RDD[Substation] = getOrElse [Substation].filter (station ⇒ psrtypes.contains (station.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType))
+        val equipment_islands: RDD[(EquipmentmRID, IslandmRID)] = terminals.map (terminal ⇒ (terminal.TopologicalNode, terminal.ConductingEquipment)).join (nodes_islands).values
+        val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse [Equipment].map (equipment ⇒ (equipment.id, equipment.EquipmentContainer))
+        val islands_containers: RDD[(IslandmRID, StationmRID)] = equipment_islands.join (equipment_containers).values.distinct
+
+        val stations: RDD[(StationmRID, (Simulation, Transformer))] = islands_containers.join (islands_transformers).values
         val diagramObjects: RDD[(TargetmRID, DiagramObject)] = getOrElse [DiagramObject].keyBy (_.IdentifiedObject_attr)
         val diagramObjectsPoints: RDD[(DiagrammRID, Iterable[DiagramObjectPoint])] = getOrElse [DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey
         val station_diagram: RDD[(StationmRID, ((Simulation, Transformer), DiagramObject))] = stations.join (diagramObjects)
+
         val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x ⇒ (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))
         val stations_with_geometry: RDD[((StationmRID, Simulation, Transformer), Iterable[DiagramObjectPoint])] = diagramid_station.join (diagramObjectsPoints).values
         val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x ⇒ (x._1._2 + "_" + x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
@@ -333,10 +349,10 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =
     {
         val extra = query_extra
-//        store_geojson_points (trafos, extra)
-//        store_geojson_lines (trafos, extra)
-//        store_geojson_polygons (trafos, extra)
-//        store_geojson_transformers (trafos, extra)
+        store_geojson_points (trafos, extra)
+        store_geojson_lines (trafos, extra)
+        store_geojson_polygons (trafos, extra)
+        store_geojson_transformers (trafos, extra)
         store_geojson_stations (trafos, extra)
     }
 }

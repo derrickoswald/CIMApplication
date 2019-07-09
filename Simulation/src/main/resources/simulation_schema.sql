@@ -349,19 +349,19 @@ Describes each transformer (set) in the simulation.
 create table if not exists cimapplication.geojson_stations (
     simulation text,
     coordinate_system text,
-    mrid text,
     transformer text,
+    mrid text,
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system), mrid)
+    primary key ((simulation, coordinate_system, transformer), mrid)
     ) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
     simulation        - the simulation run identifier, UUID
     coordinate_system - the coordinate system for the polygon
-    mrid              - the cim mRID of the station
     transformer       - the transformer feeding the station
+    mrid              - the cim mRID of the station
     type              - always "Feature" per the GeoJSON specification
     geometry          - the type ("Polygon") and polygon coordinates
     properties        - the attributes for this station from the extra queries
