@@ -40,14 +40,17 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
         iterator.toSeq
     }
 
-    def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Double) =
+    def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Double, Double, Double, Double) =
     {
-        val sql = """select mrid, type, min(time) as min, max(time) as max, count(mrid) as count, cimapplication.standard_deviation (real_a) as standard_deviation from %s.measured_value where mrid='%s' and type = '%s' group by mrid, type""".format (options.keyspace, mrid, `type`)
+        val sql = """select mrid, type, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, cimapplication.standard_deviation (real_a) as standard_deviation from %s.measured_value where mrid='%s' and type = '%s' and real_a > 0 group by mrid, type allow filtering""".format (options.keyspace, mrid, `type`)
         val range = CassandraConnector (session.sparkContext.getConf).withSessionDo
         {
             session ⇒
                 val row = session.execute (sql).one()
-                (row.getString(0), row.getString(1), row.getTimestamp (2), row.getTimestamp (3), row.getLong (4), row.getDouble (5))
+                if (null != row)
+                    (row.getString(0), row.getString(1), row.getTimestamp (2), row.getTimestamp (3), row.getLong (4), row.getDouble (5), row.getDouble (6), row.getDouble (7), row.getDouble (8))
+                else
+                    null
         }
         range
     }
@@ -60,14 +63,20 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
         log.info ("%s distinct mrid and type".format (count))
         val range = for ((mrid, typ) ← scope)
             yield Range (mrid, typ)
-        for (r ← range)
-            log.info ("%s:%s %s⇒%s %8d %10.3f".format (
+        for (
+            r ← range
+            if null != r
+            )
+            log.info ("%s:%s %s⇒%s %8d %10.3f %10.3f %10.3f %10.3f".format (
                 StringUtils.leftPad (r._1, 10, " "),
                 StringUtils.rightPad (r._2, 7, " "),
                 StringUtils.leftPad (r._3.toString, 30, " "),
                 StringUtils.rightPad (r._4.toString, 30, " "),
                 r._5,
-                r._6))
+                r._6,
+                r._7,
+                r._8,
+                r._9))
         val end = System.nanoTime ()
         log.info ("process: %s seconds".format ((end - begin) / 1e9))
     }
