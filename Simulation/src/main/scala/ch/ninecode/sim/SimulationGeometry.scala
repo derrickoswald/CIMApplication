@@ -18,6 +18,10 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     implicit val spark: SparkSession = session
 
+    type mRID = String
+    type StationmRID = String
+    type TargetmRID = String
+    type DiagrammRID =String
     // the Id is a concatenation of simulation and mRID: "simulation_mrid"
     type Id = String
     type Key = String
@@ -27,6 +31,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     type Properties = (Id, KeyValueList)
     type Simulation = String
     type Transformer = String
+    type CoordinateSystem = String
 
     /**
      * Gather key-value pairs into groups keyed by simulation_mrid.
@@ -298,41 +303,40 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
     def store_geojson_stations (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
     {
-        val stations = getOrElse[Substation].keyBy (_.id)
-        val stations_with_geometry = stations.join (getOrElse[DiagramObject]
-            .keyBy (_.IdentifiedObject_attr))
-            .map (x ⇒ (x._2._2.id, x._2._1))
-            .leftOuterJoin (getOrElse[DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey)
-            .values
-        val simulations = trafos.map (_.simulation).distinct.collect
-        val stations_with_geometry_and_properties = stations_with_geometry
-            .flatMap (x ⇒ simulations.map (y ⇒ (y + "_" + x._1.id, x)))
-            .leftOuterJoin (extra).map (x ⇒ (x._1, x._2._1._1, x._2._1._2, x._2._2))
-        val jsons = stations_with_geometry_and_properties.flatMap (
+        // all transformers are in the same station, right?
+        val stations: RDD[(StationmRID, (Simulation, Transformer))] = trafos.map (x ⇒ (x.transformer.transformers(0).station.id, (x.simulation, x.transformer.transformer_name)))
+        val diagramObjects: RDD[(TargetmRID, DiagramObject)] = getOrElse [DiagramObject].keyBy (_.IdentifiedObject_attr)
+        val diagramObjectsPoints: RDD[(DiagrammRID, Iterable[DiagramObjectPoint])] = getOrElse [DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey
+        val station_diagram: RDD[(StationmRID, ((Simulation, Transformer), DiagramObject))] = stations.join (diagramObjects)
+        val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x ⇒ (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))
+        val stations_with_geometry: RDD[((StationmRID, Simulation, Transformer), Iterable[DiagramObjectPoint])] = diagramid_station.join (diagramObjectsPoints).values
+        val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x ⇒ (x._1._2 + "_" + x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
+        val stations_with_everything: RDD[((StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]), Option[KeyValueList])] = stations_with_geometry_keyed.leftOuterJoin (extra).values
+        val rearranged2: RDD[(Simulation, StationmRID, Transformer, Iterable[DiagramObjectPoint], Option[KeyValueList])] = stations_with_everything.map (x ⇒ (x._1._2, x._1._1, x._1._3, x._1._4, x._2))
+
+        val geojson_station: RDD[(Simulation, CoordinateSystem, StationmRID, Transformer, String, (String, List[List[List[Double]]]), KeyValueList)] = rearranged2.map (
             x ⇒
             {
-                val points = x._3
-                points match
-                {
-                    case Some (coords) ⇒
-                        val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y ⇒ List (y.xPosition, y.yPosition)))
-                        val geometry = ("Polygon", coordinates)
-                        val properties = x._4.orNull
-                        Some (x._1, "pseudo_wgs84", x._2.id, "Feature", geometry, properties)
-                    case None ⇒ None
-                }
+                val simulation = x._1
+                val station = x._2
+                val transformer = x._3
+                val coords = x._4
+                val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y ⇒ List (y.xPosition, y.yPosition)))
+                val geometry = ("Polygon", coordinates)
+                val properties = x._5.orNull
+                (simulation, "pseudo_wgs84", station, transformer, "Feature", geometry, properties)
             }
         )
-        jsons.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+        geojson_station.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "transformer", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
     def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =
     {
         val extra = query_extra
-        store_geojson_points (trafos, extra)
-        store_geojson_lines (trafos, extra)
-        store_geojson_polygons (trafos, extra)
-        store_geojson_transformers (trafos, extra)
+//        store_geojson_points (trafos, extra)
+//        store_geojson_lines (trafos, extra)
+//        store_geojson_polygons (trafos, extra)
+//        store_geojson_transformers (trafos, extra)
         store_geojson_stations (trafos, extra)
     }
 }
