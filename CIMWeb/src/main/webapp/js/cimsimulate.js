@@ -242,21 +242,42 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        concat (name_island.name, '_power_recorder') name,
+                        name_island.name mrid,
+                        name_island.name parent,
                         'power' type,
                         'power_out' property,
                         'VA' unit,
-                        n.TopologicalIsland island
+                        name_island.island
                     from
-                        PowerTransformer p,
-                        Terminal t,
-                        TopologicalNode n
-                    where
-                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                        t.ACDCTerminal.sequenceNumber > 1 and
-                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
+                            first_value (trafos.island) island
+                        from
+                            (
+                                select distinct
+                                    t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    t1.TopologicalNode node,
+                                    n.TopologicalIsland island
+                                from
+                                    PowerTransformer t,
+                                    Terminal t1,
+                                    Terminal t2,
+                                    TopologicalNode n
+                                where
+                                    t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t1.ACDCTerminal.sequenceNumber = 2 and
+                                    t2.ACDCTerminal.sequenceNumber = 2 and
+                                    t1.TopologicalNode = n.IdentifiedObject.mRID and
+                                    t2.TopologicalNode = n.IdentifiedObject.mRID
+                            )
+                            trafos
+                        group by
+                            node
+                    )
+                    name_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -283,21 +304,42 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                        concat (name_island.name, '_current_recorder') name,
+                        name_island.name mrid,
+                        name_island.name parent,
                         'current' type,
                         'current_out' property,
                         'Amperes' unit,
-                        n.TopologicalIsland island
+                        name_island.island
                     from
-                        PowerTransformer p,
-                        Terminal t,
-                        TopologicalNode n
-                    where
-                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                        t.ACDCTerminal.sequenceNumber > 1 and
-                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
+                            first_value (trafos.island) island
+                        from
+                            (
+                                select distinct
+                                    t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    t1.TopologicalNode node,
+                                    n.TopologicalIsland island
+                                from
+                                    PowerTransformer t,
+                                    Terminal t1,
+                                    Terminal t2,
+                                    TopologicalNode n
+                                where
+                                    t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t1.ACDCTerminal.sequenceNumber = 2 and
+                                    t2.ACDCTerminal.sequenceNumber = 2 and
+                                    t1.TopologicalNode = n.IdentifiedObject.mRID and
+                                    t2.TopologicalNode = n.IdentifiedObject.mRID
+                            )
+                            trafos
+                        group by
+                            node
+                    )
+                    name_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -323,21 +365,43 @@ truncate table cimapplication.responsibility_by_day;
                 "title": "All PowerTransformer power losses",
                 "query":
                     `
-                    select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+                    select
+                        concat (name_island.name, '_losses_recorder') name,
+                        name_island.name mrid,
+                        name_island.name parent,
                         'losses' type,
                         'power_losses' property,
                         'VA' unit,
-                        n.TopologicalIsland island
+                        name_island.island
                     from
-                        PowerTransformer p,
-                        Terminal t,
-                        TopologicalNode n
-                    where
-                        t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                        t.ACDCTerminal.sequenceNumber > 1 and
-                        t.TopologicalNode = n.IdentifiedObject.mRID
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
+                            first_value (trafos.island) island
+                        from
+                            (
+                                select distinct
+                                    t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    t1.TopologicalNode node,
+                                    n.TopologicalIsland island
+                                from
+                                    PowerTransformer t,
+                                    Terminal t1,
+                                    Terminal t2,
+                                    TopologicalNode n
+                                where
+                                    t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    t1.ACDCTerminal.sequenceNumber = 2 and
+                                    t2.ACDCTerminal.sequenceNumber = 2 and
+                                    t1.TopologicalNode = n.IdentifiedObject.mRID and
+                                    t2.TopologicalNode = n.IdentifiedObject.mRID
+                            )
+                            trafos
+                        group by
+                            node
+                    )
+                    name_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -646,23 +710,110 @@ truncate table cimapplication.responsibility_by_day;
         const ExtraChoices = [
             {
                 "title": "ratedCurrent",
-                "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                "query":
+                    `
+                    select
+                        l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
+                        cast (w.ratedCurrent as string) value
+                    from
+                        ACLineSegment l,
+                        WireInfo w
+                    where
+                        w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
+                    `
             },
             {
                 "title": "ratedS",
-                "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
+                "query":
+                    `
+                    select
+                        concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key,
+                        cast (sum (e.ratedS) as string) value
+                    from
+                        Terminal t,
+                        PowerTransformerEnd e
+                    where
+                        t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and
+                        e.TransformerEnd.endNumber = 2
+                    group
+                        by t.TopologicalNode
+                    `
             },
             {
                 "title": "nominalVoltage",
-                "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+                "query":
+                    `
+                    select
+                        e.mrid key,
+                        cast (v.nominalVoltage * 1000.0 as string) value
+                    from
+                        (
+                            select
+                                c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                c.ConductingEquipment.BaseVoltage voltage
+                            from
+                                EnergyConsumer c
+                        union
+                            select
+                                b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                b.Connector.ConductingEquipment.BaseVoltage voltage
+                            from
+                                BusbarSection b
+                        ) e,
+                        BaseVoltage v
+                    where
+                        e.voltage = v.IdentifiedObject.mRID
+                    `
             },
             {
                 "title": "substation",
-                "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, first_value (c.substation) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, (select b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, b.Substation substation from Bay b union select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
+                "query":
+                    `
+                    select
+                        concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key,
+                        first_value (c.substation) value
+                    from
+                        Terminal t,
+                        PowerTransformerEnd e,
+                        PowerTransformer p,
+                        (
+                            select
+                                b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                b.Substation substation
+                            from
+                                Bay b
+                        union
+                            select
+                                u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation
+                            from
+                                Substation u
+                        ) c
+                    where
+                        t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and
+                        e.TransformerEnd.endNumber = 2 and
+                        e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid
+                    group by
+                        t.TopologicalNode
+                `
             },
             {
                 "title": "contains",
-                "query": "select s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID key, concat_ws (',', collect_list(b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID)) value from Substation s, BusbarSection b where s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID group by s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID"
+                "query":
+                    `
+                    select
+                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID key,
+                        concat_ws (',', collect_list(b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID)) value
+                    from
+                        Substation s,
+                        BusbarSection b
+                    where
+                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and
+                        b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
+                    group by
+                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
+                    `
             }
         ];
 
@@ -1005,6 +1156,19 @@ truncate table cimapplication.responsibility_by_day;
             return (ret);
         }
 
+        function pack (s)
+        {
+            return (s.replace(/\n/g, " ").replace (/[ ]+/g, " ").trim ());
+        }
+
+        function shrink (o)
+        {
+            let sql = o.query;
+            if (sql)
+                o.query = pack (sql);
+            return (o);
+        }
+
         function query_players ()
         {
             const ret = [];
@@ -1016,9 +1180,9 @@ truncate table cimapplication.responsibility_by_day;
                         // look it up in the pre-defined choices
                         const selected = PlayerChoices.filter (x => x.title === item.value);
                         if (0 !== selected.length)
-                            ret.push (JSON.parse (JSON.stringify (selected[0])));
+                            ret.push (shrink (JSON.parse (JSON.stringify (selected[0]))));
                         else
-                            ret.push (JSON.parse (item.value)); // assume raw JSON
+                            ret.push (shrink (JSON.parse (item.value))); // assume raw JSON
                     }
                 }
             );
@@ -1036,9 +1200,9 @@ truncate table cimapplication.responsibility_by_day;
                         // look it up in the pre-defined choices
                         const selected = RecorderChoices.filter (x => x.title === item.value);
                         if (0 !== selected.length)
-                            ret.push (JSON.parse (JSON.stringify (selected[0])));
+                            ret.push (shrink (JSON.parse (JSON.stringify (selected[0]))));
                         else
-                            ret.push (JSON.parse (item.value)); // assume raw JSON
+                            ret.push (shrink (JSON.parse (item.value))); // assume raw JSON
                     }
                 });
             return (ret);
@@ -1055,9 +1219,9 @@ truncate table cimapplication.responsibility_by_day;
                         // look it up in the pre-defined choices
                         const selected = ExtraChoices.filter (x => x.title === item.value);
                         if (0 !== selected.length)
-                            ret.push (JSON.parse (JSON.stringify (selected[0])));
+                            ret.push (shrink (JSON.parse (JSON.stringify (selected[0]))));
                         else
-                            ret.push (JSON.parse (item.value)); // assume raw JSON
+                            ret.push (shrink (JSON.parse (item.value))); // assume raw JSON
                     }
                 });
             return (ret);
