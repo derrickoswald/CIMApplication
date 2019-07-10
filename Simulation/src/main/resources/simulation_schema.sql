@@ -285,6 +285,8 @@ Describes each point object in the simulation, excluding transformers.
     properties        - the attributes for this element from the extra queries
 ';
 
+create index on cimapplication.geojson_points (transformer);
+
 create table if not exists cimapplication.geojson_lines (
     simulation text,
     coordinate_system text,
@@ -305,6 +307,8 @@ Describes each linear object in the simulation.
     geometry          - the type ("LineString") and line coordinates
     properties        - the attributes for this element from the extra queries
 ';
+
+create index on cimapplication.geojson_lines (transformer);
 
 create table if not exists cimapplication.geojson_polygons (
     simulation text,
@@ -366,6 +370,8 @@ Describes each station polygonal object in the simulation.
     geometry          - the type ("Polygon") and polygon coordinates
     properties        - the attributes for this station from the extra queries
 ';
+
+create index on cimapplication.geojson_stations (transformer);
 
 create table if not exists cimapplication.key_value (
     simulation text,
