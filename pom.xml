@@ -22,6 +22,7 @@
         <!-- Scala versions -->
         <version.dependency.scala>2.11</version.dependency.scala>
         <version.dependency.scalalibrary>2.11.12</version.dependency.scalalibrary>
+        <version.dependency.scalamavenplugin>4.1.0</version.dependency.scalamavenplugin>
 
         <!-- Spark versions -->
         <version.dependency.hadoop>2.7.6</version.dependency.hadoop>
