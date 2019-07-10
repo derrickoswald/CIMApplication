@@ -119,16 +119,9 @@ case class SimulationGLMGenerator
 
     override def emit_transformer (transformer: TransformerEdge): String =
     {
-        val name = transformer.transformer.transformer_name.split ("_")(0) // only match the first transformer of a set
+        val name = transformer.transformer.transformer_name
         super.emit_transformer (transformer) +
-            kreis.recorders.filter (
-                recorder ⇒
-                {
-                    recorder.parent == name
-                }
-            )
-                .map (_.copy (parent = transformer.transformer.transformer_name)) // alter the parent to the transformer set name
-                .map (emit_recorder).mkString
+            kreis.recorders.filter (_.parent == name).map (emit_recorder).mkString
     }
 
     /**

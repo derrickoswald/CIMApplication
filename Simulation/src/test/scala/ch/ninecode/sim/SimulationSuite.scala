@@ -161,7 +161,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                         |{
                         |    "name": "DemoData",
                         |    "description": "simulation with demo data",
-                        |    "cim": "data/DemoData.rdf",
+                        |    "cim": "data/cim_export_ews_oberiberg.rdf",
                         |    "cimreaderoptions": {
                         |        "ch.ninecode.cim.do_about": false,
                         |        "ch.ninecode.cim.do_normalize": false,
@@ -598,8 +598,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |    ],
                           |    "recorders": [
                           |        {
-                          |            "title": "All transformer output power",
-                          |            "query": "select    concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'power' type,    'power_out' property,    'VA' unit,    n.TopologicalIsland island from    PowerTransformer p,    Terminal t,    TopologicalNode n where    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
+                          |            "title": "All PowerTransformer output power",
+                          |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_out' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -621,8 +621,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |            ]
                           |        },
                           |        {
-                          |            "title": "All transformer output currents",
-                          |            "query": "select    concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_current_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'current' type,    'current_out' property,    'Amperes' unit,    n.TopologicalIsland island from    PowerTransformer p,    Terminal t,    TopologicalNode n where    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
+                          |            "title": "All PowerTransformer output currents",
+                          |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_out' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -644,8 +644,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |            ]
                           |        },
                           |        {
-                          |            "title": "All transformer power losses",
-                          |            "query": "select concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,    'losses' type,    'power_losses' property,    'VA' unit,    n.TopologicalIsland island from    PowerTransformer p,    Terminal t,    TopologicalNode n where    t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    t.ACDCTerminal.sequenceNumber > 1 and    t.TopologicalNode = n.IdentifiedObject.mRID",
+                          |            "title": "All PowerTransformer power losses",
+                          |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -759,8 +759,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |            ]
                           |        },
                           |        {
-                          |            "title": "All cable currents",
-                          |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from (select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from (select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID) wires group by nodes) name_island",
+                          |            "title": "All ACLineSegment currents",
+                          |            "query": " select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
@@ -782,8 +782,8 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                           |            ]
                           |        },
                           |        {
-                          |            "title": "All cable losses",
-                          |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'Wh' unit, name_island.island from (select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from (select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID) wires group by nodes) name_island",
+                          |            "title": "All ACLineSegment losses",
+                          |            "query": " select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'Wh' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
                           |            "interval": 900,
                           |            "aggregations": [
                           |                {
