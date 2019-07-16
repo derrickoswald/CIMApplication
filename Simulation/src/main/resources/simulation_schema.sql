@@ -12,6 +12,12 @@ create or replace function cimapplication.phase (real double, imag double)
     language java
     as $$ return (Math.atan2 (imag, real)); $$;
 
+create or replace function cimapplication.cosphi (real double, imag double)
+    returns null on null input
+    returns double
+    language java
+    as $$ return ( Math.cos(Math.atan2(imag, real)) ); $$;
+
 create or replace function cimapplication.radians2degrees (radians double)
     returns null on null input
     returns double
