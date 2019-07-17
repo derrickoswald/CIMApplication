@@ -189,6 +189,33 @@ These are events of interest from a post-analysis of the simulated values.
     message    - a human readable message describing the event
 ';
 
+create type if not exists cimapplication.event_number (orange int, red int);
+
+create table if not exists cimapplication.simulation_event_summary (
+    simulation text,
+    mrid text,
+    day date,
+    consumer_total frozen<cimapplication.event_number>,
+    linesegments_total frozen<cimapplication.event_number>,
+    transformer_total frozen<cimapplication.event_number>,
+    consumer map<text, frozen <cimapplication.event_number>>,
+    linesegments map<text, frozen <cimapplication.event_number>>,
+    transformer map<text, frozen <cimapplication.event_number>>,
+    primary key (simulation, mrid, day)
+) with clustering order by (mrid asc, day asc) and comment = '
+Summary of simulation events.
+This is the global events of interest from a post-analysis of the simulated values.
+    simulation         - the simulation run identifier, UUID
+    mrid               - the transformer mRID (or concatenated mRID if ganged) of the topological island
+    day                - the day of the summary record
+    consumer_total     - the count of voltage events for each severity
+    linesegments_total - the count of current events for each severity
+    transformer_total  - the count of power events for each severity
+    consumer           - the mRID of EnergyConsumer with voltage events and the count of events for each severity
+    linesegments       - the mRID of ACLineSegment with current events and the count of events for each severity
+    transformer        - the mRID of PowerTransformer with power events and the count of events for each severity
+';
+
 create table if not exists cimapplication.simulation (
     id text,
     name text,

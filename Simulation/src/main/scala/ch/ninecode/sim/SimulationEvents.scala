@@ -1,5 +1,6 @@
 package ch.ninecode.sim
 
+import java.sql.Date
 import java.sql.Timestamp
 
 import javax.json.JsonObject
@@ -10,11 +11,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.types.DateType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.driver.mapping.annotations.UDT
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.writer.WriteConf
@@ -341,6 +344,177 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     }
 }
 
+@UDT(name="event_number")
+case class EventNumber (
+    orange: Int,
+    red: Int)
+
+case class Summarizer (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+{
+    def getEvents (implicit access: SimulationCassandraAccess): DataFrame =
+    {
+        val events = access.events
+        val ret = events
+            .withColumn ("date", events ("start_time").cast (DateType))
+            .drop ("start_time", "end_time", "message", "ratio")
+        events.unpersist (false)
+        ret
+    }
+
+    def getRecorders (implicit access: SimulationCassandraAccess): DataFrame =
+    {
+        val recorders = access.recorders
+        val ret = recorders
+            .drop ("name", "aggregations", "interval", "property", "unit")
+        recorders.unpersist (false)
+        ret
+    }
+
+    def isEmpty (dataframe: DataFrame): Boolean =
+    {
+        0 == dataframe.take (1).length
+    }
+
+    type Transformer = String
+    type Day = Date
+    type Type = String
+    type mRID = String
+    type Severity = Int
+    type TransformerDay = String
+    type Color = String
+    type Count = Int
+    type Sev = (Color, Count)
+    type Total = Map[Color, Count]
+    type Sum = (mRID, Total)
+    type Summary = Map[mRID, Total]
+
+    def accumulate (severities: Total, severity: Sev):  Total =
+    {
+        val color = severity._1
+        val total = severity._2
+        severities.get (color) match
+        {
+            case Some (current: Int) ⇒ severities.updated (color, current + total)
+            case None ⇒ severities.updated (color, total)
+        }
+    }
+
+    def aggregate (events: Iterable[(mRID, Severity)]): Summary =
+    {
+        def seqop (sum: Summary, event: (mRID, Severity)): Summary =
+        {
+            val mrid = event._1
+            val color = event._2 match { case 1 ⇒ "red" case 2 ⇒ "orange" case _ ⇒ "unknown" }
+            sum.get (mrid) match
+            {
+                case Some (total: Total) ⇒ sum.updated (mrid, accumulate (total, (color, 1)))
+                case None ⇒                sum.updated (mrid, Map[Color, Count] (color → 1))
+            }
+        }
+        def combop (a: Summary, b: Summary): Summary =
+        {
+            b.foldLeft (a) (
+                (summary: Summary, sum: Sum) ⇒
+                {
+                    val mrid: mRID = sum._1
+                    val map: Total = sum._2
+                    summary.get (mrid) match
+                    {
+                        case Some (total: Total) ⇒ summary.updated (mrid, map.foldLeft (total)(accumulate))
+                        case None ⇒                summary.updated (mrid, map)
+                    }
+                }
+
+            )
+        }
+        events.aggregate (Map[mRID, Total] ()) (seqop, combop)
+    }
+
+    def severities (total: Summary): Total =
+    {
+        total.foldLeft (Map[Color, Count] ()) ((map: Total, tot: Sum) ⇒ tot._2.foldLeft (map) (accumulate))
+    }
+
+    def summary (transformer: Transformer, day: Day, records: Iterable[(Type, mRID, Severity)]):
+        (Transformer, Day, Summary, Total, Summary, Total, Summary, Total) =
+    {
+        val voltage_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "voltage").map (event ⇒ (event._2, event._3))
+        val voltage_summary: Summary = aggregate (voltage_events)
+        val voltage_totals: Total = severities (voltage_summary)
+
+        val current_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "current").map (event ⇒ (event._2, event._3))
+        val current_summary: Summary = aggregate (current_events)
+        val current_totals: Total = severities (current_summary)
+
+        val power_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "power").map (event ⇒ (event._2, event._3))
+        val power_summary: Summary = aggregate (power_events)
+        val power_totals: Total = severities (power_summary)
+
+        (transformer, day, voltage_summary, voltage_totals, current_summary, current_totals, power_summary, power_totals)
+    }
+
+    def summarize () (implicit access: SimulationCassandraAccess): Unit =
+    {
+        // get the events - a mix of "voltage" "current" and "power" types
+        val power_events = getEvents
+
+        // get the recorders - a mix of "voltage" "current" and "power" types
+        val recorders = getRecorders
+
+        // join on mrid and type
+        val values = power_events.join (recorders, Seq ("mrid", "type"))
+
+        // aggregate over transformer & day
+        if (!isEmpty (values)) // ToDo: change to Dataset.isEmpty when Spark version > 2.4.0
+        {
+            val transformer = values.schema.fieldIndex ("transformer")
+            val date = values.schema.fieldIndex ("date")
+            val `type` = values.schema.fieldIndex ("type")
+            val mrid = values.schema.fieldIndex ("mrid")
+            val severity = values.schema.fieldIndex ("severity")
+
+            val work1: RDD[(Transformer, Day, Type, mRID, Severity)] = values.rdd.map (
+                row ⇒
+                {
+                    val t = row.getString (transformer)
+                    val d = row.getDate (date)
+                    val typ = row.getString (`type`)
+                    (t, d, typ, row.getString (mrid), row.getInt (severity))
+                }
+            )
+
+            val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row ⇒ row._1 + "_" + row._2.getTime).values
+            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record ⇒ (record.head._1, record.head._2, record.map (event ⇒ (event._3, event._4, event._5))))
+            val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (record ⇒ summary (record._1, record._2, record._3))
+
+            def toUDT (total: Total): EventNumber =
+            {
+                val orange = total.getOrElse("orange", 0)
+                val red = total.getOrElse("red", 0)
+                EventNumber (orange, red)
+            }
+
+            val records = work4.map (x ⇒
+                (
+                    access.simulation,
+                    x._1,
+                    x._2,
+                    x._3.mapValues (toUDT),
+                    toUDT (x._4),
+                    x._5.mapValues (toUDT),
+                    toUDT (x._6),
+                    x._7.mapValues (toUDT),
+                    toUDT (x._8)
+                )
+            )
+
+            val columns = SomeColumns ("simulation", "mrid", "day", "consumer", "consumer_total", "linesegments", "linesegments_total", "transformer", "transformer_total")
+            val configuration = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+            records.saveToCassandra (access.output_keyspace, "simulation_event_summary", columns, configuration)
+        }
+    }
+}
+
 /**
  * Find significant events in the simulation.
  *
@@ -362,6 +536,7 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
         val sets = triggers.groupBy (trigger ⇒ (trigger.`type`, trigger.reference, trigger.default)).values.toArray
         log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
 
+        // handle each trigger set
         for (i ← sets.indices)
         {
             val thresholds = sets(i)
@@ -370,6 +545,11 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
             DoubleChecker (spark, options.storage_level).checkFor (thresholds)
             log.info ("""%s deviation events saved to %s.simulation_event""".format (`type`, access.output_keyspace))
         }
+
+        // perform the summary
+        log.info ("""summarizing events""")
+        Summarizer (spark, options.storage_level).summarize ()
+        log.info ("""event summary saved to %s.simulation_event_summary""".format (access.output_keyspace))
     }
 }
 

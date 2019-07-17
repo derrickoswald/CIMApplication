@@ -87,4 +87,30 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .persist (storage_level)
         values
     }
+
+    def recorders: DataFrame =
+    {
+        val values = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulation_recorder", "keyspace" -> output_keyspace))
+            .load
+            .filter ("simulation = '%s'".format (simulation))
+            .drop ("simulation")
+            .persist (storage_level)
+        values
+    }
+
+    def events: DataFrame =
+    {
+        val values = spark
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "simulation_event", "keyspace" -> output_keyspace))
+            .load
+            .filter ("simulation = '%s'".format (simulation))
+            .drop ("simulation")
+            .persist (storage_level)
+        values
+    }
 }

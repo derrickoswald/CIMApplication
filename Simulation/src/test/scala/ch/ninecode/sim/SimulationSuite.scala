@@ -161,7 +161,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
                         |{
                         |    "name": "DemoData",
                         |    "description": "simulation with demo data",
-                        |    "cim": "data/cim_export_ews_oberiberg.rdf",
+                        |    "cim": "data/DemoData.rdf",
                         |    "cimreaderoptions": {
                         |        "ch.ninecode.cim.do_about": false,
                         |        "ch.ninecode.cim.do_normalize": false,
@@ -966,6 +966,14 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //    {
 //        spark ⇒
 //            val options = SimulationOptions (verbose = true)
+//            val check = SimulationEvents (List()) (spark, options)
+//            val access = SimulationCassandraAccess  (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, "90738a6a-e775-4514-8b81-d29a9a85a9f9", "cimapplication", "test", true, true)
+//            check.run (access)
+//    }
+//    test ("events")
+//    {
+//        spark ⇒
+//            val options = SimulationOptions (verbose = true)
 //            val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger] (
 //                // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
 //                HighTrigger ("voltage", 1, "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000),
@@ -988,7 +996,7 @@ class SimulationSuite extends FunSuite with BeforeAndAfterAll
 //                HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
 //            )
 //            val check = SimulationEvents (STANDARD_TRIGGERS) (spark, options)
-//            val access = SimulationCassandraAccess  (spark, StorageLevel.MEMORY_AND_DISK_SER, "c4171b8e-4795-435d-9cfe-ea28ad71f91b", "baseline", "baseline", true, true)
+//            val access = SimulationCassandraAccess  (spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, "c4171b8e-4795-435d-9cfe-ea28ad71f91b", "baseline", "baseline", true, true)
 //            check.run (access)
 //    }
 //
