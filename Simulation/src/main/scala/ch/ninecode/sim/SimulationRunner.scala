@@ -38,6 +38,7 @@ import ch.ninecode.gl.ThreePhaseComplexDataElement
  * @param keyspace  the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
  * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
  * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
+ * @param verbose   when <code>true</code> set the log level for this class as INFO
  */
 case class SimulationRunner (cassandra: String, keyspace: String, workdir: String, keep: Boolean = false, verbose: Boolean = false) extends Serializable
 {
@@ -149,7 +150,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
     }
 
-    def read_recorder_csv (workdir: String, file: String, element: String, one_phase: Boolean, units: String): Array[ThreePhaseComplexDataElement] =
+    def read_recorder_csv (workdir: String, file: String, element: String, one_phase: Boolean, units: String, multiplier: Double): Array[ThreePhaseComplexDataElement] =
     {
         val name = new File (workdir + file)
         if (!name.exists)
@@ -174,14 +175,14 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                     val fields = line.split (",")
                     if (one_phase)
                         if (fields.length == 2)
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
                         else
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
                     else
                         if (fields.length == 4)
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex.fromString (fields (1)), Complex.fromString (fields (2)), Complex.fromString (fields (3)), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), multiplier * Complex.fromString (fields (2)), multiplier * Complex.fromString (fields (3)), units)
                         else
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), Complex (fields (1).toDouble, fields (2).toDouble), Complex (fields (3).toDouble, fields (4).toDouble), Complex (fields (5).toDouble, fields (6).toDouble), units)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), multiplier * Complex (fields (3).toDouble, fields (4).toDouble), multiplier * Complex (fields (5).toDouble, fields (6).toDouble), units)
                 }
             ).toArray
             handle.close
@@ -254,7 +255,8 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                     val measures = recorder.aggregations.find (_.intervals == 1) match
                         {
                             case Some (baseline: SimulationAggregate) ⇒
-                                val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit).map (
+                                val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble
+                                val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit, multiplier).map (
                                     entry ⇒
                                         SimulationResult
                                         (

@@ -557,7 +557,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     job.save (session, job.output_keyspace, id, tasks)
 
                     log.info ("""matching tasks to topological islands""")
-                    val simulations =
+                    val _simulations =
                         tasks.flatMap (
                             task ⇒
                             {
@@ -584,11 +584,16 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 }
                             }
                         ).persist (options.storage_level).setName (id + "_simulations")
-                    val numsimulations = simulations.count.asInstanceOf [Int]
+                    val numsimulations = _simulations.count.asInstanceOf [Int]
                     log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
 
                     if (0 != numsimulations)
                     {
+                        val direction = SimulationDirection (options.workdir, options.verbose)
+                        val simulations = _simulations.map (x ⇒ x.copy (directions = direction.execute (x)))
+                            .persist (options.storage_level).setName (id + "_simulations")
+                        _simulations.unpersist (false)
+
                         log.info ("""storing GeoJSON data""")
                         val geo = SimulationGeometry (session, job.output_keyspace)
                         geo.storeGeometry (simulations)

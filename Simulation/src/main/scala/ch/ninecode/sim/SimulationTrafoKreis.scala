@@ -22,6 +22,7 @@ import ch.ninecode.gl.TransformerSet
  * @param players     list of the GridLAB-D players - these are queried from Cassandra measured_value and written to .csv player files
  * @param recorders   list of GridLAB-D recorders - these .csv recorder files are stored into Cassandra simulated_value
  * @param directory   the directory to write the .glm, players and recorders
+ * @param directions  the cable directions as sign of current value
  */
 case class SimulationTrafoKreis
 (
@@ -34,7 +35,8 @@ case class SimulationTrafoKreis
     finish_time: Calendar,
     players: Iterable[SimulationPlayer],
     recorders: Iterable[SimulationRecorder],
-    directory: String)
+    directory: String,
+    directions: Map[String, Int] = null)
 {
     val name: String = transformer.transformer_name
     val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))
