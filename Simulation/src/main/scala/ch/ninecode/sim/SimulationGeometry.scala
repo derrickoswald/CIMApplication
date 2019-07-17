@@ -60,7 +60,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     }
 
     /**
-     * Store the GeoJSON point coordinates for equipment in each simulation
+     * Store the GeoJSON point coordinates for EnergyConsumer in each simulation
      *
      * @param trafos the simulation details for each transformer service area
      * @param extra the extra properties that are to be stored with each point
@@ -73,12 +73,13 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     trafo.nodes.map (
                         node ⇒
                             (
-                                trafo.simulation + "_" + node.equipment,
+                                node.equipment,
                                 (trafo.simulation, trafo.transformer.transformer_name, node)
                             )
                     )
             )
-        val jsons = nodes.leftOuterJoin (extra).values
+        val consumers = nodes.join (getOrElse[EnergyConsumer].keyBy (_.id)).values.map (x ⇒ (x._1._1 + "_" + x._1._3.equipment, x._1))
+        val jsons = consumers.leftOuterJoin (extra).values
             .flatMap (
                 (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) ⇒
                 {
