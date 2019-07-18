@@ -6,17 +6,14 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
 import java.util
 import java.util.zip.ZipInputStream
 
-import scala.collection.JavaConverters._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FunSuite
-
+import com.datastax.oss.driver.api.core.CqlSession
 import ch.ninecode.ingest.Main.main
+import com.datastax.driver.core.Cluster
 
 class IngestSuite extends FunSuite with BeforeAndAfterAll
 {
@@ -24,6 +21,9 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     val MAPPING_FILE = "mapping.csv"
     val LPEX_FILE1 = "lpex1.txt"
     val LPEX_FILE2 = "lpex2.txt"
+    val DAYLIGHT_MAPPING_FILE = "daylight_mapping.csv"
+    val DAYLIGHT_START = "daylight_start.txt"
+    val DAYLIGHT_END = "daylight_end.txt"
 
     /**
      * Add to the process environment.
@@ -165,5 +165,38 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             "--format", "LPEx",
             FILE_DEPOT + LPEX_FILE1,
             FILE_DEPOT + LPEX_FILE2))
+    }
+
+    test ("Daylight Savings Time")
+    {
+        val root = FILE_DEPOT
+        val keyspace = "delete_me"
+        main (Array ("--unittest", "--verbose",
+            "--master", "local[*]",
+            "--host", "beach",
+            "--keyspace", keyspace,
+            "--mapping", root + DAYLIGHT_MAPPING_FILE,
+            "--mridcol", "mrid",
+            "--metercol", "meter",
+            "--format", "LPEx",
+            root + DAYLIGHT_START,
+            root + DAYLIGHT_END))
+
+
+        val session = new Cluster.Builder ().addContactPoints ("beach").build ().connect()
+
+        val rs1 = session.execute ("select count(*) as count from %s.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'".format (keyspace))
+        val row1 = rs1.one
+        val start = row1.getLong ("count")
+        assert (start == 188L, "daylight savings start")
+
+        val rs2 = session.execute ("select count(*) as count from %s.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'".format (keyspace))
+        val row2 = rs2.one
+        val end = row2.getLong ("count")
+        assert (end == 196L, "daylight savings end")
+
+        session.execute ("drop keyspace %s".format (keyspace))
+
+        session.close ()
     }
 }
