@@ -184,56 +184,44 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def generate_player_csv (player: SimulationPlayerResult, begin: Long, end: Long): List[SimulationPlayer] =
+    def generate_player_csv (begin: Long, end: Long) (player: SimulationPlayerResult): SimulationPlayer =
     {
-        val from = iso_date_format.format (new Date (begin))
-        val to = iso_date_format.format (new Date (end))
-        if (begin > end)
+        val start = if (begin > end)
         {
+            val from = iso_date_format.format (new Date (begin))
+            val to = iso_date_format.format (new Date (end))
             log.error ("""player "%s" has a start time (%s) after the end time (%s)""".format (player.title, from, to))
-            return List ()
+            end
         }
-        // log.info ("""resolving "%s" %s [%s, %s)""".format (player.title, player.name, from, to))
-        val span =
-            """time >= %s and time <= %s""".format (begin, end)
+        else
+            begin
         val file = "input_data/" + player.name + ".csv"
-        List (
-            SimulationPlayer (
-                player.name,
-                player.parent,
-                player.`type`,
-                player.property,
-                file,
-                player.mrid,
-                begin,
-                end,
-                player.transform,
-                player.synthesis)
-        )
+        SimulationPlayer (
+            player.name,
+            player.parent,
+            player.`type`,
+            player.property,
+            file,
+            player.mrid,
+            start,
+            end,
+            player.transform,
+            player.synthesis)
     }
 
-    def generate_recorder_csv (recorder: SimulationRecorderResult, start: Long, end: Long): List[SimulationRecorder] =
+    def generate_recorder_csv (recorder: SimulationRecorderResult): SimulationRecorder =
     {
-        val t0 = Calendar.getInstance ()
-        t0.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        t0.setTimeInMillis (start)
-        val t1 = Calendar.getInstance ()
-        t1.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        t1.setTimeInMillis (end)
-        // log.info ("""resolving "%s" %s [%s, %s)""".format (recorder.title, recorder.name, iso_date_format.format (t0.getTime), iso_date_format.format (t1.getTime)))
         val file = "output_data/" + recorder.name + ".csv"
-        List (
-            SimulationRecorder (
-                recorder.name,
-                recorder.mrid,
-                recorder.parent,
-                recorder.`type`,
-                recorder.property,
-                recorder.unit,
-                file,
-                recorder.interval,
-                recorder.aggregations)
-        )
+        SimulationRecorder (
+            recorder.name,
+            recorder.mrid,
+            recorder.parent,
+            recorder.`type`,
+            recorder.property,
+            recorder.unit,
+            file,
+            recorder.interval,
+            recorder.aggregations)
     }
 
     def pack (string: String): String =
@@ -302,7 +290,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""preparing simulation job "%s"""".format (job.name))
 
         // get all transformer set secondary TopologicalIsland names
-        val islands_trafos = get [PowerTransformer]
+        val islands_trafos: RDD[(island_id, identifier)] = get [PowerTransformer]
             .keyBy (_.id)
             .join (
                 get [Terminal]
@@ -329,11 +317,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
             // query the players
             log.info ("""querying players""")
-            val playersets = session.sparkContext.union (job.players.map (query ⇒ q.executePlayerQuery (query))).groupByKey
+            val playersets: RDD[(island_id, Iterable[SimulationPlayerResult])] = session.sparkContext.union (job.players.map (query ⇒ q.executePlayerQuery (query))).groupByKey
 
             // query the recorders
             log.info ("""querying recorders""")
-            val recordersets = session.sparkContext.union (job.recorders.map (query ⇒ q.executeRecorderQuery (query))).groupByKey
+            val recordersets: RDD[(island_id, Iterable[SimulationRecorderResult])] = session.sparkContext.union (job.recorders.map (query ⇒ q.executeRecorderQuery (query))).groupByKey
+
+            // join players and recorders
+            val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join (recordersets)
 
             // get the starting and ending times
             val start = job.start_time
@@ -345,29 +336,29 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val island_helper = new Island (session, options.storage_level)
             val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, edge_maker)
             val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey)
-                .persist (options.storage_level).setName (id + "_areas")
 
-            // ToDo: this is backwards, but until we get the simulation classes using service area instead of island, we use the island of the transformer secondary
-            val fuckedup_areas: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands)
-                .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
-            val rdd2: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult]))] = fuckedup_areas.join (playersets).map (l ⇒ (l._1, (l._2._1._1, l._2._1._2, l._2._1._3, l._2._2))) // (island, (trafo, [nodes], [edges], [players]))
-            val rdd3: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = rdd2.join (recordersets).map (l ⇒ (l._2._1._1, l._1, l._2._1._2, l._2._1._3, l._2._1._4, l._2._2)) // (island, [nodes], [edges], [players], [recorders])
             log.info ("""generating simulation tasks""")
-            rdd3.map (l ⇒
-            {
-                val players = l._5.flatMap (x ⇒ generate_player_csv (x, start.getTimeInMillis, end.getTimeInMillis))
-                val recorders = l._6.flatMap (x ⇒ generate_recorder_csv (x, start.getTimeInMillis, end.getTimeInMillis))
-                SimulationTask (
-                    l._1, // trafo
-                    l._2, // island
-                    start.clone.asInstanceOf [Calendar],
-                    end.clone.asInstanceOf [Calendar],
-                    l._3, // nodes
-                    l._4, // edges
-                    players,
-                    recorders)
-            }
+            val islands_network: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands)
+                .map (x ⇒ (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
+            val islands_networks_with_players_and_recorders: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = islands_network.join (players_recorders)
+                .map (x ⇒ (x._2._1._1, x._1, x._2._1._2, x._2._1._3, x._2._2._1, x._2._2._2))  // (trafo, island, [nodes], [edges], [players], [recorders]))
+            val ret = islands_networks_with_players_and_recorders.map (
+                net ⇒
+                {
+                    val players: Iterable[SimulationPlayer] = net._5.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
+                    val recorders: Iterable[SimulationRecorder] = net._6.map (generate_recorder_csv)
+                    SimulationTask (
+                        net._1, // trafo
+                        net._2, // island
+                        start.clone.asInstanceOf [Calendar],
+                        end.clone.asInstanceOf [Calendar],
+                        net._3, // nodes
+                        net._4, // edges
+                        players,
+                        recorders)
+                }
             ).persist (options.storage_level).setName (id + "_tasks")
+            ret
         }
         else
         {
@@ -530,7 +521,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         extra ⇒
                         {
                             log.info ("""executing "%s" as %s""".format (extra.title, extra.query))
-                            val df: DataFrame = session.sql (extra.query)
+                            val df: DataFrame = session.sql (extra.query).persist ()
                             if (df.count > 0)
                             {
                                 val fields = df.schema.fieldNames
@@ -550,6 +541,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                             }
                             else
                                 log.warn ("""extra query "%s" returned no rows""".format (extra.title))
+                            df.unpersist (false)
                         }
                     )
 
@@ -634,6 +626,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         log.info ("""saving GridLAB-D simulation results""")
                         results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
                         log.info ("""saved GridLAB-D simulation results""")
+                        results.unpersist (false)
                     }
 
                     // clean up
@@ -746,17 +739,21 @@ object Simulation
         Array (
             classOf [ch.ninecode.sim.Simulation],
             classOf [ch.ninecode.sim.SimulationAggregate],
+            classOf [ch.ninecode.sim.SimulationDirectionGenerator],
             classOf [ch.ninecode.sim.SimulationEdge],
+            classOf [ch.ninecode.sim.SimulationExtraQuery],
             classOf [ch.ninecode.sim.SimulationGLMGenerator],
             classOf [ch.ninecode.sim.SimulationJob],
             classOf [ch.ninecode.sim.SimulationNode],
             classOf [ch.ninecode.sim.SimulationOptions],
             classOf [ch.ninecode.sim.SimulationPlayer],
+            classOf [ch.ninecode.sim.SimulationPlayerData],
             classOf [ch.ninecode.sim.SimulationPlayerQuery],
             classOf [ch.ninecode.sim.SimulationPlayerResult],
             classOf [ch.ninecode.sim.SimulationRecorder],
             classOf [ch.ninecode.sim.SimulationRecorderQuery],
             classOf [ch.ninecode.sim.SimulationRecorderResult],
+            classOf [ch.ninecode.sim.SimulationResult],
             classOf [ch.ninecode.sim.SimulationSparkQuery],
             classOf [ch.ninecode.sim.SimulationTask],
             classOf [ch.ninecode.sim.SimulationTrafoKreis]
