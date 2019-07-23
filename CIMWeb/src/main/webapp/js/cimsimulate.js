@@ -814,6 +814,39 @@ truncate table cimapplication.responsibility_by_day;
                     group by
                         s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
                     `
+            },
+            {
+                "title": "stationratedS",
+                "query":
+                `
+                    select
+                        first_value (c.substation) key,
+                        sum(e.ratedS) value
+                    from
+                        Terminal t,
+                        PowerTransformerEnd e,
+                        PowerTransformer p,
+                        (
+                            select
+                                b.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                b.Substation substation
+                            from
+                                Bay b
+                        union
+                            select
+                                u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation
+                            from
+                                Substation u
+                        ) c
+                    where
+                        t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and
+                        e.TransformerEnd.endNumber = 2 and
+                        e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid
+                    group by
+                        t.TopologicalNode
+                `
             }
         ];
 
