@@ -821,7 +821,7 @@ truncate table cimapplication.responsibility_by_day;
                 `
                     select
                         first_value (c.substation) key,
-                        sum(e.ratedS) value
+                        cast (sum(e.ratedS) as string) value
                     from
                         Terminal t,
                         PowerTransformerEnd e,
