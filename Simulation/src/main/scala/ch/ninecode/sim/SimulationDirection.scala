@@ -7,17 +7,18 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import ch.ninecode.gl.Complex
-import ch.ninecode.gl.ThreePhaseComplexDataElement
-import ch.ninecode.gl.LineEdge
-import org.apache.log4j.LogManager
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process.Process
 import scala.sys.process.ProcessLogger
+
+import org.apache.log4j.LogManager
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import ch.ninecode.gl.Complex
+import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.gl.LineEdge
 
 /**
  * Determine the direction of current in the passive network.
@@ -168,7 +169,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
                         else
                             (edge.id, -1)
                     }
-            )
+            ) ++ Seq ((trafo.transformer.transformer_name, +1))
         }
         else
         {

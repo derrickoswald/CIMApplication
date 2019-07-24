@@ -22,7 +22,7 @@ case class SimulationGLMGenerator
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (kreis.transformer.node0, kreis.transformer.node1, kreis.transformer))
+    override def transformers: Iterable[TransformerEdge] = List (kreis.transformer_edge)
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
@@ -43,7 +43,7 @@ case class SimulationGLMGenerator
           |            interval "%d";
           |            file "%s";
           |        };
-        """.stripMargin.format (recorder.name, recorder.parent, property, recorder.interval, recorder.file)
+          |""".stripMargin.format (recorder.name, recorder.parent, property, recorder.interval, recorder.file)
     }
 
     def emit_edge_player (player: SimulationPlayer): String =
@@ -58,7 +58,7 @@ case class SimulationGLMGenerator
           |            property "%s";
           |            file "%s";
           |        };
-        """.stripMargin.format (player.name, player.parent, property, player.file)
+          |""".stripMargin.format (player.name, player.parent, property, player.file)
     }
 
 
@@ -87,7 +87,7 @@ case class SimulationGLMGenerator
               |            property "%s";
               |            file "%s";
               |        };
-            """.stripMargin.format (load, player.parent, phases, voltage, player.name, load, property, player.file)
+              |""".stripMargin.format (load, player.parent, phases, voltage, player.name, load, property, player.file)
         }
         else
             """
@@ -98,7 +98,7 @@ case class SimulationGLMGenerator
               |            property "%s";
               |            file "%s";
               |        };
-            """.stripMargin.format (player.name, player.parent, property, player.file)
+              |""".stripMargin.format (player.name, player.parent, property, player.file)
     }
 
     override def emit_edge (edge: GLMEdge): String =

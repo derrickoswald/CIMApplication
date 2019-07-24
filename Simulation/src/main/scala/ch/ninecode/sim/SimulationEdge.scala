@@ -24,5 +24,9 @@ case class SimulationEdge
 ) extends GLMEdge
 {
     def id: String = rawedge.id
+    override def toString: String =
+    {
+        "%s %s⇒%s".format (id, cn1, cn2)
+    }
 }
 

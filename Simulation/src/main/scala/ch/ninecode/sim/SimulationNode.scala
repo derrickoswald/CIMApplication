@@ -24,3 +24,9 @@ case class SimulationNode
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
 ) extends GLMNode
+{
+    override def toString: String =
+    {
+        "%s %s (%sV)".format (id, equipment, nominal_voltage)
+    }
+}
