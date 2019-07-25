@@ -428,20 +428,38 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,
-                        b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        n.IdentifiedObject.mRID parent,
+                        concat (name_node_island.name, '_voltage_recorder') name,
+                        name_node_island.name mrid,
+                        name_node_island.node parent,
                         'voltage' type,
                         'voltage' property,
                         'Volts' unit,
-                        n.TopologicalIsland island
+                        name_node_island.island
                     from
-                        TopologicalNode n,
-                        Terminal t,
-                        BusbarSection b
-                    where
-                        t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                        n.IdentifiedObject.mRID = t.TopologicalNode
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (busbars.mrid))) name,
+                            first_value (busbars.node) node,
+                            first_value (busbars.island) island
+                        from
+                            (
+                                select distinct
+                                    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    t.TopologicalNode node,
+                                    n.TopologicalIsland island
+                                from
+                                    TopologicalNode n,
+                                    Terminal t,
+                                    BusbarSection b
+                                where
+                                    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    n.IdentifiedObject.mRID = t.TopologicalNode
+                            )
+                            busbars
+                        group by
+                            node
+                    )
+                    name_node_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -468,20 +486,38 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
-                        b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        n.IdentifiedObject.mRID parent,
+                        concat (name_node_island.name, '_power_recorder') name,
+                        name_node_island.name mrid,
+                        name_node_island.node parent,
                         'power' type,
                         'measured_power' property,
                         'VA' unit,
-                        n.TopologicalIsland island
+                        name_node_island.island
                     from
-                        TopologicalNode n,
-                        Terminal t,
-                        BusbarSection b
-                    where
-                        t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-                        n.IdentifiedObject.mRID = t.TopologicalNode
+                    (
+                        select
+                            concat_ws ('_', sort_array (collect_set (busbars.mrid))) name,
+                            first_value (busbars.node) node,
+                            first_value (busbars.island) island
+                        from
+                            (
+                                select distinct
+                                    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                    t.TopologicalNode node,
+                                    n.TopologicalIsland island
+                                from
+                                    TopologicalNode n,
+                                    Terminal t,
+                                    BusbarSection b
+                                where
+                                    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                    n.IdentifiedObject.mRID = t.TopologicalNode
+                            )
+                            busbars
+                        group by
+                            node
+                    )
+                    name_node_island
                     `,
                 "interval": 900,
                 "aggregations": [
@@ -803,16 +839,43 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID key,
-                        concat_ws (',', collect_list(b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID)) value
+                        first_value (contains.station) key,
+                        concat_ws (',', collect_list(contains.name)) value
                     from
-                        Substation s,
-                        BusbarSection b
-                    where
-                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and
-                        b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
+                    (
+                        select
+                            name_node_station.station station,
+                            name_node_station.name name
+                        from
+                        (
+                            select
+                                concat_ws ('_', sort_array (collect_set (busbars.mrid))) name,
+                                first_value (busbars.station) station
+                            from
+                                (
+                                    select distinct
+                                        b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                        t.TopologicalNode node,
+                                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station
+                                    from
+                                        TopologicalNode n,
+                                        Terminal t,
+                                        BusbarSection b,
+                                        Substation s
+                                    where
+                                        t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                                        n.IdentifiedObject.mRID = t.TopologicalNode and
+                                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and
+                                        b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
+                                )
+                                busbars
+                            group by
+                                node
+                        )
+                        name_node_station
+                    ) contains
                     group by
-                        s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
+                        station
                     `
             },
             {
