@@ -124,6 +124,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-compiler</artifactId>
+            <version>${version.dependency.scalalibrary}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test Dependencies -->
 
         <dependency>
