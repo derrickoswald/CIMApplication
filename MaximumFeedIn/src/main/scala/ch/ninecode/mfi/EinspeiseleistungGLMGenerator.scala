@@ -10,7 +10,7 @@ import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
-    extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
+    extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = trafokreis.name
 
@@ -113,6 +113,15 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             "            property " + (if (one_phase) "current_out_A.real,current_out_A.imag" else "current_out_A.real,current_out_A.imag,current_out_B.real,current_out_B.imag,current_out_C.real,current_out_C.imag") + ";\n" +
             "            interval 5;\n" +
             "            file \"output_data/" + name + "_current.csv\";\n" +
+            "        };\n" +
+            "\n" +
+            "        object recorder\n" +
+            "        {\n" +
+            "            name \"" + name + "_power_recorder\";\n" +
+            "            parent \"" + name + "\";\n" +
+            "            property " + (if (one_phase) "power_out_A.real,power_out_A.imag" else "power_out_A.real,power_out_A.imag,power_out_B.real,power_out_B.imag,power_out_C.real,power_out_C.imag") + ";\n" +
+            "            interval 5;\n" +
+            "            file \"output_data/" + name + "_power.csv\";\n" +
             "        };\n"
     }
 
@@ -197,10 +206,24 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                             "            constant_power_A %s;\n".format (maxP.asString (6))
                         else
                         {
-                            val maxP3 = maxP / 3.0
-                            "            constant_power_A %s;\n".format (maxP3.asString (6)) +
-                                "            constant_power_B %s;\n".format (maxP3.asString (6)) +
-                                "            constant_power_C %s;\n".format (maxP3.asString (6))
+                            def PVPower (maxp: Double, angle: Double): String =
+                            {
+                                var angle_radians = angle * Math.PI / 180.0
+                                val phi = acos (math.abs (cosPhi))
+                                val cosphi = math.cos (phi + angle_radians)
+                                val sinphi = Math.sin ((math.signum (cosPhi) * phi) + angle_radians)
+                                new Complex (-maxp * cosphi, -maxp * sinphi).asString (6)
+                            }
+
+                            val maxp = ratedNetMaxP /3.0
+                            val maxP3R = PVPower (maxp, 0.0)
+                            val maxP3S = PVPower (maxp, 240.0)
+                            val maxP3T  = PVPower (maxp, 120.0)
+
+                            """            constant_power_A %s;
+                            |            constant_power_B %s;
+                            |            constant_power_C %s;
+                            |""".stripMargin.format (maxP3R, maxP3S, maxP3T)
                         }) +
                         "            nominal_voltage " + voltage + "V;\n" +
                         "            load_class R;\n" +

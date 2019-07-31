@@ -316,14 +316,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-        val phi = acos (math.abs (options.cosphi)) + angle
-        val cosphi = math.cos (phi)
-        // ToDo: check this for three phase
-        val sinphi = math.signum (options.cosphi) * sin (phi)
+        val angle_radians = angle * Math.PI / 180.0
+        val phi = acos (math.abs (options.cosphi))
+        val cosphi = math.cos (phi + angle_radians)
+        val sinphi = Math.sin ((math.signum (options.cosphi) * phi) + angle_radians)
+        val unitvector = new Complex (cosphi, sinphi)
 
-        def addrow (time: Calendar, power: Double, angle: Double): Unit =
+        def addrow (time: Calendar, power: Double): Unit =
         {
-            val maxP = new Complex (-power * cosphi, power * sinphi)
+            val maxP = -power * unitvector
             ret.append (_DateFormat.format (time.getTime))
             ret.append (",")
             if (!options.three)
@@ -336,15 +337,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         val time = exp.t1
         // gridlab extends the first and last rows till infinity -> make them zero
-        addrow (time, 0.0, angle)
+        addrow (time, 0.0)
         var power = exp.from
         while (power <= exp.to)
         {
-            addrow (time, power, angle)
+            addrow (time, power)
             power = power + exp.step
         }
         // gridlab extends the first and last rows till infinity -> make them zero
-        addrow (time, 0.0, angle)
+        addrow (time, 0.0)
 
         ret.toString.getBytes (StandardCharsets.UTF_8)
     }
