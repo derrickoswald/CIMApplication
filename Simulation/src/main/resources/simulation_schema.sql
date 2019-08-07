@@ -1,4 +1,4 @@
-create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 2 };
+create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
 
 create or replace function cimapplication.magnitude (real double, imag double)
     returns null on null input
