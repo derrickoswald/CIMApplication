@@ -92,5 +92,5 @@ case class IngestOptions
     /**
      * Cassandra keyspace replication factor.
      */
-    replication: Int = 2
+    replication: Int = 1
 )
