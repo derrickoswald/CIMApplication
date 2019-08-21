@@ -144,7 +144,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
 
     override def beforeAll (): Unit =
     {
-        setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.6/etc/hadoop")
+        // setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.6/etc/hadoop")
     }
 
     test ("Help")
@@ -157,8 +157,8 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         // to reset schema use:
         // delete from cimapplication.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy');
         main (Array ("--unittest", "--verbose",
-            "--master", "local[*]",
-            "--host", "beach",
+            "--master", "local[2]",
+            "--host", "localhost",
             "--mapping", FILE_DEPOT + MAPPING_FILE,
             "--metercol", "meter",
             "--mridcol", "mRID",
@@ -172,8 +172,8 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         val root = FILE_DEPOT
         val keyspace = "delete_me"
         main (Array ("--unittest", "--verbose",
-            "--master", "local[*]",
-            "--host", "beach",
+            "--master", "local[2]",
+            "--host", "localhost",
             "--keyspace", keyspace,
             "--mapping", root + DAYLIGHT_MAPPING_FILE,
             "--mridcol", "mrid",
@@ -183,7 +183,7 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
             root + DAYLIGHT_END))
 
 
-        val session = new Cluster.Builder ().addContactPoints ("beach").build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").build ().connect()
 
         val rs1 = session.execute ("select count(*) as count from %s.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'".format (keyspace))
         val row1 = rs1.one

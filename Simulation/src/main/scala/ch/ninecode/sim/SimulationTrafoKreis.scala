@@ -214,8 +214,8 @@ case class SimulationTrafoKreis
                     x._1.parent + "_pseudo",
                     voltage (x._1.parent),
                     x._1.parent + "_pseudo_equipment",
-                    (0,0),
-                    (0,0),
+                    null,
+                    null,
                     null,
                     null
                 )
