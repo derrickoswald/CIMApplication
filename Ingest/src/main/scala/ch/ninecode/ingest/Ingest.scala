@@ -391,6 +391,10 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     case 2 ⇒ ("power", true, false, -1.0, "W")
                     // reactive power Q I
                     case 5 ⇒ ("power", false, true, 1.0, "W")
+                    // reactive power Q II
+                    case 6 ⇒ ("power", false, true, 1.0, "W")
+                    // reactive power Q III
+                    case 7 ⇒ ("power", false, true, -1.0, "W")
                     // reactive power Q IV
                     case 8 ⇒ ("power", false, true, -1.0, "W")
                     // error
