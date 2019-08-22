@@ -164,7 +164,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     }
 
     // build a file system configuration, including core-site.xml
-    lazy val hdfs_configuration: Configuration =
+    def hdfs_configuration: Configuration =
     {
         val configuration = new Configuration ()
         if (null == configuration.getResource ("core-site.xml"))
@@ -178,17 +178,18 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     configuration.addResource (site)
             }
             else
-                log.warn ("HADOOP_CONF_DIR environment variable not found")
+                log.error ("HADOOP_CONF_DIR environment variable not found")
         }
         configuration
     }
 
-    // get the file system
-    def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
-
-    // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
-
-    def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
+    def hdfs: FileSystem =
+    {
+        // get the configuration
+        val conf = hdfs_configuration
+        // get the file system
+        FileSystem.get (FileSystem.getDefaultUri (conf), conf)
+    }
 
     def base_name (path: String): String =
     {
@@ -215,15 +216,15 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
     {
         var ret = Seq [String]()
-
-        val file = new Path (hdfs.getUri.toString, path)
+        val fs = hdfs
+        val file = new Path (fs.getUri.toString, path)
         // write the file
         try
         {
             val parent = if (path.endsWith ("/")) file else file.getParent
-            hdfs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
+            fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
             if (!parent.isRoot)
-                hdfs.setPermission (parent, new FsPermission ("ugoa-rwx"))
+                fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
 
             if (0 != data.length && !path.endsWith ("/"))
             {
@@ -240,8 +241,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                             if (entry.isDirectory)
                             {
                                 val path = new Path (parent, entry.getName)
-                                hdfs.mkdirs (path, new FsPermission ("ugoa-rwx"))
-                                hdfs.setPermission (path, new FsPermission ("ugoa-rwx"))
+                                fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
+                                fs.setPermission (path, new FsPermission ("ugoa-rwx"))
                             }
                             else
                             {
@@ -259,7 +260,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                                 while (!eof)
                                 stream.close ()
                                 val f = new Path (parent, entry.getName)
-                                hdfs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
+                                fs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
                                 ret = ret :+ f.toString
                             }
                             zip.closeEntry ()
@@ -272,7 +273,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 }
                 else
                 {
-                    val out = hdfs.create (file)
+                    val out = fs.create (file)
                     out.write (data)
                     out.close ()
                     ret = ret :+ file.toString
