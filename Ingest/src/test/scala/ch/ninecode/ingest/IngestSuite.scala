@@ -1,22 +1,19 @@
 package ch.ninecode.ingest
 
-import java.io.BufferedOutputStream
-import java.io.Closeable
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.util
-import java.util.zip.ZipInputStream
+import scala.collection.JavaConverters._
+
+import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.Row
+import com.datastax.driver.core.Session
 
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FunSuite
-import com.datastax.oss.driver.api.core.CqlSession
+
 import ch.ninecode.ingest.Main.main
-import com.datastax.driver.core.Cluster
 
 class IngestSuite extends FunSuite with BeforeAndAfterAll
 {
+    val KEYSPACE = "delete_me"
     val FILE_DEPOT = "data/"
     val MAPPING_FILE = "mapping.csv"
     val LPEX_FILE1 = "lpex1.txt"
@@ -25,177 +22,74 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     val DAYLIGHT_START = "daylight_start.txt"
     val DAYLIGHT_END = "daylight_end.txt"
 
-    /**
-     * Add to the process environment.
-     *
-     * @see https://stackoverflow.com/questions/318239/how-do-i-set-environment-variables-from-java
-     * @param newenv The list of key value pairs to add.
-     */
-    protected def setEnv (newenv: java.util.HashMap[String, String]): Unit =
-    {
-        try
-        {
-            val env: util.Map[String, String] = System.getenv
-            for (cl <- Class.forName ("java.util.Collections").getDeclaredClasses)
-            {
-                if ("java.util.Collections$UnmodifiableMap" == cl.getName)
-                {
-                    val field = cl.getDeclaredField ("m")
-                    field.setAccessible (true)
-                    val obj = field.get (env)
-                    val map = obj.asInstanceOf [java.util.Map[String, String]]
-                    map.putAll (newenv)
-                }
-            }
-        }
-        catch
-        {
-            case e: Exception =>
-                e.printStackTrace ()
-        }
-    }
-
-    def setHadoopConfigurationDirectory (path: String): Unit =
-    {
-        if (null == System.getenv ("HADOOP_CONF_DIR"))
-        {
-            val newenv = new java.util.HashMap[String, String]()
-            newenv.put ("HADOOP_CONF_DIR", path)
-            setEnv (newenv)
-        }
-    }
-
-    /**
-     * This utility extracts files and directories of a standard zip file to
-     * a destination directory.
-     *
-     * @author www.codejava.net
-     *
-     */
-    class Unzip
-    {
-        /**
-         * Extracts a zip file specified by the file to a directory.
-         *
-         * The directory will be created if does not exist.
-         *
-         * @param file      The Zip file.
-         * @param directory The directory to extract it to
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        def unzip (file: String, directory: String): Unit =
-        {
-            val dir = new File (directory)
-            if (!dir.exists)
-                dir.mkdir
-            val zip = new ZipInputStream (new FileInputStream (file))
-            var entry = zip.getNextEntry
-            // iterates over entries in the zip file
-            while (null != entry)
-            {
-                val path = directory + entry.getName
-                if (!entry.isDirectory)
-                // if the entry is a file, extracts it
-                    extractFile (zip, path)
-                else
-                // if the entry is a directory, make the directory
-                    new File (path).mkdir
-                zip.closeEntry ()
-                entry = zip.getNextEntry
-            }
-            zip.close ()
-        }
-
-        /**
-         * Extracts a zip entry (file entry).
-         *
-         * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        private def extractFile (zip: ZipInputStream, path: String): Unit =
-        {
-            val bos = new BufferedOutputStream (new FileOutputStream (path))
-            val bytesIn = new Array[Byte](4096)
-            var read = -1
-            while (
-            {
-                read = zip.read (bytesIn)
-                read != -1
-            })
-                bos.write (bytesIn, 0, read)
-            bos.close ()
-        }
-    }
-
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
-    override def beforeAll (): Unit =
-    {
-        // setHadoopConfigurationDirectory ("/home/derrick/spark/hadoop-2.7.6/etc/hadoop")
-    }
-
     test ("Help")
     {
         main (Array ("--unittest", "--help"))
     }
 
+    def checkCount (session: Session, sql: String, count: Long, tag: String): Unit =
+    {
+        assert (session.execute (sql).all.asScala.head.getLong ("count") == count, "number of records for $tag")
+    }
+
+    def checkValue (session: Session, sql: String, real: Double, imag: Double, units: String): Unit =
+    {
+        val values = session.execute (sql).all
+        assert (values.size == 1, "exists")
+        val d: Row = values.asScala.head
+        assert (values.asScala.head.getDouble ("real_a") == real, "real value")
+        assert (values.asScala.head.getDouble ("imag_a") == imag, "imaginary value")
+        assert (values.asScala.head.getString ("units") == units, "units")
+    }
+
     test ("Ingest")
     {
-        // to reset schema use:
-        // delete from cimapplication.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy');
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
+            "--keyspace", KEYSPACE,
             "--mapping", FILE_DEPOT + MAPPING_FILE,
             "--metercol", "meter",
             "--mridcol", "mRID",
             "--format", "LPEx",
             FILE_DEPOT + LPEX_FILE1,
             FILE_DEPOT + LPEX_FILE2))
+
+        val session: Session = new Cluster.Builder ().addContactPoints ("localhost").build ().connect()
+
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12345' and type='power'", 96L, "HAS12345")
+        checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12345' and type='power' and time='2019-03-02 23:15:00.000+0000'", 12075.0, 3750.0, "W")
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12346' and type='power'", 96L, "HAS12346")
+        checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12346' and type='power' and time='2019-03-02 23:15:00.000+0000'", 75.0, 0.0, "W")
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12347' and type='power'", 96L, "HAS12347")
+        checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12347' and type='power' and time='2019-03-02 23:15:00.000+0000'", 17400.0, -750.0, "W")
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12348' and type='energy'", 2877L, "HAS12348")
+        checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12348' and type='energy' and time='2017-08-31 22:15:00.000+0000'", 56.0, 0, "Wh")
+        checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12348' and type='energy' and time='2017-09-30 22:00:00.000+0000'", 56.0, 0, "Wh")
+
+        session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy')")
+        session.close ()
     }
 
     test ("Daylight Savings Time")
     {
-        val root = FILE_DEPOT
-        val keyspace = "delete_me"
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
-            "--keyspace", keyspace,
-            "--mapping", root + DAYLIGHT_MAPPING_FILE,
+            "--keyspace", KEYSPACE,
+            "--mapping", FILE_DEPOT + DAYLIGHT_MAPPING_FILE,
             "--mridcol", "mrid",
             "--metercol", "meter",
             "--format", "LPEx",
-            root + DAYLIGHT_START,
-            root + DAYLIGHT_END))
-
+            FILE_DEPOT + DAYLIGHT_START,
+            FILE_DEPOT + DAYLIGHT_END))
 
         val session = new Cluster.Builder ().addContactPoints ("localhost").build ().connect()
 
-        val rs1 = session.execute ("select count(*) as count from %s.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'".format (keyspace))
-        val row1 = rs1.one
-        val start = row1.getLong ("count")
-        assert (start == 188L, "daylight savings start")
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'", 188L, "daylight savings start")
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'", 196L, "daylight savings end")
 
-        val rs2 = session.execute ("select count(*) as count from %s.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'".format (keyspace))
-        val row2 = rs2.one
-        val end = row2.getLong ("count")
-        assert (end == 196L, "daylight savings end")
-
-        session.execute ("drop keyspace %s".format (keyspace))
+        session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS42', 'HAS43') and type = 'energy'")
 
         session.close ()
     }

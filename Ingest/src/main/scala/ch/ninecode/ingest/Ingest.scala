@@ -1,7 +1,6 @@
 package ch.ninecode.ingest
 
 import java.io.ByteArrayInputStream
-import java.io.BufferedWriter
 import java.io.FileOutputStream
 import java.io.File
 import java.net.URI
@@ -165,7 +164,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     }
 
     // build a file system configuration, including core-site.xml
-    def hdfs_configuration: Configuration =
+    lazy val hdfs_configuration: Configuration =
     {
         val configuration = new Configuration ()
         if (null == configuration.getResource ("core-site.xml"))
@@ -178,6 +177,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 if (f.exists && !f.isDirectory)
                     configuration.addResource (site)
             }
+            else
+                log.warn ("HADOOP_CONF_DIR environment variable not found")
         }
         configuration
     }
