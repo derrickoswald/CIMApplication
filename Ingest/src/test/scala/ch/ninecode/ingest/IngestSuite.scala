@@ -36,10 +36,10 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     {
         val values = session.execute (sql).all
         assert (values.size == 1, "exists")
-        val d: Row = values.asScala.head
-        assert (values.asScala.head.getDouble ("real_a") == real, "real value")
-        assert (values.asScala.head.getDouble ("imag_a") == imag, "imaginary value")
-        assert (values.asScala.head.getString ("units") == units, "units")
+        val row: Row = values.asScala.head
+        assert (row.getDouble ("real_a") == real, "real value")
+        assert (row.getDouble ("imag_a") == imag, "imaginary value")
+        assert (row.getString ("units") == units, "units")
     }
 
     test ("Ingest")

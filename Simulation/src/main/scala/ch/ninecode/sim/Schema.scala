@@ -37,7 +37,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
     def editor: String ⇒ String =
     {
         val DEFAULT_KEYSPACE = """cimapplication"""
-        val DEFAULT_REPLICATION = 2
+        val DEFAULT_REPLICATION = 1
         val REPLICATION_TRIGGER = """'replication_factor': """
 
         val old_replication_string = REPLICATION_TRIGGER + DEFAULT_REPLICATION.toString
@@ -72,7 +72,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
      *   - DDL statements are separated by a blank line
      *   - only DDL is permitted in the schema script
      *   - the keyspace must be cimapplication - which is changed according to <code>keyspace</code> via simple global substitution
-     *   - the replication factor must be 2 - which is changed according to <code>replication</code> via simple global substitution
+     *   - the replication factor must be 1 - which is changed according to <code>replication</code> via simple global substitution
      *
      * @return <code>true</code> if all DDL executed successsuflly, <code>false</code> if the schema file doesn't exist or there were errors
      */
