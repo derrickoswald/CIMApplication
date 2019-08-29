@@ -5,29 +5,23 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
 import java.sql.DriverManager
-import java.util
 import java.util.zip.ZipInputStream
-
-import scala.collection.JavaConverters._
-import org.scalatest.fixture.FunSuite
-import org.scalatest.BeforeAndAfter
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
+import org.scalatest._
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 
-class GridLABDSuite extends FunSuite with BeforeAndAfter
+class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "data/"
-    val FILENAME1 = "DemoData.rdf"
-    val FILENAME2 = "parallel_cable_sample.rdf"
-    val FILENAME3 = "three_winding_transformer.rdf"
+    val FILENAME1 = "DemoData"
+    val FILENAME2 = "parallel_cable_sample"
+    val FILENAME3 = "three_winding_transformer"
 
     type FixtureParam = SparkSession
 
@@ -99,21 +93,19 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME1.replace (".rdf", ".zip"), FILE_DEPOT)
-        // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME2).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME2.replace (".rdf", ".zip"), FILE_DEPOT)
-        // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME3).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME3.replace (".rdf", ".zip"), FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME3.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME3.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (FILE_DEPOT + FILENAME1).delete
-        new File (FILE_DEPOT + FILENAME2).delete
-        new File (FILE_DEPOT + FILENAME3).delete
+        new File (s"$FILE_DEPOT$FILENAME1.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME2.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME3.rdf").delete
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -128,6 +120,7 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
+        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
@@ -135,7 +128,6 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
         configuration.registerKryoClasses (GridLABD.classes)
         // register Einspeiseleistung classes
         configuration.registerKryoClasses (Einspeiseleistung.classes)
-        configuration.set ("spark.ui.showConsoleProgress", "false")
 
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
         session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
@@ -158,11 +150,10 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
 
             val begin = System.nanoTime ()
 
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/parallel_cable_sample_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -172,13 +163,13 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 simulation = -1,
                 reference = -1,
                 delta = 1e-6,
-                precalc_factor = 2.5,
                 cosphi = 1.0,
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
-                files = List (filename)
+                files = List (filename),
+                precalc_factor = 2.5
             )
             val eins = Einspeiseleistung (session, options)
             val count = eins.run ()
@@ -214,11 +205,10 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
 
             val begin = System.nanoTime ()
 
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/parallel_cable_sample_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -274,11 +264,10 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
 
             val begin = System.nanoTime ()
 
-            val filename = FILE_DEPOT + FILENAME2
+            val filename = s"$FILE_DEPOT$FILENAME2.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/parallel_cable_sample_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -288,13 +277,13 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 simulation = -1,
                 reference = -1,
                 delta = 1e-6,
-                precalc_factor = 2.5,
                 cosphi = 1.0,
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
-                files = List (filename)
+                files = List (filename),
+                precalc_factor = 2.5
             )
             val eins = Einspeiseleistung (session, options)
             val count = eins.run ()
@@ -334,11 +323,10 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
 
             val begin = System.nanoTime ()
 
-            val filename = FILE_DEPOT + FILENAME3
+            val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                // cim_reader_options = mutable.HashMap[String, String] ("ch.ninecode.cim.cache" → "cache/special_transformer_cache"),
                 three = false,
                 precalculation = false,
                 trafos = "",
@@ -348,13 +336,13 @@ class GridLABDSuite extends FunSuite with BeforeAndAfter
                 simulation = -1,
                 reference = -1,
                 delta = 1e-6,
-                precalc_factor = 2.5,
                 cosphi = 1.0,
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
-                files = List (filename)
+                files = List (filename),
+                precalc_factor = 2.5
             )
             val eins = Einspeiseleistung (session, options)
             val count = eins.run ()

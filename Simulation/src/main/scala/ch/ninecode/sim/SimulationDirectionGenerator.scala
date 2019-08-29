@@ -56,12 +56,6 @@ case class SimulationDirectionGenerator
         emit_load (node.asInstanceOf [SimulationNode])
     }
 
-    override def emit_transformer (transformer: TransformerEdge): String =
-    {
-        val name = transformer.transformer.transformer_name
-        super.emit_transformer (transformer)
-    }
-
     /**
      * Emit configurations for all groups of edges that are ACLineSegments.
      *

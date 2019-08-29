@@ -5,7 +5,7 @@ import java.net.URLDecoder
 import java.net.URI
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
+import scala.collection._
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 import scopt.OptionParser
@@ -329,7 +329,7 @@ object Main
 
                     val options = EinspeiseleistungOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                        cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         precalculation = arguments.precalculation,
                         trafos = arguments.trafos,

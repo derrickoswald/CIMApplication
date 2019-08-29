@@ -7,7 +7,6 @@ import ch.ninecode.cim.CHIM
 
 class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 {
-
     def parseSolarGen (xml: String): SolarGeneratingUnit =
     {
         val parser = new CHIM (xml)
@@ -15,44 +14,41 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         result._1 ("ID123").asInstanceOf [SolarGeneratingUnit]
     }
 
-    def getConstantPower (solargen: SolarGeneratingUnit, one_phase: Boolean = true): List[String] =
+    def getConstantPower (solargen: SolarGeneratingUnit, one_phase: Boolean = true): List[(String, String)] =
     {
-        val node_mock = MaxPowerFeedingNodeEEA ("ID123", 400, "", "", "", "", 0.0, null, "", "")
+        val node_mock = MaxPowerFeedingNodeEEA ("ID123", 400.0, "", "", "", "", 0.0, null, "", "")
         val glm_gen = new EinspeiseleistungGLMGenerator (one_phase, null, null)
         val load = glm_gen.emit_pv (List (solargen), node_mock)
-        val regex_constant_power = "(?<=constant_power_[ABC] )(.*)(?=;)".r
-        regex_constant_power.findAllIn (load).toList
+        val regex_constant_power = "(constant_power_[ABC])\\s+(.*)(?=;)".r
+        val g: Seq[scala.util.matching.Regex.Match] = regex_constant_power.findAllMatchIn (load).toList
+        g.map (m => (m.group (1), m.group (2))).toList
     }
 
     test ("emit pv without cosphi, 1 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>10.0</cim:GeneratingUnit.ratedNetMaxP>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>10.0</cim:GeneratingUnit.ratedNetMaxP>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
         assert (solargen.sup.ratedNetMaxP == 10.0, "ratedNetMaxP should be 10.0")
 
         val power_list = getConstantPower (solargen)
-
         assert (power_list.length == 1, "1 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-10000.0+0.0j", "active power only")
-        })
+        assert (power_list.head._1 == "constant_power_A" && power_list.head._2 == "-10000.0+0.0j", "active power only")
     }
 
     test ("emit pv with cosphi 1, 1 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>11.0</cim:GeneratingUnit.ratedNetMaxP>
-              |		<cim:GeneratingUnit.normalPF>1.000000000</cim:GeneratingUnit.normalPF>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>11.0</cim:GeneratingUnit.ratedNetMaxP>
+            |		<cim:GeneratingUnit.normalPF>1.000000000</cim:GeneratingUnit.normalPF>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -61,20 +57,17 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 
         val power_list = getConstantPower (solargen)
         assert (power_list.length == 1, "1 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-11000.0+0.0j", "active power only")
-        })
+        assert (power_list.head._1 == "constant_power_A" && power_list.head._2 == "-11000.0+0.0j", "active power only")
     }
 
     test ("emit pv with cosphi 0.8, 1 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
-              |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
+            |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -83,20 +76,17 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 
         val power_list = getConstantPower (solargen)
         assert (power_list.length == 1, "1 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-4000.0+3000.0j", "active power only")
-        })
+        assert (power_list.head._1 == "constant_power_A" && power_list.head._2 == "-4000.0+3000.0j", "active and reactive power")
     }
 
     test ("emit pv with cosphi -0.8, 1 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
-              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
+            |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -105,20 +95,17 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 
         val power_list = getConstantPower (solargen)
         assert (power_list.length == 1, "1 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-4000.0-3000.0j", "active power only")
-        })
+        assert (power_list.head._1 == "constant_power_A" && power_list.head._2 == "-4000.0-3000.0j", "active and reactive power")
     }
 
     test ("emit pv with cosphi 0.8, 3 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
-              |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
+            |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -127,20 +114,25 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 
         val power_list = getConstantPower (solargen, false)
         assert (power_list.length == 3, "3 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-4000.0+3000.0j", "active power only")
-        })
+        power_list.foreach (
+            p =>
+                p._1 match
+                {
+                    case "constant_power_A" => assert (p._2 ==          "-4000.0-3000.0j", "active and reactive power")
+                    case "constant_power_B" => assert (p._2 == "-598.076211+4964.101615j", "active and reactive power")
+                    case "constant_power_C" => assert (p._2 == "4598.076211-1964.101615j", "active and reactive power")
+                }
+        )
     }
 
     test ("emit pv with cosphi -0.8, 3 phase")
     {
         val xml =
             """
-              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-              |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
-              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
-              |	</cim:SolarGeneratingUnit>
+            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+            |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
+            |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+            |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -149,9 +141,14 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
 
         val power_list = getConstantPower (solargen, false)
         assert (power_list.length == 3, "3 phase")
-        power_list.foreach (p =>
-        {
-            assert (p == "-4000.0-3000.0j", "active power only")
-        })
+        power_list.foreach (
+            p =>
+                p._1 match
+                {
+                    case "constant_power_A" => assert (p._2 ==          "-4000.0+3000.0j", "active and reactive power")
+                    case "constant_power_B" => assert (p._2 == "4598.076211+1964.101615j", "active and reactive power")
+                    case "constant_power_C" => assert (p._2 == "-598.076211-4964.101615j", "active and reactive power")
+                }
+        )
     }
 }

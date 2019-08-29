@@ -1,6 +1,6 @@
 package ch.ninecode.mfi
 
-import scala.collection.mutable.HashMap
+import scala.collection._
 
 /**
  * Options for the Einspeiseleistung calculation.
@@ -28,7 +28,7 @@ import scala.collection.mutable.HashMap
 case class EinspeiseleistungOptions
 (
     verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = new HashMap[String, String](),
+    cim_reader_options: Iterable[(String, String)] = new immutable.HashMap[String, String](),
     three: Boolean = false,
     precalculation: Boolean = false,
     trafos: String = "",

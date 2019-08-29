@@ -188,6 +188,16 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             else
                 1.0
 
+            def PVPower (maxp: Double, angle: Double): String =
+            {
+                val angle_radians = angle * Math.PI / 180.0
+                val phi = math.signum (cosPhi) * acos (math.abs (cosPhi))
+                val cos = math.cos (phi + angle_radians)
+                val sin = Math.sin (phi + angle_radians)
+                val sum = cos * cos + sin * sin
+                new Complex (-maxp * cos, -maxp * sin).asString (6)
+            }
+
             // https://en.wikipedia.org/wiki/Power_factor
             // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
             // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
@@ -195,39 +205,31 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             val maxP = new Complex (-ratedNetMaxP * math.abs (cosPhi), ratedNetMaxP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
             if (ratedNetMaxP > 0)
             {
+                val phase = if (one_phase) "AN" else "ABCN"
+                val power = if (one_phase)
+                    s"""            constant_power_A ${maxP.asString (6)};""".stripMargin
+                else
+                {
+                    val maxp = ratedNetMaxP / 3.0
+                    val maxP3R = PVPower (maxp,   0.0)
+                    val maxP3S = PVPower (maxp, 240.0)
+                    val maxP3T = PVPower (maxp, 120.0)
+                    s"""            constant_power_A $maxP3R;
+                       |            constant_power_B $maxP3S;
+                       |            constant_power_C $maxP3T;""".stripMargin
+                }
                 load +=
-                    "\n" +
-                        "        object load\n" +
-                        "        {\n" +
-                        "            name \"" + parent + "_pv_" + index + "\";\n" +
-                        "            parent \"" + parent + "\";\n" +
-                        "            phases " + (if (one_phase) "AN" else "ABCN") + ";\n" +
-                        (if (one_phase)
-                            "            constant_power_A %s;\n".format (maxP.asString (6))
-                        else
-                        {
-                            def PVPower (maxp: Double, angle: Double): String =
-                            {
-                                var angle_radians = angle * Math.PI / 180.0
-                                val phi = acos (math.abs (cosPhi))
-                                val cosphi = math.cos (phi + angle_radians)
-                                val sinphi = Math.sin ((math.signum (cosPhi) * phi) + angle_radians)
-                                new Complex (-maxp * cosphi, -maxp * sinphi).asString (6)
-                            }
-
-                            val maxp = ratedNetMaxP /3.0
-                            val maxP3R = PVPower (maxp, 0.0)
-                            val maxP3S = PVPower (maxp, 240.0)
-                            val maxP3T  = PVPower (maxp, 120.0)
-
-                            """            constant_power_A %s;
-                            |            constant_power_B %s;
-                            |            constant_power_C %s;
-                            |""".stripMargin.format (maxP3R, maxP3S, maxP3T)
-                        }) +
-                        "            nominal_voltage " + voltage + "V;\n" +
-                        "            load_class R;\n" +
-                        "        }\n"
+                    s"""
+                    |        object load
+                    |        {
+                    |            name "${parent}_pv_$index";
+                    |            parent "$parent";
+                    |            phases $phase;
+                    |            nominal_voltage ${voltage}V;
+                    |            load_class R;
+                    |$power
+                    |        }
+                    |""".stripMargin
                 index += 1
             }
         }
