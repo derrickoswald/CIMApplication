@@ -1,6 +1,7 @@
 package ch.ninecode.mfi
 
 import java.io.BufferedOutputStream
+import java.io.Closeable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -24,6 +25,18 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
     val FILENAME3 = "three_winding_transformer"
 
     type FixtureParam = SparkSession
+
+    def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
+    {
+        try
+        {
+            block (resource)
+        }
+        finally
+        {
+            resource.close ()
+        }
+    }
 
     /**
      * This utility extracts files and directories of a standard zip file to
@@ -49,22 +62,24 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             val dir = new File (directory)
             if (!dir.exists)
                 dir.mkdir
-            val zip = new ZipInputStream (new FileInputStream (file))
-            var entry = zip.getNextEntry
-            // iterates over entries in the zip file
-            while (null != entry)
+            using (new ZipInputStream (new FileInputStream (file)))
             {
-                val path = directory + entry.getName
-                if (!entry.isDirectory)
-                // if the entry is a file, extracts it
-                    extractFile (zip, path)
-                else
-                // if the entry is a directory, make the directory
-                    new File (path).mkdir
-                zip.closeEntry ()
-                entry = zip.getNextEntry
+                zip =>
+                    var entry = zip.getNextEntry
+                    // iterates over entries in the zip file
+                    while (null != entry)
+                    {
+                        val path = directory + entry.getName
+                        if (!entry.isDirectory)
+                            // if the entry is a file, extract it
+                            extractFile (zip, path)
+                        else
+                            // if the entry is a directory, make the directory
+                            new File (path).mkdir
+                        zip.closeEntry ()
+                        entry = zip.getNextEntry
+                    }
             }
-            zip.close ()
         }
 
         /**
@@ -77,16 +92,18 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
         @throws[IOException]
         private def extractFile (zip: ZipInputStream, path: String): Unit =
         {
-            val bos = new BufferedOutputStream (new FileOutputStream (path))
             val bytesIn = new Array[Byte](4096)
-            var read = -1
-            while (
+            using (new BufferedOutputStream (new FileOutputStream (path)))
             {
-                read = zip.read (bytesIn)
-                read != -1
-            })
-                bos.write (bytesIn, 0, read)
-            bos.close ()
+                bos =>
+                    var read = -1
+                    while (
+                    {
+                        read = zip.read (bytesIn)
+                        read != -1
+                    })
+                    bos.write (bytesIn, 0, read)
+            }
         }
     }
 
@@ -199,7 +216,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             assert (records == 38, "number of records")
     }
 
-    test ("test cable_impedance_limit paramter")
+    test ("Test cable_impedance_limit parameter")
     {
         session: SparkSession ⇒
 
@@ -387,5 +404,115 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             resultset.close ()
             statement.close ()
             connection.close ()
+    }
+
+    def simulation: String =
+    {
+        Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
+        using (DriverManager.getConnection ("jdbc:sqlite:simulation/results.db"))
+        {
+            connection =>
+                using (connection.createStatement ())
+                {
+                    statement =>
+                        using (statement.executeQuery ("select max(simulation) from results"))
+                        {
+                            resultset =>
+                                resultset.next
+                                resultset.getString (1)
+                        }
+                }
+        }
+    }
+
+    def within5percent (max: Double, expected: Double): Boolean = math.abs ((max / expected) - 1) <= 0.05
+
+    /**
+     * Test for equality of three phase and single phase feed in values.
+     */
+    test ("Three phase")
+    {
+        session: SparkSession ⇒
+
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
+
+            val options_one_phase = EinspeiseleistungOptions (
+                verbose = true,
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
+                workdir = "simulation/",
+                files = List (filename),
+                precalc_factor = 2.5
+            )
+            val eins = Einspeiseleistung (session, options_one_phase)
+            eins.run ()
+            val one_phase = simulation
+
+            val options_three_phase = EinspeiseleistungOptions (
+                verbose = true,
+                three = true,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = true,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
+                workdir = "simulation/",
+                files = List (filename),
+                precalc_factor = 2.5
+            )
+            val drei = Einspeiseleistung (session, options_three_phase)
+            drei.run ()
+            val three_phase = simulation
+
+            Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
+            using (DriverManager.getConnection ("jdbc:sqlite:simulation/results.db"))
+            {
+                connection =>
+                    using (connection.createStatement ())
+                    {
+                        statement =>
+                            using (statement.executeQuery (s"select trafo, house, maximum, reason, details from results where simulation='$one_phase'"))
+                            {
+                                resultset =>
+                                    while (resultset.next)
+                                    {
+                                        val trafo = resultset.getString (1)
+                                        val house = resultset.getString (2)
+                                        val maximum = resultset.getDouble (3)
+                                        val reason = resultset.getString (4)
+                                        val details = resultset.getString (5)
+                                        using (statement.executeQuery (s"select maximum, reason, details from results where simulation='$three_phase' and trafo='$trafo' and house='$house'"))
+                                        {
+                                            rs =>
+                                                assert (rs.next, s"record for trafo '$trafo' house '$house' not found")
+                                                val max = resultset.getDouble (1)
+                                                val rea = resultset.getString (2)
+                                                val det = resultset.getString (3)
+                                                assert (within5percent (max, maximum), s"maximum $trafo.$house")
+                                                assert (rea == reason, s"reason $trafo.$house")
+                                                assert (det == details, s"details $trafo.$house")
+                                        }
+                                    }
+                            }
+                    }
+            }
     }
 }

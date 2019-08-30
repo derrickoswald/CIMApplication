@@ -6,10 +6,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.collection.mutable.HashMap
+import scala.collection._
 import scala.io.Source
-import scala.math.acos
-import scala.math.sin
 
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
@@ -28,7 +26,6 @@ import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
-import ch.ninecode.gl.TransformerData
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
 
@@ -169,7 +166,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             null
         else
         {
-            val map = new HashMap[String, List[String]]()
+            val map = new mutable.HashMap[String, List[String]]()
             for (pair ← feeders)
             {
                 val l = map.getOrElse (pair._1, List ())
@@ -317,10 +314,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
         val angle_radians = angle * Math.PI / 180.0
-        val phi = acos (math.abs (options.cosphi))
-        val cosphi = math.cos (phi + angle_radians)
-        val sinphi = Math.sin ((math.signum (options.cosphi) * phi) + angle_radians)
-        val unitvector = new Complex (cosphi, sinphi)
+        val phi = math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
+        val cos = math.cos (phi + angle_radians)
+        val sin = math.sin (phi + angle_radians)
+        val unitvector = new Complex (cos, sin)
 
         def addrow (time: Calendar, power: Double): Unit =
         {
@@ -357,9 +354,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val r_phase = 0.0
             val s_phase = 240.0
             val t_phase = 120.0
-            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_R.csv", ramp_up (experiment, r_phase))
-            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_S.csv", ramp_up (experiment, s_phase))
-            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + "_T.csv", ramp_up (experiment, t_phase))
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_R.csv", ramp_up (experiment, r_phase))
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_S.csv", ramp_up (experiment, s_phase))
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_T.csv", ramp_up (experiment, t_phase))
         }
         else
             gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", ramp_up (experiment, 0.0))
@@ -476,7 +473,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val trafos = if ("" != options.trafos)
         {
             // do all transformers listed in the file
-            Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+            val file = Source.fromFile (options.trafos, "UTF-8")
+            val lines = file.getLines ().filter (_ != "").toArray
+            file.close ()
+            lines
         }
         else if (-1 != options.simulation)
         {
@@ -495,7 +495,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         // read the file
-        val reader_options = new HashMap[String, String]()
+        val reader_options = new mutable.HashMap[String, String]()
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.do_topo", "true")

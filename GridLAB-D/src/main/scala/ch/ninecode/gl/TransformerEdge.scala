@@ -105,29 +105,24 @@ case class TransformerEdge
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
         val config = configurationName
         val (total_impedance, default) = transformer.total_impedance_per_unit
-        val comment =  transformer.transformers.map (trafo ⇒
-            "            // %s".format (trafo.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
-        """%s
-          |        object transformer_configuration
-          |        {%s
-          |            name "%s";
-          |            connect_type %s;
-          |            install_type PADMOUNT;
-          |            power_rating %s;
-          |            primary_voltage %s;
-          |            secondary_voltage %s;
-          |            resistance %s;
-          |            reactance %s;
-          |        };
-          |""".stripMargin.format (
-            if (default) "\n#warning WARNING: using default impedance for " + config else "",
-            comment,
-            config,
-            "WYE_WYE", // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
-            transformer.power_rating / 1000.0,
-            transformer.v0,
-            transformer.v1,
-            total_impedance.re,
-            total_impedance.im)
+        val warn = if (default) s"\n#warning WARNING: using default impedance for $config" else ""
+        val comment =  transformer.transformers.map (trafo => s"            // ${trafo.transformer.id}").mkString ("\n")
+        // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
+        val connect = if (generator.isSinglePhase) "WYE_WYE" else "DELTA_GWYE"
+
+        s"""$warn
+        |        object transformer_configuration
+        |        {
+        |$comment
+        |            name "$config";
+        |            connect_type $connect;
+        |            install_type PADMOUNT;
+        |            power_rating ${transformer.power_rating / 1000.0};
+        |            primary_voltage ${transformer.v0};
+        |            secondary_voltage ${transformer.v1};
+        |            resistance ${total_impedance.re};
+        |            reactance ${total_impedance.im};
+        |        };
+        |""".stripMargin
     }
 }

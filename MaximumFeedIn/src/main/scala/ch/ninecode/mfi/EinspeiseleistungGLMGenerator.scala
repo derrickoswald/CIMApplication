@@ -164,7 +164,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 "        {\n" +
                 "            name \"" + experiment.house + "_voltage_recorder\";\n" +
                 "            parent \"" + node.id + "\";\n" +
-                "            property " + (if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag") + ";\n" +
+                "            property " + (if (one_phase) "voltage_A.real,voltage_A.imag" else "voltage_AB.real,voltage_AB.imag,voltage_BC.real,voltage_BC.imag,voltage_CA.real,voltage_CA.imag") + ";\n" +
                 "            interval 5;\n" +
                 "            file \"output_data/" + node.id + "_voltage.csv\";\n" +
                 "        };\n"
@@ -194,7 +194,6 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 val phi = math.signum (cosPhi) * acos (math.abs (cosPhi))
                 val cos = math.cos (phi + angle_radians)
                 val sin = Math.sin (phi + angle_radians)
-                val sum = cos * cos + sin * sin
                 new Complex (-maxp * cos, -maxp * sin).asString (6)
             }
 

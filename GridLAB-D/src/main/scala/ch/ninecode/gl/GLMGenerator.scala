@@ -304,27 +304,29 @@ class GLMGenerator
     {
         val name = node.id
         val voltage = node.nominal_voltage
+        val phase = if (one_phase) "AN" else "ABCN"
         val swing =
             if (one_phase)
-                """            voltage_A %s;
-                  |""".stripMargin.format (voltage)
+                s"            voltage_A $voltage;\n"
             else
-            // the DELTA-GWYE connection somehow introduces a 30° rotation in the phases, so we compensate here:
-                """            voltage_A %s+30.0d;
-                  |            voltage_B %s-90.0d;
-                  |            voltage_C %s+150.0d;
-                  |""".stripMargin.format (voltage, voltage, voltage)
+            {
+                val phase_voltage = voltage / math.sqrt (3.0)
+             s"""            voltage_A $phase_voltage+0.0d;
+                |            voltage_B $phase_voltage-120.0d;
+                |            voltage_C $phase_voltage+120.0d;
+                |""".stripMargin
+            }
 
-        """
-          |        object meter
-          |        {
-          |            name "%s";
-          |            phases %s;
-          |            bustype SWING;
-          |            nominal_voltage %sV;
-          |%s
-          |        };
-          |""".stripMargin.format (name, if (one_phase) "AN" else "ABCN", voltage, swing)
+        s"""
+        |        object meter
+        |        {
+        |            name "$name";
+        |            phases $phase;
+        |            bustype SWING;
+        |            nominal_voltage ${voltage}V;
+        |$swing
+        |        };
+        |""".stripMargin
 
     }
 
