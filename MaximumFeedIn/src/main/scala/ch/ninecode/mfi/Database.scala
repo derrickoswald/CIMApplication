@@ -140,10 +140,10 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar)(records: Array[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar, workdir: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get ("simulation/dummy")
+        val file = Paths.get (s"${workdir}dummy")
         Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
@@ -153,7 +153,7 @@ object Database
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
             connection.setAutoCommit (false)
 
             // create schema
@@ -232,10 +232,10 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar, workdir: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get ("simulation/dummy")
+        val file = Paths.get (s"${workdir}dummy")
         Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
@@ -245,7 +245,7 @@ object Database
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
             connection.setAutoCommit (false)
 
             // create schema
@@ -317,12 +317,12 @@ object Database
         }
     }
 
-    def fetchTransformersWithEEA (simulation: Int): Array[String] =
+    def fetchTransformersWithEEA (simulation: Int, workdir: String): Array[String] =
     {
         var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get ("simulation/results.db")
+        val file = Paths.get (s"${workdir}results.db")
         if (!Files.exists (file))
             log.error ("database file " + file + " does not exist")
         else
@@ -334,7 +334,7 @@ object Database
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+                connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
 
                 val statement = connection.prepareStatement ("select distinct(trafo) from results where eea > 0 and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
                 statement.setInt (1, simulation)
@@ -374,12 +374,12 @@ object Database
      * @param delta      The difference in the amount of power that will trigger a recalculation.
      * @return The list of mRID for EnergyConsumer objects needing to be recalculated.
      */
-    def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double): Array[String] =
+    def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double, workdir: String): Array[String] =
     {
         var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get ("simulation/results.db")
+        val file = Paths.get (s"${workdir}results.db")
         if (!Files.exists (file))
             log.error ("database file " + file + " does not exist")
         else
@@ -391,7 +391,7 @@ object Database
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+                connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
 
                 val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
                 statement.setInt (1, simulation)

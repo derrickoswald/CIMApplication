@@ -406,10 +406,10 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             connection.close ()
     }
 
-    def simulation: String =
+    def simulation (workdir: String = "simulation/"): String =
     {
         Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
-        using (DriverManager.getConnection ("jdbc:sqlite:simulation/results.db"))
+        using (DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db"))
         {
             connection =>
                 using (connection.createStatement ())
@@ -424,8 +424,6 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 }
         }
     }
-
-    def within5percent (max: Double, expected: Double): Boolean = math.abs ((max / expected) - 1) <= 0.05
 
     /**
      * Test for equality of three phase and single phase feed in values.
@@ -451,13 +449,13 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "simulation/",
+                workdir = "simulation_three_phase/",
                 files = List (filename),
                 precalc_factor = 2.5
             )
             val eins = Einspeiseleistung (session, options_one_phase)
             eins.run ()
-            val one_phase = simulation
+            val one_phase = simulation ("simulation_three_phase/")
 
             val options_three_phase = EinspeiseleistungOptions (
                 verbose = true,
@@ -474,16 +472,16 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "simulation/",
+                workdir = "simulation_three_phase/",
                 files = List (filename),
                 precalc_factor = 2.5
             )
             val drei = Einspeiseleistung (session, options_three_phase)
             drei.run ()
-            val three_phase = simulation
+            val three_phase = simulation ("simulation_three_phase/")
 
             Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
-            using (DriverManager.getConnection ("jdbc:sqlite:simulation/results.db"))
+            using (DriverManager.getConnection ("jdbc:sqlite:simulation_three_phase/results.db"))
             {
                 connection =>
                     using (connection.createStatement ())
@@ -506,7 +504,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                                                 val max = resultset.getDouble (1)
                                                 val rea = resultset.getString (2)
                                                 val det = resultset.getString (3)
-                                                assert (within5percent (max, maximum), s"maximum $trafo.$house")
+                                                assert (max == maximum, s"maximum $trafo.$house")
                                                 assert (rea == reason, s"reason $trafo.$house")
                                                 assert (det == details, s"details $trafo.$house")
                                         }

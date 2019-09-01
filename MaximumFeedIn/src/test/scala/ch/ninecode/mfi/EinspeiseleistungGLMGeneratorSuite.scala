@@ -118,9 +118,9 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
             p =>
                 p._1 match
                 {
-                    case "constant_power_A" => assert (p._2 ==          "-4000.0-3000.0j", "active and reactive power")
-                    case "constant_power_B" => assert (p._2 == "-598.076211+4964.101615j", "active and reactive power")
-                    case "constant_power_C" => assert (p._2 == "4598.076211-1964.101615j", "active and reactive power")
+                    case "constant_power_A" => assert (p._2 == "-4000.0-3000.0j", "active and reactive power")
+                    case "constant_power_B" => assert (p._2 == "-4000.0-3000.0j", "active and reactive power")
+                    case "constant_power_C" => assert (p._2 == "-4000.0-3000.0j", "active and reactive power")
                 }
         )
     }
@@ -145,9 +145,9 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
             p =>
                 p._1 match
                 {
-                    case "constant_power_A" => assert (p._2 ==          "-4000.0+3000.0j", "active and reactive power")
-                    case "constant_power_B" => assert (p._2 == "4598.076211+1964.101615j", "active and reactive power")
-                    case "constant_power_C" => assert (p._2 == "-598.076211-4964.101615j", "active and reactive power")
+                    case "constant_power_A" => assert (p._2 == "-4000.0+3000.0j", "active and reactive power")
+                    case "constant_power_B" => assert (p._2 == "-4000.0+3000.0j", "active and reactive power")
+                    case "constant_power_C" => assert (p._2 == "-4000.0+3000.0j", "active and reactive power")
                 }
         )
     }

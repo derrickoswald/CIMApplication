@@ -306,18 +306,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         ret
     }
 
-    def ramp_up (exp: Experiment, angle: Double): Array[Byte] =
+    def ramp_up (exp: Experiment): Array[Byte] =
     {
         val ret = new StringBuilder ()
         // https://en.wikipedia.org/wiki/Power_factor
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-        val angle_radians = angle * Math.PI / 180.0
         val phi = math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
-        val cos = math.cos (phi + angle_radians)
-        val sin = math.sin (phi + angle_radians)
-        val unitvector = new Complex (cos, sin)
+        val unitvector = new Complex (math.cos (phi), math.sin (phi))
 
         def addrow (time: Calendar, power: Double): Unit =
         {
@@ -351,15 +348,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     {
         if (options.three)
         {
-            val r_phase = 0.0
-            val s_phase = 240.0
-            val t_phase = 120.0
-            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_R.csv", ramp_up (experiment, r_phase))
-            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_S.csv", ramp_up (experiment, s_phase))
-            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_T.csv", ramp_up (experiment, t_phase))
+            val bytes = ramp_up (experiment)
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_R.csv", bytes)
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_S.csv", bytes)
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}_T.csv", bytes)
         }
         else
-            gridlabd.writeInputFile (experiment.trafo, "input_data/" + experiment.house + ".csv", ramp_up (experiment, 0.0))
+            gridlabd.writeInputFile (experiment.trafo, s"input_data/${experiment.house}.csv", ramp_up (experiment))
         1
     }
 
@@ -442,7 +437,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("solve and analyse: " + (analyse - export2) / 1e9 + " seconds " + ret.count + " results")
 
             val b4_db = System.nanoTime ()
-            Database.store ("Einspeiseleistung", Calendar.getInstance ())(ret.collect)
+            Database.store ("Einspeiseleistung", Calendar.getInstance (), options.workdir)(ret.collect)
             val dbsave = System.nanoTime ()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
@@ -481,7 +476,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else if (-1 != options.simulation)
         {
             // do all transformers with EEA which are not yet processed
-            Database.fetchTransformersWithEEA (options.simulation)
+            Database.fetchTransformersWithEEA (options.simulation, options.workdir)
         }
         else
         {
@@ -567,7 +562,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has
         else if (-1 != options.reference)
         {
-            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta)
+            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta, options.workdir)
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else

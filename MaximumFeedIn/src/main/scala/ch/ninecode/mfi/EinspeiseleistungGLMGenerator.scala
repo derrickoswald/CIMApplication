@@ -188,13 +188,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             else
                 1.0
 
-            def PVPower (maxp: Double, angle: Double): String =
+            def PVPower (maxp: Double): String =
             {
-                val angle_radians = angle * Math.PI / 180.0
                 val phi = math.signum (cosPhi) * acos (math.abs (cosPhi))
-                val cos = math.cos (phi + angle_radians)
-                val sin = Math.sin (phi + angle_radians)
-                new Complex (-maxp * cos, -maxp * sin).asString (6)
+                new Complex (-maxp * math.cos (phi), -maxp * math.sin (phi)).asString (6)
             }
 
             // https://en.wikipedia.org/wiki/Power_factor
@@ -209,13 +206,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                     s"""            constant_power_A ${maxP.asString (6)};""".stripMargin
                 else
                 {
-                    val maxp = ratedNetMaxP / 3.0
-                    val maxP3R = PVPower (maxp,   0.0)
-                    val maxP3S = PVPower (maxp, 240.0)
-                    val maxP3T = PVPower (maxp, 120.0)
-                    s"""            constant_power_A $maxP3R;
-                       |            constant_power_B $maxP3S;
-                       |            constant_power_C $maxP3T;""".stripMargin
+                    val maxP3 = PVPower (ratedNetMaxP / 3.0)
+                    s"""            constant_power_A $maxP3;
+                       |            constant_power_B $maxP3;
+                       |            constant_power_C $maxP3;""".stripMargin
                 }
                 load +=
                     s"""
