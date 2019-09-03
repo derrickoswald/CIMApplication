@@ -17,12 +17,11 @@ to access Spark Resilient Distributed Dataset (RDD) for each CIM class.
 
 It thus provides a proof of principle for End-To-End access from a web browser to bespoke big-data electric distribution applications running on Hadoop.
 
-# Video
+# Presentation
 
-An overview of the current release 2.3.4:
+An overview of the current release 2.11-2.4.3-2.5.0:
 
-[![CIMApplication Overview](http://img.youtube.com/vi/uWfDuNiRp8M/0.jpg)](http://www.youtube.com/watch?v=uWfDuNiRp8M "CIMApplication Movie")
-
+<a href="https://derrickoswald.gitlab.io/cimapplication_presentation">N7 Grid Simulation using Smart Meter Data</a>
 
 # Provisioning a Cluster
 
