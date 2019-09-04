@@ -37,10 +37,12 @@ import ch.ninecode.gl.ThreePhaseComplexDataElement
  * @param cassandra a Cassandra seed node name
  * @param keyspace  the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
  * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
+ * @param three_phase if <code>true</code> simulate in three phase
+ * @param fake_three_phase if <code>true</code> convert single phase readings on phase A into three phase
  * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
  * @param verbose   when <code>true</code> set the log level for this class as INFO
  */
-case class SimulationRunner (cassandra: String, keyspace: String, workdir: String, keep: Boolean = false, verbose: Boolean = false) extends Serializable
+case class SimulationRunner (cassandra: String, keyspace: String, workdir: String, three_phase: Boolean, fake_three_phase: Boolean, keep: Boolean = false, verbose: Boolean = false) extends Serializable
 {
     if (verbose)
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
@@ -78,7 +80,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
         log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
-        val generator = SimulationGLMGenerator (one_phase = true, date_format = glm_date_format, trafo)
+        val generator = SimulationGLMGenerator (one_phase = !three_phase, date_format = glm_date_format, trafo)
         val text = generator.make_glm ()
         val file = new File (workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
         file.getParentFile.mkdirs
@@ -90,9 +92,12 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     }
 
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-    def glm_format (datum: SimulationPlayerData): String =
+    def glm_format (index: Int) (datum: SimulationPlayerData): String =
     {
-        glm_date_format.format (datum.time) + "," + datum.real + "," + datum.imag
+        val time = glm_date_format.format (datum.time)
+        val (r, i) = (datum.readings(index), datum.readings(index + 1))
+        val (real, imag) = if (fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
+        s"$time,$real,$imag"
     }
 
     def write_player_csv (name: String, text: String): Unit =
@@ -107,12 +112,36 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
             }
     }
 
+    // relies on the player file being of the form: "input_data/" + player.name + ".csv"
+    def phase_file (file: String, suffix: String): String =
+    {
+        val base = file.substring (0, file.length - 4)
+        s"$base$suffix.csv"
+    }
+
     def create_player_csv (file_prefix: String)(arg: (SimulationPlayer, Iterable[SimulationPlayerData])): Unit =
     {
         val player = arg._1
-        val data = if (arg._2.isEmpty) Array (SimulationPlayerData (null, player.mrid, player.`type`, 0L, 0.0, 0.0)) else arg._2.toArray.sortBy (_.time)
-        val text = data.map (glm_format).mkString ("\n")
-        write_player_csv (file_prefix + player.file, text)
+        val data = if (arg._2.isEmpty) Array (SimulationPlayerData (null, player.mrid, player.`type`, 0L, Array (0.0, 0.0, 0.0, 0.0, 0.0, 0.0))) else arg._2.toArray.sortBy (_.time)
+        val file = file_prefix + player.file
+        if (three_phase)
+        {
+            if (fake_three_phase)
+            {
+                val text = data.map (glm_format (0)).mkString ("\n")
+                write_player_csv (phase_file (file, "_R"), text)
+                write_player_csv (phase_file (file, "_S"), text)
+                write_player_csv (phase_file (file, "_T"), text)
+            }
+            else
+            {
+                write_player_csv (phase_file (file, "_R"), data.map (glm_format (0)).mkString ("\n"))
+                write_player_csv (phase_file (file, "_S"), data.map (glm_format (2)).mkString ("\n"))
+                write_player_csv (phase_file (file, "_T"), data.map (glm_format (4)).mkString ("\n"))
+            }
+        }
+        else
+            write_player_csv (file, data.map (glm_format (0)).mkString ("\n"))
     }
 
     def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, String) =
@@ -150,7 +179,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
     }
 
-    def read_recorder_csv (workdir: String, file: String, element: String, one_phase: Boolean, units: String, multiplier: Double): Array[ThreePhaseComplexDataElement] =
+    def read_recorder_csv (workdir: String, file: String, element: String, units: String, multiplier: Double): Array[ThreePhaseComplexDataElement] =
     {
         val name = new File (workdir + file)
         if (!name.exists)
@@ -173,16 +202,16 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                 line ⇒
                 {
                     val fields = line.split (",")
-                    if (one_phase)
-                        if (fields.length == 2)
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
-                        else
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
-                    else
+                    if (three_phase)
                         if (fields.length == 4)
                             ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), multiplier * Complex.fromString (fields (2)), multiplier * Complex.fromString (fields (3)), units)
                         else
                             ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), multiplier * Complex (fields (3).toDouble, fields (4).toDouble), multiplier * Complex (fields (5).toDouble, fields (6).toDouble), units)
+                    else
+                        if (fields.length == 2)
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
+                        else
+                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
                 }
             ).toArray
             handle.close
@@ -256,7 +285,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                         {
                             case Some (baseline: SimulationAggregate) ⇒
                                 val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble
-                                val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, one_phase = true, recorder.unit, multiplier).map (
+                                val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map (
                                     entry ⇒
                                         SimulationResult
                                         (

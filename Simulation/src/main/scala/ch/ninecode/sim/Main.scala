@@ -105,6 +105,14 @@ object Main
             }).
             text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
 
+        opt [Unit]("three").
+            action ((_, c) ⇒ c.copy (three_phase = true)).
+            text ("perform simulation using three phase load-flow [%s]".format (default.three_phase))
+
+        opt [Unit]("fake").
+            action ((_, c) ⇒ c.copy (fake_three_phase = true)).
+            text ("convert single phase measurements into three phase [%s]".format (default.fake_three_phase))
+
         opt [Unit]("keep").
             action ((_, c) ⇒ c.copy (keep = true)).
             text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))

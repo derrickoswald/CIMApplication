@@ -381,36 +381,74 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val transform_map: Map[String, String] = mrids_transforms.toMap
         val inclause = mrids_transforms.map (_._1).mkString ("mrid in ('", "','", "')")
         val where = "%s and type = '%s' and time >= '%s' and time < '%s'".format (inclause, `type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
-        spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
-            .load
-            .filter (where)
-            .select ("mrid", "time", "real_a", "imag_a", "period") // ToDo: 3 phase
-            .rdd
-            .map (
-                row ⇒
-                {
-                    val mrid = row.getString (0)
-                    val period = row.getInt (4)
-                    val time = row.getTimestamp (1).getTime - period // start time
-                    // ToDo: should also check units
-                    val factor = `type` match
+        if (options.three_phase && !options.fake_three_phase)
+            spark
+                .read
+                .format ("org.apache.spark.sql.cassandra")
+                .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
+                .load
+                .filter (where)
+                .select ("mrid", "time", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "period")
+                .rdd
+                .map (
+                    row ⇒
                     {
-                        case "energy" ⇒
-                            (60.0 * 60.0 * 1000.0) / period
-                        case _ ⇒
-                            1.0
+                        val mrid = row.getString (0)
+                        val period = row.getInt (8)
+                        val time = row.getTimestamp (1).getTime - period // start time
+                        // ToDo: should also check units
+                        val factor = `type` match
+                        {
+                            case "energy" ⇒
+                                (60.0 * 60.0 * 1000.0) / period
+                            case _ ⇒
+                                1.0
+                        }
+                        val program = MeasurementTransform.compile (transform_map(mrid))
+                        val real_a = row.getDouble (2) * factor
+                        val imag_a = row.getDouble (3) * factor
+                        val (re_a, im_a) = program.transform (real_a, imag_a)
+                        val real_b = row.getDouble (4) * factor
+                        val imag_b = row.getDouble (5) * factor
+                        val (re_b, im_b) = program.transform (real_b, imag_b)
+                        val real_c = row.getDouble (6) * factor
+                        val imag_c = row.getDouble (7) * factor
+                        val (re_c, im_c) = program.transform (real_c, imag_c)
+                        // ToDo: should we keep the period so we can tell if a value is missing?
+                        SimulationPlayerData (transformer, mrid, `type`, time, Array (re_a, im_a, re_b, im_b, re_c, im_c))
                     }
-                    val real = row.getDouble (2) * factor
-                    val imag = row.getDouble (3) * factor
-                    val program = MeasurementTransform.compile (transform_map(mrid))
-                    val (re, im) = program.transform (real, imag)
-                    // ToDo: should we keep the period so we can tell if a value is missing?
-                    SimulationPlayerData (transformer, mrid, `type`, time, re, im)
-                }
-            )
+                )
+        else
+            spark
+                .read
+                .format ("org.apache.spark.sql.cassandra")
+                .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
+                .load
+                .filter (where)
+                .select ("mrid", "time", "real_a", "imag_a", "period")
+                .rdd
+                .map (
+                    row ⇒
+                    {
+                        val mrid = row.getString (0)
+                        val period = row.getInt (4)
+                        val time = row.getTimestamp (1).getTime - period // start time
+                        // ToDo: should also check units
+                        val factor = `type` match
+                        {
+                            case "energy" ⇒
+                                (60.0 * 60.0 * 1000.0) / period
+                            case _ ⇒
+                                1.0
+                        }
+                        val real = row.getDouble (2) * factor
+                        val imag = row.getDouble (3) * factor
+                        val program = MeasurementTransform.compile (transform_map(mrid))
+                        val (re, im) = program.transform (real, imag)
+                        // ToDo: should we keep the period so we can tell if a value is missing?
+                        SimulationPlayerData (transformer, mrid, `type`, time, Array (re, im))
+                    }
+                )
     }
 
     def query_synthesized_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String, String)])): RDD[SimulationPlayerData] =
@@ -433,40 +471,83 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             (pair: (String, Iterable[String])) ⇒
             {
                 val (synthesis, mrids) = pair
-                val rows: RDD[SimulationPlayerData] = spark
-                    .read
-                    .format ("org.apache.spark.sql.cassandra")
-                    .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
-                    .load
-                    .filter ("synthesis = '%s'".format (synthesis) + where)
-                    .select ("time", "real_a", "imag_a", "period") // ToDo: 3 phase
-                    .rdd
-                    .flatMap (
-                        row ⇒
-                        {
-                            val period = row.getInt (3)
-                            val time = row.getTimestamp (0).getTime - period // start time
-                            // ToDo: should also check units
-                            val factor = `type` match
-                            {
-                                case "energy" ⇒
-                                    (60.0 * 60.0 * 1000.0) / period
-                                case _ ⇒
-                                    1.0
-                            }
-                            val real = row.getDouble (1) * factor
-                            val imag = row.getDouble (2) * factor
-                            mrids.map (
-                                mrid ⇒
+                val rows =
+                    if (options.three_phase && !options.fake_three_phase)
+                        spark
+                            .read
+                            .format ("org.apache.spark.sql.cassandra")
+                            .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
+                            .load
+                            .filter ("synthesis = '%s'".format (synthesis) + where)
+                            .select ("time", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "period")
+                            .rdd
+                            .flatMap (
+                                row ⇒
                                 {
-                                    val program = MeasurementTransform.compile (transform_map(mrid))
-                                    val (re, im) = program.transform (real, imag)
-                                    // ToDo: should we keep the period so we can tell if a value is missing?
-                                    SimulationPlayerData (transformer, mrid, `type`, time, re, im)
+                                    val period = row.getInt (7)
+                                    val time = row.getTimestamp (0).getTime - period // start time
+                                    // ToDo: should also check units
+                                    val factor = `type` match
+                                    {
+                                        case "energy" ⇒
+                                            (60.0 * 60.0 * 1000.0) / period
+                                        case _ ⇒
+                                            1.0
+                                    }
+                                    val real_a = row.getDouble (1) * factor
+                                    val imag_a = row.getDouble (2) * factor
+                                    val real_b = row.getDouble (3) * factor
+                                    val imag_b = row.getDouble (4) * factor
+                                    val real_c = row.getDouble (5) * factor
+                                    val imag_c = row.getDouble (6) * factor
+                                    mrids.map (
+                                        mrid ⇒
+                                        {
+                                            val program = MeasurementTransform.compile (transform_map(mrid))
+                                            val (re_a, im_a) = program.transform (real_a, imag_a)
+                                            val (re_b, im_b) = program.transform (real_b, imag_b)
+                                            val (re_c, im_c) = program.transform (real_c, imag_c)
+                                            // ToDo: should we keep the period so we can tell if a value is missing?
+                                            SimulationPlayerData (transformer, mrid, `type`, time, Array (re_a, im_a, re_b, im_b, re_c, im_c))
+                                        }
+                                    )
                                 }
                             )
-                        }
-                    )
+                    else
+                        spark
+                            .read
+                            .format ("org.apache.spark.sql.cassandra")
+                            .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
+                            .load
+                            .filter ("synthesis = '%s'".format (synthesis) + where)
+                            .select ("time", "real_a", "imag_a", "period")
+                            .rdd
+                            .flatMap (
+                                row ⇒
+                                {
+                                    val period = row.getInt (3)
+                                    val time = row.getTimestamp (0).getTime - period // start time
+                                    // ToDo: should also check units
+                                    val factor = `type` match
+                                    {
+                                        case "energy" ⇒
+                                            (60.0 * 60.0 * 1000.0) / period
+                                        case _ ⇒
+                                            1.0
+                                    }
+                                    val real = row.getDouble (1) * factor
+                                    val imag = row.getDouble (2) * factor
+                                    mrids.map (
+                                        mrid ⇒
+                                        {
+                                            val program = MeasurementTransform.compile (transform_map(mrid))
+                                            val (re, im) = program.transform (real, imag)
+                                            // ToDo: should we keep the period so we can tell if a value is missing?
+                                            SimulationPlayerData (transformer, mrid, `type`, time, Array (re, im))
+                                        }
+                                    )
+                                }
+                            )
                 rows
             }
         )
@@ -619,7 +700,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                             .mapValues (_.getOrElse (List()).groupBy (_.mrid))
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
-                        val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.keep, options.verbose)
+                        val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.three_phase, options.keep, options.verbose)
                         val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
 
                         // save the results

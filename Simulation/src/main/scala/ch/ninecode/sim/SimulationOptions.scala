@@ -52,6 +52,16 @@ case class SimulationOptions
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
 
     /**
+     * Simulate in three phase flag.
+     */
+    three_phase: Boolean = false,
+
+    /**
+     * Convert single phase meter readings into three phase flag.
+     */
+    fake_three_phase: Boolean = false,
+
+    /**
      * If <code>true</code>, keep glm and input/output files in workdir.
      */
     keep: Boolean = false,

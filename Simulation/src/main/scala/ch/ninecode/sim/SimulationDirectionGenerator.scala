@@ -32,18 +32,25 @@ case class SimulationDirectionGenerator
 
     def emit_load (node: SimulationNode): String =
     {
-        val property = if (one_phase) "constant_power_A" else "constant_power"
+        val power = if (one_phase)
+            "            constant_power_A 1000.0+0j;"
+        else
+        {
+          """            constant_power_A 333.33333333+0j;
+            |            constant_power_B 333.33333333+0j;
+            |            constant_power_C 333.33333333+0j;""".stripMargin
+        }
         val phases = if (one_phase) "AN" else "ABCN"
         val voltage = node.nominal_voltage
-        """
-          |        object load
-          |        {
-          |            name "%s";
-          |            %s %s;
-          |            phases %s;
-          |            nominal_voltage %sV;
-          |        };
-        """.stripMargin.format (node.id, property, "1000.0+0j", phases, voltage)
+        s"""
+        |        object load
+        |        {
+        |            name "${node.id}";
+        |$power
+        |            phases $phases;
+        |            nominal_voltage ${voltage}V;
+        |        };
+        """.stripMargin
     }
 
     override def emit_edge (edge: GLMEdge): String =

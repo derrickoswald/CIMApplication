@@ -75,12 +75,6 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         }
     }
 
-    // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-    def glm_format (datum: SimulationPlayerData): String =
-    {
-        glm_date_format.format (datum.time) + "," + datum.real + "," + datum.imag
-    }
-
     def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, String) =
     {
         log.info ("""executing GridLAB-D for %s""".format (trafo.name))

@@ -32,73 +32,78 @@ case class SimulationGLMGenerator
 
     def emit_recorder (recorder: SimulationRecorder): String =
     {
-        // ToDo: do all recorders need "_A" for one phase ?
-        val property = if (one_phase) recorder.property + "_A" else recorder.property
-        """
-          |        object recorder
-          |        {
-          |            name "%s";
-          |            parent "%s";
-          |            property "%s";
-          |            interval "%d";
-          |            file "%s";
-          |        };
-          |""".stripMargin.format (recorder.name, recorder.parent, property, recorder.interval, recorder.file)
+        // ToDo: handle _AB, _BC, _CA for three phase delta connections
+        val property = if (one_phase)
+            s"${recorder.property}_A.real,${recorder.property}_A.imag"
+        else
+            s"${recorder.property}_A.real,${recorder.property}_A.imag,${recorder.property}_B.real,${recorder.property}_B.imag,${recorder.property}_C.real,${recorder.property}_C.imag"
+        s"""
+        |        object recorder
+        |        {
+        |            name "${recorder.name}";
+        |            parent "${recorder.parent}";
+        |            property "$property";
+        |            interval "${recorder.interval}";
+        |            file "${recorder.file}";
+        |        };
+        |""".stripMargin
     }
 
     def emit_edge_player (player: SimulationPlayer): String =
     {
         // ToDo: do all players need "_A" for one phase ?
-        val property = if (one_phase) player.property + "_A" else player.property
-        """
-          |        object player
-          |        {
-          |            name "%s";
-          |            parent "%s";
-          |            property "%s";
-          |            file "%s";
-          |        };
-          |""".stripMargin.format (player.name, player.parent, property, player.file)
+        val property = if (one_phase) s"${player.property}_A" else player.property
+        s"""
+        |        object player
+        |        {
+        |            name "${player.name}";
+        |            parent "${player.parent}";
+        |            property "$property";
+        |            file "${player.file}";
+        |        };
+        |""".stripMargin
     }
 
+    // relies on the player file being of the form: "input_data/" + player.name + ".csv"
+    def phase_file (file: String, suffix: String): String =
+    {
+        val base = file.substring (0, file.length - 4)
+        s"$base$suffix.csv"
+    }
+
+    def emit_player (name: String, parent: String, property: String, phase: String, file: String, suffix: String): String =
+    {
+        s"""
+        |       object player
+        |       {
+        |           name "$name$suffix";
+        |           parent "$parent";
+        |           property "$property$phase";
+        |           file "${ phase_file (file, suffix)}";
+        |       };
+        |""".stripMargin
+    }
 
     def emit_node_player (node: SimulationNode)(player: SimulationPlayer): String =
     {
-        // ToDo: do all players need "_A" for one phase ?
+        val parent = if (player.`type` == "energy") s"${player.name}_object" else player.parent
         val property = if (one_phase) player.property + "_A" else player.property
+        val suffixes = if (one_phase) Seq (("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val players = for (suffix <- suffixes)
+            yield
+                emit_player (player.name, parent, property, suffix._1, player.file, suffix._2)
         if (player.`type` == "energy")
-        {
-            val load = player.name + "_object"
-            val phases = if (one_phase) "AN" else "ABCN"
-            val voltage = node.nominal_voltage
-            """
-              |        object load
-              |        {
-              |            name "%s";
-              |            parent "%s";
-              |            phases %s;
-              |            nominal_voltage %sV;
-              |        };
-              |
-              |        object player
-              |        {
-              |            name "%s";
-              |            parent "%s";
-              |            property "%s";
-              |            file "%s";
-              |        };
-              |""".stripMargin.format (load, player.parent, phases, voltage, player.name, load, property, player.file)
-        }
+            s"""
+            |        object load
+            |        {
+            |            name "${player.name}_object";
+            |            parent "${player.parent}";
+            |            phases ${if (one_phase) "AN" else "ABCN"};
+            |            nominal_voltage ${node.nominal_voltage}V;
+            |        };
+            |${players.mkString}""".stripMargin
         else
-            """
-              |        object player
-              |        {
-              |            name "%s";
-              |            parent "%s";
-              |            property "%s";
-              |            file "%s";
-              |        };
-              |""".stripMargin.format (player.name, player.parent, property, player.file)
+            players.mkString
     }
 
     override def emit_edge (edge: GLMEdge): String =
