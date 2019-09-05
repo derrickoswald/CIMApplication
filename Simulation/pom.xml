@@ -180,7 +180,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>SimulationSuite.txt</filereports>
-                <suites>ch.ninecode.sim.SimulationSuite</suites>
+                <suites>ch.ninecode.sim.SimulationSuite,ch.ninecode.sim.SummarySuite</suites>
                 </configuration>
                 <executions>
                     <execution>

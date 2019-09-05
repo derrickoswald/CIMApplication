@@ -38,27 +38,46 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
         log.info ("Load Factor")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
 
         val typ = "power"
-        val simulated_power_values = access.raw_values (typ) // ToDo: how to pick the transformer power values if another recorder asks for power
-        val power_values = simulated_power_values
-            .drop ("period")
+        val to_drop = if (options.three_phase)
+            Seq("simulation", "type", "period", "units")
+        else
+            Seq("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
+        val raw = access.raw_values (typ, to_drop)
+
         val trafo_loads = access.players ("energy")
         val trafos = trafo_loads
             .drop ("name", "property", "mrid")
             .distinct
             .withColumnRenamed ("transformer", "mrid")
 
-        val simulated_value_trafos = power_values
-            .withColumn ("power", magnitude [Double, Double].apply (power_values ("real_a"), power_values ("imag_a")))
-            .drop ("real_a", "imag_a")
-            .withColumn ("date", power_values ("time").cast (DateType))
+        val simulated_values = raw
+            .withColumn ("date", raw ("time").cast (DateType))
             .drop ("time")
             .join (
                 trafos,
                 Seq ("mrid"))
 
-        val aggregates = simulated_value_trafos
+        val simulated_power_values =
+            if (options.three_phase)
+            {
+                val intermediate = simulated_values
+                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
+                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
+                    .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+                intermediate
+                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
+                    .drop ("power_a", "power_b", "power_c")
+            }
+            else
+                simulated_values
+                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .drop ("real_a", "imag_a")
+
+        val aggregates = simulated_power_values
             .groupBy ("mrid", "date") // sum over time for each day
             .agg ("power" → "avg", "power" → "max")
             .withColumnRenamed ("avg(power)", "avg_power")
@@ -79,7 +98,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
         work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
         log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (access.output_keyspace))
-        simulated_power_values.unpersist (false)
+        raw.unpersist (false)
         trafo_loads.unpersist (false)
     }
 }

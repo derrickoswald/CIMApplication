@@ -48,7 +48,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
         geojson
     }
 
-    def raw_values (`type`: String, to_drop: Seq[String] = Seq("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units"), period: Int = PERIOD): DataFrame =
+    def raw_values (`type`: String, to_drop: Seq[String], period: Int = PERIOD): DataFrame =
     {
         val values = spark
             .read

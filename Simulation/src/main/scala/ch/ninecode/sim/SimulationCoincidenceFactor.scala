@@ -36,12 +36,33 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
         log.info ("Coincidence Factor")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
+        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
 
         val typ = "power"
-        val simulated_power_values = access.raw_values (typ)
-        val power_values = simulated_power_values
-            .drop ("period")
+        val to_drop = if (options.three_phase)
+            Seq("simulation", "type", "period", "units")
+        else
+            Seq("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
+        val simulated_values = access.raw_values (typ, to_drop)
+        val simulated_power_values =
+            if (options.three_phase)
+            {
+                val intermediate = simulated_values
+                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
+                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
+                    .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+                intermediate
+                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
+                    .drop ("power_a", "power_b", "power_c")
+            }
+            else
+                simulated_values
+                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .drop ("real_a", "imag_a")
+        val simulated_power_values_by_day = simulated_power_values
+            .withColumn ("date", simulated_values ("time").cast (DateType))
+            .drop ("time")
 
         val players = access.players ("energy")
         val trafo_loads = players
@@ -51,11 +72,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             .distinct
             .withColumnRenamed ("transformer", "mrid")
 
-        val simulated_value_trafos = power_values
-            .withColumn ("power", magnitude [Double, Double].apply (power_values ("real_a"), power_values ("imag_a")))
-            .drop ("real_a", "imag_a")
-            .withColumn ("date", power_values ("time").cast (DateType))
-            .drop ("time")
+        val simulated_value_trafos = simulated_power_values_by_day
             .join (
                 trafos,
                 Seq ("mrid"))
@@ -68,17 +85,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         // now do the peaks for the energy consumers
 
-        val simulated_value_consumers = access.raw_values (typ)
-        val consumer_values = simulated_value_consumers
-            .drop ("period")
-
-        val simulated_consumer_power = consumer_values
-            .withColumn ("power", magnitude [Double, Double].apply (consumer_values ("real_a"), consumer_values ("imag_a")))
-            .drop ("real_a", "imag_a")
-            .withColumn ("date", consumer_values ("time").cast (DateType))
-            .drop ("time")
-
-        val peak_consumers = simulated_consumer_power
+        val peak_consumers = simulated_power_values_by_day
             .groupBy ("mrid", "date")
             .agg ("power" → "max")
             .withColumnRenamed ("max(power)", "power")
@@ -118,8 +125,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
         log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (access.output_keyspace))
         players.unpersist (false)
-        simulated_power_values.unpersist (false)
-        simulated_value_consumers.unpersist (false)
+        simulated_values.unpersist (false)
     }
 }
 
