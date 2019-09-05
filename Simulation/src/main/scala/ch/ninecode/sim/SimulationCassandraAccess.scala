@@ -48,7 +48,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
         geojson
     }
 
-    def raw_values (`type`: String, period: Int = PERIOD): DataFrame =
+    def raw_values (`type`: String, to_drop: Seq[String] = Seq("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units"), period: Int = PERIOD): DataFrame =
     {
         val values = spark
             .read
@@ -57,7 +57,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .load
             // push down partition key = (simulation, mrid, type, period)
             .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
-            .drop ("simulation", "type", "real_b", "real_c", "imag_b", "imag_c", "units")
+            .drop (to_drop:_*)
             .persist (storage_level)
         values
     }
