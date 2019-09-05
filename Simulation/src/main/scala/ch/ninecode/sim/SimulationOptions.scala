@@ -1,11 +1,20 @@
 package ch.ninecode.sim
 
-import ch.ninecode.sim.Main.LogLevels
-import ch.ninecode.sim.Main.LogLevels.LogLevels
 import org.apache.spark.storage.StorageLevel
+
+object LogLevels extends Enumeration
+{
+    type LogLevels = Value
+    val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
+}
 
 case class SimulationOptions
 (
+    /**
+     * False if either help or version requested (i.e. don't proceed with execution).
+     */
+    var valid: Boolean = true,
+
     /**
      * If <code>true</code>, don't call sys.exit().
      */
@@ -24,7 +33,10 @@ case class SimulationOptions
     /**
      * Spark options.
      */
-    options: Map[String, String] = Map (),
+    options: Map[String, String] = Map (
+        "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+        "spark.ui.showConsoleProgress" -> "false"
+    ),
 
     /**
      * Cassandra connection host.
@@ -34,7 +46,7 @@ case class SimulationOptions
     /**
      * Logging level.
      */
-    log_level: LogLevels = LogLevels.OFF,
+    log_level: LogLevels.Value = LogLevels.OFF,
 
     /**
      * Session RDD checkpoint directory.
@@ -81,4 +93,3 @@ case class SimulationOptions
      */
     simulation: Seq[String] = Seq ()
 )
-
