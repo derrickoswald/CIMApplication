@@ -133,11 +133,11 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     protected String CIMConnectorLibJarPath ()
         throws ResourceException
     {
+        // arbitrarily pick a class to instantiate
         // ToDo: find a better way to find CIMConnector.rar (/usr/local/tomee/apps/CIMApplication/CIMConnector.rar)
-        String readerpath = CIMReaderJarPath ();
-        String subdir = readerpath.substring (0, readerpath.lastIndexOf (java.io.File.separator));
-        String dir = subdir.substring (0, subdir.lastIndexOf (java.io.File.separator) + 1);
-        return (dir + "CIMConnector.rar");
+        // This doesn't work when running in debug (resolves to .../CIMConnector/target/classes/),
+        // but local[*] has the necessary classes in the classpath apparently.
+        return (jarForObject (new CIMMappedRecord ()));
     }
 
     protected String J2EEAPIJarPath ()

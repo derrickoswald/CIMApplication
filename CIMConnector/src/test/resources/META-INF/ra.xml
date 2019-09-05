@@ -32,7 +32,7 @@
                 <config-property>
                     <config-property-name>ConnectionURL</config-property-name>
                     <config-property-type>java.lang.String</config-property-type>
-                    <config-property-value>spark://sandbox:7077</config-property-value>
+                    <config-property-value>local[*]</config-property-value>
                 </config-property>
                 <config-property>
                     <config-property-name>ServerName</config-property-name>

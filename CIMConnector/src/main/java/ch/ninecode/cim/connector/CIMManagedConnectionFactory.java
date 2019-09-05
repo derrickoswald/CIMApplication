@@ -223,7 +223,7 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      * @implNote Setting this to something other than the default <code>local[*]</code> requires a running
      * "standalone" Spark instance with the current user added to supergroup.
      * An example for creating such an instance, using Docker "compose", can be found in the
-     * <a href="https://github.com/derrickoswald/CIMReader/blob/master/src/test/resources/sandbox.yaml" target="_blank">
+     * <a href="https://github.com/derrickoswald/CIMSpark/tree/master/CIMReader/src/test/resources/sandbox.yaml" target="_blank">
      * <code>spark_master</code> container</a>.
      *
      * @param url The new Spark master URL.

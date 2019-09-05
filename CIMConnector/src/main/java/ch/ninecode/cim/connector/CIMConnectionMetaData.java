@@ -102,7 +102,7 @@ public class CIMConnectionMetaData implements ConnectionMetaData
     }
 
     /**
-     * Get the Spark version the connector was compiled for.
+     * Get the CIMReader version the connector was compiled for.
      */
     public String getCIMReaderVersion () throws ResourceException
     {

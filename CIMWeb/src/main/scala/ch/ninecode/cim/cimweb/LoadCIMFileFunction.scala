@@ -95,7 +95,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
                 reader_options.put (option._1, option._2)
             reader_options.put ("path", files.mkString (","))
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
-            var count = elements.count
+            val count = elements.count
             val storage = StorageLevel.fromString (reader_options.getOrElse ("StorageLevel", "MEMORY_AND_DISK_SER"))
             response.add ("elements", count)
 

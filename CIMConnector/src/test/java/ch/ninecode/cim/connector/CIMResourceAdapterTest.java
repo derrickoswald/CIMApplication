@@ -6,6 +6,7 @@ import java.io.*;
 import java.util.*;
 import java.util.zip.*;
 
+import javax.json.JsonStructure;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.resource.cci.Connection;
@@ -16,12 +17,14 @@ import javax.resource.cci.MappedRecord;
 import javax.resource.cci.Record;
 import javax.resource.spi.ResourceAdapter;
 
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
-import org.jboss.shrinkwrap.api.importer.ZipImporter;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.jboss.shrinkwrap.api.spec.ResourceAdapterArchive;
 import org.junit.Test;
@@ -29,6 +32,7 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -37,46 +41,44 @@ import static org.junit.Assert.assertTrue;
 @RunWith (Arquillian.class)
 public class CIMResourceAdapterTest
 {
-    static boolean USE_LOCAL = true;
     static
     {
-        if (USE_LOCAL)
-            try
+        try
+        {
+            Enumeration<? extends ZipEntry> entries;
+            ZipFile zipFile;
+
+            zipFile = new ZipFile ("data/DemoData.zip");
+            entries = zipFile.entries();
+
+            while (entries.hasMoreElements())
             {
-                Enumeration<? extends ZipEntry> entries;
-                ZipFile zipFile;
-
-                zipFile = new ZipFile ("src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.zip");
-                entries = zipFile.entries();
-
-                while (entries.hasMoreElements())
+                ZipEntry entry = entries.nextElement();
+                if (!entry.isDirectory())
                 {
-                    ZipEntry entry = (ZipEntry)entries.nextElement();
-                    if (!entry.isDirectory())
+                    InputStream in = zipFile.getInputStream (entry);
+                    OutputStream out = new BufferedOutputStream (new FileOutputStream ("data/" + entry.getName ()));
                     {
-                        InputStream in = zipFile.getInputStream (entry);
-                        OutputStream out = new BufferedOutputStream (new FileOutputStream ("src/test/data/" + entry.getName ()));
-                        {
-                            byte[] buffer = new byte[1024];
-                            int len;
+                        byte[] buffer = new byte[1024];
+                        int len;
 
-                            while((len = in.read(buffer)) >= 0)
-                                out.write(buffer, 0, len);
+                        while((len = in.read(buffer)) >= 0)
+                            out.write(buffer, 0, len);
 
-                            in.close();
-                            out.close();
-                        }
+                        in.close();
+                        out.close();
                     }
                 }
-
-                zipFile.close();
-
             }
-            catch (IOException ioe)
-            {
-                System.err.println ("Unhandled exception: ");
-                ioe.printStackTrace ();
-            }
+
+            zipFile.close();
+
+        }
+        catch (IOException ioe)
+        {
+            System.err.println ("Unhandled exception: ");
+            ioe.printStackTrace ();
+        }
     }
 
     @Deployment
@@ -84,33 +86,18 @@ public class CIMResourceAdapterTest
     {
         final ResourceAdapterArchive rar;
 
-        // Note:
-        // You can either build a simplified rar, or use the maven created rar.
-        // The latter depends on a successful:
-        //    mvn clean install
-        // and a running spark master at spark://sandbox:7077 with existing hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf
+        // build a simplified rar
+        final JavaArchive jar = ShrinkWrap.create (JavaArchive.class, "CIMConnector.jar");
+        jar.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.connector"));
 
-        if (USE_LOCAL)
-        {
-            // build a simplified rar
-            final JavaArchive jar = ShrinkWrap.create (JavaArchive.class, "CIMConnector.jar");
-            jar.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.connector"));
+        rar = ShrinkWrap.create (ResourceAdapterArchive.class, "CIMConnector.rar");
+        rar.addAsLibrary (jar);
+        rar.addAsManifestResource (new File ("src/test/resources/META-INF/ra.xml"), "ra.xml");
+        // you can examine the contents of the simplified rar using the following line
+        // System.out.println (rar.toString (true));
+        rar.as (ZipExporter.class).exportTo (new File ("target/CIMConnector.rar"), true);
 
-            rar = ShrinkWrap.create (ResourceAdapterArchive.class, "CIMConnector.rar");
-            rar.addAsLibrary (jar);
-            rar.addAsManifestResource (new File ("src/test/resources/META-INF/ra.xml"), "ra.xml");
-            // you can examine the contents of the simplified rar using the following line
-            // System.out.println (rar.toString (true));
-            rar.as (ZipExporter.class).exportTo (new File ("target/CIMConnector.rar"), true);
-        }
-        else
-            // use the rar generated by maven
-            rar = ShrinkWrap
-                .create (ZipImporter.class, "CIMConnector.rar")
-                .importFrom (new File("target/CIMConnector-2.11-2.4.3-2.5.0.rar"))
-                .as (ResourceAdapterArchive.class);
-
-        return rar;
+        return (rar);
     }
 
     /**
@@ -118,7 +105,7 @@ public class CIMResourceAdapterTest
      *
      * @return The initial JNDI naming context.
      */
-    protected InitialContext getInitialContext () throws Exception
+    InitialContext getInitialContext () throws Exception
     {
         final Properties properties = new Properties ();
         properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory");
@@ -134,7 +121,7 @@ public class CIMResourceAdapterTest
      *
      * @return The connection factory for the CIMConnector.
      */
-    protected ConnectionFactory getConnectionFactory () throws Exception
+    ConnectionFactory getConnectionFactory () throws Exception
     {
         final InitialContext context = getInitialContext ();
 
@@ -147,7 +134,7 @@ public class CIMResourceAdapterTest
      * @param context The initial JNDI naming context.
      * @return The connection factory for the CIMConnector.
      */
-    protected ConnectionFactory getConnectionFactory (InitialContext context) throws Exception
+    ConnectionFactory getConnectionFactory (InitialContext context) throws Exception
     {
         final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
         assertNotNull ("connectionFactory", factory);
@@ -160,7 +147,7 @@ public class CIMResourceAdapterTest
      *
      * @return A configured connection specification.
      */
-    protected CIMConnectionSpec remoteConfig () throws Exception
+    CIMConnectionSpec remoteConfig () throws Exception
     {
         CIMConnectionSpec ret;
 
@@ -180,7 +167,7 @@ public class CIMResourceAdapterTest
      *
      * @return A connection to the Spark system.
      */
-    protected Connection getConnection () throws Exception
+    Connection getConnection () throws Exception
     {
         final InitialContext context = getInitialContext ();
         final ConnectionFactory factory = getConnectionFactory (context);
@@ -194,7 +181,7 @@ public class CIMResourceAdapterTest
      * @param factory The connection factory for the CIMConnector.
      * @return A connection to the Spark system.
      */
-    protected Connection getConnection (ConnectionFactory factory) throws Exception
+    Connection getConnection (ConnectionFactory factory) throws Exception
     {
         final Connection connection = factory.getConnection (remoteConfig ());
         assertNotNull ("connection", connection);
@@ -224,32 +211,95 @@ public class CIMResourceAdapterTest
         connection.close ();
     }
 
+    protected class Loader implements CIMFunction
+    {
+        String _File;
+
+        Loader (String file)
+        {
+            _File = file;
+        }
+
+        @Override
+        public Return getReturnType () { return (Return.String); }
+
+        @Override
+        public String[] getJars () { return (new String[0]); }
+
+        /**
+         * Execute against this class returning a dataset.
+         *
+         * @param spark The Spark session to use.
+         * @return The resultant data set, which will be turned into a ResultSet.
+         */
+        @Override
+        public Dataset<Row> executeResultSet (SparkSession spark)
+        {
+            return null;
+        }
+
+        /**
+         * Execute against this class returning a string.
+         *
+         * @param spark The Spark session to use.
+         * @return The resultantsString.
+         */
+        @Override
+        public String executeString (SparkSession spark)
+        {
+            Dataset<Row> elements = spark.read ().format ("ch.ninecode.cim").load (_File);
+            return ("OK " + elements.count ());
+        }
+
+        /**
+         * Execute against this class returning a JSON structure (JSONObject or JSONArray).
+         *
+         * @param spark The Spark session to use.
+         * @return The resultant JSON.
+         */
+        @Override
+        public JsonStructure executeJSON (SparkSession spark)
+        {
+            return null;
+        }
+    }
+
     @SuppressWarnings ("unchecked")
     @Test
     public void testReadEnergyConsumer () throws Exception
     {
         final ConnectionFactory factory = getConnectionFactory ();
         final Connection connection = getConnection (factory);
-        final CIMInteractionSpecImpl spec = new CIMInteractionSpecImpl ();
-        spec.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
-        final MappedRecord input = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
-        input.setRecordShortDescription ("record containing the file name with key filename and sql query with key query");
-        if (USE_LOCAL)
-            input.put ("filename", "src/test/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        else
-            input.put ("filename", "hdfs://sandbox:8020/data/NIS_CIM_Export_NS_INITIAL_FILL.rdf");
-        input.put (CIMFunction.QUERY, "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 0");
-        final Interaction interaction = connection.createInteraction ();
-        final Record output = interaction.execute (spec, input);
-        assertNotNull ("output", output);
-        assertTrue ("resultset", output.getClass ().isAssignableFrom (CIMResultSet.class));
-        CIMResultSet resultset = (CIMResultSet)output;
+
+        // load a file
+        final CIMInteractionSpecImpl spec1 = new CIMInteractionSpecImpl ();
+        spec1.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION);
+        final MappedRecord input1 = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+        input1.setRecordShortDescription ("record containing the function to read a file");
+        input1.put (CIMFunction.FUNCTION, new Loader ("data/DemoData.rdf"));
+        final Interaction interaction1 = connection.createInteraction ();
+        final Record output1 = interaction1.execute (spec1, input1);
+        assertTrue ("CIMMappedRecord", output1.getClass ().isAssignableFrom (CIMMappedRecord.class));
+        assertTrue ("OK", ((CIMMappedRecord)output1).get (CIMFunction.RESULT).toString ().startsWith ("OK"));
+        interaction1.close ();
+
+        // query for EnergyConsumer
+        final CIMInteractionSpecImpl spec2 = new CIMInteractionSpecImpl ();
+        spec2.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
+        final MappedRecord input2 = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
+        input2.setRecordShortDescription ("record containing the sql query with key query");
+        input2.put (CIMFunction.QUERY, "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 1");
+        final Interaction interaction2 = connection.createInteraction ();
+        final Record output2 = interaction2.execute (spec2, input2);
+        assertNotNull ("output", output2);
+        assertTrue ("resultset", output2.getClass ().isAssignableFrom (CIMResultSet.class));
+        CIMResultSet resultset = (CIMResultSet)output2;
         assertTrue ("resultset empty", resultset.next ());
         assertNotNull ("mRID", resultset.getString (1));
-        assertTrue ("zero x coordinate", "0.0" != resultset.getString (5));
-        assertTrue ("zero y coordinate", "0.0" != resultset.getString (6));
+        assertNotSame ("zero x coordinate", "0.0", resultset.getString (5));
+        assertNotSame ("zero y coordinate", "0.0", resultset.getString (6));
         resultset.close ();
-        interaction.close ();
+        interaction2.close ();
         connection.close ();
     }
 
@@ -259,5 +309,4 @@ public class CIMResourceAdapterTest
         System.out.println ("args = " + args);
         return ("OK");
     }
-
 }

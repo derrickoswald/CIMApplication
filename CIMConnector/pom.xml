@@ -22,7 +22,7 @@
         <version.plugin.surefire>2.20</version.plugin.surefire>
 
         <!-- test dependencies versions -->
-        <version.dependency.shrinkwrap>2.2.6</version.dependency.shrinkwrap>
+        <version.dependency.shrinkwrap>3.1.3</version.dependency.shrinkwrap>
     </properties>
 
     <build>
@@ -100,6 +100,7 @@
         <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
+            <version>${version.dependency.javaee}</version>
             <scope>provided</scope>
         </dependency>
 

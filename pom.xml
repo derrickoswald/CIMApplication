@@ -31,6 +31,7 @@
         <version.dependency.cimreader>2.11-2.4.3-3.6.0</version.dependency.cimreader>
 
         <!-- Component versions -->
+        <version.dependency.javaee>8.0.1</version.dependency.javaee>
         <version.dependency.tomee>8.0.0-M3</version.dependency.tomee>
         <version.dependency.json>1.1.4</version.dependency.json>
         <version.dependency.sqlite>3.21.0.1</version.dependency.sqlite>
@@ -46,6 +47,7 @@
         <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
+            <version>${version.dependency.javaee}</version>
         </dependency>
     </dependencies>
 
