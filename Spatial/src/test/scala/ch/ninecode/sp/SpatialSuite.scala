@@ -1,19 +1,93 @@
 package ch.ninecode.sp
 
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.zip.ZipInputStream
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
+
+import org.scalatest._
+
 import ch.ninecode.cim.CIMClasses
 
-class SpatialSuite extends org.scalatest.fixture.FunSuite
+class SpatialSuite extends fixture.FunSuite with BeforeAndAfter
 {
     val FILE_DEPOT = "data/"
-    val FILENAME1 = "DemoData.rdf"
+    val FILENAME1 = "DemoData"
 
     type FixtureParam = SparkSession
 
-    def withFixture (test: OneArgTest): org.scalatest.Outcome =
+    /**
+     * This utility extracts files and directories of a standard zip file to
+     * a destination directory.
+     *
+     * @author www.codejava.net
+     *
+     */
+    class Unzip
+    {
+        /**
+         * Extracts a zip file specified by the file to a directory.
+         *
+         * The directory will be created if does not exist.
+         *
+         * @param file      The Zip file.
+         * @param directory The directory to extract it to
+         * @throws IOException If there is a problem with the zip extraction
+         */
+        @throws[IOException]
+        def unzip (file: String, directory: String): Unit =
+        {
+            val dir = new File (directory)
+            if (!dir.exists)
+                dir.mkdir
+            val zip = new ZipInputStream (new FileInputStream (file))
+            var entry = zip.getNextEntry
+            // iterates over entries in the zip file
+            while (null != entry)
+            {
+                val path = directory + entry.getName
+                if (!entry.isDirectory)
+                // if the entry is a file, extracts it
+                    extractFile (zip, path)
+                else
+                // if the entry is a directory, make the directory
+                    new File (path).mkdir
+                zip.closeEntry ()
+                entry = zip.getNextEntry
+            }
+            zip.close ()
+        }
+
+        /**
+         * Extracts a zip entry (file entry).
+         *
+         * @param zip  The Zip input stream for the file.
+         * @param path The path to extract he file to.
+         * @throws IOException If there is a problem with the zip extraction
+         */
+        @throws[IOException]
+        private def extractFile (zip: ZipInputStream, path: String): Unit =
+        {
+            val bos = new BufferedOutputStream (new FileOutputStream (path))
+            val bytesIn = new Array[Byte](4096)
+            var read = -1
+            while (
+            {
+                read = zip.read (bytesIn); read != -1
+            })
+                bos.write (bytesIn, 0, read)
+            bos.close ()
+        }
+    }
+
+    def withFixture (test: OneArgTest): Outcome =
     {
         // create the fixture
         val start = System.nanoTime ()
@@ -22,7 +96,7 @@ class SpatialSuite extends org.scalatest.fixture.FunSuite
         val configuration = new SparkConf (false)
         configuration.setAppName ("SpatialOperationsSuite")
         configuration.setMaster ("local[2]")
-        configuration.set ("spark.driver.memory", "1g")
+        configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
 
@@ -50,15 +124,27 @@ class SpatialSuite extends org.scalatest.fixture.FunSuite
         context.read.format ("ch.ninecode.cim").options (options).load (files:_*)
     }
 
+    before
+    {
+        // unpack the zip files
+        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+    }
+
+    after
+    {
+        new File (FILE_DEPOT + FILENAME1).delete
+    }
+
     test ("Basic")
     {
         session: SparkSession ⇒
 
             val start = System.nanoTime ()
 
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             val elements = readFile (session.sqlContext, filename)
-            println (elements.count () + " elements")
+            println (s"${elements.count} elements")
             val read = System.nanoTime ()
 
             val spatial = new ch.ninecode.sp.SpatialOperations (session)
@@ -80,7 +166,7 @@ class SpatialSuite extends org.scalatest.fixture.FunSuite
             assert (text.contains ("USR0023"))
 
             println ("read : " + (read - start) / 1e9 + " seconds")
-            println ("process first location: " + (process1 - read) / 1e9 + " seconds")
-            println ("process second location: " + (process2 - process1) / 1e9 + " seconds")
+            println (s"process first location: ${(process1 - read) / 1e9} seconds")
+            println (s"process second location: ${(process2 - process1) / 1e9} seconds")
     }
 }
