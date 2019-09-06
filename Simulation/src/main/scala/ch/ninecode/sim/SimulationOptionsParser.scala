@@ -67,6 +67,10 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         action ((x, c) ⇒ c.copy (host = x)).
         text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
+    opt [Int]("port").valueName ("<port_number>").
+        action ((x, c) ⇒ c.copy (port = x)).
+        text ("Cassandra connection port [%s]".format (default.port))
+
     opt [LogLevels.Value]("log").
         action ((x, c) => c.copy (log_level = x)).
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))

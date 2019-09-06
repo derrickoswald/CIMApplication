@@ -86,8 +86,8 @@ object Main
                             configuration.setMaster (options.master)
                         if (options.options.nonEmpty)
                             options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                        if ("" != options.host)
-                            configuration.set ("spark.cassandra.connection.host", options.host)
+                        configuration.set ("spark.cassandra.connection.host", options.host)
+                        configuration.set ("spark.cassandra.connection.port", options.port.toString)
 
                         // get the necessary jar files to send to the cluster
                         val sim = jarForClass (SimulationOptions ().getClass)

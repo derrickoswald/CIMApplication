@@ -30,53 +30,6 @@ create or replace function cimapplication.concat (s1 text, s2 text)
     language java
     as $$ return (s1 + s2); $$;
 
-create or replace function cimapplication.standard_deviation_state (state tuple<int,double,double>, val double)
-    called on null input
-    returns tuple<int,double,double>
-    language java
-    as $$
-        TupleValue ret;
-        if (null == state)
-            ret = null;
-        else
-        {
-            int n = state.getInt(0);
-            double mean = state.getDouble(1);
-            double m2 = state.getDouble(2);
-            n++;
-            double delta = val - mean;
-            mean += delta / n;
-            m2 += delta * delta;
-            state.setInt(0, n);
-            state.setDouble(1, mean);
-            state.setDouble(2, m2);
-            ret = state;
-        }
-        return (ret);
-    $$;
-
-create or replace function cimapplication.standard_deviation_final (state tuple<int,double,double>)
-    called on null input
-    returns double
-    language java
-    as $$
-        double ret = 0.0;
-        if (null != state)
-        {
-            int n = state.getInt(0);
-            double m2 = state.getDouble(2);
-            if (n >= 1)
-                ret = Math.sqrt (m2 / (n - 1));
-        }
-        return (ret);
-    $$;
-
-create or replace aggregate cimapplication.standard_deviation (double)
-    sfunc standard_deviation_state
-    stype tuple<int,double,double>
-    finalfunc standard_deviation_final
-    initcond (0, 0.0, 0.0);
-
 create table if not exists cimapplication.measured_value (
     mrid text,
     type text,

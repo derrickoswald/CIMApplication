@@ -87,11 +87,10 @@ case class SimulationGLMGenerator
     def emit_node_player (node: SimulationNode)(player: SimulationPlayer): String =
     {
         val parent = if (player.`type` == "energy") s"${player.name}_object" else player.parent
-        val property = if (one_phase) player.property + "_A" else player.property
         val suffixes = if (one_phase) Seq (("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
         val players = for (suffix <- suffixes)
             yield
-                emit_player (player.name, parent, property, suffix._1, player.file, suffix._2)
+                emit_player (player.name, parent, player.property, suffix._1, player.file, suffix._2)
         if (player.`type` == "energy")
             s"""
             |        object load

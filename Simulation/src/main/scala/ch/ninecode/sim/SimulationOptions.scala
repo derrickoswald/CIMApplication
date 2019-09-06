@@ -35,13 +35,19 @@ case class SimulationOptions
      */
     options: Map[String, String] = Map (
         "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
-        "spark.ui.showConsoleProgress" -> "false"
+        "spark.ui.showConsoleProgress" -> "false",
+        "spark.sql.warehouse.dir" -> "file:///tmp/"
     ),
 
     /**
      * Cassandra connection host.
      */
     host: String = "localhost",
+
+    /**
+     * Cassandra connection port.
+     */
+    port: Int = 9042,
 
     /**
      * Logging level.
