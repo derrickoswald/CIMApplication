@@ -18,7 +18,6 @@
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/Simulation</url>
 
     <properties>
-        <version.dependency.cassandra_maven>3.6</version.dependency.cassandra_maven>
         <version.dependency.log4j>2.12.1</version.dependency.log4j>
     </properties>
 
@@ -146,10 +145,9 @@
         </testResources>
         <plugins>
             <plugin>
-                <!-- see http://davidb.github.com/scala-maven-plugin -->
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>${version.dependency.scalamavenplugin}</version>
+                <version>${version.dependency.scala-maven-plugin}</version>
                 <configuration>
                     <scalaCompatVersion>${version.dependency.scala}</scalaCompatVersion>
                     <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
@@ -177,7 +175,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.18.1</version>
+                <version>${version.dependency.maven-surefire-plugin}</version>
                 <configuration>
                     <skipTests>true</skipTests>
                 </configuration>
@@ -185,7 +183,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>${version.dependency.maven-failsafe-plugin}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -198,7 +196,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>${version.dependency.build-helper-maven-plugin}</version>
                 <executions>
                     <execution>
                         <id>reserve-network-port</id>
@@ -222,7 +220,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cassandra-maven-plugin</artifactId>
-                <version>${version.dependency.cassandra_maven}</version>
+                <version>${version.dependency.cassandra-maven-plugin}</version>
                 <configuration>
                     <clusterSize>1</clusterSize>
                     <startNativeTransport>true</startNativeTransport>
@@ -257,7 +255,7 @@ enable_scripted_user_defined_functions: true
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>${version.dependency.maven-assembly-plugin}</version>
                 <executions>
                     <execution>
                         <id>make-simulation-assembly</id>

@@ -22,7 +22,6 @@
         <!-- Scala versions -->
         <version.dependency.scala>2.11</version.dependency.scala>
         <version.dependency.scalalibrary>2.11.12</version.dependency.scalalibrary>
-        <version.dependency.scalamavenplugin>4.1.0</version.dependency.scalamavenplugin>
 
         <!-- Spark versions -->
         <version.dependency.hadoop>2.7.6</version.dependency.hadoop>
@@ -36,10 +35,27 @@
         <version.dependency.json>1.1.4</version.dependency.json>
         <version.dependency.sqlite>3.21.0.1</version.dependency.sqlite>
         <version.dependency.scopt>3.7.0</version.dependency.scopt>
+        <version.dependency.java-driver-core>4.2.0</version.dependency.java-driver-core>
 
         <!-- test versions -->
         <version.dependency.junit>4.12</version.dependency.junit>
         <version.dependency.scalatest>3.0.5</version.dependency.scalatest>
+
+        <!-- plugin versions -->
+        <version.dependency.maven-jar-plugin>3.1.2</version.dependency.maven-jar-plugin>
+        <version.dependency.maven-rar-plugin>2.4</version.dependency.maven-rar-plugin>
+        <version.dependency.maven-war-plugin>3.2.3</version.dependency.maven-war-plugin>
+        <version.dependency.maven-ear-plugin>3.0.1</version.dependency.maven-ear-plugin>
+        <version.dependency.maven-surefire-plugin>3.0.0-M3</version.dependency.maven-surefire-plugin>
+        <version.dependency.maven-assembly-plugin>3.1.1</version.dependency.maven-assembly-plugin>
+        <version.dependency.maven-compiler-plugin>3.8.1</version.dependency.maven-compiler-plugin>
+        <version.dependency.maven-enforcer-plugin>3.0.0-M2</version.dependency.maven-enforcer-plugin>
+        <version.dependency.maven-failsafe-plugin>2.22.2</version.dependency.maven-failsafe-plugin>
+        <version.dependency.build-helper-maven-plugin>3.0.0</version.dependency.build-helper-maven-plugin>
+        <version.dependency.cassandra-maven-plugin>3.6</version.dependency.cassandra-maven-plugin>
+        <!-- see http://davidb.github.com/scala-maven-plugin -->
+        <version.dependency.scala-maven-plugin>4.2.0</version.dependency.scala-maven-plugin>
+        <version.dependency.scalatest-maven-plugin>2.0.0</version.dependency.scalatest-maven-plugin>
 
     </properties>
 
@@ -57,31 +73,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>1.2</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>org.apache.maven.plugins</groupId>
-                                        <artifactId>maven-enforcer-plugin</artifactId>
-                                        <versionRange>[1.2,)</versionRange>
-                                        <goals>
-                                            <goal>enforce</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore/>
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
+                    <version>${version.dependency.maven-enforcer-plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -98,7 +90,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>1.7</version>
+                                    <version>1.8</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -124,24 +116,4 @@
         <module>MaximumFeedIn</module>
     </modules>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>javax</groupId>
-                <artifactId>javaee-api</artifactId>
-                <version>7.0</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>ch.ninecode.cim</groupId>
-                <artifactId>CIMConnector</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-all</artifactId>
-                <version>4.1.17.Final</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 </project>

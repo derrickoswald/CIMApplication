@@ -13,13 +13,6 @@
     <packaging>ear</packaging>
     <name>CIM Enterprise Application (EAR)</name>
 
-    <properties>
-
-        <!-- plugins versions -->
-        <version.ear.plugin>3.0.1</version.ear.plugin>
-
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -86,7 +79,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-ear-plugin</artifactId>
-                <version>${version.ear.plugin}</version>
+                <version>${version.dependency.maven-ear-plugin}</version>
                 <configuration>
                     <finalName>CIMApplication</finalName>
                     <defaultLibBundleDir>lib</defaultLibBundleDir>
@@ -128,43 +121,6 @@
                 </configuration>
             </plugin>
         </plugins>
-        <pluginManagement>
-            <plugins>
-                <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-                <plugin>
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>
-                                            org.apache.maven.plugins
-                                        </groupId>
-                                        <artifactId>
-                                            maven-ear-plugin
-                                        </artifactId>
-                                        <versionRange>
-                                            [2.6,)
-                                        </versionRange>
-                                        <goals>
-                                            <goal>
-                                                generate-application-xml
-                                            </goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore></ignore>
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
     </build>
   
 </project>

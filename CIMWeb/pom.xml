@@ -15,12 +15,8 @@
 
     <properties>
 
-        <!-- plugins versions -->
-        <version.plugin.compiler>3.6.2</version.plugin.compiler>
-        <version.plugin.war>3.1.0</version.plugin.war>
-
         <!-- test dependencies versions -->
-        <version.dependency.arquillian>1.1.13.Final</version.dependency.arquillian>
+        <version.dependency.arquillian>1.4.1.Final</version.dependency.arquillian>
         <tomee.classifier>plus</tomee.classifier>
 
     </properties>
@@ -178,7 +174,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${version.plugin.compiler}</version>
+                <version>${version.dependency.maven-compiler-plugin}</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -186,7 +182,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>${version.plugin.war}</version>
+                <version>${version.dependency.maven-war-plugin}</version>
                 <configuration>
                     <archiveClasses>true</archiveClasses>
                     <archive>
@@ -197,7 +193,7 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>${version.dependency.scalamavenplugin}</version>
+                <version>${version.dependency.scala-maven-plugin}</version>
                 <configuration>
                     <scalaCompatVersion>${version.dependency.scala}</scalaCompatVersion>
                     <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
@@ -222,7 +218,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.19.1</version>
+                <version>${version.dependency.maven-surefire-plugin}</version>
                 <configuration>
                     <systemPropertyVariables>
                         <tomee.classifier>${tomee.classifier}</tomee.classifier>
@@ -235,12 +231,13 @@
             <plugin>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
-                <version>1.0</version>
+                <version>${version.dependency.scalatest-maven-plugin}</version>
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
                     <suites>ch.ninecode.cim.cimweb.CIMWebTest</suites>
+                    <skipTests>true</skipTests>
                 </configuration>
                 <executions>
                     <execution>
