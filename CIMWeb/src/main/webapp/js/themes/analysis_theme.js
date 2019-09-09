@@ -261,6 +261,8 @@ define
                 this._popoff = this.popoff.bind (this);
                 this._map.on ("mouseenter", "symbol", this._popon);
                 this._map.on ("mouseleave", "symbol", this._popoff);
+                this._map.on ("mouseenter", "circle", this._popon);
+                this._map.on ("mouseleave", "circle", this._popoff);
             }
 
             /**
@@ -272,6 +274,8 @@ define
                 {
                     this._map.off ("mouseenter", "symbol", this._popon);
                     this._map.off ("mouseleave", "symbol", this._popoff);
+                    this._map.off ("mouseenter", "circle", this._popon);
+                    this._map.off ("mouseleave", "circle", this._popoff);
                 }
                 super.remove_theme ();
             }
