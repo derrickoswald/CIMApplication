@@ -1,12 +1,24 @@
 package ch.ninecode.ingest
 
-import ch.ninecode.ingest.Main.Formats
-import ch.ninecode.ingest.Main.Formats.Formats
-import ch.ninecode.ingest.Main.LogLevels
-import ch.ninecode.ingest.Main.LogLevels.LogLevels
+object LogLevels extends Enumeration
+{
+    type LogLevels = Value
+    val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
+}
+
+object Formats extends Enumeration
+{
+    type Formats = Value
+    val Belvis, LPEx = Value
+}
 
 case class IngestOptions
 (
+    /**
+     * False if either help or version requested (i.e. don't proceed with execution).
+     */
+    var valid: Boolean = true,
+
     /**
      * If <code>true</code>, don't call sys.exit().
      */
@@ -33,6 +45,11 @@ case class IngestOptions
     host: String = "localhost",
 
     /**
+     * Cassandra connection port.
+     */
+    port: Int = 9042,
+
+    /**
      * Storage level for RDD serialization.
      */
     storage: String = "MEMORY_AND_DISK_SER",
@@ -40,7 +57,12 @@ case class IngestOptions
     /**
      * Logging level.
      */
-    log_level: LogLevels = LogLevels.OFF,
+    log_level: LogLevels.Value = LogLevels.OFF,
+
+    /**
+     * If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
+     */
+    nocopy: Boolean = false,
 
     /**
      * Mapping CSV file name.
@@ -77,7 +99,7 @@ case class IngestOptions
     /**
      * Type of data file, either Belvis or LPEx.
      */
-    format: Formats = Formats.Belvis,
+    format: Formats.Value = Formats.Belvis,
 
     /**
      * Source Belvis/LPEx files.

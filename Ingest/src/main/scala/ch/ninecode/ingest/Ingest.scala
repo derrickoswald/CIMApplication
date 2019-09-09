@@ -56,59 +56,26 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
-    //    def dumpHeap (): Unit =
-    //    {
-    //        import java.lang.management.ManagementFactory
-    //        import java.lang.management.MemoryType
-    //        import scala.collection.JavaConversions._
-    //        // System.gc()
-    //        for (mpBean ← ManagementFactory.getMemoryPoolMXBeans)
-    //        {
-    //            if (mpBean.getType eq MemoryType.HEAP)
-    //            {
-    //                val usage = mpBean.getUsage
-    //                log.info ("""  %s: %s%% (%s/%s)""".format (mpBean.getName, (1000.0 * usage.getUsed / usage.getMax / 10.0).asInstanceOf[Int], usage.getUsed, usage.getMax))
-    //            }
-    //        }
-    //    }
-
     def map_csv_options: mutable.HashMap[String, String] =
     {
         val mapping_options = new mutable.HashMap[String, String]()
 
-        val header = "true"
-        val ignoreLeadingWhiteSpace = "false"
-        val ignoreTrailingWhiteSpace = "false"
-        val sep = ";"
-        val quote = "\""
-        val escape = "\\"
-        val encoding = "UTF-8"
-        val comment = "#"
-        val nullValue = ""
-        val nanValue = "NaN"
-        val positiveInf = "Inf"
-        val negativeInf = "-Inf"
-        val dateFormat = "yyyy-MM-dd"
-        val timestampFormat = "dd.MM.yyyy HH:mm"
-        val mode = "PERMISSIVE"
-        val inferSchema = "true"
-
-        mapping_options.put ("header", header)
-        mapping_options.put ("ignoreLeadingWhiteSpace", ignoreLeadingWhiteSpace)
-        mapping_options.put ("ignoreTrailingWhiteSpace", ignoreTrailingWhiteSpace)
-        mapping_options.put ("sep", sep)
-        mapping_options.put ("quote", quote)
-        mapping_options.put ("escape", escape)
-        mapping_options.put ("encoding", encoding)
-        mapping_options.put ("comment", comment)
-        mapping_options.put ("nullValue", nullValue)
-        mapping_options.put ("nanValue", nanValue)
-        mapping_options.put ("positiveInf", positiveInf)
-        mapping_options.put ("negativeInf", negativeInf)
-        mapping_options.put ("dateFormat", dateFormat)
-        mapping_options.put ("timestampFormat", timestampFormat)
-        mapping_options.put ("mode", mode)
-        mapping_options.put ("inferSchema", inferSchema)
+        mapping_options.put ("header", "true")
+        mapping_options.put ("ignoreLeadingWhiteSpace", "false")
+        mapping_options.put ("ignoreTrailingWhiteSpace", "false")
+        mapping_options.put ("sep", ";")
+        mapping_options.put ("quote", "\"")
+        mapping_options.put ("escape", "\\")
+        mapping_options.put ("encoding", "UTF-8")
+        mapping_options.put ("comment", "#")
+        mapping_options.put ("nullValue", "")
+        mapping_options.put ("nanValue", "NaN")
+        mapping_options.put ("positiveInf", "Inf")
+        mapping_options.put ("negativeInf", "-Inf")
+        mapping_options.put ("dateFormat", "yyyy-MM-dd")
+        mapping_options.put ("timestampFormat", "dd.MM.yyyy HH:mm")
+        mapping_options.put ("mode", "PERMISSIVE")
+        mapping_options.put ("inferSchema", "true")
 
         mapping_options
     }
@@ -208,7 +175,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         catch
         {
             case e: Exception =>
-                log.error ("""ingest failed for file "%s"""".format (file), e)
+                log.error (s"""ingest failed for file "$file"""", e)
                 Array ()
         }
     }
@@ -280,12 +247,12 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 }
             }
             else
-                log.error ("""putFile could not store %d bytes for path "%s"""".format (data.length, path))
+                log.error (f"""putFile could not store ${data.length}%d bytes for path "$path"""")
         }
         catch
         {
             case e: Exception =>
-                log.error ("""putFile failed for path "%s" with unzip=%s""".format (path, unzip), e)
+                log.error (s"""putFile failed for path "$path" with unzip=$unzip""", e)
         }
 
         ret
@@ -309,60 +276,48 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def process_belvis (join_table: Map[String, String])(file: String): Unit =
     {
-        val header = "false"
-        val ignoreLeadingWhiteSpace = "false"
-        val ignoreTrailingWhiteSpace = "false"
-        val sep = ";"
-        val quote = "\""
-        val escape = "\\"
-        val encoding = "UTF-8"
-        val comment = "#"
-        val nullValue = ""
-        val nanValue = "NaN"
-        val positiveInf = "Inf"
-        val negativeInf = "-Inf"
-        val dateFormat = "yyyy-MM-dd"
-        val timestampFormat = "dd.MM.yyyy HH:mm"
-        val mode = "DROPMALFORMED"
-        val inferSchema = "true"
-
         val measurement_csv_options = immutable.HashMap (
-            "header" → header,
-            "ignoreLeadingWhiteSpace" → ignoreLeadingWhiteSpace,
-            "ignoreTrailingWhiteSpace" → ignoreTrailingWhiteSpace,
-            "sep" → sep,
-            "quote" → quote,
-            "escape" → escape,
-            "encoding" → encoding,
-            "comment" → comment,
-            "nullValue" → nullValue,
-            "nanValue" → nanValue,
-            "positiveInf" → positiveInf,
-            "negativeInf" → negativeInf,
-            "dateFormat" → dateFormat,
-            "timestampFormat" → timestampFormat,
-            "mode" → mode,
-            "inferSchema" → inferSchema
+            "header" → "false",
+            "ignoreLeadingWhiteSpace" → "false",
+            "ignoreTrailingWhiteSpace" → "false",
+            "sep" → ";",
+            "quote" → "\"",
+            "escape" → "\\",
+            "encoding" → "UTF-8",
+            "comment" → "#",
+            "nullValue" → "",
+            "nanValue" → "NaN",
+            "positiveInf" → "Inf",
+            "negativeInf" → "-Inf",
+            "dateFormat" → "yyyy-MM-dd",
+            "timestampFormat" → "dd.MM.yyyy HH:mm",
+            "mode" → "DROPMALFORMED",
+            "inferSchema" → "true"
         )
 
-        val belvis_files =
+        val belvis_files: Seq[String] =
         {
-            val start = System.nanoTime ()
-            val files = putFile (session, "/" + base_name (file), readFile (file), file.toLowerCase.endsWith (".zip"))
-            val end = System.nanoTime ()
-            log.info ("copy %s: %s seconds".format (new File (file).getName, (end - start) / 1e9))
-            files
+            if (options.nocopy)
+                Seq (file)
+            else
+            {
+                val start = System.nanoTime ()
+                val name = s"/${base_name (file)}"
+                val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
+                val end = System.nanoTime ()
+                log.info (s"copy $file: ${(end - start) / 1e9} seconds")
+                files
+            }
         }
-        // dumpHeap ()
-        for (filename ← belvis_files) // e.g. "hdfs://sandbox:8020/20180412_080258_Belvis_manuell_TS Amalerven.csv"
+        for (filename ← belvis_files)
         {
             val start = System.nanoTime ()
             sub_belvis (filename, measurement_csv_options, join_table)
-            hdfs.delete (new Path (filename), false)
+            if (!options.nocopy)
+                hdfs.delete (new Path (filename), false)
             val end = System.nanoTime ()
-            log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
+            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
-        // dumpHeap ()
     }
 
     val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
@@ -420,13 +375,13 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     (typ, real, imag, unit, factor)
                 }
                 else
-                    ("", false, false, "OBIS code '%s' has unrecognized quantity type %s".format (code, quantity), 0.0)
+                    ("", false, false, s"OBIS code '$code' has unrecognized quantity type $quantity", 0.0)
             }
             else
-                ("", false, false, "'%s' is not an electric OBIS code".format (code), 0.0)
+                ("", false, false, s"'$code' is not an electric OBIS code", 0.0)
         }
         else
-            ("", false, false, "'%s' has an OBIS code format error".format (code), 0.0)
+            ("", false, false, s"'$code' has an OBIS code format error", 0.0)
     }
 
     /**
@@ -496,21 +451,28 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def process_lpex (join_table: Map[String, String])(file: String): Unit =
     {
-        val lpex_files =
+        val lpex_files: Seq[String] =
         {
-            val start = System.nanoTime ()
-            val files = putFile (session, "/" + base_name (file), readFile (file), file.toLowerCase.endsWith (".zip"))
-            val end = System.nanoTime ()
-            log.info ("copy %s: %s seconds".format (new File (file).getName, (end - start) / 1e9))
-            files
+            if (options.nocopy)
+                Seq (file)
+            else
+            {
+                val start = System.nanoTime ()
+                val name = s"/${base_name (file)}"
+                val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
+                val end = System.nanoTime ()
+                log.info (s"copy $file: ${(end - start) / 1e9} seconds")
+                files
+            }
         }
-        for (filename ← lpex_files) // e.g. "hdfs://sandbox:8020/2000004515773_Lastprofil_Fremdgeräte_EDM_20190304031000.txt"
+        for (filename ← lpex_files)
         {
             val start = System.nanoTime ()
             sub_lpex (filename, join_table)
-            hdfs.delete (new Path (filename), false)
+            if (!options.nocopy)
+                hdfs.delete (new Path (filename), false)
             val end = System.nanoTime ()
-            log.info ("process %s: %s seconds".format (filename, (end - start) / 1e9))
+            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
     }
 
@@ -522,30 +484,34 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         if (schema.make)
         {
 
-            val mapping_files = putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
-            if (mapping_files.nonEmpty) // e.g. "hdfs://sandbox:8020/Stoerung_Messstellen2.csv"
+            val mapping_files =
+                if (options.nocopy)
+                    Seq (options.mapping)
+                else
+                    putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
+            if (mapping_files.nonEmpty)
             {
                 val filename = mapping_files.head
                 val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
                 val read = System.nanoTime ()
-                log.info ("read %s: %s seconds".format (filename, (read - begin) / 1e9))
+                log.info (s"read $filename: ${(read - begin) / 1e9} seconds")
 
                 val ch_number = dataframe.schema.fieldIndex (options.metercol)
                 val nis_number = dataframe.schema.fieldIndex (options.mridcol)
                 val join_table = dataframe.rdd.map (row ⇒ (row.getString (ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
 
                 val map = System.nanoTime ()
-                log.info ("map: %s seconds".format ((map - read) / 1e9))
+                log.info (s"map: ${(map - read) / 1e9} seconds")
 
-                // dumpHeap ()
                 options.format.toString match
                 {
                     case "Belvis" ⇒ options.datafiles.foreach (process_belvis (join_table))
                     case "LPEx" ⇒ options.datafiles.foreach (process_lpex (join_table))
                 }
 
-                hdfs.delete (new Path (filename), false)
+                if (!options.nocopy)
+                    hdfs.delete (new Path (filename), false)
             }
         }
     }

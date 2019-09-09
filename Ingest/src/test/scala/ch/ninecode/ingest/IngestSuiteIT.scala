@@ -1,17 +1,18 @@
 package ch.ninecode.ingest
 
+import java.util.Properties
+
 import scala.collection.JavaConverters._
 
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.Session
 
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.FunSuite
+import org.junit.Test
 
 import ch.ninecode.ingest.Main.main
 
-class IngestSuite extends FunSuite with BeforeAndAfterAll
+class IngestSuiteIT
 {
     val KEYSPACE = "delete_me"
     val FILE_DEPOT = "data/"
@@ -22,7 +23,24 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
     val DAYLIGHT_START = "daylight_start.txt"
     val DAYLIGHT_END = "daylight_end.txt"
 
-    test ("Help")
+    def cassandra_port: Int =
+    {
+        val properties: Properties =
+        {
+            val in = this.getClass.getResourceAsStream ("/configuration.properties")
+            val p = new Properties ()
+            p.load (in)
+            in.close ()
+            p
+        }
+        val port = properties.getProperty ("nativeTransportPort")
+        if ("" == port)
+            9042
+        else
+            port.toInt
+    }
+
+    @Test def Help ()
     {
         main (Array ("--unittest", "--help"))
     }
@@ -42,20 +60,22 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         assert (row.getString ("units") == units, "units")
     }
 
-    test ("Ingest")
+    @Test def Ingest ()
     {
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
+            "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
-            "--mapping", FILE_DEPOT + MAPPING_FILE,
+            "--nocopy",
+            "--mapping", s"${FILE_DEPOT}${MAPPING_FILE}",
             "--metercol", "meter",
             "--mridcol", "mRID",
             "--format", "LPEx",
-            FILE_DEPOT + LPEX_FILE1,
-            FILE_DEPOT + LPEX_FILE2))
+            s"${FILE_DEPOT}${LPEX_FILE1}",
+            s"${FILE_DEPOT}${LPEX_FILE2}"))
 
-        val session: Session = new Cluster.Builder ().addContactPoints ("localhost").build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12345' and type='power'", 96L, "HAS12345")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12345' and type='power' and time='2019-03-02 23:15:00.000+0000'", 12075.0, 3750.0, "W")
@@ -71,20 +91,22 @@ class IngestSuite extends FunSuite with BeforeAndAfterAll
         session.close ()
     }
 
-    test ("Daylight Savings Time")
+    @Test def DaylightSavings_Time ()
     {
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
+            "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
-            "--mapping", FILE_DEPOT + DAYLIGHT_MAPPING_FILE,
+            "--nocopy",
+            "--mapping", s"${FILE_DEPOT}${DAYLIGHT_MAPPING_FILE}",
             "--mridcol", "mrid",
             "--metercol", "meter",
             "--format", "LPEx",
-            FILE_DEPOT + DAYLIGHT_START,
-            FILE_DEPOT + DAYLIGHT_END))
+            s"${FILE_DEPOT}${DAYLIGHT_START}",
+            s"${FILE_DEPOT}${DAYLIGHT_END}"))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'", 188L, "daylight savings start")
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'", 196L, "daylight savings end")
