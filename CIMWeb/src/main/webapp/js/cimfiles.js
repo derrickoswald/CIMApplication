@@ -411,7 +411,6 @@ define
                     if (0 != context.ignored)
                         console.log (context.ignored.toString () + " unrecognized element" + ((1 < context.ignored) ? "s" : ""));
                     cimmap.set_data (context.parsed);
-                    cimmap.set_loaded ({ files: blob.name, options: {}, elements: elements });
                 }
             );
         }
