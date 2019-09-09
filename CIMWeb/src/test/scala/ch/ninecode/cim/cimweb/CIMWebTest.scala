@@ -1,12 +1,10 @@
 package ch.ninecode.cim.cimweb
 
-import org.junit.Assert.assertNotNull
 import java.io.File
 import java.util.Properties
-import javax.inject.Inject
 import javax.naming._
-import javax.resource.cci.Connection
 import javax.resource.cci.ConnectionFactory
+
 import org.jboss.arquillian.container.test.api.Deployment
 import org.jboss.arquillian.junit.Arquillian
 import org.jboss.shrinkwrap.api.ShrinkWrap
@@ -14,6 +12,8 @@ import org.jboss.shrinkwrap.api.asset.FileAsset
 import org.jboss.shrinkwrap.api.exporter.ZipExporter
 import org.jboss.shrinkwrap.api.spec.EnterpriseArchive
 import org.jboss.shrinkwrap.api.spec.WebArchive
+
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 object CIMWebTest
 {
     val WEBEAR_SRC = "src/main"
-    val WEBAPP_SRC = WEBEAR_SRC + "/webapp"
+    val WEBAPP_SRC = s"$WEBEAR_SRC/webapp"
     println (WEBAPP_SRC)
 
     @Deployment
@@ -64,7 +64,7 @@ object CIMWebTest
 @RunWith (classOf [Arquillian])
 class CIMWebTest
 {
-    var context: InitialContext = null
+    var context: InitialContext = _
 
     def print_context_r (name: String, depth: Int): Unit =
     {
