@@ -96,7 +96,7 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     {
         val time = glm_date_format.format (datum.time)
         val (r, i) = (datum.readings(index), datum.readings(index + 1))
-        val (real, imag) = if (fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
+        val (real, imag) = if (three_phase && fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
         s"$time,$real,$imag"
     }
 
