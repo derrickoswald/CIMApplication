@@ -154,11 +154,17 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     note (
         """
-Generates CIM class files.
+Ingests smart meter data into Cassandra.
 
-Reads CIM UML model files available from the CIM Users Group (https://cimug.ucaiug.org/)
-in Enterprise Architect (SparX Systems https://www.sparxsystems.com/) .eap format
-and creates source code class files for either Scala or Javascript.
+Reads smart meter files in LPEx or BelVis format and matches the meter ID with a CIM mRID
+based on a mapping CSV file, and inserts 'raw meter data' into the Cassandra measured_values table.
+The program normally copies and unzips (based on file extension) files to HDFS (unless --nocopy is specified) and
+reads the mapping file and meter data files (demultiplexed to individual readings) into Spark RDD.
+These are then rearranged and augmented to match the measured_value schema and inserted into Cassandra in bulk.
+Operation are performed with complex numbers per the measured_value schema,
+but so far deal only with one phase (phase A in North America or phase R in the rest of the world).
+Where mulitple meter IDs map to one CIM mRID, the values are added together, providing the capability to
+have an apartment block merged or active and reactive measurements from the same meter merged.
 """
     )
 }
