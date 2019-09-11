@@ -15,7 +15,7 @@ define
      */
     function (util, mustache, cim, cimmap)
     {
-        var LAST_DIRECTORY = "/";
+        let LAST_DIRECTORY = "/";
 
         /**
          * Make a select option list of the files.
@@ -46,13 +46,13 @@ define
             //    ]
             //  }
             //}
-            if (response.status == "OK")
+            if (response.status === "OK")
             {
                 // render the file list
-                var root = response.result.root.substring (response.result.filesystem.length);
+                const root = response.result.root.substring (response.result.filesystem.length);
                 LAST_DIRECTORY = root;
-                var parent = ("/" != root) ? root.substring (0, root.substring (0, root.length - 1).lastIndexOf ("/")) + "/" : "/";
-                var file_table_template =
+                const parent = ("/" !== root) ? root.substring (0, root.substring (0, root.length - 1).lastIndexOf ("/")) + "/" : "/";
+                const file_table_template =
 `<div class="container-fluid">
   <div class="row justify-content-center">
     <div class="col-1">
@@ -99,7 +99,7 @@ define
     </div>
   </div>
 </div>`;
-                var text = mustache.render
+                const text = mustache.render
                 (
                     file_table_template,
                     {
@@ -111,7 +111,7 @@ define
                         dots: function ()
                         {
 
-                            return (("/" != root) ?
+                            return (("/" !== root) ?
                                 "          <tr>\n" +
                                 "            <td></td>\n" +
                                 "            <td></td>\n" +
@@ -127,33 +127,33 @@ define
                         },
                         load: function ()
                         {
-                            var text;
+                            let text;
                             if (this.is_directory)
-                                text = ""
+                                text = "";
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml") || this.path.endsWith (".csv"))
                                 // tag these checkboxes with class 'filename'
                                 text = `<input class="filename" type="checkbox" name="` + root + this.path + `">`;
                             else
-                                text = ""
+                                text = "";
                             return (text);
                         },
                         view: function ()
                         {
-                            var text;
+                            let text;
                             if (this.is_directory)
-                                text = ""
+                                text = "";
                             else if (this.path.endsWith (".rdf") || this.path.endsWith (".xml"))
                                 text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_view (\"" + root + this.path + "\");}); return false;'><i class='fa fa-eye'></i></a>";
                             else
                             {
-                                var url = util.home () + "cim/file" + root + this.path;
+                                const url = util.home () + "cim/file" + root + this.path;
                                 text = "<a href='" + url + "'><i class='fa fa-cloud-download-alt'></i></span></a>";
                             }
                             return (text);
                         },
                         file: function ()
                         {
-                            var text;
+                            let text;
                             if (this.is_directory)
                                 text = "<a href='#' onclick='require([\"cimfiles\"], function(cimfiles) {cimfiles.do_fetch (\"" + root + this.path + "/\");}); return false;'>" + this.path + "</a>";
                             else
@@ -192,17 +192,14 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
-                        var url;
-                        var xmlhttp;
-
                         path = path || "";
                         path = path.startsWith ("/") ? path : "/" + path;
-                        url = util.home () + "cim/file" + path;
-                        xmlhttp = util.createCORSRequest ("GET", url);
+                        const url = util.home () + "cim/file" + path;
+                        const xmlhttp = util.createCORSRequest ("GET", url);
                         xmlhttp.onreadystatechange = function ()
                         {
-                            if (4 == xmlhttp.readyState)
-                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                                     resolve (xmlhttp.responseText);
                                 else
                                     if (null != err)
@@ -228,18 +225,15 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
-                        var url;
-                        var xmlhttp;
-
                         path = path || "";
                         path = path.startsWith ("/") ? path : "/" + path;
                         path = path.endsWith ("/") ? path : path + "/";
-                        url = util.home () + "cim/file" + path;
-                        xmlhttp = util.createCORSRequest ("GET", url);
+                        const url = util.home () + "cim/file" + path;
+                        const xmlhttp = util.createCORSRequest ("GET", url);
                         xmlhttp.onreadystatechange = function ()
                         {
-                            if (4 == xmlhttp.readyState)
-                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                                     resolve (JSON.parse (xmlhttp.responseText));
                                 else
                                     reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
@@ -259,7 +253,12 @@ define
          */
         function do_fetch (path)
         {
-            fetch (path).then (make_file_list);
+            fetch (path).then (make_file_list).catch (
+                function (error)
+                {
+                    document.getElementById ("files").innerHTML = JSON.stringify (error, null, 4);
+                }
+            );
         }
 
         /**
@@ -279,18 +278,13 @@ define
                 new Promise (
                     function (resolve, reject)
                     {
-                        var url;
-                        var xmlhttp;
-
                         path = path.startsWith ("/") ? path : "/" + path;
-                        url = util.home () + "cim/file" + path;
-                        xmlhttp = util.createCORSRequest ("PUT", url);
+                        const url = util.home () + "cim/file" + path;
+                        const xmlhttp = util.createCORSRequest ("PUT", url);
                         xmlhttp.onreadystatechange = function ()
                         {
-                            var resp;
-
-                            if (4 == xmlhttp.readyState)
-                                if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                            if (4 === xmlhttp.readyState)
+                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                                     resolve (JSON.parse (xmlhttp.responseText));
                                 else
                                     reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
@@ -310,24 +304,19 @@ define
          */
         function do_put (event)
         {
-            var url;
-            var file;
-            var name; // file name
-            var zip; // boolean zip flag
-
-            file = document.getElementById ("file");
-            if (file.value != "")
+            const file = document.getElementById ("file");
+            if (file.value !== "")
             {
-                name = file.value.replace ("C:\\fakepath\\", "");
-                url = LAST_DIRECTORY + name;
+                const name = file.value.replace ("C:\\fakepath\\", ""); // file name
+                let url = LAST_DIRECTORY + name;
                 url = url.endsWith (".zip") ? url + ";unzip=true" : url;
-                var data = file.files[0];
-                var reader = new FileReader ();
+                const data = file.files[0];
+                const reader = new FileReader ();
                 reader.onload = function () {
                     put (url, reader.result).then (
                         function (response)
                         {
-                            if (response.status == "OK")
+                            if (response.status === "OK")
                                 do_fetch (LAST_DIRECTORY);
                             else
                                 alert ("message: " + (response.message ? response.message : "") + " error: " + (response.error ? response.error : ""));
@@ -337,7 +326,7 @@ define
                 reader.onerror = function (event)
                 {
                     alert (JSON.stringify (event, null, 4));
-                }
+                };
                 reader.readAsArrayBuffer (data);
             }
         }
@@ -345,12 +334,12 @@ define
         function do_load (event)
         {
             // get the file list
-            var collection = document.getElementsByClassName ("filename");
-            var files = [];
-            for (var i = 0; i < collection.length; i++)
+            const collection = document.getElementsByClassName ("filename");
+            const files = [];
+            for (let i = 0; i < collection.length; i++)
                 if (collection[i].checked)
                     files.push (collection[i].getAttribute ("name"));
-            if (0 != files.length)
+            if (0 !== files.length)
                 load_files (files)
         }
 
@@ -362,25 +351,20 @@ define
          */
         function do_remove (path)
         {
-            var url;
-            var xmlhttp;
-
             path = path.startsWith ("/") ? path : "/" + path;
-            url = util.home () + "cim/file" + path;
-            xmlhttp = util.createCORSRequest ("DELETE", url);
+            const url = util.home () + "cim/file" + path;
+            const xmlhttp = util.createCORSRequest ("DELETE", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status != "OK")
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status !== "OK")
                             alert (resp.message);
                         else
                         {
-                            var parent = path.endsWith ("/") ? path.substring (0, path.length () - 1) : path;
+                            let parent = path.endsWith ("/") ? path.substring (0, path.length () - 1) : path;
                             parent = parent.substring (0, parent.lastIndexOf ("/")) + "/";
                             do_fetch (parent);
                         }
@@ -400,15 +384,15 @@ define
          */
         function read_cim (blob)
         {
-            var start = new Date ().getTime ();
+            const start = new Date ().getTime ();
             console.log ("starting CIM read");
             cim.read_xml_blobs ([blob]).then (
                 function (context)
                 {
-                    var end = new Date ().getTime ();
-                    var elements = Object.keys (context.parsed.Element).length;
+                    const end = new Date ().getTime ();
+                    const elements = Object.keys (context.parsed.Element).length;
                     console.log ("finished CIM read (" + (Math.round (end - start) / 1000) + " seconds, " + elements + " elements)");
-                    if (0 != context.ignored)
+                    if (0 !== context.ignored)
                         console.log (context.ignored.toString () + " unrecognized element" + ((1 < context.ignored) ? "s" : ""));
                     cimmap.set_data (context.parsed);
                 }
@@ -425,7 +409,7 @@ define
          */
         function read_zip (blob, fn)
         {
-            var start = new Date ().getTime ();
+            const start = new Date ().getTime ();
             console.log ("starting unzip");
             require (
                 ["zip/zip", "zip/mime-types"],
@@ -443,7 +427,7 @@ define
                                         function (data)
                                         {
                                             zipReader.close ();
-                                            var end = new Date ().getTime ();
+                                            const end = new Date ().getTime ();
                                             console.log ("finished unzip (" + (Math.round (end - start) / 1000) + " seconds)");
                                             fn (data);
                                         }
@@ -464,23 +448,18 @@ define
          */
         function do_view (path)
         {
-            var url;
-            var xmlhttp;
-
             // switch to the map tab
             window.location.hash = "map";
 
             path = path.startsWith ("/") ? path : "/" + path;
-            url = util.home () + "cim/file" + path + ";zip=true";
-            xmlhttp = util.createCORSRequest ("GET", url);
+            const url = util.home () + "cim/file" + path + ";zip=true";
+            const xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.setRequestHeader ("Accept", "application/zip");
             xmlhttp.responseType = "blob";
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                         read_zip (xmlhttp.response, read_cim);
                     else
                         alert ("status: " + xmlhttp.status);
@@ -496,22 +475,17 @@ define
          */
         function do_show ()
         {
-            var url;
-            var xmlhttp;
-
             // switch to the map tab
             window.location.hash = "map";
 
-            url = util.home () + "cim/view/spark;all=true;zip=true";
-            xmlhttp = util.createCORSRequest ("GET", url);
+            const url = util.home () + "cim/view/spark;all=true;zip=true";
+            const xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.setRequestHeader ("Accept", "application/zip");
             xmlhttp.responseType = "blob";
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                         read_zip (xmlhttp.response, read_cim);
                     else
                         alert ("status: " + xmlhttp.status);
@@ -644,8 +618,8 @@ define
 
         function split_maxsize ()
         {
-            var splits = document.getElementById ("split_maxsize").value;
-            if ("NaN" == Number (splits).toString ())
+            let splits = document.getElementById ("split_maxsize").value;
+            if ("NaN" === Number (splits).toString ())
                  splits = "67108864";
             return (splits);
         }
@@ -746,12 +720,8 @@ define
          */
         function load_files (paths)
         {
-            var csv;
-            var url;
-            var xmlhttp;
-
-            csv = paths[0].toLowerCase ().endsWith (".csv");
-            var path = paths.map (p => (p.startsWith ("/")) ? p : "/" + p).join ();
+            const csv = paths[0].toLowerCase ().endsWith (".csv");
+            let path = paths.map (p => (p.startsWith ("/")) ? p : "/" + p).join ();
             path = path + ";StorageLevel=" + storage_level ();
             if (do_about ())
                 path += ";do_about=true";
@@ -767,21 +737,21 @@ define
                 path += ";do_topo_islands=true";
             if (do_topo ())
                 path += ";do_topo=true";
-            if ("Unforced" != force_retain_switches ())
+            if ("Unforced" !== force_retain_switches ())
                 path += (";force_retain_switches=" + force_retain_switches ());
-            if ("Unforced" != force_retain_fuses ())
+            if ("Unforced" !== force_retain_fuses ())
                 path += (";force_retain_fuses=" + force_retain_fuses ());
-            if ("Unforced" != force_switch_separate_islands ())
+            if ("Unforced" !== force_switch_separate_islands ())
                 path += (";force_switch_separate_islands=" + force_switch_separate_islands ());
-            if ("Unforced" != force_fuse_separate_islands ())
+            if ("Unforced" !== force_fuse_separate_islands ())
                 path += (";force_fuse_separate_islands=" + force_fuse_separate_islands ());
             if (default_switch_open_state ())
                 path += ";default_switch_open_state=true";
             if (debug ())
                 path += ";debug=true";
-            if ("67108864" != split_maxsize ())
+            if ("67108864" !== split_maxsize ())
                 path += ";split_maxsize=" + split_maxsize ();
-            if ("" != cache ())
+            if ("" !== cache ())
                 path += (";cache=" + cache ());
             if (header ())
                 path += ";header=true";
@@ -789,44 +759,42 @@ define
                 path += ";ignoreLeadingWhiteSpace=true";
             if (ignoreTrailingWhiteSpace ())
                 path += ";ignoreTrailingWhiteSpace=true";
-            if ("" != sep ())
+            if ("" !== sep ())
                 path += ";sep=" + encodeURIComponent (sep ());
-            if ("" != quote ())
+            if ("" !== quote ())
                 path += ";quote=" + encodeURIComponent (quote ());
-            if ("" != escape ())
+            if ("" !== escape ())
                 path += ";escape=" + encodeURIComponent (escape ());
-            if ("" != encoding ())
+            if ("" !== encoding ())
                 path += ";encoding=" + encodeURIComponent (encoding ());
-            if ("" != comment ())
+            if ("" !== comment ())
                 path += ";comment=" + encodeURIComponent (comment ());
-            if ("" != nullValue ())
+            if ("" !== nullValue ())
                 path += ";nullValue=" + encodeURIComponent (nullValue ());
-            if ("" != nanValue ())
+            if ("" !== nanValue ())
                 path += ";nanValue=" + encodeURIComponent (nanValue ());
-            if ("" != positiveInf ())
+            if ("" !== positiveInf ())
                 path += ";positiveInf=" + encodeURIComponent (positiveInf ());
-            if ("" != negativeInf ())
+            if ("" !== negativeInf ())
                 path += ";negativeInf=" + encodeURIComponent (negativeInf ());
-            if ("" != dateFormat ())
+            if ("" !== dateFormat ())
                 path += ";dateFormat=" + encodeURIComponent (dateFormat ());
-            if ("" != timestampFormat ())
+            if ("" !== timestampFormat ())
                 path += ";timestampFormat=" + encodeURIComponent (timestampFormat ());
-            if ("" != mode ())
+            if ("" !== mode ())
                 path += ";mode=" + encodeURIComponent (mode ());
             if (inferSchema ())
                 path += ";inferSchema=true";
 
-            url = util.home () + "cim/load" + path;
-            xmlhttp = util.createCORSRequest ("GET", url);
+            const url = util.home () + "cim/load" + path;
+            const xmlhttp = util.createCORSRequest ("GET", url);
             xmlhttp.onreadystatechange = function ()
             {
-                var resp;
-
-                if (4 == xmlhttp.readyState)
-                    if (200 == xmlhttp.status || 201 == xmlhttp.status || 202 == xmlhttp.status)
+                if (4 === xmlhttp.readyState)
+                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
                     {
-                        resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status == "OK")
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if (resp.status === "OK")
                         {
                             console.log (JSON.stringify (resp, null, 4));
                             cimmap.set_loaded (resp.result);
@@ -859,7 +827,6 @@ define
                 initialize: initialize,
                 get: get,
                 fetch: fetch,
-                do_fetch: do_fetch,
                 put: put,
                 do_put: do_put,
                 do_remove: do_remove,

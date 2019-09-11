@@ -65,6 +65,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.ingest</groupId>
+            <artifactId>Ingest</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
             <version>${project.version}</version>

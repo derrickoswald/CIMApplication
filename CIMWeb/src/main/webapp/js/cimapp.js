@@ -112,6 +112,11 @@ define
                     else
                         document.getElementById ("spark_master").style.display = "none";
                 }
+            ).catch (
+                function (error)
+                {
+                    document.getElementById ("spark_master").style.display = "none";
+                }
             );
         }
 

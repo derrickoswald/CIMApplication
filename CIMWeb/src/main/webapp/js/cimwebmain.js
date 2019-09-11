@@ -12,10 +12,10 @@ requirejs.config({
 
 requirejs
 (
-    ["cimapp", "cimfiles", "cimmap", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimanalysis", "cimquery", "cimsimulate",
+    ["cimapp", "cimfiles", "cimmap", "cimdetails", "cimedit", "cimconnectivity", "cimdiagram", "cimchart", "cimingest", "cimanalysis", "cimquery", "cimsimulate",
      "themes/cimthemes", "themes/default_theme", "themes/icon_theme", "themes/voltage", "themes/island", "themes/inservice", "themes/diagram", "themes/project_theme", "themes/event_theme",
      "nav/cimnav", "nav/zoominnav", "nav/zoomoutnav", "nav/rotationnav", "nav/zoomnav", "nav/infonav", "nav/themenav", "nav/legendnav", "nav/editnav", "nav/connectivitynav", "nav/diagramnav", "nav/chartnav"],
-    function (cimapp, cimfiles, cimmap, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimanalysis, cimquery, cimsimulate,
+    function (cimapp, cimfiles, cimmap, CIMDetails, CIMEdit, CIMConnectivity, CIMDiagram, CIMChart, cimingest, cimanalysis, cimquery, cimsimulate,
      ThemeControl, DefaultTheme, IconTheme, VoltageTheme, IslandTheme, InServiceTheme, DiagramTheme, ProjectTheme, EventTheme,
      NavigationControl, ZoomInNav, ZoomOutNav, RotationNav, ZoomNav, InfoNav, ThemeNav, LegendNav, EditNav, ConnectivityNav, DiagramNav, ChartNav)
     {
@@ -108,6 +108,7 @@ requirejs
                             cimmap.get_themer ().removeTheme (theme);
                             cimmap.get_themer ().addTheme (theme);
                             break;
+                        case "ingest": cimingest.initialize (event); break;
                         case "analysis": cimanalysis.initialize (event); break;
                         case "simulate": cimsimulate.initialize (event); break;
                         case "query": cimquery.initialize (event); break;

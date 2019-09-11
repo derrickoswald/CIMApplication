@@ -74,7 +74,7 @@ public interface CIMFunction extends Serializable
     /**
      * Execute against this class returning a string.
      * @param spark The Spark session to use.
-     * @return The resultantsString.
+     * @return The resultant String.
      */
     String executeString (SparkSession spark);
 
