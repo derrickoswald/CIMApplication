@@ -162,7 +162,7 @@ define
                                 if (!ret[location])
                                 {
                                     const array = [];
-                                    array.isInternal = (locations[location].CoordinateSystem === "pseudo_wgs84") ? function () { return (true); }: function () { return (false); };
+                                    array.isInternal = (locations[location] && locations[location].CoordinateSystem === "pseudo_wgs84") ? function () { return (true); }: function () { return (false); };
                                     ret[location] = array;
                                 }
                                 const seq = Number (p.sequenceNumber);
