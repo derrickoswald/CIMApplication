@@ -92,7 +92,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def not_all_null (row: Row): Boolean =
     {
-        (for (i <- 0 until 96) yield row.isNullAt (7 + (2 * i))).exists (!_)
+        val limit = (row.length - 7) / 2
+        (for (i <- 0 until limit) yield row.isNullAt (7 + (2 * i))).exists (!_)
     }
 
     def to_reading (s: (String, Row)): (String, Reading) =
