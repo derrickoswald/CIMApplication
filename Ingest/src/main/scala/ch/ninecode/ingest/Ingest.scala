@@ -3,7 +3,6 @@ package ch.ninecode.ingest
 import java.io.ByteArrayInputStream
 import java.io.FileOutputStream
 import java.io.File
-import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.sql.Timestamp
@@ -22,6 +21,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -37,6 +37,16 @@ import org.slf4j.LoggerFactory
  */
 case class Ingest (session: SparkSession, options: IngestOptions)
 {
+
+    type Mrid = String
+    type Type = String
+    type Time = Long
+    type Period = Int
+    type Real_a = Double
+    type Imag_a = Double
+    type Units = String
+    type MeasuredValue = (Mrid, Type, Time, Period, Real_a, Imag_a, Units)
+
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -111,7 +121,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
      * @param reading the reading from the csv
      * @return the list of time series records
      */
-    def to_timeseries (reading: Reading): IndexedSeq[(String, String, Long, Int, Double, Double, String)] =
+    def to_timeseries (reading: Reading): IndexedSeq[MeasuredValue] =
     {
         // Note: reading.period is in seconds and we need milliseconds for Cassandra
         val period = 1000 * reading.period
@@ -264,8 +274,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
         val rdd = df.rdd
         val raw = rdd.filter (not_all_null).keyBy (row ⇒ join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
-        val readings = raw.reduceByKey (sum).values.flatMap (to_timeseries)
-        val ok = readings.filter (_._1 != null)
+        val readings: RDD[MeasuredValue] = raw.reduceByKey (sum).values.flatMap (to_timeseries)
+        val ok: RDD[MeasuredValue] = readings.filter (_._1 != null)
         ok.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         df.unpersist (false)
         rdd.unpersist (false)
@@ -429,7 +439,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             List ()
     }
 
-    def complex (measurements: Iterable[(String, String, Long, Int, Double, Double, String)]) : (String, String, Long, Int, Double, Double, String) =
+    def complex (measurements: Iterable[MeasuredValue]) : MeasuredValue =
     {
         val a = measurements.head
         (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
@@ -444,7 +454,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val rdd = lines.flatMap (to_tuples (join_table))
             // combine real and imaginary parts
-            val grouped = rdd.groupBy (x ⇒ (x._1, x._2, x._3)).values.map (complex)
+            val grouped: RDD[MeasuredValue] = rdd.groupBy (x ⇒ (x._1, x._2, x._3)).values.map (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
     }

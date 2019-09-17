@@ -47,7 +47,7 @@ class IngestSuiteIT
 
     def checkCount (session: Session, sql: String, count: Long, tag: String): Unit =
     {
-        assert (session.execute (sql).all.asScala.head.getLong ("count") == count, "number of records for $tag")
+        assert (session.execute (sql).all.asScala.head.getLong ("count") == count, s"number of records for $tag")
     }
 
     def checkValue (session: Session, sql: String, real: Double, imag: Double, units: String): Unit =
