@@ -97,7 +97,7 @@ object Main
                         val json_impl = jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl"))
                         val datastax = jarForClass (Class.forName ("com.datastax.driver.core.Cluster"))
                         val twitter = jarForClass (Class.forName ("com.twitter.jsr166e.LongAdder"))
-                        configuration.setJars (Array (sim, glm, reader, json, json_impl, datastax, twitter))
+                        configuration.setJars (Set (sim, glm, reader, json, json_impl, datastax, twitter).toArray)
 
                         // register CIMReader classes
                         configuration.registerKryoClasses (CIMClasses.list)
