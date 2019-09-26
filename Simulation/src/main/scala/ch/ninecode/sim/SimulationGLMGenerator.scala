@@ -49,21 +49,6 @@ case class SimulationGLMGenerator
         |""".stripMargin
     }
 
-    def emit_edge_player (player: SimulationPlayer): String =
-    {
-        // ToDo: do all players need "_A" for one phase ?
-        val property = if (one_phase) s"${player.property}_A" else player.property
-        s"""
-        |        object player
-        |        {
-        |            name "${player.name}";
-        |            parent "${player.parent}";
-        |            property "$property";
-        |            file "${player.file}";
-        |        };
-        |""".stripMargin
-    }
-
     // relies on the player file being of the form: "input_data/" + player.name + ".csv"
     def phase_file (file: String, suffix: String): String =
     {
@@ -78,7 +63,7 @@ case class SimulationGLMGenerator
         |       {
         |           name "$name$suffix";
         |           parent "$parent";
-        |           property "$property$phase";
+        |           property "$property$phase.real,$property$phase.imag";
         |           file "${ phase_file (file, suffix)}";
         |       };
         |""".stripMargin
@@ -103,6 +88,15 @@ case class SimulationGLMGenerator
             |${players.mkString}""".stripMargin
         else
             players.mkString
+    }
+
+    def emit_edge_player (player: SimulationPlayer): String =
+    {
+        val suffixes = if (one_phase) Seq (("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val players = for (suffix <- suffixes)
+            yield
+                emit_player (player.name, player.parent, player.property, suffix._1, player.file, suffix._2)
+        players.mkString
     }
 
     override def emit_edge (edge: GLMEdge): String =
