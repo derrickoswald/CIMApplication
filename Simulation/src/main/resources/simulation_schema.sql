@@ -6,6 +6,17 @@ create or replace function cimapplication.magnitude (real double, imag double)
     language java
     as $$ return (Math.sqrt (real * real + imag * imag)); $$;
 
+create or replace function cimapplication.magnitude_sign(real double, imag double)
+    returns null on null input
+    returns double
+    language java
+    as $$
+        if (Math.abs(real) > Math.abs(imag))
+            return (Math.signum (real) * Math.sqrt (real * real + imag * imag));
+        else
+            return (Math.signum (imag) * Math.sqrt (real * real + imag * imag));
+    $$;
+
 create or replace function cimapplication.phase (real double, imag double)
     returns null on null input
     returns double
