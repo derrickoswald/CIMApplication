@@ -669,7 +669,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                         log.info ("""storing GeoJSON data""")
                         val geo = SimulationGeometry (session, job.output_keyspace)
-                        geo.storeGeometry (simulations)
+                        geo.storeGeometry (id, simulations)
 
                         // determine which players for which transformers
                         val trafo_house1 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis == null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
@@ -739,6 +739,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
                     .load
                     .select ("id", "input_keyspace", "output_keyspace")
+                    .where (s"id in ${ids.mkString ("('", "','", "')")}")
                     .rdd
                     .map (row ⇒ (row.getString (0), row.getString (1), row.getString (2)))
                     .collect

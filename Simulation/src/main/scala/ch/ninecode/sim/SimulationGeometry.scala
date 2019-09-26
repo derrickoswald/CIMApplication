@@ -5,13 +5,13 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
+
 
 case class SimulationGeometry (session: SparkSession, keyspace: String) extends CIMRDD
 {
@@ -47,21 +47,20 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
      * which produces:
      * ("sim1_KLE2", Iterator[("ratedI", "100.0")])
      *
-     * @return the PairRDD with simulation_mrid as the key and a list of key-value pairs as the value
+     * @param simulation the simulation id to query extra properties for
+     * @return the PairRDD with mrid as the key and a list of key-value pairs as the value
      */
-    def query_extra: RDD[Properties] =
+    def query_extra (simulation: String): RDD[Properties] =
     {
         val df = session.read.format ("org.apache.spark.sql.cassandra")
             .options (Map ("keyspace" -> keyspace, "table" -> "key_value"))
-            .load ()
-            .select ("simulation", "key", "query", "value")
+            .load
+            .where (s"simulation == '$simulation'")
         if (!df.isEmpty)
         {
-            val simulation = df.schema.fieldIndex ("simulation")
-            val key = df.schema.fieldIndex ("key")
-            val query = df.schema.fieldIndex ("query")
-            val value = df.schema.fieldIndex ("value")
-            df.rdd.map (row ⇒ (row.getString (simulation) + "_" + row.getString (key), (row.getString (query), row.getString (value)))).groupByKey
+            df.select ("key", "query", "value").rdd
+                .map (row ⇒ (row.getString (0), (row.getString (1), row.getString (2))))
+                .groupByKey
         }
         else
             session.sparkContext.emptyRDD
@@ -86,7 +85,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                             )
                     )
             )
-        val consumers = nodes.join (getOrElse[EnergyConsumer].keyBy (_.id)).values.map (x ⇒ (x._1._1 + "_" + x._1._3.equipment, x._1))
+        val consumers = nodes.join (getOrElse[EnergyConsumer].keyBy (_.id)).values.map (x ⇒ (x._1._3.equipment, x._1))
         val jsons = consumers.leftOuterJoin (extra).values
             .flatMap (
                 (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) ⇒
@@ -126,7 +125,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     trafo.edges.map (
                         edge ⇒
                             (
-                                trafo.simulation + "_" + edge.rawedge.id,
+                                edge.rawedge.id,
                                 (trafo.simulation, trafo.transformer.transformer_name, edge)
                             )
                     )
@@ -201,7 +200,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
     def store_geojson_polygons (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
     {
-        val jsons = trafos.keyBy (trafo ⇒ trafo.simulation + "_" + trafo.transformer.transformer_name).leftOuterJoin (extra).values
+        val jsons = trafos.keyBy (_.transformer.transformer_name).leftOuterJoin (extra).values
             .flatMap (
                 (x: (SimulationTrafoKreis, Option[KeyValueList])) ⇒
                 {
@@ -308,7 +307,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 case None ⇒ List()
             }
         }
-        val with_properties = trafos.keyBy (trafo ⇒ trafo.simulation + "_" + trafo.transformer.transformer_name).leftOuterJoin (extra).values
+        val with_properties = trafos.keyBy (_.transformer.transformer_name).leftOuterJoin (extra).values
         val jsons = with_properties.keyBy (_._1.name).leftOuterJoin (world_positions.leftOuterJoin (schematic_points)).values.flatMap (make_trafo)
         jsons.saveToCassandra (keyspace, "geojson_transformers", SomeColumns ("simulation", "coordinate_system", "mrid", "transformers", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
@@ -335,7 +334,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
         val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x ⇒ (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))
         val stations_with_geometry: RDD[((StationmRID, Simulation, Transformer), Iterable[DiagramObjectPoint])] = diagramid_station.join (diagramObjectsPoints).values
-        val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x ⇒ (x._1._2 + "_" + x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
+        val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x ⇒ (x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
         val stations_with_everything: RDD[((StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]), Option[KeyValueList])] = stations_with_geometry_keyed.leftOuterJoin (extra).values
         val rearranged2: RDD[(Simulation, StationmRID, Transformer, Iterable[DiagramObjectPoint], Option[KeyValueList])] = stations_with_everything.map (x ⇒ (x._1._2, x._1._1, x._1._3, x._1._4, x._2))
 
@@ -355,9 +354,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         geojson_station.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "transformer", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
     }
 
-    def storeGeometry (trafos: RDD[SimulationTrafoKreis]): Unit =
+    def storeGeometry (simulation: String, trafos: RDD[SimulationTrafoKreis]): Unit =
     {
-        val extra = query_extra
+        val extra = query_extra (simulation)
         store_geojson_points (trafos, extra)
         store_geojson_lines (trafos, extra)
         store_geojson_polygons (trafos, extra)
