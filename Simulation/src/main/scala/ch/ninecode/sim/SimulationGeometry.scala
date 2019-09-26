@@ -51,12 +51,20 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
      */
     def query_extra: RDD[Properties] =
     {
-        val rdd: RDD[Row] = session.read.format ("org.apache.spark.sql.cassandra")
+        val df = session.read.format ("org.apache.spark.sql.cassandra")
             .options (Map ("keyspace" -> keyspace, "table" -> "key_value"))
             .load ()
             .select ("simulation", "key", "query", "value")
-            .rdd
-        rdd.map (row ⇒ Tuple2[Id, KeyValue] (row.getString (0) + "_" + row.getString (1), (row.getString (2), row.getString (3)))).groupByKey
+        if (!df.isEmpty)
+        {
+            val simulation = df.schema.fieldIndex ("simulation")
+            val key = df.schema.fieldIndex ("key")
+            val query = df.schema.fieldIndex ("query")
+            val value = df.schema.fieldIndex ("value")
+            df.rdd.map (row ⇒ (row.getString (simulation) + "_" + row.getString (key), (row.getString (query), row.getString (value)))).groupByKey
+        }
+        else
+            session.sparkContext.emptyRDD
     }
 
     /**
