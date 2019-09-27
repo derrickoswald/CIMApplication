@@ -61,7 +61,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val problem = if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.srcAttr.problem
                     val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, null, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
-                        log.debug ("%s <-- %s".format (triplet.dstId.toString, message.asString))
+                        log.info ("%s --> %s".format (triplet.srcAttr.id, message.asString))
                     Iterator ((triplet.dstId, message))
                 }
                 else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
@@ -73,7 +73,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
                     val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, null, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
-                        log.debug ("%s <-- %s".format (triplet.srcId.toString, message.asString))
+                        log.info ("%s --> %s".format (triplet.dstAttr.id, message.asString))
                     Iterator ((triplet.srcId, message))
                 }
                 else if (triplet.srcAttr.source_obj != triplet.dstAttr.source_obj)
@@ -147,8 +147,9 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val trafo_id = node.source_obj.trafo_id
         val feeder_id = if (null != node.feeder) node.feeder.feeder_id else null
         val trafo_ratedS = node.source_obj.ratedS
-        val trafo_z = node.source_obj.z.re
-        val z_summe = math.sqrt (3) * z + trafo_z
+        val base_ohms = v * v / trafo_ratedS
+        val trafo_z = node.source_obj.z * base_ohms
+        val z_summe = z + trafo_z
         val threshold = options.voltage_threshold / 100.0
 
         def get_heuristic_p_max (edge: PreEdge): Double =

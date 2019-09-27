@@ -29,7 +29,7 @@ case class PowerFeedingNode
     min_ir: Double,
     problem: String) extends GLMNode
 {
-    def asString: String = "[%s %gV %s@%s %sΩ %gA %s]".format (id, nominal_voltage, source_obj.asString, feeder.feeder_id, sum_z.toString, min_ir, problem)
+    def asString: String = "[%s %gV %s@%s %sΩ %gA %s]".format (id, nominal_voltage, if (null == source_obj) "" else source_obj.asString, if (null == feeder) "" else feeder.feeder_id, if (null == sum_z) "" else sum_z.toString, min_ir, problem)
 
     def hasNonRadial: Boolean =
         (null != problem) &&
