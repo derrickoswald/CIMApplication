@@ -1,24 +1,24 @@
 package ch.ninecode.cim.connector;
 
+import java.io.Serializable;
+
 import javax.json.JsonStructure;
 
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 
-import java.io.Serializable;
-
 public interface CIMFunction extends Serializable
 {
     /**
      * The key in the input CIMMappedRecord holding the CIMFunction to execute.
      */
-    static String FUNCTION = "function";
+    String FUNCTION = "function";
 
     /**
      * The key in the input CIMMappedRecord holding the query to execute.
      */
-    static String QUERY = "query";
+    String QUERY = "query";
 
     /**
      * The key in the output CIMMappedRecord holding the CIMFunction result.
@@ -27,12 +27,12 @@ public interface CIMFunction extends Serializable
      * {@link #executeJSON(SparkSession spark) executeJSON} the returned CIMMappedRecord
      * holds the result (String or JSONStructure respectively) under this key.
      */
-    static String RESULT = "result";
+    String RESULT = "result";
 
     /**
      * The return types understood by the CIMConnector interaction implementation.
      */
-    public enum Return
+    enum Return
     {
         /**
          * Dataset<Row> as returned by, for example, an sql query.

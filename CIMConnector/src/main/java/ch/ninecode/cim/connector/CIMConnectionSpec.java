@@ -30,7 +30,7 @@ public class CIMConnectionSpec implements ConnectionSpec
                 getJars ().size () == that.getJars ().size ();
             if (ret)
                 for (String key : getProperties ().keySet ())
-                    if (!that.getProperties ().containsKey (key) || getProperties ().get (key) != that.getProperties ().get (key))
+                    if (!that.getProperties ().containsKey (key) || !getProperties ().get (key).equals (that.getProperties ().get (key)))
                     {
                         ret = false;
                         break;

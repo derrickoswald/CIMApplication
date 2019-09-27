@@ -8,22 +8,22 @@ import javax.resource.cci.ConnectionMetaData;
 
 public class CIMConnectionMetaData implements ConnectionMetaData
 {
-    static Properties properties = null;
-    static
+    static Properties properties = getConnectorProperties ();
+    static Properties getConnectorProperties ()
     {
-        Properties p = new Properties ();
+        Properties ret = new Properties ();
         InputStream in = CIMConnectionMetaData.class.getResourceAsStream ("/cimconnector.properties");
         if (null != in)
             try
             {
-                p.load (in);
+                ret.load (in);
                 in.close ();
             }
             catch (IOException e)
             {
                 e.printStackTrace ();
             }
-        properties = p;
+        return (ret);
     }
 
     protected CIMManagedConnection _ManagedConnection;

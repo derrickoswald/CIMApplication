@@ -156,8 +156,6 @@ public class CIMResourceAdapterTest
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", "1g");
         ret.getProperties ().put ("spark.executor.memory", "4g");
-        // the CIMReader jar is included as a maven reference if you don't have the CIMReader project open when testing
-        // ret.getJars ().add ("../../CIMReader/target/CIMReader-2.11-2.4.3-3.6.0.jar"); // assumes CIMReader project is peer of CIMApplication
 
         return (ret);
     }
@@ -301,12 +299,5 @@ public class CIMResourceAdapterTest
         resultset.close ();
         interaction2.close ();
         connection.close ();
-    }
-
-    public String dummy (SparkSession session, String args)
-    {
-        System.out.println ("session.version = " + session.version ());
-        System.out.println ("args = " + args);
-        return ("OK");
     }
 }

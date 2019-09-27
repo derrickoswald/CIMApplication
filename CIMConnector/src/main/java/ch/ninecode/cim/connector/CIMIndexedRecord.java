@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.ListIterator;
 
 import javax.resource.cci.IndexedRecord;
+import javax.validation.constraints.NotNull;
 
 public class CIMIndexedRecord implements IndexedRecord
 {
     private static final long serialVersionUID = 1L;
     public static final String INPUT = "input";
     public static final String OUTPUT = "output";
-    public static final int MESSAGE_FIELD = 0;
 
     protected String _Name;
     protected String _Description;
@@ -84,7 +84,7 @@ public class CIMIndexedRecord implements IndexedRecord
     }
 
     @Override
-    public Object[] toArray (Object[] a)
+    public Object[] toArray (@NotNull Object[] a)
     {
         return (_List.toArray (a));
     }
@@ -108,14 +108,14 @@ public class CIMIndexedRecord implements IndexedRecord
         return (_List.containsAll (c));
     }
 
-    @SuppressWarnings ({ "rawtypes", "unchecked" })
+    @SuppressWarnings ({ "rawtypes" })
     @Override
     public boolean addAll (Collection c)
     {
         return (_List.addAll (c));
     }
 
-    @SuppressWarnings ({ "rawtypes", "unchecked" })
+    @SuppressWarnings ({ "rawtypes" })
     @Override
     public boolean addAll (int index, Collection c)
     {

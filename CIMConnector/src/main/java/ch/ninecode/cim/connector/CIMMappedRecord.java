@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.resource.cci.MappedRecord;
+import javax.validation.constraints.NotNull;
 
 public class CIMMappedRecord implements MappedRecord
 {
@@ -128,6 +129,7 @@ public class CIMMappedRecord implements MappedRecord
 
     @SuppressWarnings ("rawtypes")
     @Override
+    @NotNull
     public Set keySet ()
     {
         return (_Map.keySet ());
@@ -135,6 +137,7 @@ public class CIMMappedRecord implements MappedRecord
 
     @SuppressWarnings ("rawtypes")
     @Override
+    @NotNull
     public Collection values ()
     {
         return (_Map.values ());
@@ -142,6 +145,7 @@ public class CIMMappedRecord implements MappedRecord
 
     @SuppressWarnings ("rawtypes")
     @Override
+    @NotNull
     public Set entrySet ()
     {
         return (_Map.entrySet ());

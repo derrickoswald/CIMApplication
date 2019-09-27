@@ -1,8 +1,5 @@
 package ch.ninecode.cim.connector;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-
 import javax.naming.NamingException;
 import javax.naming.Reference;
 import javax.resource.ResourceException;
@@ -115,33 +112,6 @@ public class CIMConnectionFactory implements ConnectionFactory
         ret.setPassword ("secret"); // not currently used
         ret.getProperties ().put ("spark.driver.memory", _ManagedConnectionFactory._ResourceAdapter.getSparkDriverMemory ());
         ret.getProperties ().put ("spark.executor.memory", _ManagedConnectionFactory._ResourceAdapter.getSparkExecutorMemory ());
-
-        return (ret);
-    }
-
-    /**
-     * Get the name of a jar file for an object class.
-     * see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-     * @param obj the object to get the jar file for (can be arbitrary - it's not used)
-     * @return the name of the jar file or <code>null</code> if the code isn't running from a jar
-     */
-    public String JarPath (Object obj)
-    {
-        String ret;
-
-        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        ret = obj.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
-        try
-        {
-            ret = URLDecoder.decode (ret, "UTF-8");
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            // good enough
-        }
-
-        if (!ret.endsWith (".jar"))
-            ret = null;
 
         return (ret);
     }

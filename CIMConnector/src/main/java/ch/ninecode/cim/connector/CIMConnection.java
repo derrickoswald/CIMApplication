@@ -69,7 +69,10 @@ public class CIMConnection implements Connection
      */
     public ResultSetInfo getResultSetInfo () throws ResourceException
     {
-        return (new CIMResultSetInfo ());
+        if (_Valid)
+            return (new CIMResultSetInfo ());
+        else
+            throw new ResourceException (CLOSED_ERROR);
     }
 
     /**
