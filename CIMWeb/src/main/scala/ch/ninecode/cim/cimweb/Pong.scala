@@ -144,9 +144,10 @@ class Pong extends RESTful
                         metadata.add ("user", meta.getUserName)
                         metadata.add ("scala", meta.getScalaVersion)
                         metadata.add ("scalalibrary", meta.getScalaLibraryVersion)
+                        metadata.add ("spark", meta.getSparkVersion)
                         metadata.add ("sparklibrary", meta.getSparkLibraryVersion)
                         metadata.add ("hadooplibrary", meta.getHadoopLibraryVersion)
-                        metadata.add ("sparkjars", meta.getSparkVersion)
+                        metadata.add ("cimreader", meta.getCIMReaderVersion)
                     }
                     ret.add ("connection_metadata", metadata)
                 }

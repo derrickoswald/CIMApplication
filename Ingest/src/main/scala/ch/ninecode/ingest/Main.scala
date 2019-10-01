@@ -23,7 +23,7 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "Ingest"
+    val APPLICATION_NAME: String = properties.getProperty ("artifactId")
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
 

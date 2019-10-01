@@ -109,11 +109,11 @@ object MaximumStartingCurrent
         val pmax_line_neutral = min (
             abs (temp / cos (phin - (phim - thirty))), // dL1−N
             abs (temp / cos (phin - (phim + thirty)))) // dL2−N
-    val pmax_line_line = min (
-        abs (1.0 / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
-        min (
-            abs (network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
-            abs (network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
+        val pmax_line_line = min (
+            abs (1.0 / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
+            min (
+                abs (network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
+                abs (network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
     )
         val pmax = min (pmax_line_neutral, pmax_line_line)
 

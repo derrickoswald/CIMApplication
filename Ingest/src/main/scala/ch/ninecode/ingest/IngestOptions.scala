@@ -107,7 +107,7 @@ case class IngestOptions
     datafiles: Seq[String] = Seq (),
 
     /**
-     * Cassandra keyspace
+     * Cassandra keyspace.
      */
     keyspace: String = "cimapplication",
 

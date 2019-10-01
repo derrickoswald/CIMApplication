@@ -46,7 +46,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
         /**
          * The edit function.
          *
-         * @param line the string to transforme.
+         * @param line the string to transform.
          * @return the updated string
          */
         def edit (line: String): String =
@@ -74,7 +74,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
      *   - the keyspace must be cimapplication - which is changed according to <code>keyspace</code> via simple global substitution
      *   - the replication factor must be 2 - which is changed according to <code>replication</code> via simple global substitution
      *
-     * @return <code>true</code> if all DDL executed successsuflly, <code>false</code> if the schema file doesn't exist or there were errors
+     * @return <code>true</code> if all DDL executed successfully, <code>false</code> if the schema file doesn't exist or there were errors
      */
     def make: Boolean =
     {
