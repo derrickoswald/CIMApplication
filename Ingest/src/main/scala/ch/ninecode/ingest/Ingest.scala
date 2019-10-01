@@ -424,6 +424,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                         value = fields(i).toDouble * factor
                         slot = (i - 15) / 2
                         timestamp = time + (interval * slot)
+                        if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
                     }
                     yield
                         (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
