@@ -1,1 +1,1 @@
-/home/derrick/code/CIMApplication/Simulation/src/main/resources/simulation_schema.sql
+../../../../Simulation/src/main/resources/simulation_schema.sql
