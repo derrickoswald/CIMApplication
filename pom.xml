@@ -106,6 +106,7 @@
         <module>OneOfN</module>
         <module>LowVoltage</module>
         <module>MaximumFeedIn</module>
+        <module>CopyCassandra</module>
     </modules>
 
 </project>
