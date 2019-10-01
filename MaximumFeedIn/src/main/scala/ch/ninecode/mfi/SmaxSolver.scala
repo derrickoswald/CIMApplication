@@ -15,50 +15,48 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
     val sinphi: Double = Math.sin (phi)
     val k: Double = 1.0 + threshold
 
-    val ROOT3: Double = math.sqrt (3)
-    val GAMMA: Double = 0.001
-    val MAXITERATIONS: Int = 5000
-    val EPSILON: Double = 1e-6
-
     def bruteForceSolve (vn: Double, z: Complex): Complex =
     {
-        def toRadians (angle: Double): Double = angle * Math.PI / 180.0
+        def toRadians (index: Double): Double = index * Math.PI / 180.0 / 1000.0
 
+        val v = k * vn
         var angle: Int = 0
         var diff: Double = Double.MaxValue
-        var iterations = 0
-        for (index ← -90000 to 90000) // thousandths of a degree
+        for (index ← -90000 to 90000) // thousandths of a degree in the range where cos() is positive
         {
-            iterations = iterations + 1
-            val rad = toRadians (index / 1000.0)
-            val vc = Complex ((1 + threshold) * vn * Math.cos (rad), (1 + threshold) * vn * Math.sin (rad))
-            val i = (vc - vn) / z
-            val power = i * vc
-            val d = Math.abs (Complex.toPolar (power, false)._2 - phi)
-            if (d < diff)
+            val rad = toRadians (index)
+            val vc = Complex (v * Math.cos (rad), v * Math.sin (rad))
+            if (vc.re > 0.0)
             {
-                diff = d
-                angle = index
+                val i = (vc - vn) / z
+                val power = vc * ~i
+                val d = Math.abs (Complex.toPolar (power, false)._2 - phi)
+                if (d < diff)
+                {
+                    diff = d
+                    angle = index
+                }
             }
         }
-        val max =
-        {
-            val rad = toRadians (angle / 1000.0)
-            val vc = Complex ((1 + threshold) * vn * Math.cos (rad), (1 + threshold) * vn * Math.sin (rad))
-            val i = (vc - vn) / z
-            i * vc
-        }
-        // println (iterations)
-        ROOT3 * max
+        val rad = toRadians (angle)
+        val vc = Complex (v * Math.cos (rad), v * Math.sin (rad))
+        val i = (vc - vn) / z
+        val power = vc * ~i
+        power
     }
 
     def naiveSolve (vn: Double, z: Complex): Complex =
     {
-        def u (theta: Double): Complex = Complex (k * Math.cos (theta), k * Math.sin (theta))
+        val GAMMA: Double = 0.001
+        val MAXITERATIONS: Int = 5000
+        val EPSILON: Double = 2e-7
+
+        val v = k * vn
         def S (theta: Double): Complex =
         {
-            val f = u (theta)
-            vn * vn / z * (f * f - f)
+            val vc = Complex (v * Math.cos (theta), v * Math.sin (theta))
+            val i = (vc - vn) / z
+            vc * ~i
         }
         def fn (theta: Double): Double =
         {
@@ -83,10 +81,12 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
                 theta = theta + dx
             else
                 done = true
+            if (iterations > MAXITERATIONS)
+                done = true
         }
         while (!done)
-        // println (iterations)
-        ROOT3 * S (theta)
+        val power = S (theta)
+        power
     }
 
     /**
@@ -99,40 +99,52 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
      * @param z impedance of feed-in point (Ω)
      * @return the maximum power (W)
      */
-    def solve (vn: Double, z: Complex): Complex =
+    def solveNonLinear (vn: Double, z: Complex): Complex =
     {
-        def u (theta: Double): Complex = Complex (k * Math.cos (theta), k * Math.sin (theta))
+        val GAMMA: Double = 0.1
+        val MAXITERATIONS: Int = 5000
+        val EPSILON: Double = 2e-7
+
+        val v = k * vn
         def S (theta: Double): Complex =
         {
-            val f = u (theta)
-            vn * vn / z * (f * f - f)
+            val c = math.cos (theta)
+            val s = math.sin (theta)
+            val vc = v * Complex (c, s)
+            val i = (vc - vn) / z
+            vc * ~i
         }
-        def fn (theta: Double): Double =
-        {
-            val power = S (theta)
-            val angle = power.angle
-            val diff = angle - phi
-            Math.sqrt (diff * diff)
-        }
+//        def fn (theta: Double): Double =
+//        {
+//            val power = S (theta)
+//            val angle = power.angle
+//            val diff = angle - phi
+//            diff * diff
+//        }
         def derivative (theta: Double): Double =
         {
             val power = S (theta)
             val angle = power.angle
             val diff = angle - phi
-            val c = Math.cos (theta)
-            val s = Math.sin (theta)
-            val c2 = Math.cos (2.0 * theta)
-            val s2 = Math.sin (2.0 * theta)
-            val re =  z.re * k * (       k * c2 - c) + z.im * k * (       k * s2 - s)
-            val dre = z.re * k * (-2.0 * k * s2 + s) + z.im * k * ( 2.0 * k * c2 - c)
-            val im =  z.re * k * (       k * s2 - s) - z.im * k * (       k * c2 - c)
-            val dim = z.re * k * ( 2.0 * k * c2 - c) - z.im * k * (-2.0 * k * s2 + s)
-            val ratio = im / re
 
             if (diff == 0.0)
                 0.0
             else
-                1.0 / Math.sqrt (diff * diff) * diff  * (1.0 / (1.0 + ratio * ratio)) * (1.0 / (re * re)) * (re * dim - im * dre)
+            {
+                val re =  power.re
+                val im =  power.im
+                val ratio = im / re
+                val c = math.cos (theta)
+                val s = math.sin (theta)
+                val admittance = 1.0 / z
+                val g = admittance.re
+                val b = admittance.im
+                val du = - vn * vn * k * (s * b + c * g)
+                val dv = vn * vn * k * (s * g - c * b)
+                val derivative = (1.0 / re * du) - (im / (re * re) * dv)
+                // for sqrt (square) use:  1.0 / Math.sqrt (diff * diff) * diff  * (1.0 / (1.0 + ratio * ratio)) * derivative
+                2 * (power.angle - phi) * (1.0 / (1.0 + ratio * ratio)) * derivative
+            }
         }
 
         var theta = 0.0
@@ -143,26 +155,35 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             iterations = iterations + 1
             val d = derivative (theta)
 
-            // check derivative
-            //def difference (theta: Double): Double =
-            //{
-            //    (fn (theta + 0.000001) - fn (theta - 0.000001)) / 0.000002
-            //}
-            //val d1 = difference (theta)
+//            // check derivative
+//            def difference (theta: Double): Double =
+//            {
+//                (fn (theta + 0.000001) - fn (theta - 0.000001)) / 0.000002
+//            }
+//            val d1 = difference (theta)
 
-            val dx = - GAMMA * d * Math.abs (fn (theta))
-            // clip the step size to less than a ~3°
-            val step = Math.min (Math.abs (dx), 0.05) * Math.signum (dx)
+            // cheat here and approximate the double derivative
+            val dd = (derivative (theta + 0.000001) - derivative (theta - 0.000001)) / 0.000002
+
+            val dx = - GAMMA * d / dd
+            // clip the step size to less than a ~6°
+            val step = Math.min (Math.abs (dx), 0.1) * Math.signum (dx)
             if (Math.abs (step) > EPSILON)
                 theta = theta + step
             else
                 done = true
+            if (iterations > MAXITERATIONS)
+                done = true
         }
-        while (!done && iterations < MAXITERATIONS)
-        if (iterations >= MAXITERATIONS)
-            theta = 0.0
+        while (!done)
 
-        // println (iterations + " " + theta * 180.0 / Math.PI)
-        ROOT3 * S (theta)
+        if (iterations > MAXITERATIONS)
+            println (s"Smax minimization iterations exceeds $MAXITERATIONS")
+//        else
+//            println (s"iterations $iterations ${theta * 180.0 / Math.PI}°")
+        val power = S (theta)
+        power
     }
+
+    val solve: (Double, Complex) => Complex = solveNonLinear
 }

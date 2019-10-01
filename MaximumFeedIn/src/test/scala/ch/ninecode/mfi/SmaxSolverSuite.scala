@@ -16,114 +16,59 @@ class SmaxSolverSuite extends FunSuite
         ret
     }
 
+    /**
+     * Execute one test.
+     *
+     * @param cosphi the target power factor
+     * @param angle the voltage angle (°)
+     * @param v the target voltage (V)
+     * @param threshold the limit; fraction of voltage over nominal
+     * @param smax the expected maximum power
+     * @param message a message to print if the test fails
+     */
+    def run (cosphi: Double, angle: Double, v: Double, threshold: Double, smax: Double, message: String): Unit =
+    {
+        val limit = (1 + threshold) * v
+        val sinphi = Math.sin (Math.acos (cosphi))
+        val s = Complex (smax * cosphi, smax * sinphi)
+        val rad = toRadians (angle)
+        val vc = Complex (limit * Math.cos (rad), limit * Math.sin (rad))
+        val i = s / vc
+        val z = (vc - v) / ~i
+        if (z.re >= 0.0 && z.im >= 0.0)
+        {
+            val solver = SmaxSolver (threshold, cosphi)
+            val p = solver.solve (v, z)
+            assert ((p - s).modulus < 0.001 * smax, s"$message Z = $z")
+            assert (near (p.angle, Math.acos (cosphi)), s"power angle (${p.angle}) differs from expected ${Math.acos (cosphi)}")
+        }
+        else
+            assert (false, s"components of impedance $z must be positive: $message")
+    }
+
     test ("unity pf @ 0°")
     {
-        val cosphi = 1.0
-        val angle = 0.0
-        val v = 400.0
-        val threshold = 0.03
-        val smax = 6000.0
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "unity power factor")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (1.0, 0.0, 400.0, 0.03, 6000.0, "unity power factor")
     }
 
     test ("unity pf @ 4°")
     {
-        val cosphi = 1.0
-        val angle = 4.0
-        val v = 400.0
-        val threshold = 0.03
-        val smax = 6000.0
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "unity power factor at 4°")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (1.0, 4.0, 400.0, 0.03, 6000.0, "unity power factor at 4°")
     }
 
-    test ("0.9 pf @ 8.5°")
+    test ("0.9 pf @ 2.5°")
     {
-        val cosphi = 0.9
-        val angle = 8.5
-        val v = 400.0
-        val threshold = 0.03
-        val smax = 6000.0
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.9 power factor @ 8.5°")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (0.9, 2.5, 400.0, 0.03, 6000.0, "0.9 power factor @ 2.5°")
     }
 
-    test ("0.9 pf @ -0.85°")
+    test ("0.9 pf @ -0.25°")
     {
-        val cosphi = 0.9
-        val angle = -0.85
-        val v = 400.0
-        val threshold = 0.03
-        val smax = 6000.0
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.9 power factor @ -0.85°")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (0.9, -0.25, 400.0, 0.03, 6000.0, "0.9 power factor @ -0.25°")
     }
 
-    test ("0.95 pf @ Π° for 1% at 230v")
+    test ("0.95 pf @ -0.2° for 1% at 230v")
     {
-        val cosphi = 0.95
-        val angle = Math.PI
-        val v = 230.0
-        val threshold = 0.01
-        val smax = 22000.0
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.95 power factor @ Π° for 1% at 230v")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (0.9, -0.2, 230.0, 0.01, 22000.0, "0.95 power factor @ -0.2° for 1% at 230v")
     }
 
     test ("yamshid1.0")
@@ -132,13 +77,13 @@ class SmaxSolverSuite extends FunSuite
         val v = 400.0
         val threshold = 0.03
         // 250kVA 16kV:400V ukr(1): 4%, uRr(1): 0.86%
-        val ztrans = Complex (0.005504, 0.02500131965)
+        val z_trans = Complex (0.005504, 0.02500131965)
         // GKN 3x150Al/95Cu, Imax: 290A, Z: 0.241+0.07jΩ/km, l: 210m
-        val zcable = Complex (0.241, 0.07) * 210.0 / 1000.0
+        val z_cable = Complex (0.241, 0.07) * 210.0 / 1000.0
         val imax = 290.0
 
         val solver = SmaxSolver (threshold, cosphi)
-        val z = Math.sqrt (3) * zcable + ztrans
+        val z = z_cable + z_trans
         val p = solver.solve (v, z)
 
         assert (near (p.angle, Math.acos (cosphi)))
@@ -146,7 +91,7 @@ class SmaxSolverSuite extends FunSuite
         val i = p / vc
         assert (i.modulus < imax)
         assert (near (i.angle - vc.angle, Math.acos (cosphi)))
-        assert (near (p.modulus, 91e3, 91e3 * 0.01))
+        assert (near (p.modulus, 89e3, 89e3 * 0.01))
     }
 
     test ("yamshid0.9")
@@ -155,13 +100,12 @@ class SmaxSolverSuite extends FunSuite
         val v = 400.0
         val threshold = 0.03
         // 250kVA 16kV:400V ukr(1): 4%, uRr(1): 0.86%
-        val ztrans = Complex (0.005504, 0.02500131965)
+        val z_trans = Complex (0.005504, 0.02500131965)
         // GKN 3x150Al/95Cu, Imax: 290A, Z: 0.241+0.07jΩ/km, l: 210m
-        val zcable = Complex (0.241, 0.07) * 210.0 / 1000.0
-        val imax = 290.0
+        val z_cable = Complex (0.241, 0.07) * 210.0 / 1000.0
 
         val solver = SmaxSolver (threshold, cosphi)
-        val z = Math.sqrt (3) * zcable + ztrans
+        val z = z_cable + z_trans
         val p = solver.solve (v, z)
 
         assert (near (p.angle, Math.acos (cosphi)))
@@ -169,37 +113,20 @@ class SmaxSolverSuite extends FunSuite
         val i = p / vc
         // assert (i.modulus < imax)
         assert (near (i.angle - vc.angle, Math.acos (cosphi)))
-        assert (near (p.modulus, 129e3, 129e3 * 0.01))
+        assert (near (p.modulus, 73e3, 73e3 * 0.01))
     }
 
     test ("small angle")
     {
-        val cosphi = 0.8625088147918922
-        val angle = -0.037239727380251886
-        val v = 400.0
-        val threshold = 0.03
-        val smax = 25667.786854659604
-
-        val sinphi = Math.sin (Math.acos (cosphi))
-        val smax1ph = smax / root3
-        val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
-        val rad = toRadians (angle)
-        val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-        val i = s / vc
-        val z = (vc - v) / i
-
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert (Math.abs (p.abs - smax) < 0.001 * smax, "0.8625 power factor @ -0.037° for 3% at 400v")
-        assert (near (p.angle, Math.acos (cosphi)))
+        run (0.8625088147918922, -0.037239727380251886, 400.0, 0.03, 25667.786854659604, "0.8625 power factor @ -0.037° for 3% at 400v")
     }
 
     test ("random")
     {
-        for (i ← 1 to 10000)
+        for (_ ← 1 to 10000)
         {
             val cosphi = 1.0 - Math.random () * 0.25
-            val angle = 45.0 * (Math.random () - 0.5)
+            val angle = 15.0 * (Math.random () - 0.5)
             val v = if (Math.random () > 0.75) 230.0 else 400.0
             val threshold = if (Math.random () > 0.5) 0.03 else 0.06
             val smax = Math.random () * 200000.0
@@ -209,16 +136,51 @@ class SmaxSolverSuite extends FunSuite
             val s = Complex (smax1ph * cosphi, smax1ph * sinphi)
             val rad = toRadians (angle)
             val vc = Complex ((1 + threshold) * v * Math.cos (rad), (1 + threshold) * v * Math.sin (rad))
-            val i = s / vc
+            val i = ~(s / vc)
             val z = (vc - v) / i
 
-            if (z.re > 0.0)
+            if (z.re >= 0.0 && z.im >= 0.0)
             {
+//                run (cosphi, angle, v, threshold, smax, s"$cosphi power factor @ ${angle}° for ${threshold * 100}%% at ${v}V ${smax}W")
                 val solver = SmaxSolver (threshold, cosphi)
                 val p = solver.solve (v, z)
-                assert (Math.abs (p.abs - smax) < 0.01 * smax, "%s power factor @ %s° for %s%% at %sv %sW".format (cosphi, angle, threshold * 100, v, smax))
+                assert ((p - s).modulus < 0.001 * smax, s"$cosphi power factor @ $angle° for ${threshold * 100}% at ${v}V ${smax}VA Z = $z")
                 assert (near (p.angle, Math.acos (cosphi)))
             }
         }
+    }
+
+    test ("HAS138124 using Precalculation")
+    {
+        val cosphi = 0.9
+        val v = 400.0
+        val threshold = 0.03
+        // the following two values are the current PreCalculation values for impedance and power
+        val z = Complex (0.22915629,0.09288086)
+        val power = Complex (18035.79988585,8734.91400283)
+
+        val solver = SmaxSolver (threshold, cosphi)
+        val p = solver.solve (v, z)
+        assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
+        assert (near (p.angle, Math.acos (cosphi)), s"power angle (${p.angle}) differs from expected ${Math.acos (cosphi)}")
+    }
+
+    test ("HAS138124 using Load-Flow")
+    {
+        val cosphi = 0.9
+        val v = 400.0
+        // on the step before the 3% limit is exceeded, this is the percentage
+        val threshold = 0.02956
+        // the following two values are from the GridLAB-D recorder files for voltage and current at the house
+        val vh = Complex (411.812, 3.14138)
+        val ih = - Complex (-39.4825, 18.7518) // negate because the cable is ordered from the junction to the house, but current flows from the house to the junction
+
+        val z = (vh - v) / ih // Complex (0.21327465, 0.18085642j
+        val power = vh * ~ih // Complex (16200.46076052, 7846.24579745)
+
+        val solver = SmaxSolver (threshold, cosphi)
+        val p = solver.solve (v, z)
+        assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
+        assert (near (p.angle, Math.acos (cosphi)), s"power angle (${p.angle}) differs from expected ${Math.acos (cosphi)}")
     }
 }
