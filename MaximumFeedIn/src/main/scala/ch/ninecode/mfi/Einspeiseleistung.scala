@@ -538,7 +538,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
         {
             // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4).distinct
+            val niederspannug = transformer_data.filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code this low voltage value
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
         transformers.persist (storage_level)

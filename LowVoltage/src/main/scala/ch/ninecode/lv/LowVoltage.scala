@@ -231,7 +231,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         else
         {
             // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+            val niederspannug = transformer_data.filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)) // ToDo: don't hard code this low voltage value
             niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
         }
 

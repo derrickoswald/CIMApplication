@@ -396,7 +396,7 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
 
                 // determine the set of transformers to work on
                 val transformers = transformer_data
-                    .filter (td => td.voltage0 != 0.4 && td.voltage1 == 0.4)
+                    .filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)) // ToDo: don't hard code this low voltage value
                     .groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
                     .map (x ⇒ TransformerEdge (x.node0, x.node1, x))
                     .collect

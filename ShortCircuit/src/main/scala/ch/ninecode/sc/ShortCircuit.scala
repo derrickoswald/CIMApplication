@@ -986,8 +986,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         else
         {
             // do all low voltage power transformers
-            // ToDo: fix this 1kV multiplier on the voltages
-            val niederspannung = transformer_data.filter (td ⇒ td.voltage0 > 1.0 && td.voltage1 <= 1.0)
+            val niederspannung = transformer_data.filter (td ⇒ (td.v0 != 400.0) && (td.v1 == 400.0)) // ToDo: don't hard code this low voltage value
             niederspannung.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray)
         }
 

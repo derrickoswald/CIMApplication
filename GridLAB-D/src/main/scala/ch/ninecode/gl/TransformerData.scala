@@ -50,10 +50,6 @@ case class TransformerData
     /** @return the voltage for the transformer primary (high voltage) end (V) */
     def v0: Double = voltages (primary)._2
 
-    /** @return the voltage for the transformer primary (high voltage) end (kV)
-     * @deprecated use v0 / 1000.0 */
-    def voltage0: Double = v0 / 1000.0
-
     /** @return the Terminal for the transformer primary (high voltage) end */
     def terminal0: Terminal = terminals (primary)
 
@@ -65,10 +61,6 @@ case class TransformerData
 
     /** @return the voltage for the transformer secondary (low voltage) end (V) */
     def v1: Double = voltages (secondary)._2
-
-    /** @return the voltage for the transformer secondary (low voltage) end (kV)
-     * @deprecated use v1 / 1000.0 */
-    def voltage1: Double = v1 / 1000.0
 
     /** @return the Terminal for the transformer secondary (low voltage) end */
     def terminal1: Terminal = terminals (secondary)
