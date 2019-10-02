@@ -701,7 +701,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
                         val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.three_phase, options.fake_three_phase, options.keep, options.verbose)
-                        val results = packages.flatMap (runner.execute).persist (options.storage_level).setName (id + "_results")
+                        val raw_results = packages.map (runner.execute)
+                        raw_results.flatMap (_._1).collect.foreach (log.error)
+                        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (id + "_results")
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
