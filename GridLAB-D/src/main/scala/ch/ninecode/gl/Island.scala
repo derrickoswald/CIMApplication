@@ -18,7 +18,7 @@ import ch.ninecode.model._
  *
  * @param spark                 The current spark session.
  * @param storage_level         The storage level to use in persisting the edges and nodes.
- * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with to high
+ * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with to high
  *                              impedance values
  */
 class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), cable_impedance_limit: Double = 5.0) extends CIMRDD with Serializable
@@ -347,7 +347,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         // get equipment attached to each terminal
         val terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).values.cache
 
-        // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSgment
+        // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSegment
         val one_terminal_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
         val all_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.flatMap (x ⇒ x._1.map (y ⇒ (y, x._2))).keyBy (_._1._2.TopologicalNode)
         // preferentially take the single terminal equipment, but in all cases keep only one equipment
