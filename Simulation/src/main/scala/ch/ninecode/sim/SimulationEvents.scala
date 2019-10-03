@@ -269,16 +269,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         // pare down the data and sort by time
         val values = data.map (x ⇒ (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
 
-        val checkers = triggers.map (
-            trigger ⇒
-            {
-                // compensate for single wire ratedCurrent in a three wire system when doing single phase simulation
-                if (!three_phase && trigger.`type` == "current")
-                    Checker (simulation, mrid, trigger, math.sqrt (3.0) * threshold)
-                else
-                    Checker (simulation, mrid, trigger, threshold)
-            }
-        )
+        val checkers = triggers.map (x ⇒ Checker (simulation, mrid, x, threshold))
         for (i ← values.indices)
         {
             val time = values(i)._1

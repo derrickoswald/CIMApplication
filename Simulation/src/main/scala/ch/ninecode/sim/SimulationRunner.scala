@@ -257,7 +257,11 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
                 val measures = recorder.aggregations.find (_.intervals == 1) match
                 {
                     case Some (baseline: SimulationAggregate) ⇒
-                        val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble
+                        // compensate for single phase simulated current only in cables
+                        // Note: this kludge assumes that power transformer current has property "current_out"
+                        // and we will never be interested in the medium voltage current input
+                        val factor = if (!three_phase && recorder.property == "current_in") 1.0 / math.sqrt (3) else 1.0
+                        val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble * factor
                         val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map (
                             entry ⇒
                                 SimulationResult
