@@ -211,7 +211,9 @@ define
 
             currentQualityFactor ()
             {
-                return (this._quality_factors.filter (x => x.selected)[0].id);
+                const selected = this._quality_factors.filter (x => x.selected);
+                const current = (0 !== selected.length) ? selected[0] : this._quality_factors[0];
+                return (current.id);
             }
 
             changeQualityFactor (event)

@@ -68,7 +68,8 @@ define
                 if (this._theChart)
                     delete this._theChart;
                 // destroy the container
-                this._container.parentNode.removeChild (this._container);
+                if (this._container)
+                    this._container.parentNode.removeChild (this._container);
                 delete this._container;
                 delete this._map;
             }

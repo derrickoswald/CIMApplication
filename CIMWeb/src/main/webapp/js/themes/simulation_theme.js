@@ -400,7 +400,7 @@ define
                 this.legend_changed (new Date (this.getLegend ().getTimes ().start));
 
                 this._mousedown_listener = this.mousedown_listener.bind (this);
-                this._cimmmap.push_listeners ({ "mousedown": this._mousedown_listener });
+                this._cimmap.push_listeners ({ "mousedown": this._mousedown_listener });
             }
 
             fixup (raw)
