@@ -29,24 +29,24 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             }
     }
 
-    def parseTime (options: IngestOptions, time: String): Long =
+    def MeasurementTimestampFormat (options: IngestOptions): SimpleDateFormat =
     {
         val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
         val MeasurementCalendar: Calendar = Calendar.getInstance ()
         MeasurementCalendar.setTimeZone (MeasurementTimeZone)
-        val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
-        MeasurementTimestampFormat.setCalendar (MeasurementCalendar)
-        MeasurementTimestampFormat.parse (time).getTime
+        val ret: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
+        ret.setCalendar (MeasurementCalendar)
+        ret
+    }
+
+    def parseTime (options: IngestOptions, time: String): Long =
+    {
+        MeasurementTimestampFormat (options).parse (time).getTime
     }
 
     def formatTime (options: IngestOptions, time: Long): String =
     {
-        val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
-        val MeasurementCalendar: Calendar = Calendar.getInstance ()
-        MeasurementCalendar.setTimeZone (MeasurementTimeZone)
-        val MeasurementTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
-        MeasurementTimestampFormat.setCalendar (MeasurementCalendar)
-        MeasurementTimestampFormat.format (time)
+        MeasurementTimestampFormat (options).format (time)
     }
 
     opt [Unit]("unittest").
@@ -163,7 +163,7 @@ reads the mapping file and meter data files (demultiplexed to individual reading
 These are then rearranged and augmented to match the measured_value schema and inserted into Cassandra in bulk.
 Operation are performed with complex numbers per the measured_value schema,
 but so far deal only with one phase (phase A in North America or phase R in the rest of the world).
-Where mulitple meter IDs map to one CIM mRID, the values are added together, providing the capability to
+Where multiple meter IDs map to one CIM mRID, the values are added together, providing the capability to
 have an apartment block merged or active and reactive measurements from the same meter merged.
 """
     )

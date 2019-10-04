@@ -33,16 +33,11 @@ class IngestSuiteIT
             in.close ()
             p
         }
-        val port = properties.getProperty ("nativeTransportPort")
+        val port = properties.getProperty ("nativeTransportPort", "9042")
         if ("" == port)
             9042
         else
             port.toInt
-    }
-
-    @Test def Help ()
-    {
-        main (Array ("--unittest", "--help"))
     }
 
     def checkCount (session: Session, sql: String, count: Long, tag: String): Unit =
@@ -58,6 +53,11 @@ class IngestSuiteIT
         assert (row.getDouble ("real_a") == real, "real value")
         assert (row.getDouble ("imag_a") == imag, "imaginary value")
         assert (row.getString ("units") == units, "units")
+    }
+
+    @Test def Help ()
+    {
+        main (Array ("--unittest", "--help"))
     }
 
     @Test def Ingest ()
@@ -116,3 +116,4 @@ class IngestSuiteIT
         session.close ()
     }
 }
+

@@ -57,14 +57,10 @@ object Main
      * mvn package
      * Invoke (on the cluster) with:
      * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox 20180405_073251_Belvis_STA206.csv
-     * or on AWS:
-     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox 20180405_073251_Belvis_STA206.csv
      */
     def main (args: Array[String])
     {
-        val optionparser = new IngestOptionsParser (APPLICATION_NAME, APPLICATION_VERSION)
-
-        optionparser.parse (args, IngestOptions ()) match
+        new IngestOptionsParser (APPLICATION_NAME, APPLICATION_VERSION).parse (args, IngestOptions ()) match
         {
             case Some (options) =>
                 if (options.valid)
